@@ -2,6 +2,8 @@ import H1 from "./H1";
 import H2 from "./H2";
 import Container from "./Container";
 
+import logo from "/black-spider.png";
+
 import { Link } from "react-router-dom";
 
 function Header() {
@@ -10,8 +12,13 @@ function Header() {
       <Container>
         <div className="flex justify-between items-end">
           <Link to="/">
-            <H2>Dungeons & Dragons</H2>
-            <H1>Den Tapte Gruven i Phandelver</H1>
+            <div className="flex items-end gap-4">
+              <img src={logo} alt="Black Spider logo" className="h-14" />
+              <div>
+                <H2>Dungeons & Dragons</H2>
+                <H1>Den Tapte Gruven i Phandelver</H1>
+              </div>
+            </div>
           </Link>
 
           <nav>
