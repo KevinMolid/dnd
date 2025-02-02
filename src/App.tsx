@@ -5,6 +5,8 @@ import Header from "./components/Header";
 import Home from "./pages/Home";
 import Historien from "./pages/Historien";
 import Tips from "./pages/Tips";
+import Reglene from "./pages/Reglene";
+import Spillerne from "./pages/Spillerne";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -17,6 +19,8 @@ function App() {
           <Route index element={<Home />} />
           <Route path="historien" element={<Historien />} />
           <Route path="tips" element={<Tips />} />
+          <Route path="reglene" element={<Reglene />} />
+          <Route path="spillerne" element={<Spillerne />} />
         </Routes>
       </BrowserRouter>
     </>
