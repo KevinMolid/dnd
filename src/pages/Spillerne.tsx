@@ -7,12 +7,31 @@ const Spillerne = () => {
   const [activePlayer, setActivePlayer] = useState("Atiram");
 
   const players = [
-    { name: "Atiram", race: "Thiefling", class: "Rogue" },
-    { name: "Balasar", race: "Dragonborn", class: "Barbarian" },
-    { name: "Lia", race: "Elf", class: "Druid" },
-    { name: "Luthien", race: "Elf", class: "Bard" },
-    { name: "Roland", race: "Half-elf", class: "Paladin" },
+    {
+      name: "Atiram",
+      race: "Thiefling",
+      class: "Rogue",
+      background: "Criminal",
+    },
+    {
+      name: "Balasar",
+      race: "Dragonborn",
+      class: "Barbarian",
+      background: "Soldier",
+    },
+    { name: "Lia", race: "Elf", class: "Druid", background: "Outlander" },
+    { name: "Luthien", race: "Elf", class: "Bard", background: "Noble" },
+    {
+      name: "Roland",
+      race: "Half-elf",
+      class: "Paladin",
+      background: "Soldier",
+    },
   ];
+
+  const activePlayerData = players.find(
+    (player) => player.name === activePlayer
+  );
 
   return (
     <div>
@@ -36,20 +55,30 @@ const Spillerne = () => {
           ))}
         </ul>
 
-        <H2>Atiram - Thiefling Rogue</H2>
-        <p>Bakgrunn: Criminal</p>
+        <H2>
+          {activePlayerData?.name} - {activePlayerData?.race}{" "}
+          {activePlayerData?.class}
+        </H2>
+        <p>Bakgrunn: {activePlayerData?.background}</p>
 
-        <H2>Balasar - Dragonborn Barbarian</H2>
-        <p>Bakgrunn: Soldier</p>
-
-        <H2>Lia - Elf Druid</H2>
-        <p>Bakgrunn: Outlander</p>
-
-        <H2>Luthien - Elf Bard</H2>
-        <p>Bakgrunn: Noble</p>
-
-        <H2>Roland - Half-elf Paladin</H2>
-        <p>Bakgrunn: Soldier</p>
+        <div className="border-black border h-[1000px]">
+          {/* Header */}
+          <div className="bg-gray-200 grid grid-cols-3 gap-2 p-2">
+            {/* Name */}
+            <div className="bg-white flex justify-center items-center p-2">
+              <div className="bg-slate-100 h-10 w-full"></div>
+            </div>
+            {/* Details */}
+            <div className="bg-white w-full col-span-2 grid grid-cols-3 p-2 gap-2">
+              <div className="bg-slate-100 h-8"></div>
+              <div className="bg-slate-100 h-8"></div>
+              <div className="bg-slate-100 h-8"></div>
+              <div className="bg-slate-100 h-8"></div>
+              <div className="bg-slate-100 h-8"></div>
+              <div className="bg-slate-100 h-8"></div>
+            </div>
+          </div>
+        </div>
       </Container>
     </div>
   );
