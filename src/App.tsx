@@ -7,6 +7,7 @@ import Historien from "./pages/Historien";
 import Tips from "./pages/Tips";
 import Reglene from "./pages/Reglene";
 import Spillerne from "./pages/Spillerne";
+import NPCene from "./pages/NPCene";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -21,6 +22,7 @@ function App() {
           <Route path="tips" element={<Tips />} />
           <Route path="reglene" element={<Reglene />} />
           <Route path="spillerne" element={<Spillerne />} />
+          <Route path="npcene" element={<NPCene />} />
         </Routes>
       </BrowserRouter>
     </>
