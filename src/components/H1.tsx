@@ -4,7 +4,9 @@ type H1Props = {
 
 const H1 = ({ children }: H1Props) => {
   return (
-    <h1 className="font-bold text-xl md:text-2xl lg:text-3xl">{children}</h1>
+    <h1 className="font-serif text-red-900 font-bold text-2xl md:text-4xl lg:text-6xl mb-2">
+      {children}
+    </h1>
   );
 };
 

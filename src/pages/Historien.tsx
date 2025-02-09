@@ -1,4 +1,5 @@
 import Container from "../components/Container";
+import H1 from "../components/H1";
 import H2 from "../components/H2";
 import H3 from "../components/H3";
 import Paragraph from "../components/Paragraph";
@@ -7,27 +8,28 @@ const Historien = () => {
   return (
     <div>
       <Container>
-        <H2>Historien</H2>
-        <H3>Økt 1: På pub med Gundren</H3>
+        <H1>Historien</H1>
+        <H2>Økt 1: På pub med Gundren</H2>
         <Paragraph>
           Dere møtte dvergen Gundren Rockseeker og hans venn Sildar Hallwinter
-          på et vertshus i byen Neverwinter. Spillerne introduserte seg for
-          hverandre og fortalte litt om seg selv:
+          på et vertshus i byen Neverwinter. Dere introduserte dere for
+          hverandre og fortalte litt om dere selv:
         </Paragraph>
+        <H3>Spiller-karakterene</H3>
         <Paragraph>
-          <span className="font-bold">Atiram</span>: Tiefling Rogue. Tidligere
-          kriminell. Stavanger-dialekt.
+          <span className="font-semibold">Atiram</span>: Tiefling Rogue.
+          Tidligere kriminell. Stavanger-dialekt.
           <br />
-          <span className="font-bold">Roland</span>: Half-elf Paladin. Tidligere
-          soldat. Rolig og behersket.
+          <span className="font-semibold">Roland</span>: Half-elf Paladin.
+          Tidligere soldat. Rolig og behersket.
           <br />
-          <span className="font-bold">Balasar</span>: Dragonborn Barbarian.
+          <span className="font-semibold">Balasar</span>: Dragonborn Barbarian.
           Tidligere soldat. Rappkjefta nordlening.
           <br />
-          <span className="font-bold">Lia</span>: Elf Druid. Bakgrunn som
+          <span className="font-semibold">Lia</span>: Elf Druid. Bakgrunn som
           Outlander. Mystisk og klok.
           <br />
-          <span className="font-bold">Luthien</span>: Elf Bard. Bakgrunn som
+          <span className="font-semibold">Luthien</span>: Elf Bard. Bakgrunn som
           Entertainer. Dramatisk og sjarmerende.
         </Paragraph>
         <Paragraph>
@@ -40,7 +42,7 @@ const Historien = () => {
           Gundren og Sildar dro i forveien for å ordne med noe "Business" i
           Phandalin.
         </Paragraph>
-        <H3>Økt 2: Kidnappet smed-datter</H3>
+        <H2>Økt 2: Kidnappet smed-datter</H2>
         <Paragraph>
           På vei sørover langs High Road kom dere til en liten grend, hvor
           vertshuset nylig hadde blitt brent til grunnen. Noen vakter i et
@@ -53,7 +55,7 @@ const Historien = () => {
         <Paragraph>
           Spor etter kamp ved vertshuset ledet østover mot Neverwinter Woods.
         </Paragraph>
-        <H3>Økt 3: Mystisk goblin-rituale</H3>
+        <H2>Økt 3: Mystisk goblin-rituale</H2>
         <Paragraph>
           Roland, Atiram og Lia bestemte seg for å følge sporene østover for å
           forsøke og finne Remi, mens Luthien og Balasar ble hos smeden. Roland
@@ -88,7 +90,7 @@ const Historien = () => {
           et sterkt bånd til den.
         </Paragraph>
 
-        <H3>Økt 4: Bakholdsangrep og Atiram i fare</H3>
+        <H2>Økt 4: Bakholdsangrep og Atiram i fare</H2>
         <Paragraph>
           Etter å ha fulgt High Road sørover i et par dager tok dere av østover
           på Triboar Trail. Her ble dere møtt av to døde hester liggende i veien

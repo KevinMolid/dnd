@@ -11,7 +11,13 @@ export default {
           200: "#eae3ca",
           400: "#c0b9a0",
           800: "#5c5440",
+        },
+        gold: {
+          400: "#baab7a"
         }
+      },
+      fontFamily: {
+        serif: ["Noto Serif", "serif"],
       }
     },
   },

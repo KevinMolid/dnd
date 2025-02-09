@@ -1,6 +1,6 @@
 import Container from "../components/Container";
 import Tab from "../components/Tab";
-import H2 from "../components/H2";
+import H1 from "../components/H1";
 import CharacterSheet from "../components/CharacterSheet";
 
 import { useState } from "react";
@@ -53,7 +53,7 @@ const Spillerne = () => {
   return (
     <div>
       <Container>
-        <H2>Spillerne</H2>
+        <H1>Spillerne</H1>
 
         <ul className="flex my-4">
           {players.map((player) => (

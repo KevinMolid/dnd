@@ -1,4 +1,3 @@
-import H1 from "./H1";
 import Container from "./Container";
 import NavTab from "./NavTab";
 
@@ -16,7 +15,9 @@ function Header() {
               <img src={logo} alt="Black Spider logo" className="h-14" />
               <div>
                 <p>Dungeons & Dragons</p>
-                <H1>Den Tapte Gruven i Phandelver</H1>
+                <p className="font-bold text-xl sm:text-2xl md:text-3xl">
+                  Den Tapte Gruven i Phandelver
+                </p>
               </div>
             </div>
           </Link>

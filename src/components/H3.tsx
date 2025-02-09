@@ -3,7 +3,9 @@ type H3Props = {
 };
 
 const H3 = ({ children }: H3Props) => {
-  return <h3 className="text-lg lg:text-2xl">{children}</h3>;
+  return (
+    <h3 className="font-semibold text-black text-lg lg:text-2xl">{children}</h3>
+  );
 };
 
 export default H3;
