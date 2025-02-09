@@ -1,6 +1,8 @@
 import Container from "../components/Container";
 import Tab from "../components/Tab";
 import H2 from "../components/H2";
+import CharacterSheet from "../components/CharacterSheet";
+
 import { useState } from "react";
 
 const Spillerne = () => {
@@ -9,20 +11,35 @@ const Spillerne = () => {
   const players = [
     {
       name: "Atiram",
+      playername: "Marita",
       race: "Thiefling",
       class: "Rogue",
       background: "Criminal",
     },
     {
       name: "Balasar",
+      playername: "Sara",
       race: "Dragonborn",
       class: "Barbarian",
       background: "Soldier",
     },
-    { name: "Lia", race: "Elf", class: "Druid", background: "Outlander" },
-    { name: "Luthien", race: "Elf", class: "Bard", background: "Noble" },
+    {
+      name: "Lia",
+      playername: "Janicke",
+      race: "Elf",
+      class: "Druid",
+      background: "Outlander",
+    },
+    {
+      name: "Luthien",
+      playername: "Esmeralda",
+      race: "Elf",
+      class: "Bard",
+      background: "Noble",
+    },
     {
       name: "Roland",
+      playername: "Kaj",
       race: "Half-elf",
       class: "Paladin",
       background: "Soldier",
@@ -45,40 +62,26 @@ const Spillerne = () => {
               key={player.name}
               onClick={() => setActivePlayer(player.name)}
             >
-              <p className="leading-none">{player.name}</p>
-              <p className="leading-none mb-1">
-                <small className="font-medium">
-                  {player.race} {player.class}
-                </small>
-              </p>
+              <div className="flex">
+                <img
+                  className="w-8"
+                  src={player.class + ".png"}
+                  alt={player.class}
+                />
+                <div>
+                  <p className="leading-none">{player.name}</p>
+                  <p className="leading-none mb-1">
+                    <small className="font-medium">
+                      {player.race} {player.class}
+                    </small>
+                  </p>
+                </div>
+              </div>
             </Tab>
           ))}
         </ul>
 
-        <H2>
-          {activePlayerData?.name} - {activePlayerData?.race}{" "}
-          {activePlayerData?.class}
-        </H2>
-        <p>Bakgrunn: {activePlayerData?.background}</p>
-
-        <div className="border-black border h-[1000px]">
-          {/* Header */}
-          <div className="bg-gray-200 grid grid-cols-3 gap-2 p-2">
-            {/* Name */}
-            <div className="bg-white flex justify-center items-center p-2">
-              <div className="bg-slate-100 h-10 w-full"></div>
-            </div>
-            {/* Details */}
-            <div className="bg-white w-full col-span-2 grid grid-cols-3 p-2 gap-2">
-              <div className="bg-slate-100 h-8"></div>
-              <div className="bg-slate-100 h-8"></div>
-              <div className="bg-slate-100 h-8"></div>
-              <div className="bg-slate-100 h-8"></div>
-              <div className="bg-slate-100 h-8"></div>
-              <div className="bg-slate-100 h-8"></div>
-            </div>
-          </div>
-        </div>
+        {activePlayerData && <CharacterSheet character={activePlayerData} />}
       </Container>
     </div>
   );
