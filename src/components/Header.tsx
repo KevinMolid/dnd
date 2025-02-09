@@ -7,7 +7,7 @@ import { Link } from "react-router-dom";
 
 function Header() {
   return (
-    <div className="bg-paper-100">
+    <div className="bg-paper-100 shadow-sm">
       <Container>
         <div className="flex flex-wrap justify-between items-end">
           <Link to="/">
