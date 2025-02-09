@@ -1,5 +1,5 @@
 type Props = {
-  children: String;
+  children: React.ReactNode;
 };
 
 const CsLabel = ({ children }: Props) => {

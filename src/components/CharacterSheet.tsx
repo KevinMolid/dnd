@@ -30,7 +30,7 @@ const CharacterSheet = ({ character }: Props) => {
     <div className={"bg-white shadow-lg h-[1000px]"}>
       {/* Header */}
       <div
-        className={`${classColor} grid grid-cols-3 gap-2 md:gap-4 p-2 md:p-4`}
+        className={`${classColor} grid sm:grid-cols-3 gap-2 md:gap-4 p-2 md:p-4`}
       >
         {/* Name */}
         <div className="bg-white flex justify-center items-center p-2">
@@ -41,8 +41,9 @@ const CharacterSheet = ({ character }: Props) => {
             <CsLabel>Character Name</CsLabel>
           </div>
         </div>
+
         {/* Details */}
-        <div className="bg-white w-full col-span-2 grid grid-cols-3 p-2 gap-2 border border-black">
+        <div className="bg-white w-full sm:col-span-2 grid grid-cols-3 p-2 gap-2 border border-black">
           <div>
             <p className="bg-slate-100 font-medium">{character.class} 1</p>
             <CsLabel>Class & Level</CsLabel>
@@ -65,8 +66,49 @@ const CharacterSheet = ({ character }: Props) => {
           </div>
           <div>
             <p className="bg-slate-100 font-medium">0</p>
-            <CsLabel>Experience Points</CsLabel>
+            <CsLabel>
+              Experience <span className="hidden md:inline">Points</span>
+            </CsLabel>
           </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-2">
+        <div className="flex flex-col items-center border-2 border-black pb-2">
+          <p className="border-b border-gray-400 px-2">10</p>
+          <p className="text-4xl font-bold mb-1">+0</p>
+          <CsLabel>Strength</CsLabel>
+        </div>
+
+        <div className="flex flex-col items-center border-2 border-black pb-2">
+          <p className="border-b border-gray-400 px-2">16</p>
+          <p className="text-4xl font-bold mb-1">+3</p>
+          <CsLabel>Dexterity</CsLabel>
+        </div>
+
+        <div className="flex flex-col items-center border-2 border-black pb-2">
+          <p className="border-b border-gray-400 px-2">16</p>
+          <p className="text-4xl font-bold mb-1">+3</p>
+          <CsLabel>Constitution</CsLabel>
+        </div>
+
+        <div className="flex flex-col items-center border-2 border-black pb-2">
+          <p className="border-b border-gray-400 px-2">16</p>
+          <p className="text-4xl font-bold mb-1">+3</p>
+          <CsLabel>Intelligence</CsLabel>
+        </div>
+
+        <div className="flex flex-col items-center border-2 border-black pb-2">
+          <p className="border-b border-gray-400 px-2">16</p>
+          <p className="text-4xl font-bold mb-1">+3</p>
+          <CsLabel>Dexterity</CsLabel>
+        </div>
+
+        <div className="flex flex-col items-center border-2 border-black pb-2">
+          <p className="border-b border-gray-400 px-2">16</p>
+          <p className="text-4xl font-bold mb-1">+3</p>
+          <CsLabel>Dexterity</CsLabel>
         </div>
       </div>
     </div>
