@@ -64,7 +64,7 @@ const Spillerne = () => {
             >
               <div className="flex items-center">
                 <img
-                  className="w-8"
+                  className="hidden sm:inline w-8"
                   src={player.class + ".png"}
                   alt={player.class}
                 />

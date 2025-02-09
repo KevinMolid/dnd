@@ -10,7 +10,7 @@ function Header() {
   return (
     <div className="bg-white">
       <Container>
-        <div className="flex justify-between items-end">
+        <div className="flex flex-wrap justify-between items-end">
           <Link to="/">
             <div className="flex items-center gap-4">
               <img src={logo} alt="Black Spider logo" className="h-14" />

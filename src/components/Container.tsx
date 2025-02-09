@@ -5,7 +5,7 @@ type Props = {
 const Container = ({ children }: Props) => {
   return (
     <div
-      className="px-12 py-4 flex justify-center
+      className="px-4 md:px-12 py-4 flex justify-center
     "
     >
       <div className="flex-grow max-w-[1200px]">{children}</div>

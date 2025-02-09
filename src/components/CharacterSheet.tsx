@@ -13,37 +13,30 @@ type Character = {
 };
 
 const CharacterSheet = ({ character }: Props) => {
-  const classColor =
-    character.class === "Rogue"
-      ? "bg-gray-800"
-      : character.class === "Barbarian"
-      ? "bg-red-600"
-      : character.class === "Druid"
-      ? "bg-green-600"
-      : character.class === "Bard"
-      ? "bg-sky-500"
-      : character.class === "Paladin"
-      ? "bg-yellow-500"
-      : "bg-gray-400";
-
   return (
     <div className={"bg-white shadow-lg h-[1000px]"}>
       {/* Header */}
-      <div
-        className={`${classColor} grid sm:grid-cols-3 gap-2 md:gap-4 p-2 md:p-4`}
-      >
-        {/* Name */}
-        <div className="bg-white flex justify-center items-center p-2">
-          <div className="w-full">
-            <p className="bg-slate-100 font-medium text-3xl">
-              {character.name}
-            </p>
-            <CsLabel>Character Name</CsLabel>
+      <div className={`grid lg:grid-cols-3 gap-2 p-2`}>
+        {/* Name and image */}
+        <div className="flex w-full">
+          <img
+            className="w-20 aspect-square object-cover border-2 border-black"
+            src="public\AtiramAvatar.png"
+            alt=""
+          />
+          {/* Name */}
+          <div className="flex-grow bg-white flex justify-center gap-2 items-center p-2">
+            <div className="w-full">
+              <p className="bg-slate-100 font-medium text-3xl">
+                {character.name}
+              </p>
+              <CsLabel>Character Name</CsLabel>
+            </div>
           </div>
         </div>
 
         {/* Details */}
-        <div className="bg-white w-full sm:col-span-2 grid grid-cols-3 p-2 gap-2 border border-black">
+        <div className="bg-white w-full lg:col-span-2 grid grid-cols-3 p-2 gap-2 border-2 border-black">
           <div>
             <p className="bg-slate-100 font-medium">{character.class} 1</p>
             <CsLabel>Class & Level</CsLabel>
@@ -74,7 +67,7 @@ const CharacterSheet = ({ character }: Props) => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 p-2">
+      <div className="grid grid-cols-3 md:grid-cols-6 gap-2 pb-2 px-2">
         <div className="flex flex-col items-center border-2 border-black pb-2">
           <p className="border-b border-gray-400 px-2">10</p>
           <p className="text-4xl font-bold mb-1">+0</p>
