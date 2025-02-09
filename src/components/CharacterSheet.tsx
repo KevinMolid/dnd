@@ -13,14 +13,29 @@ type Character = {
 };
 
 const CharacterSheet = ({ character }: Props) => {
+  const classColor =
+    character.class === "Rogue"
+      ? "bg-gray-800"
+      : character.class === "Barbarian"
+      ? "bg-red-600"
+      : character.class === "Druid"
+      ? "bg-green-600"
+      : character.class === "Bard"
+      ? "bg-sky-500"
+      : character.class === "Paladin"
+      ? "bg-yellow-500"
+      : "bg-gray-400";
+
   return (
-    <div className="border-gray-400 border h-[1000px]">
+    <div className={"bg-white shadow-lg h-[1000px]"}>
       {/* Header */}
-      <div className="bg-gray-200 grid grid-cols-3 gap-2 p-2">
+      <div
+        className={`${classColor} grid grid-cols-3 gap-2 md:gap-4 p-2 md:p-4`}
+      >
         {/* Name */}
         <div className="bg-white flex justify-center items-center p-2">
           <div className="w-full">
-            <p className="bg-slate-100 font-medium text-2xl">
+            <p className="bg-slate-100 font-medium text-3xl">
               {character.name}
             </p>
             <CsLabel>Character Name</CsLabel>

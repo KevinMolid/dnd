@@ -1,5 +1,5 @@
 import H1 from "./H1";
-import H2 from "./H2";
+import H3 from "./H3";
 import Container from "./Container";
 
 import logo from "/black-spider.png";
@@ -12,10 +12,10 @@ function Header() {
       <Container>
         <div className="flex justify-between items-end">
           <Link to="/">
-            <div className="flex items-end gap-4">
+            <div className="flex items-center gap-4">
               <img src={logo} alt="Black Spider logo" className="h-14" />
               <div>
-                <H2>Dungeons & Dragons</H2>
+                <H3>Dungeons & Dragons</H3>
                 <H1>Den Tapte Gruven i Phandelver</H1>
               </div>
             </div>

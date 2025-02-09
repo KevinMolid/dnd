@@ -62,7 +62,7 @@ const Spillerne = () => {
               key={player.name}
               onClick={() => setActivePlayer(player.name)}
             >
-              <div className="flex">
+              <div className="flex items-center">
                 <img
                   className="w-8"
                   src={player.class + ".png"}
@@ -70,10 +70,9 @@ const Spillerne = () => {
                 />
                 <div>
                   <p className="leading-none">{player.name}</p>
-                  <p className="leading-none mb-1">
-                    <small className="font-medium">
-                      {player.race} {player.class}
-                    </small>
+                  <p className="leading-none mb-1 text-xs font-medium">
+                    <span className="hidden lg:inline">{player.race}</span>{" "}
+                    {player.class}
                   </p>
                 </div>
               </div>
