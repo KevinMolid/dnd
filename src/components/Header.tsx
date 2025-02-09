@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 
 function Header() {
   return (
-    <div className="bg-white">
+    <div className="bg-paper-100">
       <Container>
         <div className="flex flex-wrap justify-between items-end">
           <Link to="/">
