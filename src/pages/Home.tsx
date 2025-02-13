@@ -1,11 +1,11 @@
 import Container from "../components/Container";
-import H2 from "../components/H2";
+import H1 from "../components/H1";
 
 const Home = () => {
   return (
     <div>
       <Container>
-        <H2>Velkommen!</H2>
+        <H1>Velkommen!</H1>
         <p>
           Denne siden er laget for å holde styr på alt som skjer i DnD-eventyret
           <span className="font-medium"> Den Tapte Gruven i Phandelver</span>.

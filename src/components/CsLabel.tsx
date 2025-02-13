@@ -5,7 +5,7 @@ type Props = {
 const CsLabel = ({ children }: Props) => {
   return (
     <p
-      className="leading-none text-xs uppercase
+      className="leading-none text-xs uppercase text-neutral-300
   "
     >
       {children}

@@ -16,14 +16,16 @@ function App() {
     <>
       <BrowserRouter>
         <Header />
-        <Routes>
-          <Route index element={<Home />} />
-          <Route path="historien" element={<Historien />} />
-          <Route path="tips" element={<Tips />} />
-          <Route path="reglene" element={<Reglene />} />
-          <Route path="spillerne" element={<Spillerne />} />
-          <Route path="npcene" element={<NPCene />} />
-        </Routes>
+        <main className="pt-6">
+          <Routes>
+            <Route index element={<Home />} />
+            <Route path="historien" element={<Historien />} />
+            <Route path="tips" element={<Tips />} />
+            <Route path="reglene" element={<Reglene />} />
+            <Route path="spillerne" element={<Spillerne />} />
+            <Route path="npcene" element={<NPCene />} />
+          </Routes>
+        </main>
       </BrowserRouter>
     </>
   );

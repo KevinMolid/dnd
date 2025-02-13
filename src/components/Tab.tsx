@@ -10,7 +10,9 @@ const Tab = ({ children, active, onClick }: Props) => {
       onClick={onClick}
       className={
         "flex-1 flex flex-col w-fit px-2 py-2 border-b-2 font-bold justify-center hover:cursor-pointer " +
-        (active ? "border-black text-black" : "border-none text-paper-800")
+        (active
+          ? "border-amber-400 text-neutral-200"
+          : "border-none text-neutral-300")
       }
     >
       {children}

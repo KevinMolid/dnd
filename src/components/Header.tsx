@@ -1,20 +1,22 @@
 import Container from "./Container";
 import NavTab from "./NavTab";
 
-import logo from "/black-spider.png";
+import logo from "/Lolth_Icon.png";
 
 import { Link } from "react-router-dom";
 
 function Header() {
   return (
-    <div className="bg-paper-100 shadow-sm">
+    <div className="bg-neutral-950 text-white border-b border-slate-600">
       <Container>
         <div className="flex flex-wrap justify-between items-end">
           <Link to="/">
-            <div className="flex items-center gap-4">
-              <img src={logo} alt="Black Spider logo" className="h-14" />
+            <div className="flex items-center gap-2">
+              <img src={logo} alt="Black Spider logo" className="h-16" />
               <div>
-                <p>Dungeons & Dragons</p>
+                <p className="text-amber-400 font-semibold">
+                  Dungeons & Dragons
+                </p>
                 <p className="font-bold text-xl sm:text-2xl md:text-3xl">
                   Den Tapte Gruven i Phandelver
                 </p>
