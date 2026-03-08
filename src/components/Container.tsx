@@ -8,7 +8,7 @@ const Container = ({ children }: Props) => {
       className="px-4 md:px-12 py-4 flex justify-center
     "
     >
-      <div className="flex-grow max-w-[1200px]">{children}</div>
+      <div className="flex-grow max-w-[1280px]">{children}</div>
     </div>
   );
 };

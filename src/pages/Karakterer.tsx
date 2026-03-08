@@ -3,11 +3,11 @@ import H1 from "../components/H1";
 import H2 from "../components/H2";
 import Paragraph from "../components/Paragraph";
 
-const NPCene = () => {
+const Karakterer = () => {
   return (
     <div>
       <Container>
-        <H1>NPCene</H1>
+        <H1>Karakterer</H1>
         <Paragraph>
           En NPC er en hvilken som helst karakter som ikke styres av en spiller.
           Alle NPCer styres av spillmesteren.
@@ -36,7 +36,7 @@ const NPCene = () => {
           </li>
         </ul>
 
-        <H2>Uviktige karakterer</H2>
+        <H2>Andre karakterer</H2>
         <ul className="mb-4">
           <li>
             <p>
@@ -55,4 +55,4 @@ const NPCene = () => {
   );
 };
 
-export default NPCene;
+export default Karakterer;

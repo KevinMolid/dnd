@@ -23,23 +23,23 @@ const CharacterSheet = ({ character }: Props) => {
   });
 
   return (
-    <div className={"bg-neutral-900 shadow-lg h-[1000px]"}>
+    <div className={"bg-neutral-800 shadow-lg h-[1000px]"}>
       {/* Header */}
       <div className={`grid lg:grid-cols-3 gap-2 p-2`}>
         {/* Name and image */}
         <div className="flex w-full">
           <img
-            className="w-20 aspect-square object-cover border-2 border-black"
+            className="w-20 aspect-square object-cover border-2 border-black rounded-full"
             src={`/${character.name}Avatar.png`}
             alt=""
           />
           {/* Name */}
           <div className="flex-grow flex justify-center gap-2 items-center p-2">
             <div className="w-full">
-              <p className="bg-neutral-950 font-medium text-3xl">
+              <CsLabel>Character Name</CsLabel>
+              <p className="bg-neutral-950 font-medium text-3xl px-2 py-1">
                 {character.name}
               </p>
-              <CsLabel>Character Name</CsLabel>
             </div>
           </div>
         </div>
@@ -47,31 +47,24 @@ const CharacterSheet = ({ character }: Props) => {
         {/* Details */}
         <div className="w-full lg:col-span-2 grid grid-cols-3 p-2 gap-2">
           <div>
-            <p className="bg-neutral-950 font-medium">{character.class} 1</p>
             <CsLabel>Class & Level</CsLabel>
+            <p className="bg-neutral-950 font-medium px-2 py-1">
+              {character.class} 1
+            </p>
           </div>
           <div>
-            <p className="bg-neutral-950 font-medium">{character.background}</p>
             <CsLabel>Background</CsLabel>
+            <p className="bg-neutral-950 font-medium px-2 py-1">
+              {character.background}
+            </p>
           </div>
           <div>
-            <p className="bg-neutral-950 font-medium">{character.playername}</p>
-            <CsLabel>Player Name</CsLabel>
-          </div>
-          <div>
-            <p className="bg-neutral-950 font-medium">{character.race}</p>
             <CsLabel>Race</CsLabel>
+            <p className="bg-neutral-950 font-medium px-2 py-1">
+              {character.race}
+            </p>
           </div>
-          <div>
-            <p className="bg-neutral-950 font-medium">-</p>
-            <CsLabel>Alignment</CsLabel>
-          </div>
-          <div>
-            <p className="bg-neutral-950 font-medium">0</p>
-            <CsLabel>
-              Experience <span className="hidden md:inline">Points</span>
-            </CsLabel>
-          </div>
+          <div></div>
         </div>
       </div>
 

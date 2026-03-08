@@ -14,7 +14,7 @@ const Tab = ({ children, to }: Props) => {
     <li
       onClick={() => navigate(to)}
       className={
-        "flex-1 flex flex-col px-2 pt-2 border-b-2 text-sm md:text-base font-medium justify-center hover:cursor-pointer " +
+        "flex-1 flex flex-col px-2 pt-2 border-b-2 min-w-max text-sm md:text-base font-medium justify-center hover:cursor-pointer " +
         (isActive
           ? "border-amber-400 text-white"
           : "text-slate-300 hover:text-white border-transparent")

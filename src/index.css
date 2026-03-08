@@ -3,6 +3,32 @@
 @tailwind utilities;
 
 html {
-  background-color: #222222;
+  background-color: #151515;
   color: #eee;
+}
+
+.tooltip-wrapper {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+
+.tooltip-box {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: #dddddd;
+  color: black;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.tooltip-wrapper:hover .tooltip-box {
+  opacity: 1;
 }

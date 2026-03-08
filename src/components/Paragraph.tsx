@@ -3,7 +3,7 @@ type Props = {
 };
 
 const Paragraph = ({ children }: Props) => {
-  return <p className="mb-4">{children}</p>;
+  return <p className="mb-4 text-slate-300">{children}</p>;
 };
 
 export default Paragraph;

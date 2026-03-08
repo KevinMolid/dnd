@@ -29,8 +29,10 @@ function Header() {
               <NavTab to="/historien">Historien</NavTab>
               <NavTab to="/tips">Tips</NavTab>
               <NavTab to="/reglene">Reglene</NavTab>
-              <NavTab to="/spillerne">Spillerne</NavTab>
-              <NavTab to="/npcene">NPCene</NavTab>
+              <NavTab to="/karakterer">Karakterer</NavTab>
+              <NavTab to="/stats">Stats</NavTab>
+              <NavTab to="/kamp">Kamp</NavTab>
+              <NavTab to="/spillere">Spillere</NavTab>
             </ul>
           </nav>
         </div>
