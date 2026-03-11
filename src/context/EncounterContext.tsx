@@ -24,16 +24,30 @@ export type EncounterEntry = {
   initiative: number | "";
 };
 
-type EncounterStorageData = {
+export type SavedEncounter = {
+  id: string;
+  name: string;
   encounter: EncounterEntry[];
   currentTurnIndex: number;
   currentRound: number;
+};
+
+type EncounterStorageData = {
+  activeEncounterId: string | null;
+  activeEncounter: {
+    encounter: EncounterEntry[];
+    currentTurnIndex: number;
+    currentRound: number;
+  };
+  savedEncounters: SavedEncounter[];
 };
 
 type EncounterContextType = {
   encounter: EncounterEntry[];
   currentTurnIndex: number;
   currentRound: number;
+  savedEncounters: SavedEncounter[];
+  activeEncounterId: string | null;
   addMonsterToEncounter: (monster: StatBlockProps) => void;
   addPlayerToEncounter: (player: StatBlockProps) => void;
   addEntityToEncounter: (
@@ -45,6 +59,11 @@ type EncounterContextType = {
   updateEntityInitiative: (id: string, initiative: number | "") => void;
   renameEntity: (id: string, name: string) => void;
   clearEncounter: () => void;
+  createNewEncounter: () => void;
+  saveCurrentEncounter: (name: string) => void;
+  loadEncounter: (id: string) => void;
+  deleteEncounter: (id: string) => void;
+  renameEncounter: (id: string, name: string) => void;
   getEntityByName: (
     entityKind: EncounterEntityKind,
     name: string,
@@ -80,42 +99,99 @@ const isValidEncounterEntry = (value: unknown): value is EncounterEntry => {
   );
 };
 
+const isValidSavedEncounter = (value: unknown): value is SavedEncounter => {
+  if (!value || typeof value !== "object") return false;
+
+  const item = value as SavedEncounter;
+
+  return (
+    typeof item.id === "string" &&
+    typeof item.name === "string" &&
+    Array.isArray(item.encounter) &&
+    item.encounter.every(isValidEncounterEntry) &&
+    typeof item.currentTurnIndex === "number" &&
+    typeof item.currentRound === "number"
+  );
+};
+
 const loadEncounterFromStorage = (): EncounterStorageData => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
 
     if (!raw) {
-      return { encounter: [], currentTurnIndex: 0, currentRound: 1 };
+      return {
+        activeEncounterId: null,
+        activeEncounter: {
+          encounter: [],
+          currentTurnIndex: 0,
+          currentRound: 1,
+        },
+        savedEncounters: [],
+      };
     }
 
     const parsed: unknown = JSON.parse(raw);
 
     if (!parsed || typeof parsed !== "object") {
-      return { encounter: [], currentTurnIndex: 0, currentRound: 1 };
+      return {
+        activeEncounterId: null,
+        activeEncounter: {
+          encounter: [],
+          currentTurnIndex: 0,
+          currentRound: 1,
+        },
+        savedEncounters: [],
+      };
     }
 
     const data = parsed as Partial<EncounterStorageData>;
 
-    const safeEncounter = Array.isArray(data.encounter)
-      ? data.encounter.filter(isValidEncounterEntry)
-      : [];
+    const safeActiveEncounter = data.activeEncounter;
+    const safeEncounter =
+      safeActiveEncounter && Array.isArray(safeActiveEncounter.encounter)
+        ? safeActiveEncounter.encounter.filter(isValidEncounterEntry)
+        : [];
 
     const safeTurnIndex =
-      typeof data.currentTurnIndex === "number" ? data.currentTurnIndex : 0;
+      safeActiveEncounter &&
+      typeof safeActiveEncounter.currentTurnIndex === "number"
+        ? safeActiveEncounter.currentTurnIndex
+        : 0;
 
     const safeRound =
-      typeof data.currentRound === "number" && data.currentRound >= 1
-        ? data.currentRound
+      safeActiveEncounter &&
+      typeof safeActiveEncounter.currentRound === "number" &&
+      safeActiveEncounter.currentRound >= 1
+        ? safeActiveEncounter.currentRound
         : 1;
 
+    const safeSavedEncounters = Array.isArray(data.savedEncounters)
+      ? data.savedEncounters.filter(isValidSavedEncounter)
+      : [];
+
     return {
-      encounter: safeEncounter,
-      currentTurnIndex: safeTurnIndex,
-      currentRound: safeRound,
+      activeEncounterId:
+        typeof data.activeEncounterId === "string"
+          ? data.activeEncounterId
+          : null,
+      activeEncounter: {
+        encounter: safeEncounter,
+        currentTurnIndex: safeTurnIndex,
+        currentRound: safeRound,
+      },
+      savedEncounters: safeSavedEncounters,
     };
   } catch (error) {
     console.error("Failed to load encounter from localStorage:", error);
-    return { encounter: [], currentTurnIndex: 0, currentRound: 1 };
+    return {
+      activeEncounterId: null,
+      activeEncounter: {
+        encounter: [],
+        currentTurnIndex: 0,
+        currentRound: 1,
+      },
+      savedEncounters: [],
+    };
   }
 };
 
@@ -157,26 +233,44 @@ export const EncounterProvider = ({
   const initialData = loadEncounterFromStorage();
 
   const [encounter, setEncounter] = useState<EncounterEntry[]>(
-    initialData.encounter,
+    initialData.activeEncounter.encounter,
   );
   const [currentTurnIndex, setCurrentTurnIndex] = useState(
-    initialData.currentTurnIndex,
+    initialData.activeEncounter.currentTurnIndex,
   );
-  const [currentRound, setCurrentRound] = useState(initialData.currentRound);
+  const [currentRound, setCurrentRound] = useState(
+    initialData.activeEncounter.currentRound,
+  );
+  const [savedEncounters, setSavedEncounters] = useState<SavedEncounter[]>(
+    initialData.savedEncounters,
+  );
+  const [activeEncounterId, setActiveEncounterId] = useState<string | null>(
+    initialData.activeEncounterId,
+  );
 
   useEffect(() => {
     try {
       const data: EncounterStorageData = {
-        encounter,
-        currentTurnIndex,
-        currentRound,
+        activeEncounterId,
+        activeEncounter: {
+          encounter,
+          currentTurnIndex,
+          currentRound,
+        },
+        savedEncounters,
       };
 
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch (error) {
       console.error("Failed to save encounter to localStorage:", error);
     }
-  }, [encounter, currentTurnIndex, currentRound]);
+  }, [
+    encounter,
+    currentTurnIndex,
+    currentRound,
+    savedEncounters,
+    activeEncounterId,
+  ]);
 
   useEffect(() => {
     const sorted = sortEncounterByInitiative(encounter);
@@ -189,6 +283,23 @@ export const EncounterProvider = ({
 
     setCurrentTurnIndex((prev) => Math.min(prev, sorted.length - 1));
   }, [encounter]);
+
+  useEffect(() => {
+    if (!activeEncounterId) return;
+
+    setSavedEncounters((prev) =>
+      prev.map((saved) =>
+        saved.id === activeEncounterId
+          ? {
+              ...saved,
+              encounter,
+              currentTurnIndex,
+              currentRound,
+            }
+          : saved,
+      ),
+    );
+  }, [encounter, currentTurnIndex, currentRound, activeEncounterId]);
 
   const getEntityByName = (
     entityKind: EncounterEntityKind,
@@ -350,6 +461,88 @@ export const EncounterProvider = ({
     setEncounter([]);
     setCurrentTurnIndex(0);
     setCurrentRound(1);
+    setActiveEncounterId(null);
+  };
+
+  const createNewEncounter = () => {
+    setEncounter([]);
+    setCurrentTurnIndex(0);
+    setCurrentRound(1);
+    setActiveEncounterId(null);
+  };
+
+  const saveCurrentEncounter = (name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    if (activeEncounterId) {
+      setSavedEncounters((prev) =>
+        prev.map((saved) =>
+          saved.id === activeEncounterId
+            ? {
+                ...saved,
+                name: trimmedName,
+                encounter,
+                currentTurnIndex,
+                currentRound,
+              }
+            : saved,
+        ),
+      );
+      return;
+    }
+
+    const newId = makeId();
+
+    setSavedEncounters((prev) => [
+      ...prev,
+      {
+        id: newId,
+        name: trimmedName,
+        encounter,
+        currentTurnIndex,
+        currentRound,
+      },
+    ]);
+
+    setActiveEncounterId(newId);
+  };
+
+  const loadEncounter = (id: string) => {
+    const saved = savedEncounters.find((enc) => enc.id === id);
+    if (!saved) return;
+
+    setEncounter(saved.encounter);
+    setCurrentTurnIndex(saved.currentTurnIndex);
+    setCurrentRound(saved.currentRound);
+    setActiveEncounterId(saved.id);
+  };
+
+  const deleteEncounter = (id: string) => {
+    setSavedEncounters((prev) => prev.filter((enc) => enc.id !== id));
+
+    if (activeEncounterId === id) {
+      setActiveEncounterId(null);
+      setEncounter([]);
+      setCurrentTurnIndex(0);
+      setCurrentRound(1);
+    }
+  };
+
+  const renameEncounter = (id: string, name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    setSavedEncounters((prev) =>
+      prev.map((enc) =>
+        enc.id === id
+          ? {
+              ...enc,
+              name: trimmedName,
+            }
+          : enc,
+      ),
+    );
   };
 
   const value = useMemo(
@@ -357,6 +550,8 @@ export const EncounterProvider = ({
       encounter,
       currentTurnIndex,
       currentRound,
+      savedEncounters,
+      activeEncounterId,
       addMonsterToEncounter,
       addPlayerToEncounter,
       addEntityToEncounter,
@@ -365,13 +560,24 @@ export const EncounterProvider = ({
       updateEntityInitiative,
       renameEntity,
       clearEncounter,
+      createNewEncounter,
+      saveCurrentEncounter,
+      loadEncounter,
+      deleteEncounter,
+      renameEncounter,
       getEntityByName,
       nextTurn,
       previousTurn,
       resetTurns,
       rollInitiative,
     }),
-    [encounter, currentTurnIndex, currentRound],
+    [
+      encounter,
+      currentTurnIndex,
+      currentRound,
+      savedEncounters,
+      activeEncounterId,
+    ],
   );
 
   return (

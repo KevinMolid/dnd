@@ -11,11 +11,17 @@ const Encounter = () => {
     encounter,
     currentTurnIndex,
     currentRound,
+    savedEncounters,
+    activeEncounterId,
     addPlayerToEncounter,
     removeEntityFromEncounter,
     updateEntityHp,
     renameEntity,
     clearEncounter,
+    createNewEncounter,
+    saveCurrentEncounter,
+    loadEncounter,
+    deleteEncounter,
     getEntityByName,
     nextTurn,
     previousTurn,
@@ -23,10 +29,27 @@ const Encounter = () => {
     rollInitiative,
   } = useEncounter();
 
+  const [encounterName, setEncounterName] = useState("");
+
   const trackerRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [hiddenLeftCount, setHiddenLeftCount] = useState(0);
   const [hiddenRightCount, setHiddenRightCount] = useState(0);
+
+  useEffect(() => {
+    if (!activeEncounterId) {
+      setEncounterName("");
+      return;
+    }
+
+    const activeSavedEncounter = savedEncounters.find(
+      (saved) => saved.id === activeEncounterId,
+    );
+
+    if (activeSavedEncounter) {
+      setEncounterName(activeSavedEncounter.name);
+    }
+  }, [activeEncounterId, savedEncounters]);
 
   const sortedEncounter = useMemo(() => {
     return [...encounter].sort((a, b) => {
@@ -160,6 +183,27 @@ const Encounter = () => {
     }
   };
 
+  const handleSaveEncounter = () => {
+    saveCurrentEncounter(encounterName);
+  };
+
+  const handleCreateNewEncounter = () => {
+    createNewEncounter();
+    setEncounterName("");
+  };
+
+  const handleLoadEncounter = (id: string) => {
+    loadEncounter(id);
+  };
+
+  const handleDeleteEncounter = (id: string) => {
+    deleteEncounter(id);
+
+    if (activeEncounterId === id) {
+      setEncounterName("");
+    }
+  };
+
   const uniqueEncounterEntities = Array.from(
     new Map(
       encounter.map((entry) => [
@@ -182,6 +226,70 @@ const Encounter = () => {
         <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
           <div className="flex w-full flex-col gap-3">
             <H1>Kamp</H1>
+
+            <div className="mb-4 rounded border border-neutral-700 bg-neutral-800 p-3">
+              <p className="mb-2 font-medium text-yellow-500">Lagrede kamper</p>
+
+              <div className="mb-3 flex flex-wrap gap-2">
+                <input
+                  value={encounterName}
+                  onChange={(e) => setEncounterName(e.target.value)}
+                  placeholder="Navn på kamp..."
+                  className="rounded border border-neutral-600 bg-neutral-900 px-3 py-2 text-white"
+                />
+
+                <button
+                  onClick={handleSaveEncounter}
+                  className="rounded border border-green-700 bg-green-900 px-3 py-2 text-white"
+                >
+                  Lagre kamp
+                </button>
+
+                <button
+                  onClick={handleCreateNewEncounter}
+                  className="rounded border border-neutral-600 bg-neutral-800 px-3 py-2 text-white"
+                >
+                  Ny kamp
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                {savedEncounters.length === 0 ? (
+                  <p className="text-sm text-neutral-400">
+                    Ingen lagrede kamper ennå.
+                  </p>
+                ) : (
+                  savedEncounters.map((saved) => (
+                    <div
+                      key={saved.id}
+                      className={`flex items-center justify-between rounded border px-3 py-2 ${
+                        activeEncounterId === saved.id
+                          ? "border-yellow-500 bg-neutral-700"
+                          : "border-neutral-600 bg-neutral-900"
+                      }`}
+                    >
+                      <span>{saved.name}</span>
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleLoadEncounter(saved.id)}
+                          className="rounded border border-blue-700 bg-blue-900 px-2 py-1 text-white"
+                        >
+                          Last inn
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteEncounter(saved.id)}
+                          className="rounded border border-red-700 bg-red-900 px-2 py-1 text-white"
+                        >
+                          Slett
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
             <div className="mb-4">
               <p className="mb-2 font-medium">Aktive spillere</p>
@@ -246,14 +354,12 @@ const Encounter = () => {
                   <i className="fa-solid fa-arrow-rotate-left"></i> Tilbakestill
                 </button>
 
-                {encounter.length > 0 && (
-                  <button
-                    onClick={clearEncounter}
-                    className="rounded border border-red-700 bg-red-900 px-2 py-1 text-white"
-                  >
-                    <i className="fa-solid fa-trash"></i> Slett Kamp
-                  </button>
-                )}
+                <button
+                  onClick={clearEncounter}
+                  className="rounded border border-red-700 bg-red-900 px-2 py-1 text-white"
+                >
+                  <i className="fa-solid fa-trash"></i> Slett Aktiv Kamp
+                </button>
               </div>
             )}
           </div>
@@ -261,8 +367,8 @@ const Encounter = () => {
 
         {encounter.length === 0 ? (
           <p className="text-neutral-400">
-            No entities added yet. Go to Stats or Players and add them to the
-            encounter.
+            Ingen karakterer lagt til ennå. Gå til Stats eller Players og legg
+            dem til i kampen.
           </p>
         ) : (
           <>
