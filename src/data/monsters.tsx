@@ -1736,4 +1736,373 @@ export const monsters: StatBlockProps[] = [
       </>
     ),
   },
+  {
+    name: "Black Bear",
+    type: "Beast",
+    description: "Medium Beast, Unaligned",
+    img: "https://dungeonsolvers.com/wp-content/uploads/2024/12/artis0602_35038_In_Dungeons__Dragons_5th_Edition_the_black_bear_08e8333d-bb15-4b69-8e43-1ed01ee27f1e.webp",
+    AC: "11 (Natural Armor)",
+    HP: 19,
+    speed: "40 ft., climb 30 ft.",
+    stats: {
+      Str: 15,
+      Dex: 10,
+      Con: 14,
+      Int: 2,
+      Wis: 12,
+      Cha: 7,
+    },
+    skills: "Perception +3",
+    senses: "Passive Perception 13",
+    CR: "1/2 (XP 100)",
+    traits: (
+      <>
+        <p>
+          <strong>Keen Smell.</strong> The bear has advantage on Wisdom
+          (Perception) checks that rely on smell.
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Multiattack.</strong> The bear makes two attacks: one with its
+          bite and one with its claws.
+        </p>
+
+        <p className="mb-2">
+          <strong>Bite.</strong> <em>Melee Weapon Attack:</em> +3 to hit, reach
+          5 ft., one target. <em>Hit:</em> 5 (1d6 + 2) piercing damage.
+        </p>
+
+        <p>
+          <strong>Claws.</strong> <em>Melee Weapon Attack:</em> +3 to hit, reach
+          5 ft., one target. <em>Hit:</em> 7 (2d4 + 2) slashing damage.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Brown Bear",
+    type: "Beast",
+    description: "Large Beast, Unaligned",
+    img: "https://static.wikia.nocookie.net/mythgate5884/images/2/25/Runebear1.jpg/revision/latest/thumbnail/width/360/height/360?cb=20230618031258",
+    AC: "11 (Natural Armor)",
+    HP: 34,
+    speed: "40 ft., climb 30 ft.",
+    stats: {
+      Str: 19,
+      Dex: 10,
+      Con: 16,
+      Int: 2,
+      Wis: 13,
+      Cha: 7,
+    },
+    skills: "Perception +3",
+    senses: "Passive Perception 13",
+    CR: "1 (XP 200)",
+    traits: (
+      <>
+        <p>
+          <strong>Keen Smell.</strong> The bear has advantage on Wisdom
+          (Perception) checks that rely on smell.
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Multiattack.</strong> The bear makes two attacks: one with its
+          bite and one with its claws.
+        </p>
+
+        <p className="mb-2">
+          <strong>Bite.</strong> <em>Melee Weapon Attack:</em> +5 to hit, reach
+          5 ft., one target. <em>Hit:</em> 8 (1d8 + 4) piercing damage.
+        </p>
+
+        <p>
+          <strong>Claws.</strong> <em>Melee Weapon Attack:</em> +5 to hit, reach
+          5 ft., one target. <em>Hit:</em> 11 (2d6 + 4) slashing damage.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Giant Wolf Spider",
+    type: "Beast",
+    description: "Medium Beast, Unaligned",
+    img: "https://www.worldanvil.com/uploads/images/ea971ed87cae07e3f04746fc4de84595.jpg",
+    AC: "13",
+    HP: 11,
+    speed: "40 ft., climb 40 ft.",
+    stats: {
+      Str: 12,
+      Dex: 16,
+      Con: 13,
+      Int: 3,
+      Wis: 12,
+      Cha: 4,
+    },
+    skills: "Perception +3, Stealth +7",
+    senses: "Blindsight 10 ft., Darkvision 60 ft., Passive Perception 13",
+    CR: "1/4 (XP 50)",
+    traits: (
+      <>
+        <p className="mb-2">
+          <strong>Spider Climb.</strong> The spider can climb difficult
+          surfaces, including upside down on ceilings, without needing to make
+          an ability check.
+        </p>
+
+        <p className="mb-2">
+          <strong>Web Sense.</strong> While in contact with a web, the spider
+          knows the exact location of any other creature in contact with the
+          same web.
+        </p>
+
+        <p>
+          <strong>Web Walker.</strong> The spider ignores movement restrictions
+          caused by webbing.
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p>
+          <strong>Bite.</strong> <em>Melee Weapon Attack:</em> +3 to hit, reach
+          5 ft., one creature. <em>Hit:</em> 4 (1d6 + 1) piercing damage, and
+          the target must make a DC 11 Constitution saving throw, taking 7 (2d6)
+          poison damage on a failed save, or half as much on a successful one.
+          If the poison damage reduces the target to 0 hit points, the target is
+          stable but poisoned for 1 hour, even after regaining hit points, and
+          is paralyzed while poisoned in this way.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "King Grol",
+    type: "Humanoid",
+    description: "Medium Humanoid (Goblinoid), Neutral Evil",
+    img: "https://static.wikia.nocookie.net/the-hanged-three/images/0/09/King_Grol.jpg/revision/latest?cb=20170825204945",
+    AC: "17 (Hide Armor, Shield)",
+    HP: 39,
+    speed: 30,
+    stats: {
+      Str: 17,
+      Dex: 14,
+      Con: 14,
+      Int: 10,
+      Wis: 11,
+      Cha: 12,
+    },
+    skills: "Intimidation +3, Perception +2, Stealth +6",
+    senses: "Darkvision 60 ft., Passive Perception 12",
+    language: "Common, Goblin",
+    CR: "2 (XP 450)",
+    traits: (
+      <>
+        <p className="mb-2">
+          <strong>Brute.</strong> A melee weapon deals one extra die of its
+          damage when King Grol hits with it (included in the attack).
+        </p>
+
+        <p>
+          <strong>Surprise Attack.</strong> If King Grol surprises a creature
+          and hits it with an attack during the first round of combat, the
+          target takes an extra 7 (2d6) damage from the attack.
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Morningstar.</strong> <em>Melee Weapon Attack:</em> +5 to hit,
+          reach 5 ft., one target. <em>Hit:</em> 12 (2d8 + 3) piercing damage.
+        </p>
+
+        <p>
+          <strong>Javelin.</strong> <em>Melee or Ranged Weapon Attack:</em> +5
+          to hit, reach 5 ft. or range 30/120 ft., one target. <em>Hit:</em> 6
+          (1d6 + 3) piercing damage.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Hamun Kost",
+    type: "Humanoid",
+    description: "Medium Humanoid (Human), Neutral Evil",
+    img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRy-2qM8MEEOH_5bQ0wjiaAbxizb5JswqMDXQ&s",
+    AC: "12 (15 with mage armor)",
+    HP: 27,
+    speed: 30,
+    stats: {
+      Str: 9,
+      Dex: 14,
+      Con: 12,
+      Int: 16,
+      Wis: 13,
+      Cha: 11,
+    },
+    skills: "Arcana +5, History +5, Religion +5",
+    senses: "Passive Perception 11",
+    language: "Common, Draconic",
+    CR: "3 (XP 700)",
+    traits: (
+      <>
+        <p>
+          <strong>Spellcasting.</strong> Hamun Kost is a 5th-level spellcaster
+          who uses Intelligence as his spellcasting ability (spell save DC 13,
+          +5 to hit with spell attacks). He has the following wizard spells
+          prepared:
+        </p>
+
+        <p className="mb-1 ml-4">
+          <strong>Cantrips (at will):</strong> chill touch, light, mage hand,
+          ray of frost
+        </p>
+
+        <p className="mb-1 ml-4">
+          <strong>1st level (4 slots):</strong> mage armor, magic missile,
+          shield
+        </p>
+
+        <p className="mb-1 ml-4">
+          <strong>2nd level (3 slots):</strong> ray of enfeeblement, mirror
+          image, misty step
+        </p>
+
+        <p className="ml-4">
+          <strong>3rd level (2 slots):</strong> animate dead, fireball
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Quarterstaff.</strong> <em>Melee Weapon Attack:</em> +1 to
+          hit, reach 5 ft., one target. <em>Hit:</em> 2 (1d6 - 1) bludgeoning
+          damage.
+        </p>
+
+        <p>
+          <strong>Chill Touch.</strong> <em>Ranged Spell Attack:</em> +5 to hit,
+          range 120 ft., one target. <em>Hit:</em> 9 (2d8) necrotic damage, and
+          the target can’t regain hit points until the start of Hamun Kost’s
+          next turn.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Reidoth",
+    type: "Humanoid",
+    description: "Medium Humanoid (Human), Neutral Good",
+    img: "https://i.redd.it/pkf9aumn5gib1.png",
+    AC: "11 (14 with barkskin)",
+    HP: 22,
+    speed: 30,
+    stats: {
+      Str: 10,
+      Dex: 12,
+      Con: 13,
+      Int: 12,
+      Wis: 16,
+      Cha: 11,
+    },
+    skills: "Medicine +5, Nature +3, Perception +5, Survival +5",
+    senses: "Passive Perception 15",
+    language: "Common, Druidic, Elvish",
+    CR: "2 (XP 450)",
+    traits: (
+      <>
+        <p>
+          <strong>Spellcasting.</strong> Reidoth is a 4th-level spellcaster who
+          uses Wisdom as his spellcasting ability (spell save DC 13, +5 to hit
+          with spell attacks). He has the following druid spells prepared:
+        </p>
+
+        <p className="mb-1 ml-4">
+          <strong>Cantrips (at will):</strong> druidcraft, produce flame,
+          shillelagh
+        </p>
+
+        <p className="mb-1 ml-4">
+          <strong>1st level (4 slots):</strong> cure wounds, entangle, faerie
+          fire, thunderwave
+        </p>
+
+        <p className="ml-4">
+          <strong>2nd level (3 slots):</strong> barkskin, flaming sphere, lesser
+          restoration
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Quarterstaff.</strong> <em>Melee Weapon Attack:</em> +2 to
+          hit, reach 5 ft., one target. <em>Hit:</em> 3 (1d6) bludgeoning
+          damage.
+        </p>
+
+        <p>
+          <strong>Produce Flame.</strong> <em>Ranged Spell Attack:</em> +5 to
+          hit, range 30 ft., one target. <em>Hit:</em> 7 (2d6) fire damage.
+        </p>
+      </>
+    ),
+    bonusActions: (
+      <>
+        <p>
+          <strong>Healing Word.</strong> Reidoth speaks a brief word of magic to
+          restore vitality to a creature he can see within 60 feet.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Gundren Rockseeker",
+    type: "Humanoid",
+    description: "Medium Humanoid (Dwarf), Neutral Good",
+    img: "https://crossroadsofeternity.wordpress.com/wp-content/uploads/2015/08/gundren.jpg",
+    AC: "11",
+    HP: 9,
+    speed: 25,
+    stats: {
+      Str: 10,
+      Dex: 10,
+      Con: 12,
+      Int: 12,
+      Wis: 11,
+      Cha: 13,
+    },
+    skills: "History +3, Insight +2, Persuasion +3",
+    senses: "Darkvision 60 ft., Passive Perception 10",
+    language: "Common, Dwarvish",
+    CR: "0 (XP 10)",
+    traits: (
+      <>
+        <p className="mb-2">
+          <strong>Dwarven Resilience.</strong> Gundren has advantage on saving
+          throws against poison, and he has resistance to poison damage.
+        </p>
+
+        <p>
+          <strong>Helpful Merchant.</strong> Gundren has advantage on Charisma
+          (Persuasion) checks made to negotiate, reassure, or rally allies.
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p>
+          <strong>Pick Hammer.</strong> <em>Melee Weapon Attack:</em> +2 to hit,
+          reach 5 ft., one target. <em>Hit:</em> 3 (1d6) piercing damage.
+        </p>
+      </>
+    ),
+  },
 ];
