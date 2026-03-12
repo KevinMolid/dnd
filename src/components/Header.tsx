@@ -33,6 +33,8 @@ function Header() {
               <NavTab to="/stats">Stats</NavTab>
               <NavTab to="/kamp">Kamp</NavTab>
               <NavTab to="/spillere">Spillere</NavTab>
+              <NavTab to="/handouts">Handouts</NavTab>
+              <NavTab to="/quests">Quests</NavTab>
             </ul>
           </nav>
         </div>
