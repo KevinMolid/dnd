@@ -170,7 +170,7 @@ export const monsters: StatBlockProps[] = [
     ),
   },
   {
-    name: 'Iarno "Glasstav" Albrek',
+    name: "Iarno Albrek",
     type: "Humanoid",
     description: "Medium Humanoid (Human, Wizard), Lawful Evil",
     img: "https://static.wikia.nocookie.net/rysarian/images/f/fa/Redwizard.jpg/revision/latest/smart/width/386/height/259?cb=20170422184717",

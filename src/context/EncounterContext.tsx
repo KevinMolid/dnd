@@ -13,6 +13,17 @@ const STORAGE_KEY = "lmop-encounter";
 
 export type EncounterEntityKind = "monster" | "player";
 
+export type EncounterTemplateEntity = {
+  entityKind: EncounterEntityKind;
+  entityName: string;
+  count?: number;
+};
+
+export type EncounterTemplate = {
+  name: string;
+  entities: EncounterTemplateEntity[];
+};
+
 export type EncounterEntry = {
   id: string;
   entityKind: EncounterEntityKind;
@@ -64,6 +75,7 @@ type EncounterContextType = {
   loadEncounter: (id: string) => void;
   deleteEncounter: (id: string) => void;
   renameEncounter: (id: string, name: string) => void;
+  loadEncounterTemplate: (template: EncounterTemplate) => void;
   getEntityByName: (
     entityKind: EncounterEntityKind,
     name: string,
@@ -81,6 +93,13 @@ const EncounterContext = createContext<EncounterContextType | undefined>(
 const makeId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 };
+
+const cloneEncounterEntry = (entry: EncounterEntry): EncounterEntry => ({
+  ...entry,
+});
+
+const cloneEncounter = (entries: EncounterEntry[]): EncounterEntry[] =>
+  entries.map(cloneEncounterEntry);
 
 const isValidEncounterEntry = (value: unknown): value is EncounterEntry => {
   if (!value || typeof value !== "object") return false;
@@ -292,7 +311,7 @@ export const EncounterProvider = ({
         saved.id === activeEncounterId
           ? {
               ...saved,
-              encounter,
+              encounter: cloneEncounter(encounter),
               currentTurnIndex,
               currentRound,
             }
@@ -361,7 +380,7 @@ export const EncounterProvider = ({
     setCurrentTurnIndex((prev) => {
       const nextIndex = (prev - 1 + sorted.length) % sorted.length;
 
-      if (prev === 0 && sorted.length > 0) {
+      if (prev === 0) {
         setCurrentRound((round) => Math.max(1, round - 1));
       }
 
@@ -432,6 +451,8 @@ export const EncounterProvider = ({
   };
 
   const updateEntityHp = (id: string, hp: number) => {
+    if (Number.isNaN(hp)) return;
+
     setEncounter((prev) =>
       prev.map((entry) =>
         entry.id === id
@@ -465,10 +486,7 @@ export const EncounterProvider = ({
   };
 
   const createNewEncounter = () => {
-    setEncounter([]);
-    setCurrentTurnIndex(0);
-    setCurrentRound(1);
-    setActiveEncounterId(null);
+    clearEncounter();
   };
 
   const saveCurrentEncounter = (name: string) => {
@@ -482,7 +500,7 @@ export const EncounterProvider = ({
             ? {
                 ...saved,
                 name: trimmedName,
-                encounter,
+                encounter: cloneEncounter(encounter),
                 currentTurnIndex,
                 currentRound,
               }
@@ -499,7 +517,7 @@ export const EncounterProvider = ({
       {
         id: newId,
         name: trimmedName,
-        encounter,
+        encounter: cloneEncounter(encounter),
         currentTurnIndex,
         currentRound,
       },
@@ -512,7 +530,7 @@ export const EncounterProvider = ({
     const saved = savedEncounters.find((enc) => enc.id === id);
     if (!saved) return;
 
-    setEncounter(saved.encounter);
+    setEncounter(cloneEncounter(saved.encounter));
     setCurrentTurnIndex(saved.currentTurnIndex);
     setCurrentRound(saved.currentRound);
     setActiveEncounterId(saved.id);
@@ -545,6 +563,62 @@ export const EncounterProvider = ({
     );
   };
 
+  const loadEncounterTemplate = (template: EncounterTemplate) => {
+    const nextEncounter: EncounterEntry[] = [];
+
+    template.entities.forEach((templateEntity) => {
+      const count = templateEntity.count ?? 1;
+      const statBlock = getEntityByName(
+        templateEntity.entityKind,
+        templateEntity.entityName,
+      );
+
+      if (!statBlock) return;
+
+      for (let i = 0; i < count; i++) {
+        const instanceNumber = getNextInstanceNumber(
+          nextEncounter,
+          templateEntity.entityKind,
+          templateEntity.entityName,
+        );
+
+        nextEncounter.push({
+          id: makeId(),
+          entityKind: templateEntity.entityKind,
+          entityName: templateEntity.entityName,
+          instanceNumber,
+          displayName:
+            templateEntity.entityKind === "monster"
+              ? instanceNumber > 1
+                ? `${templateEntity.entityName} ${instanceNumber}`
+                : templateEntity.entityName
+              : templateEntity.entityName,
+          currentHp: statBlock.HP,
+          maxHp: statBlock.HP,
+          initiative: "",
+        });
+      }
+    });
+
+    const newId = makeId();
+
+    setEncounter(nextEncounter);
+    setCurrentTurnIndex(0);
+    setCurrentRound(1);
+    setActiveEncounterId(newId);
+
+    setSavedEncounters((prev) => [
+      ...prev,
+      {
+        id: newId,
+        name: template.name.trim() || "Ny kamp",
+        encounter: cloneEncounter(nextEncounter),
+        currentTurnIndex: 0,
+        currentRound: 1,
+      },
+    ]);
+  };
+
   const value = useMemo(
     () => ({
       encounter,
@@ -565,6 +639,7 @@ export const EncounterProvider = ({
       loadEncounter,
       deleteEncounter,
       renameEncounter,
+      loadEncounterTemplate,
       getEntityByName,
       nextTurn,
       previousTurn,
