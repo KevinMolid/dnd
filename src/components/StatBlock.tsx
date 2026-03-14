@@ -42,6 +42,7 @@ export type StatBlockProps = {
   traits?: React.ReactNode;
   actions?: React.ReactNode;
   bonusActions?: React.ReactNode;
+  reactions?: React.ReactNode;
   isLocked?: boolean;
   onToggleLock?: () => void;
   onAddToEncounter?: () => void;
@@ -68,6 +69,7 @@ const StatBlock = ({
   traits,
   actions,
   bonusActions,
+  reactions,
   isLocked = false,
   onToggleLock,
   onAddToEncounter,
@@ -184,6 +186,14 @@ const StatBlock = ({
             <H4 className="text-yellow-500">Bonus Actions</H4>
             <div className="h-0.5 bg-yellow-600"></div>
             <div className="max-w-96">{bonusActions}</div>
+          </>
+        )}
+
+        {reactions && (
+          <>
+            <H4 className="text-yellow-500">Reactions</H4>
+            <div className="h-0.5 bg-yellow-600"></div>
+            <div className="max-w-96">{reactions}</div>
           </>
         )}
       </div>

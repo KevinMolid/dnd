@@ -1,6 +1,10 @@
 import type { StatBlockProps } from "../components/StatBlock";
 import type { MonsterType } from "../components/StatBlock";
 
+import Lhupo from "/Monsters/Lhupo.png";
+import Yegg from "/Monsters/Yegg.png";
+import Snarl from "/Monsters/Snarl.png";
+
 export const monsterTypes: MonsterType[] = [
   "Aberration",
   "Beast",
@@ -114,6 +118,114 @@ export const monsters: StatBlockProps[] = [
           <strong>Nimble Escape.</strong> The goblin can take the{" "}
           <em>Disengage</em> or <em>Hide</em> action as a bonus action on each
           of its turns.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Yegg",
+    type: "Humanoid",
+    description: "Small Humanoid (Goblinoid), Neutral Evil",
+    img: Yegg,
+    AC: "15 (Leather Armor, Shield)",
+    HP: 12,
+    speed: 30,
+    stats: {
+      Str: 10,
+      Dex: 14,
+      Con: 12,
+      Int: 10,
+      Wis: 8,
+      Cha: 10,
+    },
+    skills: "Stealth +6, Intimidation +2",
+    senses: "Darkvision 60 ft., passive Perception 9",
+    language: "Common, Goblin",
+    CR: "1/4 (XP 50)",
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Scimitar.</strong> <em>Melee Weapon Attack:</em> +4 to hit,
+          reach 5 ft., one target. <em>Hit:</em> 5 (1d6 + 2) slashing damage.
+        </p>
+
+        <p>
+          <strong>Meat Cleaver.</strong> <em>Melee Weapon Attack:</em> +4 to
+          hit, reach 5 ft., one target. <em>Hit:</em> 6 (1d8 + 2) slashing
+          damage.
+        </p>
+      </>
+    ),
+    bonusActions: (
+      <>
+        <p className="mb-2">
+          <strong>Nimble Escape.</strong> Yegg can take the <em>Disengage</em>{" "}
+          or <em>Hide</em> action as a bonus action on each of its turns.
+        </p>
+
+        <p>
+          <strong>Kitchen Tyrant.</strong> Yegg shouts abuse at a goblin ally he
+          can see within 30 ft. That goblin gains advantage on its next attack
+          roll before the end of its next turn.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Lhupo",
+    type: "Humanoid",
+    description: "Small Humanoid (Goblinoid), Neutral Evil",
+    img: Lhupo,
+    AC: "15 (Leather Armor, Shield)",
+    HP: 12,
+    speed: 30,
+    stats: {
+      Str: 8,
+      Dex: 14,
+      Con: 12,
+      Int: 10,
+      Wis: 12,
+      Cha: 10,
+    },
+    skills: "Stealth +6, Religion +3, Deception +2",
+    senses: "Darkvision 60 ft., passive Perception 11",
+    language: "Common, Goblin",
+    CR: "1/4 (XP 50)",
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Ritual Dagger.</strong> <em>Melee Weapon Attack:</em> +4 to
+          hit, reach 5 ft., one target. <em>Hit:</em> 5 (1d4 + 2) piercing
+          damage.
+        </p>
+
+        <p>
+          <strong>Shortbow.</strong> <em>Ranged Weapon Attack:</em> +4 to hit,
+          range 80/320 ft., one target. <em>Hit:</em> 5 (1d6 + 2) piercing
+          damage.
+        </p>
+      </>
+    ),
+    bonusActions: (
+      <>
+        <p className="mb-2">
+          <strong>Nimble Escape.</strong> Lhupo can take the <em>Disengage</em>{" "}
+          or <em>Hide</em> action as a bonus action on each of its turns.
+        </p>
+
+        <p>
+          <strong>Blessing of Maglubiyet (Recharge 5–6).</strong> Lhupo shrieks
+          a prayer to Maglubiyet. One goblin ally within 30 ft. gains advantage
+          on its next attack roll before the end of its next turn.
+        </p>
+      </>
+    ),
+    reactions: (
+      <>
+        <p>
+          <strong>Protect the Prophet.</strong> When Lhupo is hit by an attack
+          while within 5 ft. of a goblin ally, that goblin can become the target
+          instead.
         </p>
       </>
     ),
@@ -871,6 +983,65 @@ export const monsters: StatBlockProps[] = [
           <strong>Javelin.</strong> <em>Melee or Ranged Weapon Attack:</em> +5
           to hit, reach 5 ft. or range 30/120 ft., one target. <em>Hit:</em> 6
           (1d6 + 3) piercing damage.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Brughor Axe-Biter",
+    type: "Humanoid",
+    description: "Medium Humanoid (Orc), Chaotic Evil",
+    img: "/Monsters/BrughorAxeBiter.png",
+    AC: "13 (Hide Armor)",
+    HP: 30,
+    speed: 30,
+    stats: {
+      Str: 16,
+      Dex: 12,
+      Con: 16,
+      Int: 7,
+      Wis: 11,
+      Cha: 12,
+    },
+    skills: "Intimidation +3",
+    senses: "Darkvision 60 ft., passive Perception 10",
+    language: "Common, Orc",
+    CR: "1 (XP 200)",
+    traits: (
+      <>
+        <p className="mb-2">
+          <strong>Aggressive.</strong> As a bonus action, Brughor can move up to
+          his speed toward a hostile creature that he can see.
+        </p>
+
+        <p>
+          <strong>Battle Leader.</strong> Allied orcs within 30 ft. of Brughor
+          that can hear him have advantage on saving throws against being
+          frightened.
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Greataxe.</strong> <em>Melee Weapon Attack:</em> +5 to hit,
+          reach 5 ft., one target. <em>Hit:</em> 9 (1d12 + 3) slashing damage.
+        </p>
+
+        <p>
+          <strong>Javelin.</strong> <em>Melee or Ranged Weapon Attack:</em> +5
+          to hit, reach 5 ft. or range 30/120 ft., one target. <em>Hit:</em> 6
+          (1d6 + 3) piercing damage.
+        </p>
+      </>
+    ),
+    bonusActions: (
+      <>
+        <p>
+          <strong>Command the Raid (Recharge 5–6).</strong> Brughor bellows an
+          order to one allied orc within 30 ft. that can hear him. That creature
+          can use its reaction to move up to half its speed or make one weapon
+          attack.
         </p>
       </>
     ),
@@ -1887,7 +2058,7 @@ export const monsters: StatBlockProps[] = [
     description: "Medium Humanoid (Goblinoid), Neutral Evil",
     img: "https://static.wikia.nocookie.net/the-hanged-three/images/0/09/King_Grol.jpg/revision/latest?cb=20170825204945",
     AC: "17 (Hide Armor, Shield)",
-    HP: 39,
+    HP: 45,
     speed: 30,
     stats: {
       Str: 17,
@@ -1926,6 +2097,106 @@ export const monsters: StatBlockProps[] = [
           <strong>Javelin.</strong> <em>Melee or Ranged Weapon Attack:</em> +5
           to hit, reach 5 ft. or range 30/120 ft., one target. <em>Hit:</em> 6
           (1d6 + 3) piercing damage.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Snarl",
+    type: "Beast",
+    description: "Medium Beast, Unaligned",
+    img: Snarl,
+    AC: "13 (Natural Armor)",
+    HP: 18,
+    speed: 40,
+    stats: {
+      Str: 12,
+      Dex: 15,
+      Con: 12,
+      Int: 3,
+      Wis: 12,
+      Cha: 6,
+    },
+    skills: "Perception +3, Stealth +4",
+    senses: "Passive Perception 13",
+    language: "-",
+    CR: "1/4 (XP 50)",
+    actions: (
+      <>
+        <p>
+          <strong>Bite.</strong> <em>Melee Weapon Attack:</em> +4 to hit, reach
+          5 ft., one target. <em>Hit:</em> 7 (2d4 + 2) piercing damage. If the
+          target is a creature, it must succeed on a{" "}
+          <strong>DC 11 Strength saving throw</strong> or be knocked{" "}
+          <strong>prone</strong>.
+        </p>
+      </>
+    ),
+    traits: (
+      <>
+        <p>
+          <strong>Keen Hearing and Smell.</strong> Snarl has advantage on Wisdom
+          (Perception) checks that rely on hearing or smell.
+        </p>
+
+        <p>
+          <strong>Pack Tactics.</strong> Snarl has advantage on an attack roll
+          against a creature if at least one of Snarl’s allies is within 5 ft.
+          of the creature and the ally isn’t incapacitated.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Vyerith",
+    type: "Monstrosity",
+    description: "Medium Monstrosity (Shapechanger), Neutral",
+    img: "/Monsters/Vyerith.png",
+    AC: "14",
+    HP: 52,
+    speed: 30,
+    stats: {
+      Str: 11,
+      Dex: 18,
+      Con: 14,
+      Int: 11,
+      Wis: 12,
+      Cha: 14,
+    },
+    skills: "Deception +6, Insight +3",
+    senses: "Darkvision 60 ft., passive Perception 11",
+    language: "Common",
+    CR: "3 (XP 700)",
+    traits: (
+      <>
+        <p>
+          <strong>Shapechanger.</strong> Vyerith can use her action to polymorph
+          into a Small or Medium humanoid she has seen, or back into her true
+          form. Her statistics remain the same in each form.
+        </p>
+
+        <p>
+          <strong>Ambusher.</strong> In the first round of combat, Vyerith has
+          advantage on attack rolls against any creature she surprised.
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Multiattack.</strong> Vyerith makes two melee attacks.
+        </p>
+
+        <p className="mb-2">
+          <strong>Slam.</strong> <em>Melee Weapon Attack:</em> +6 to hit, reach
+          5 ft., one target. <em>Hit:</em> 6 (1d6 + 3) bludgeoning damage.
+        </p>
+
+        <p>
+          <strong>Read Thoughts.</strong> Vyerith magically reads the surface
+          thoughts of one creature within 60 ft. of her. While reading the
+          target’s mind, she has advantage on Insight, Deception, and
+          Intimidation checks against that creature.
         </p>
       </>
     ),

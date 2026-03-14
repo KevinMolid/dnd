@@ -922,6 +922,8 @@ export const redbrandHideoutRooms: RoomData[] = [
         </p>
       </>
     ),
+    monsters: [{ name: "Iarno Albrek", count: 1 }],
+
     treasure: [
       "Ved fotenden av sengen står en solid, ulåst trekiste med de beste byttene Redbrands har samlet de siste to månedene.",
       "Kisten inneholder 180 sp.",
