@@ -161,24 +161,157 @@ export const cragmawCastleRooms: RoomData[] = [
   },
   {
     id: 4,
-    name: "Kjeller",
-    markers: [{ x: 82, y: 79 }],
-    description: <></>,
-    exits: [2, 3, 8],
+    name: "Ødelagt brakke",
+    markers: [{ x: 23, y: 73 }],
+    description: (
+      <>
+        <p className="mb-4">
+          Goblinene i Cragmaw bruker hver eneste bit av tilgjengelig plass i
+          slottet.
+        </p>
+
+        <Description>
+          Det sørvestlige tårnet i slottet er lite mer enn en haug med ruiner.
+          Flere fillete soveposer ligger spredt utover det som er igjen av
+          gulvplassen, og en smal, svingete passasje leder østover gjennom
+          ruinene.
+        </Description>
+
+        <p>
+          Tre <strong>goblins</strong> holder til her. Selv om ruinene ser
+          farlige ut, er tårnet stabilt, og passasjen mot øst er trygg.
+        </p>
+      </>
+    ),
+    monsters: [{ name: "Goblin", count: 3 }],
+    developments: (
+      <>
+        <p>
+          Høye lyder her tiltrekker oppmerksomheten til goblinene i område 7. Én
+          goblin kommer for å undersøke forstyrrelsen. Hvis den ikke kommer
+          tilbake, eller hvis den oppdager trøbbel og slår alarm, kommer de
+          andre også for å undersøke.
+        </p>
+      </>
+    ),
+    experience:
+      "Del 150 XP likt mellom karakterene dersom gruppen beseirer disse goblinene.",
+    notes: [
+      "Selv om tårnet ser ustabilt ut, er ruinene trygge å bevege seg gjennom.",
+      "Dette rommet kan lett trekke inn forsterkninger fra område 7.",
+    ],
+    encounterTemplate: {
+      name: "Område 4 - Ødelagt brakke",
+      entities: [{ entityKind: "monster", entityName: "Goblin", count: 3 }],
+    },
+    exits: [2, 7],
   },
   {
     id: 5,
-    name: "Kjeller",
-    markers: [{ x: 82, y: 79 }],
-    description: <></>,
-    exits: [2, 3, 8],
+    name: "Lagerrom",
+    markers: [{ x: 26, y: 27 }],
+    description: (
+      <>
+        <p className="mb-4">
+          Karavaner som Cragmaw-goblinene har plyndret langs High Road og
+          Triboar Trail sørger for forsyninger til slottet.
+        </p>
+
+        <Description>
+          Gamle tønner med saltet kjøtt og sekker med råtnende korn fyller dette
+          lagerområdet. Blant forsyningene ser dere en blodig rustning av chain
+          mail, en heavy crossbow og et usliret longsword med symbolet til
+          Neverwinter innarbeidet i håndtaket.
+        </Description>
+
+        <p className="mb-2">
+          Selv om forsyningene her ikke er spiselige etter menneskelige
+          standarder, tåler goblinene dem når ferskere mat ikke er tilgjengelig.
+        </p>
+
+        <p className="mb-2">
+          <strong>Dvergebrandy.</strong> Én liten tønne er fylt med en
+          usedvanlig god dvergisk brandy, som goblinene har oversett på grunn av
+          den beskjedne størrelsen. Tønnen inneholder omtrent tjue glass.
+        </p>
+
+        <p>
+          En karakter som drikker ett glass brandy får tilbake{" "}
+          <strong>1 hit point</strong>, men en karakter som drikker to glass
+          innen én time blir <strong>poisoned</strong> i én time.
+        </p>
+      </>
+    ),
+    treasure: [
+      "En suit of chain mail som tilhører Sildar Hallwinter.",
+      "En heavy crossbow.",
+      "Et longsword med Neverwinters emblem i håndtaket.",
+      "En liten tønne med dvergisk brandy tilsvarende omtrent tjue glass.",
+    ],
+    developments: (
+      <>
+        <p>
+          <strong>Sildars utstyr.</strong> Chain mail-rustningen og sverdet
+          tilhører Sildar Hallwinter. Sildar er svært takknemlig dersom i det
+          minste sverdet hans blir levert tilbake til ham.
+        </p>
+      </>
+    ),
+    notes: [
+      "Forsyningene er stort sett verdiløse eller uspiselige for vanlige mennesker.",
+      "Brandyen fungerer som en liten, situasjonell helingsressurs, men med risiko ved overforbruk.",
+    ],
+    exits: [7],
   },
   {
     id: 6,
-    name: "Kjeller",
-    markers: [{ x: 82, y: 79 }],
-    description: <></>,
-    exits: [2, 3, 8],
+    name: "Hobgoblin-brakke",
+    markers: [{ x: 16.5, y: 27 }],
+    description: (
+      <>
+        <p className="mb-4">
+          Cragmaw-stammen består av flere typer goblinoider. Noen få bugbears
+          hersker over et større antall miserable gobliner og noen få
+          hobgoblins. Hobgoblinene planlegger en dag å kvitte seg med bugbearene
+          og ta over selv, men foreløpig er bugbearene for sterke til å
+          utfordre.
+        </p>
+
+        <Description>
+          Fire enkle halmmadrasser og soveposer ligger på gulvet i denne
+          brakken. Veggbraketter holder en rekke våpen — spyd, sverd,
+          morgenstjerner og mer. Den nordlige veggen viser tegn til skader, men
+          gulvet er ryddet for stein og murrester.
+        </Description>
+
+        <p>
+          Fire <strong>hobgoblins</strong> holder til i dette rommet. Siden
+          goblin-naboene deres stadig havner i slåsskamper, bryr de seg ikke om
+          bråk i område 2 eller område 3. De reagerer derimot raskt hvis
+          fremmede dukker opp i tårnet deres, eller hvis goblinvakter slår
+          alarm.
+        </p>
+      </>
+    ),
+    monsters: [{ name: "Hobgoblin", count: 4 }],
+    treasure: [
+      "5 spyd montert på veggene.",
+      "4 longswords.",
+      "3 morningstars.",
+      "2 greatswords.",
+      "En fin quarterstaff dekorert med stiliserte fjær. Den veier bare 1 lb og er verdt 10 gp.",
+    ],
+    experience:
+      "Del 400 XP likt mellom karakterene dersom gruppen beseirer hobgoblinene i dette rommet.",
+    encounterTemplate: {
+      name: "Område 6 - Hobgoblin-brakke",
+      entities: [{ entityKind: "monster", entityName: "Hobgoblin", count: 4 }],
+    },
+    notes: [
+      "Hobgoblinene ignorerer vanlig støy fra gobliner i område 2 og 3.",
+      "De reagerer umiddelbart på alarm fra goblinvaktene eller direkte inntrengere.",
+    ],
+    exits: [2, 3, 7],
   },
   {
     id: 7,
