@@ -17,9 +17,7 @@ const Handouts = () => {
 
   const [selectedMap, setSelectedMap] = useState<MapHandout | null>(null);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
-
   const [selectedImage, setSelectedImage] = useState<HandoutImage | null>(null);
-
   const [zoom, setZoom] = useState(1);
 
   const selectedRoom = useMemo(() => {
@@ -207,12 +205,12 @@ const Handouts = () => {
                       draggable={false}
                     />
 
-                    {selectedMap.rooms?.map((room) => {
+                    {selectedMap.rooms?.flatMap((room) => {
                       const isSelected = selectedRoomId === room.id;
 
-                      return (
+                      return room.markers.map((marker, markerIndex) => (
                         <button
-                          key={room.id}
+                          key={`${room.id}-${markerIndex}`}
                           type="button"
                           onClick={() => setSelectedRoomId(room.id)}
                           className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border text-xs font-bold shadow-lg transition
@@ -222,14 +220,14 @@ const Handouts = () => {
                                 : "h-8 w-8 border-red-500 bg-stone-100 text-red-600 hover:bg-white"
                             }`}
                           style={{
-                            left: `${room.x}%`,
-                            top: `${room.y}%`,
+                            left: `${marker.x}%`,
+                            top: `${marker.y}%`,
                           }}
                           title={`${room.id}. ${room.name}`}
                         >
                           {room.id}
                         </button>
-                      );
+                      ));
                     })}
                   </div>
                 </div>

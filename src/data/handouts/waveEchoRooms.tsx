@@ -5,8 +5,7 @@ export const waveEchoRooms: RoomData[] = [
   {
     id: 1,
     name: "Huleinngangen",
-    x: 23,
-    y: 76,
+    markers: [{ x: 23, y: 76 }],
     description: (
       <>
         <p className="mb-4">
@@ -44,11 +43,7 @@ export const waveEchoRooms: RoomData[] = [
         </p>
         <p className="mb-2">
           <strong>Åpen grop.</strong> Å klatre opp eller ned veggen i gropen
-          uten tau krever en vellykket Styrke (Athletics)-sjekk, DC 15. En
-          karakter som mislykkes med sjekken med 5 eller mer, faller ned og tar
-          1d6 knusningsskade per 3 meter fall, og lander liggende nederst i
-          gropen. Tunnelen på bunnen av gropen leder mot nordvest til område 2
-          og mot øst til område 3.
+          uten tau krever en vellykket Styrke (Athletics)-sjekk, DC 15.
         </p>
       </>
     ),
@@ -57,11 +52,11 @@ export const waveEchoRooms: RoomData[] = [
     ],
     exits: [2, 3],
   },
+
   {
     id: 2,
     name: "Gruvetunneler",
-    x: 25,
-    y: 60,
+    markers: [{ x: 25, y: 60 }],
     description: (
       <>
         <p className="mb-4">
@@ -77,30 +72,28 @@ export const waveEchoRooms: RoomData[] = [
         <p>
           Blindgangene er steder hvor gruvearbeiderne ga opp utgravingen og
           bestemte seg for å lete videre andre steder. I en av disse lurer en
-          okergelé (ochre jelly). Når gruppen kommer inn i denne delen av
-          gruven, begynner gelen å snike seg etter dem og venter instinktivt på
-          en mulighet til å angripe et enslig mål.
+          okergelé (ochre jelly).
         </p>
       </>
     ),
     monsters: [{ name: "Ochre jelly", count: 1 }],
     exits: [1, 3, 6, 9, 10],
   },
+
   {
     id: 3,
     name: "Storeroom",
-    x: 50,
-    y: 76,
+    markers: [{ x: 50, y: 76 }],
     description:
       "Broken crates, torn sacks, and ruined mining supplies are scattered here. Most useful contents were taken long ago.",
     treasure: ["Possibly a few salvageable tools or minor supplies"],
     exits: [2],
   },
+
   {
     id: 4,
     name: "Old Guard Room",
-    x: 42,
-    y: 84,
+    markers: [{ x: 42, y: 84 }],
     readAloud:
       "Dusty pallets, broken stools, and old weapon racks fill this chamber. Though most of the room is in disrepair, there are signs of recent occupation.",
     description:
@@ -112,240 +105,153 @@ export const waveEchoRooms: RoomData[] = [
         notes: "They attack living creatures immediately.",
       },
     ],
-    notes: [
-      "This room works well as an early tension-building encounter.",
-      "You can describe claw marks, old bones, or the smell of decay before combat begins.",
-    ],
     exits: [2, 5],
   },
+
   {
     id: 5,
     name: "Collapsed Chamber",
-    x: 61,
-    y: 82,
+    markers: [{ x: 61, y: 82 }],
     description:
-      "A portion of the ceiling has fallen here, leaving a heap of broken stone and debris. Movement through parts of the room is difficult.",
-    notes: ["Good place for a hazard, tracks, or environmental storytelling."],
+      "A portion of the ceiling has fallen here, leaving a heap of broken stone and debris.",
     exits: [4, 6],
   },
+
   {
     id: 6,
     name: "Temple Ruins",
-    x: 50,
-    y: 62,
+    markers: [{ x: 50, y: 62 }],
     description:
       "Ancient stonework and cracked decorative features suggest this was once a place of significance within the mine.",
-    notes: ["Good place for lore, inscriptions, or magical residue."],
     exits: [5, 7],
   },
+
   {
     id: 7,
     name: "The Forge of Spells",
-    x: 65,
-    y: 62,
+    markers: [{ x: 65, y: 62 }],
     readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
+      "A strange green glow illuminates this chamber. Arcane energy lingers here.",
     description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment.",
     exits: [6],
   },
+
   {
     id: 8,
     name: "The Forge of Spells",
-    x: 74,
-    y: 68,
+    markers: [{ x: 74, y: 68 }],
     readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+      "A strange green glow illuminates this chamber. Arcane energy lingers here.",
+    description: "This chamber is the heart of Wave Echo Cave.",
     exits: [3, 13],
   },
+
   {
     id: 9,
     name: "The Forge of Spells",
-    x: 53,
-    y: 50,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 53, y: 50 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [7, 11, 12],
   },
+
   {
     id: 10,
     name: "The Forge of Spells",
-    x: 16,
-    y: 30,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 16, y: 30 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [2, 11, 18],
   },
+
   {
     id: 11,
     name: "The Forge of Spells",
-    x: 34,
-    y: 31,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 34, y: 31 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [10, 12, 18],
   },
+
   {
     id: 12,
     name: "The Forge of Spells",
-    x: 63,
-    y: 35,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 63, y: 35 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
+
   {
     id: 13,
     name: "The Forge of Spells",
-    x: 82,
-    y: 51,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 82, y: 51 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
+
   {
     id: 14,
     name: "The Forge of Spells",
-    x: 89,
-    y: 54,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 89, y: 54 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
+
   {
     id: 15,
     name: "The Forge of Spells",
-    x: 87,
-    y: 43,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 87, y: 43 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
+
   {
     id: 16,
     name: "The Forge of Spells",
-    x: 77,
-    y: 18,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 77, y: 18 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
+
   {
     id: 17,
     name: "The Forge of Spells",
-    x: 49,
-    y: 10,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 49, y: 10 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
+
   {
     id: 18,
     name: "The Forge of Spells",
-    x: 36,
-    y: 21,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 36, y: 21 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
+
   {
     id: 19,
     name: "The Forge of Spells",
-    x: 13,
-    y: 13,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 13, y: 13 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
+
   {
     id: 20,
     name: "The Forge of Spells",
-    x: 23,
-    y: 9,
-    readAloud:
-      "A strange green glow illuminates this chamber. Arcane energy lingers here, and the forge radiates the faded remains of ancient dwarven magic.",
-    description:
-      "This chamber is the heart of Wave Echo Cave. The Forge of Spells once empowered weapons and armor with enchantment, though its power is now unstable and diminished.",
-    notes: [
-      "This is one of the most important rooms in the dungeon.",
-      "Use strong sensory description: green light, humming energy, heatless glow.",
-    ],
+    markers: [{ x: 23, y: 9 }],
+    readAloud: "A strange green glow illuminates this chamber.",
+    description: "Arcane energy lingers here.",
     exits: [9, 11, 15, 18],
   },
 ];

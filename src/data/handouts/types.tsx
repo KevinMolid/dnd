@@ -7,11 +7,15 @@ export type RoomMonster = {
   notes?: string;
 };
 
+type RoomMarker = {
+  x: number;
+  y: number;
+};
+
 export type RoomData = {
   id: number;
   name: string;
-  x: number;
-  y: number;
+  markers: RoomMarker[];
   readAloud?: string;
   description: ReactNode;
   monsters?: RoomMonster[];

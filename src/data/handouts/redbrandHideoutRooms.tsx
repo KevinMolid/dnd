@@ -5,8 +5,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 1,
     name: "Kjeller",
-    x: 82,
-    y: 79,
+    markers: [{ x: 82, y: 79 }],
     description: (
       <>
         <p className="mb-2">
@@ -82,8 +81,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 2,
     name: "Brakke",
-    x: 58,
-    y: 69,
+    markers: [{ x: 58, y: 69 }],
     description: (
       <>
         <p className="mb-4">
@@ -123,8 +121,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 3,
     name: "Felle i gangen",
-    x: 88,
-    y: 54,
+    markers: [{ x: 88, y: 54 }],
     description: (
       <>
         <p className="mb-4">
@@ -164,8 +161,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 4,
     name: "Tresendar-kryptene",
-    x: 62,
-    y: 45,
+    markers: [{ x: 62, y: 45 }],
     description: (
       <>
         <p className="mb-4">
@@ -216,8 +212,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 5,
     name: "Slaveceller",
-    x: 72,
-    y: 31,
+    markers: [{ x: 72, y: 31 }],
     description: (
       <>
         <p className="mb-4">
@@ -302,8 +297,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 6,
     name: "Våpenlager",
-    x: 60,
-    y: 21,
+    markers: [{ x: 60, y: 21 }],
     description: (
       <>
         <p className="mb-4">
@@ -336,8 +330,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 7,
     name: "Lager og arbeidsområde",
-    x: 42,
-    y: 21,
+    markers: [{ x: 42, y: 21 }],
     description: (
       <>
         <p className="mb-4">
@@ -374,8 +367,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 8,
     name: "Kløften",
-    x: 32,
-    y: 59,
+    markers: [{ x: 32, y: 59 }],
     description: (
       <>
         <p className="mb-4">
@@ -463,8 +455,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 9,
     name: "Vaktbrakke",
-    x: 15,
-    y: 83,
+    markers: [{ x: 15, y: 83 }],
     description: (
       <>
         <p className="mb-4">
@@ -604,8 +595,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 10,
     name: "Fellesrom",
-    x: 15,
-    y: 50,
+    markers: [{ x: 15, y: 50 }],
     description: (
       <>
         <p className="mb-2">
@@ -693,8 +683,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 11,
     name: "Trollmannens verksted",
-    x: 15,
-    y: 26,
+    markers: [{ x: 15, y: 26 }],
     description: (
       <>
         <p className="mb-4">
@@ -781,8 +770,7 @@ export const redbrandHideoutRooms: RoomData[] = [
   {
     id: 12,
     name: "Glasstaffs kvarter",
-    x: 25,
-    y: 21,
+    markers: [{ x: 25, y: 21 }],
     description: (
       <>
         <p className="mb-4">
