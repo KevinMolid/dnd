@@ -1,6 +1,38 @@
 import type { StatBlockProps } from "../components/StatBlock";
 
-export const players: StatBlockProps[] = [
+export type PlayerEquipment = {
+  armor: string | null;
+  shield: string | null;
+  mainHand: string | null;
+  offHand: string | null;
+  bothHands: string | null;
+  ring1: string | null;
+  ring2: string | null;
+  boots: string | null;
+  gloves: string | null;
+  staff: string | null;
+  wand: string | null;
+};
+
+export type PlayerCharacter = StatBlockProps & {
+  inventory: string[];
+  equipment: PlayerEquipment;
+};
+
+export const emptyEquipment: PlayerEquipment = {
+  armor: null,
+  shield: null,
+  mainHand: null,
+  offHand: null,
+  bothHands: null,
+  ring1: null,
+  ring2: null,
+  boots: null,
+  gloves: null,
+  staff: null,
+  wand: null,
+};
+export const players: PlayerCharacter[] = [
   {
     name: "Atiram",
     type: "Humanoid",
@@ -22,6 +54,8 @@ export const players: StatBlockProps[] = [
     senses: "Passive wisdom (Perception) 11, Darkvision",
     language: "Common, Infernal",
     CR: "Player Character",
+    inventory: [],
+    equipment: { ...emptyEquipment },
     traits: (
       <>
         <p>
@@ -86,6 +120,8 @@ export const players: StatBlockProps[] = [
     senses: "Passive wisdom (Perception) 13",
     language: "Common, Draconic",
     CR: "Player Character",
+    inventory: [],
+    equipment: { ...emptyEquipment },
     traits: (
       <>
         <p>
@@ -145,6 +181,8 @@ export const players: StatBlockProps[] = [
     senses: "Passive wisdom (Perception) 15, Darkvision",
     language: "Common, Elvish, Dwarven, Druidic",
     CR: "Player Character",
+    inventory: [],
+    equipment: { ...emptyEquipment },
     traits: (
       <>
         <p>
@@ -211,6 +249,8 @@ export const players: StatBlockProps[] = [
     senses: "Passive wisdom (Perception) 8, Darkvision",
     language: "Common, Elvish, Orcish",
     CR: "Player Character",
+    inventory: [],
+    equipment: { ...emptyEquipment },
     traits: (
       <>
         <p>
@@ -275,6 +315,8 @@ export const players: StatBlockProps[] = [
     senses: "Passive wisdom (Perception) 13, Darkvision",
     language: "Common, Elvish",
     CR: "Player Character",
+    inventory: [],
+    equipment: { ...emptyEquipment },
     traits: (
       <>
         <p>

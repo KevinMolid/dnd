@@ -3,10 +3,22 @@ import { useNavigate } from "react-router-dom";
 import { useEncounter } from "../context/EncounterContext";
 import type { MapHandout } from "../data/handouts/types";
 import { itemList, type ItemData } from "../data/items";
+import type { PlayerCharacter } from "../data/players";
 
 type MapViewerProps = {
   map: MapHandout | null;
   onClose: () => void;
+  players: PlayerCharacter[];
+  onGiveItemToPlayer: (itemId: string, playerName: string) => void;
+  onGiveItemToParty: (itemId: string) => void;
+};
+
+type TreasureRecipient = "party" | string;
+
+type LinkedTreasureEntry = {
+  key: string;
+  text: string;
+  item: ItemData;
 };
 
 const normalizeItemText = (value: string) => {
@@ -78,24 +90,88 @@ const TreasureLink = ({ text, item }: { text: string; item: ItemData }) => {
   );
 };
 
-const MapViewer = ({ map, onClose }: MapViewerProps) => {
+const MapViewer = ({
+  map,
+  onClose,
+  players,
+  onGiveItemToPlayer,
+  onGiveItemToParty,
+}: MapViewerProps) => {
   const navigate = useNavigate();
   const { loadEncounterTemplate } = useEncounter();
 
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [isTreasureModalOpen, setIsTreasureModalOpen] = useState(false);
+  const [treasureAssignments, setTreasureAssignments] = useState<
+    Record<string, TreasureRecipient>
+  >({});
 
   useEffect(() => {
     if (!map) return;
-
     setZoom(1);
     setSelectedRoomId(map.rooms?.[0]?.id ?? null);
+    setIsTreasureModalOpen(false);
+    setTreasureAssignments({});
   }, [map]);
 
   const selectedRoom = useMemo(() => {
     if (!map?.rooms?.length || selectedRoomId === null) return null;
     return map.rooms.find((room) => room.id === selectedRoomId) ?? null;
   }, [map, selectedRoomId]);
+
+  const linkedTreasureItems = useMemo<LinkedTreasureEntry[]>(() => {
+    if (!selectedRoom?.treasure?.length) return [];
+
+    return selectedRoom.treasure.flatMap((treasureText, index) => {
+      const item = findLinkedItem(treasureText);
+      if (!item) return [];
+
+      return [
+        {
+          key: `${selectedRoom.id}-${index}-${item.id}`,
+          text: treasureText,
+          item,
+        },
+      ];
+    });
+  }, [selectedRoom]);
+
+  const openTreasureModal = () => {
+    const nextAssignments: Record<string, TreasureRecipient> = {};
+
+    linkedTreasureItems.forEach((entry) => {
+      nextAssignments[entry.key] = treasureAssignments[entry.key] ?? "party";
+    });
+
+    setTreasureAssignments(nextAssignments);
+    setIsTreasureModalOpen(true);
+  };
+
+  const closeTreasureModal = () => {
+    setIsTreasureModalOpen(false);
+  };
+
+  const setTreasureRecipient = (key: string, recipient: TreasureRecipient) => {
+    setTreasureAssignments((prev) => ({
+      ...prev,
+      [key]: recipient,
+    }));
+  };
+
+  const giveTreasure = () => {
+    linkedTreasureItems.forEach((entry) => {
+      const recipient = treasureAssignments[entry.key] ?? "party";
+
+      if (recipient === "party") {
+        onGiveItemToParty(entry.item.id);
+      } else {
+        onGiveItemToPlayer(entry.item.id, recipient);
+      }
+    });
+
+    setIsTreasureModalOpen(false);
+  };
 
   const openRoomEncounter = () => {
     if (!selectedRoom?.encounterTemplate) return;
@@ -121,7 +197,14 @@ const MapViewer = ({ map, onClose }: MapViewerProps) => {
     if (!map) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") {
+        if (isTreasureModalOpen) {
+          closeTreasureModal();
+        } else {
+          onClose();
+        }
+      }
+
       if (e.key === "+" || e.key === "=") zoomIn();
       if (e.key === "-") zoomOut();
       if (e.key === "0") resetZoom();
@@ -129,7 +212,7 @@ const MapViewer = ({ map, onClose }: MapViewerProps) => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [map]);
+  }, [map, onClose, isTreasureModalOpen]);
 
   if (!map) return null;
 
@@ -197,13 +280,15 @@ const MapViewer = ({ map, onClose }: MapViewerProps) => {
                     <button
                       key={`${room.id}-${markerIndex}`}
                       type="button"
-                      onClick={() => setSelectedRoomId(room.id)}
-                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border text-xs font-bold shadow-lg transition
-                        ${
-                          isSelected
-                            ? "h-9 w-9 border-white bg-red-500 text-white"
-                            : "h-8 w-8 border-red-500 bg-stone-100 text-red-600 hover:bg-white"
-                        }`}
+                      onClick={() => {
+                        setSelectedRoomId(room.id);
+                        setIsTreasureModalOpen(false);
+                      }}
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border text-xs font-bold shadow-lg transition ${
+                        isSelected
+                          ? "h-9 w-9 border-white bg-red-500 text-white"
+                          : "h-8 w-8 border-red-500 bg-stone-100 text-red-600 hover:bg-white"
+                      }`}
                       style={{
                         left: `${marker.x}%`,
                         top: `${marker.y}%`,
@@ -311,12 +396,13 @@ const MapViewer = ({ map, onClose }: MapViewerProps) => {
                     <div className="text-sm font-semibold text-white/90">
                       Skatter
                     </div>
+
                     <ul className="list-disc space-y-1 pl-5 text-sm text-white/75">
-                      {selectedRoom.treasure.map((treasureText) => {
+                      {selectedRoom.treasure.map((treasureText, index) => {
                         const linkedItem = findLinkedItem(treasureText);
 
                         return (
-                          <li key={treasureText}>
+                          <li key={`${treasureText}-${index}`}>
                             {linkedItem ? (
                               <TreasureLink
                                 text={treasureText}
@@ -329,6 +415,18 @@ const MapViewer = ({ map, onClose }: MapViewerProps) => {
                         );
                       })}
                     </ul>
+
+                    {linkedTreasureItems.length > 0 && (
+                      <div className="pt-2">
+                        <button
+                          type="button"
+                          onClick={openTreasureModal}
+                          className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"
+                        >
+                          Fordel skatter
+                        </button>
+                      </div>
+                    )}
                   </section>
                 )}
 
@@ -381,7 +479,10 @@ const MapViewer = ({ map, onClose }: MapViewerProps) => {
                         <button
                           key={exitRoomId}
                           type="button"
-                          onClick={() => setSelectedRoomId(exitRoomId)}
+                          onClick={() => {
+                            setSelectedRoomId(exitRoomId);
+                            setIsTreasureModalOpen(false);
+                          }}
                           className="rounded bg-white/10 px-3 py-1 text-sm hover:bg-white/20"
                         >
                           Område {exitRoomId}
@@ -395,6 +496,79 @@ const MapViewer = ({ map, onClose }: MapViewerProps) => {
           </aside>
         </div>
       </div>
+
+      {isTreasureModalOpen && selectedRoom && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-2xl rounded-xl border border-white/10 bg-zinc-950 p-5 text-white shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-xl font-bold">Fordel skatter</h3>
+                <p className="text-sm text-white/60">
+                  Velg hvem som skal motta hver gjenstand fra{" "}
+                  {selectedRoom.name}.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeTreasureModal}
+                className="rounded bg-red-500 px-3 py-1 text-sm hover:bg-red-600"
+              >
+                Lukk
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {linkedTreasureItems.map((entry) => (
+                <div
+                  key={entry.key}
+                  className="rounded-lg border border-white/10 bg-white/5 p-3"
+                >
+                  <div className="mb-2">
+                    <div className="font-semibold text-white">{entry.text}</div>
+                    <div className="text-xs text-white/55">
+                      {entry.item.name}
+                    </div>
+                  </div>
+
+                  <select
+                    value={treasureAssignments[entry.key] ?? "party"}
+                    onChange={(e) =>
+                      setTreasureRecipient(entry.key, e.target.value)
+                    }
+                    className="w-full rounded border border-white/10 bg-zinc-800 px-3 py-2 text-sm text-white outline-none"
+                  >
+                    <option value="party">Party</option>
+                    {players.map((player) => (
+                      <option key={player.name} value={player.name}>
+                        {player.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeTreasureModal}
+                className="rounded bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
+              >
+                Avbryt
+              </button>
+
+              <button
+                type="button"
+                onClick={giveTreasure}
+                className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
+              >
+                Gi skatter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

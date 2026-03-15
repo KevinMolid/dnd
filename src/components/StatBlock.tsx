@@ -75,14 +75,14 @@ const StatBlock = ({
   onAddToEncounter,
 }: StatBlockProps) => {
   return (
-    <div className="border border-neutral-700 rounded-sm bg-neutral-800 max-w-96">
+    <div className="border border-neutral-700 rounded-sm bg-neutral-800 max-w-96 text-sm">
       <div className="h-1 bg-neutral-600"></div>
 
       <div className="p-2">
         <div className="mb-1 flex items-start justify-between gap-3">
           <div>
             <H3 className="mb-0 text-yellow-500">{name}</H3>
-            {description && <p className="mb-1">{description}</p>}
+            {description && <p className="mb-1 -mt-2">{description}</p>}
           </div>
 
           <div className="flex items-center gap-3">
@@ -111,10 +111,8 @@ const StatBlock = ({
         </div>
 
         {img && (
-          <img src={img} className="h-60 w-full object-cover" alt={name} />
+          <img src={img} className="h-60 w-full object-cover mb-2" alt={name} />
         )}
-
-        <div className="h-0.5 bg-yellow-600"></div>
 
         <p>
           <span className="font-medium">Armor Class</span> {AC}
@@ -122,7 +120,7 @@ const StatBlock = ({
         <p>
           <span className="font-medium">Hit Points</span> {HP}
         </p>
-        <p>
+        <p className="mb-2">
           <span className="font-medium">Speed</span> {speed}
         </p>
 
@@ -139,25 +137,27 @@ const StatBlock = ({
           ))}
         </div>
 
-        <div className="h-0.5 bg-yellow-600"></div>
+        <div className="h-0.5 bg-yellow-600 mb-2"></div>
 
-        {skills && (
-          <p>
-            <span className="font-medium">Skills</span> {skills}
-          </p>
-        )}
+        <section className="mb-2">
+          {skills && (
+            <p>
+              <span className="font-medium">Skills</span> {skills}
+            </p>
+          )}
 
-        {senses && (
-          <p>
-            <span className="font-medium">Senses</span> {senses}
-          </p>
-        )}
+          {senses && (
+            <p>
+              <span className="font-medium">Senses</span> {senses}
+            </p>
+          )}
 
-        {language && (
-          <p>
-            <span className="font-medium">Languages</span> {language}
-          </p>
-        )}
+          {language && (
+            <p>
+              <span className="font-medium">Languages</span> {language}
+            </p>
+          )}
+        </section>
 
         {CR && CR !== "Player Character" && (
           <p>
@@ -166,35 +166,35 @@ const StatBlock = ({
         )}
 
         {traits && (
-          <>
+          <section className="mb-2">
             <H4 className="text-yellow-500">Traits</H4>
-            <div className="h-0.5 bg-yellow-600"></div>
+            <div className="h-0.5 bg-yellow-600 mb-1"></div>
             <div className="max-w-96">{traits}</div>
-          </>
+          </section>
         )}
 
         {actions && (
-          <>
+          <section className="mb-2">
             <H4 className="text-yellow-500">Actions</H4>
-            <div className="h-0.5 bg-yellow-600"></div>
+            <div className="h-0.5 bg-yellow-600 mb-1"></div>
             <div className="max-w-96">{actions}</div>
-          </>
+          </section>
         )}
 
         {bonusActions && (
-          <>
-            <H4 className="text-yellow-500">Bonus Actions</H4>
+          <section className="mb-2">
+            <H4 className="text-yellow-500 mb-1">Bonus Actions</H4>
             <div className="h-0.5 bg-yellow-600"></div>
             <div className="max-w-96">{bonusActions}</div>
-          </>
+          </section>
         )}
 
         {reactions && (
-          <>
-            <H4 className="text-yellow-500">Reactions</H4>
+          <section className="mb-2">
+            <H4 className="text-yellow-500 mb-1">Reactions</H4>
             <div className="h-0.5 bg-yellow-600"></div>
             <div className="max-w-96">{reactions}</div>
-          </>
+          </section>
         )}
       </div>
 

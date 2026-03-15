@@ -9,11 +9,14 @@ import { maps } from "../data/handouts/maps";
 import { drawings, letters } from "../data/handouts/images";
 import type { HandoutImage, MapHandout } from "../data/handouts/types";
 import { itemList } from "../data/items";
+import { usePartyInventory } from "../context/PartyInventoryContext";
 
 const Handouts = () => {
   const [selectedMap, setSelectedMap] = useState<MapHandout | null>(null);
   const [selectedImage, setSelectedImage] = useState<HandoutImage | null>(null);
   const [zoom, setZoom] = useState(1);
+
+  const { players, giveItemToPlayer, giveItemToParty } = usePartyInventory();
 
   const [openSections, setOpenSections] = useState({
     maps: true,
@@ -110,12 +113,18 @@ const Handouts = () => {
         <button
           type="button"
           onClick={() => toggleSection("maps")}
-          className="mb-3 flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10"
+          className="flex w-full items-center justify-between rounded-lg text-left"
         >
-          <H2>Maps</H2>
-          <span className="text-sm text-white/70">
-            {openSections.maps ? "Hide" : "Show"}
-          </span>
+          <H2>
+            <span className="text-white/70 mr-4">
+              {openSections.maps ? (
+                <i className="fa-solid fa-caret-down"></i>
+              ) : (
+                <i className="fa-solid fa-caret-right"></i>
+              )}
+            </span>
+            Maps
+          </H2>
         </button>
 
         {openSections.maps && (
@@ -144,38 +153,45 @@ const Handouts = () => {
         <button
           type="button"
           onClick={() => toggleSection("items")}
-          className="mb-3 flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10"
+          className="flex w-full items-center justify-between rounded-lg text-left"
         >
-          <H2>Items</H2>
-          <span className="text-sm text-white/70">
-            {openSections.items ? "Hide" : "Show"}
-          </span>
+          <H2>
+            <span className="mr-4 text-white/70">
+              {openSections.items ? (
+                <i className="fa-solid fa-caret-down"></i>
+              ) : (
+                <i className="fa-solid fa-caret-right"></i>
+              )}
+            </span>
+            Items
+          </H2>
         </button>
 
         {openSections.items && (
-          <div className="space-y-4">
+          <div>
             {Object.entries(itemsByCategory).map(([category, items]) => {
               const isOpen = openItemCategories[category] ?? false;
 
               return (
-                <div
-                  key={category}
-                  className="rounded-xl border border-white/10 bg-white/5 p-3"
-                >
+                <div key={category}>
                   <button
                     type="button"
                     onClick={() => toggleItemCategory(category)}
                     className="flex w-full items-center justify-between rounded-lg px-2 py-2 text-left hover:bg-white/5"
                   >
                     <div className="text-lg font-semibold">
+                      <span className="mr-4 text-white/70">
+                        {isOpen ? (
+                          <i className="fa-solid fa-caret-down"></i>
+                        ) : (
+                          <i className="fa-solid fa-caret-right"></i>
+                        )}
+                      </span>
                       {category}{" "}
                       <span className="text-sm font-normal text-white/50">
                         ({items.length})
                       </span>
                     </div>
-                    <span className="text-sm text-white/70">
-                      {isOpen ? "Hide" : "Show"}
-                    </span>
                   </button>
 
                   {isOpen && (
@@ -231,12 +247,19 @@ const Handouts = () => {
         <button
           type="button"
           onClick={() => toggleSection("drawings")}
-          className="mb-3 flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10"
+          className="flex w-full items-center justify-between rounded-lg text-left"
         >
-          <H2>Drawings</H2>
-          <span className="text-sm text-white/70">
-            {openSections.drawings ? "Hide" : "Show"}
-          </span>
+          <H2>
+            {" "}
+            <span className="mr-4 text-white/70">
+              {openSections.drawings ? (
+                <i className="fa-solid fa-caret-down"></i>
+              ) : (
+                <i className="fa-solid fa-caret-right"></i>
+              )}
+            </span>
+            Drawings
+          </H2>
         </button>
 
         {openSections.drawings && (
@@ -263,12 +286,18 @@ const Handouts = () => {
         <button
           type="button"
           onClick={() => toggleSection("letters")}
-          className="mb-3 flex w-full items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-left hover:bg-white/10"
+          className="flex w-full items-center justify-between rounded-lg text-left"
         >
-          <H2>Letters</H2>
-          <span className="text-sm text-white/70">
-            {openSections.letters ? "Hide" : "Show"}
-          </span>
+          <H2>
+            <span className="mr-4 text-white/70">
+              {openSections.letters ? (
+                <i className="fa-solid fa-caret-down"></i>
+              ) : (
+                <i className="fa-solid fa-caret-right"></i>
+              )}
+            </span>
+            Letters
+          </H2>
         </button>
 
         {openSections.letters && (
@@ -291,7 +320,13 @@ const Handouts = () => {
         )}
       </section>
 
-      <MapViewer map={selectedMap} onClose={closeMap} />
+      <MapViewer
+        map={selectedMap}
+        onClose={closeMap}
+        players={players}
+        onGiveItemToPlayer={giveItemToPlayer}
+        onGiveItemToParty={giveItemToParty}
+      />
 
       {selectedImage && (
         <div

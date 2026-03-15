@@ -1,6 +1,7 @@
 import Container from "../components/Container";
 import H1 from "../components/H1";
 import H2 from "../components/H2";
+import H3 from "../components/H3";
 
 const Reglene = () => {
   return (
@@ -8,7 +9,8 @@ const Reglene = () => {
       <Container>
         <H1>Reglene</H1>
         <H2>Generelt</H2>
-        <p>
+        <H3>Kast med terning</H3>
+        <p className="mb-4">
           <span className="font-bold">Advantage</span>: Trill 2x D20. Det
           høyeste kastet gjelder.
           <br />
@@ -23,6 +25,14 @@ const Reglene = () => {
           <span className="font-bold">Ability Check</span>: Trill en D20 +
           Ability-bonus mot en DC som Dungeon Master bestemmer for å utøfre en
           utfordrende handling (Se Difficulty Class).
+        </p>
+
+        <H3>Vekt</H3>
+        <p className="mb-4">
+          Vi ignorerer vekt-reglene når vi spiller. Alle karakterene kan bære
+          med seg så mange ting de vil, uten at det går utover spilleren på noen
+          måte. Vi bruker fornuft når vi bestemmer hvilke ting som kan bæres
+          eller dyttes eller knuses.
         </p>
 
         <H2>Kamp (Grunnleggende)</H2>
