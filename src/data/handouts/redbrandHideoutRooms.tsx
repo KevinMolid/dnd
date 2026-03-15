@@ -9,18 +9,18 @@ export const redbrandHideoutRooms: RoomData[] = [
     description: (
       <>
         <p className="mb-2">
-          Enhver utforskning av herregårdens område viser at det er forlatt, men
-          det finnes mange spor som leder til en steintrapp like ved ruinene av
-          et stort, tomt kjøkken. Nederst i trappen står en ulåst dør som leder
-          inn til en kjeller.
+          Utforskning av herregårdens område viser at det er forlatt, men det
+          finnes mange spor som leder til en steintrapp like ved ruinene av et
+          stort, tomt kjøkken. Nederst i trappen står en ulåst dør som leder inn
+          til en kjeller.
         </p>
-        <p className="mb-4">Når karakterene åpner døren, les følgende:</p>
+        <p className="mb-4">Når karakterene åpner døren, les:</p>
         <Description>
-          Døren åpner seg mot en liten repos som er rundt halvannen meter bred
-          og ligger omtrent fire og en halv meter over gulvet i en stor kjeller.
-          En steintrapp går ned til gulvet i to korte trappeløp. En annen dør
-          står under trappen mot nord. En stor steinsisterne opptar den vestlige
-          delen av rommet, og langs veggene står tønner og fat.
+          Døren åpner seg mot en liten trappeavsats som ligger omtrent fire og
+          en halv meter over gulvet i en stor kjeller. På hver side går en
+          steintrapp ned til gulvet i to korte trappeløp. En dør står under
+          trappen mot nord. En stor steinsisterne opptar den vestlige delen av
+          rommet, og langs veggene står tønner.
         </Description>
         <p className="mb-2">
           Dette rommet ser ut til å være en stor lagerkjeller, akkurat slik man
