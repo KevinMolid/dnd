@@ -71,8 +71,8 @@ export const redbrandHideoutRooms: RoomData[] = [
       </>
     ),
     treasure: [
-      "en potion of healing",
-      "en potion of invisibility",
+      "Potion of Healing",
+      "Potion of Invisibility",
       "50 gp",
       "et rent sett med vanlige reiseklær",
     ],
