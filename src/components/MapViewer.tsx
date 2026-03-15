@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useEncounter } from "../context/EncounterContext";
 import type { MapHandout } from "../data/handouts/types";
 import { itemList, type ItemData } from "../data/items";
-import type { PlayerCharacter } from "../data/players";
+import type { Money, PlayerCharacter } from "../data/players";
 
 type MapViewerProps = {
   map: MapHandout | null;
@@ -11,15 +11,26 @@ type MapViewerProps = {
   players: PlayerCharacter[];
   onGiveItemToPlayer: (itemId: string, playerName: string) => void;
   onGiveItemToParty: (itemId: string) => void;
+  onGiveMoneyToPlayer: (playerName: string, money: Partial<Money>) => void;
+  onGiveMoneyToParty: (money: Partial<Money>) => void;
 };
 
 type TreasureRecipient = "party" | string;
 
-type LinkedTreasureEntry = {
-  key: string;
-  text: string;
-  item: ItemData;
-};
+type LinkedTreasureEntry =
+  | {
+      key: string;
+      text: string;
+      type: "item";
+      item: ItemData;
+    }
+  | {
+      key: string;
+      text: string;
+      type: "money";
+      money: Partial<Money>;
+      moneyLabel: string;
+    };
 
 const normalizeItemText = (value: string) => {
   return value
@@ -46,6 +57,27 @@ const findLinkedItem = (treasureText: string): ItemData | null => {
       );
     }) ?? null
   );
+};
+
+const parseMoneyText = (text: string): Partial<Money> | null => {
+  const match = text.trim().match(/^(\d+)\s*(gp|sp|cp)$/i);
+  if (!match) return null;
+
+  const amount = Number(match[1]);
+  const currency = match[2].toLowerCase() as "gp" | "sp" | "cp";
+
+  return {
+    gp: currency === "gp" ? amount : 0,
+    sp: currency === "sp" ? amount : 0,
+    cp: currency === "cp" ? amount : 0,
+  };
+};
+
+const getMoneyLabel = (money: Partial<Money>) => {
+  if ((money.gp ?? 0) > 0) return `${money.gp} gp`;
+  if ((money.sp ?? 0) > 0) return `${money.sp} sp`;
+  if ((money.cp ?? 0) > 0) return `${money.cp} cp`;
+  return "0 gp";
 };
 
 const TreasureLink = ({ text, item }: { text: string; item: ItemData }) => {
@@ -96,6 +128,8 @@ const MapViewer = ({
   players,
   onGiveItemToPlayer,
   onGiveItemToParty,
+  onGiveMoneyToPlayer,
+  onGiveMoneyToParty,
 }: MapViewerProps) => {
   const navigate = useNavigate();
   const { loadEncounterTemplate } = useEncounter();
@@ -120,27 +154,47 @@ const MapViewer = ({
     return map.rooms.find((room) => room.id === selectedRoomId) ?? null;
   }, [map, selectedRoomId]);
 
-  const linkedTreasureItems = useMemo<LinkedTreasureEntry[]>(() => {
+  const linkedTreasureEntries = useMemo<LinkedTreasureEntry[]>(() => {
     if (!selectedRoom?.treasure?.length) return [];
 
-    return selectedRoom.treasure.flatMap((treasureText, index) => {
-      const item = findLinkedItem(treasureText);
-      if (!item) return [];
+    return selectedRoom.treasure.flatMap<LinkedTreasureEntry>(
+      (treasureText, index): LinkedTreasureEntry[] => {
+        const item = findLinkedItem(treasureText);
 
-      return [
-        {
-          key: `${selectedRoom.id}-${index}-${item.id}`,
-          text: treasureText,
-          item,
-        },
-      ];
-    });
+        if (item) {
+          return [
+            {
+              key: `${selectedRoom.id}-${index}-item-${item.id}`,
+              text: treasureText,
+              type: "item",
+              item,
+            },
+          ];
+        }
+
+        const money = parseMoneyText(treasureText);
+
+        if (money) {
+          return [
+            {
+              key: `${selectedRoom.id}-${index}-money-${treasureText}`,
+              text: treasureText,
+              type: "money",
+              money,
+              moneyLabel: getMoneyLabel(money),
+            },
+          ];
+        }
+
+        return [];
+      },
+    );
   }, [selectedRoom]);
 
   const openTreasureModal = () => {
     const nextAssignments: Record<string, TreasureRecipient> = {};
 
-    linkedTreasureItems.forEach((entry) => {
+    linkedTreasureEntries.forEach((entry) => {
       nextAssignments[entry.key] = treasureAssignments[entry.key] ?? "party";
     });
 
@@ -160,13 +214,22 @@ const MapViewer = ({
   };
 
   const giveTreasure = () => {
-    linkedTreasureItems.forEach((entry) => {
+    linkedTreasureEntries.forEach((entry) => {
       const recipient = treasureAssignments[entry.key] ?? "party";
 
+      if (entry.type === "item") {
+        if (recipient === "party") {
+          onGiveItemToParty(entry.item.id);
+        } else {
+          onGiveItemToPlayer(entry.item.id, recipient);
+        }
+        return;
+      }
+
       if (recipient === "party") {
-        onGiveItemToParty(entry.item.id);
+        onGiveMoneyToParty(entry.money);
       } else {
-        onGiveItemToPlayer(entry.item.id, recipient);
+        onGiveMoneyToPlayer(recipient, entry.money);
       }
     });
 
@@ -416,7 +479,7 @@ const MapViewer = ({
                       })}
                     </ul>
 
-                    {linkedTreasureItems.length > 0 && (
+                    {linkedTreasureEntries.length > 0 && (
                       <div className="pt-2">
                         <button
                           type="button"
@@ -519,7 +582,7 @@ const MapViewer = ({
             </div>
 
             <div className="space-y-3">
-              {linkedTreasureItems.map((entry) => (
+              {linkedTreasureEntries.map((entry) => (
                 <div
                   key={entry.key}
                   className="rounded-lg border border-white/10 bg-white/5 p-3"
@@ -527,7 +590,9 @@ const MapViewer = ({
                   <div className="mb-2">
                     <div className="font-semibold text-white">{entry.text}</div>
                     <div className="text-xs text-white/55">
-                      {entry.item.name}
+                      {entry.type === "item"
+                        ? entry.item.name
+                        : entry.moneyLabel}
                     </div>
                   </div>
 

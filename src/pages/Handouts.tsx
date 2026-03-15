@@ -16,7 +16,13 @@ const Handouts = () => {
   const [selectedImage, setSelectedImage] = useState<HandoutImage | null>(null);
   const [zoom, setZoom] = useState(1);
 
-  const { players, giveItemToPlayer, giveItemToParty } = usePartyInventory();
+  const {
+    players,
+    giveItemToPlayer,
+    giveItemToParty,
+    addMoneyToPlayer,
+    addMoneyToParty,
+  } = usePartyInventory();
 
   const [openSections, setOpenSections] = useState({
     maps: true,
@@ -116,7 +122,7 @@ const Handouts = () => {
           className="flex w-full items-center justify-between rounded-lg text-left"
         >
           <H2>
-            <span className="text-white/70 mr-4">
+            <span className="mr-4 text-white/70">
               {openSections.maps ? (
                 <i className="fa-solid fa-caret-down"></i>
               ) : (
@@ -128,7 +134,7 @@ const Handouts = () => {
         </button>
 
         {openSections.maps && (
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap gap-2">
             {maps.map((map) => (
               <div key={map.title}>
                 <H4>{map.title}</H4>
@@ -138,7 +144,7 @@ const Handouts = () => {
                   className="block cursor-pointer"
                 >
                   <img
-                    className="w-40 aspect-square object-cover rounded hover:opacity-90 transition"
+                    className="aspect-square w-40 rounded object-cover transition hover:opacity-90"
                     src={map.src}
                     alt={map.title}
                   />
@@ -250,7 +256,6 @@ const Handouts = () => {
           className="flex w-full items-center justify-between rounded-lg text-left"
         >
           <H2>
-            {" "}
             <span className="mr-4 text-white/70">
               {openSections.drawings ? (
                 <i className="fa-solid fa-caret-down"></i>
@@ -263,7 +268,7 @@ const Handouts = () => {
         </button>
 
         {openSections.drawings && (
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap gap-2">
             {drawings.map((drawing) => (
               <button
                 key={drawing.title}
@@ -272,7 +277,7 @@ const Handouts = () => {
                 className="block cursor-pointer"
               >
                 <img
-                  className="w-40 rounded hover:opacity-90 transition"
+                  className="w-40 rounded transition hover:opacity-90"
                   src={drawing.src}
                   alt={drawing.title}
                 />
@@ -301,7 +306,7 @@ const Handouts = () => {
         </button>
 
         {openSections.letters && (
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex flex-wrap gap-2">
             {letters.map((letter) => (
               <button
                 key={letter.title}
@@ -310,7 +315,7 @@ const Handouts = () => {
                 className="block cursor-pointer"
               >
                 <img
-                  className="w-40 rounded hover:opacity-90 transition"
+                  className="w-40 rounded transition hover:opacity-90"
                   src={letter.src}
                   alt={letter.title}
                 />
@@ -326,6 +331,8 @@ const Handouts = () => {
         players={players}
         onGiveItemToPlayer={giveItemToPlayer}
         onGiveItemToParty={giveItemToParty}
+        onGiveMoneyToPlayer={addMoneyToPlayer}
+        onGiveMoneyToParty={addMoneyToParty}
       />
 
       {selectedImage && (
