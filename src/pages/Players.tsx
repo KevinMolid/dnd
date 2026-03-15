@@ -6,7 +6,7 @@ import { itemList } from "../data/items";
 import { usePartyInventory } from "../context/PartyInventoryContext";
 
 const Players = () => {
-  const { players, partyInventory } = usePartyInventory();
+  const { players, partyInventory, partyMoney } = usePartyInventory();
 
   const sortedPlayers = [...players].sort((a, b) =>
     a.name.localeCompare(b.name),
@@ -23,6 +23,14 @@ const Players = () => {
 
         <section className="mb-6 rounded-lg border border-white/10 bg-white/5 p-4">
           <H2>Party inventory</H2>
+
+          <div className="mb-2">
+            <div className="flex gap-3 text-sm text-white/80">
+              <span>{partyMoney.gp} gp</span>
+              <span>{partyMoney.sp} sp</span>
+              <span>{partyMoney.cp} cp</span>
+            </div>
+          </div>
 
           {partyInventory.length === 0 ? (
             <p className="text-sm text-white/60">No shared items yet.</p>
@@ -46,6 +54,14 @@ const Players = () => {
               <div className="rounded-lg border border-white/10 bg-white/5 p-4">
                 <div className="mb-2 text-lg font-semibold text-white">
                   Inventory
+                </div>
+
+                <div className="mb-2">
+                  <div className="flex gap-3 text-sm text-white/80">
+                    <span>{player.money.gp} gp</span>
+                    <span>{player.money.sp} sp</span>
+                    <span>{player.money.cp} cp</span>
+                  </div>
                 </div>
 
                 {player.inventory.length === 0 ? (

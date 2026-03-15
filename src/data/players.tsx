@@ -14,9 +14,16 @@ export type PlayerEquipment = {
   wand: string | null;
 };
 
+export type Money = {
+  gp: number;
+  sp: number;
+  cp: number;
+};
+
 export type PlayerCharacter = StatBlockProps & {
   inventory: string[];
   equipment: PlayerEquipment;
+  money: Money;
 };
 
 export const emptyEquipment: PlayerEquipment = {
@@ -31,6 +38,12 @@ export const emptyEquipment: PlayerEquipment = {
   gloves: null,
   staff: null,
   wand: null,
+};
+
+export const emptyMoney: Money = {
+  gp: 0,
+  sp: 0,
+  cp: 0,
 };
 export const players: PlayerCharacter[] = [
   {
@@ -56,6 +69,7 @@ export const players: PlayerCharacter[] = [
     CR: "Player Character",
     inventory: [],
     equipment: { ...emptyEquipment },
+    money: { ...emptyMoney },
     traits: (
       <>
         <p>
@@ -122,6 +136,7 @@ export const players: PlayerCharacter[] = [
     CR: "Player Character",
     inventory: [],
     equipment: { ...emptyEquipment },
+    money: { ...emptyMoney },
     traits: (
       <>
         <p>
@@ -183,6 +198,7 @@ export const players: PlayerCharacter[] = [
     CR: "Player Character",
     inventory: [],
     equipment: { ...emptyEquipment },
+    money: { ...emptyMoney },
     traits: (
       <>
         <p>
@@ -251,6 +267,7 @@ export const players: PlayerCharacter[] = [
     CR: "Player Character",
     inventory: [],
     equipment: { ...emptyEquipment },
+    money: { ...emptyMoney },
     traits: (
       <>
         <p>
@@ -317,6 +334,7 @@ export const players: PlayerCharacter[] = [
     CR: "Player Character",
     inventory: [],
     equipment: { ...emptyEquipment },
+    money: { ...emptyMoney },
     traits: (
       <>
         <p>
