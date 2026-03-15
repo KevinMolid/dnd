@@ -1047,7 +1047,61 @@ export const monsters: StatBlockProps[] = [
     ),
   },
   {
-    name: "Young Green Dragon (Venomfang)",
+    name: "Young Green Dragon",
+    type: "Dragon",
+    description: "Large Dragon, Lawful Evil",
+    img: "https://static.wikia.nocookie.net/forgottenrealms/images/8/84/VenomFang.jpg/revision/latest?cb=20191007180410https://www.dndbeyond.com/avatars/thumbnails/16/431/1000/1000/636376315040015885.jpeg",
+    AC: "18 (Natural Armor)",
+    HP: 136,
+    speed: 40,
+    stats: {
+      Str: 19,
+      Dex: 12,
+      Con: 17,
+      Int: 16,
+      Wis: 13,
+      Cha: 15,
+    },
+    skills: "Deception +6, Insight +4, Perception +7, Stealth +4",
+    senses: "Blindsight 30 ft., Darkvision 120 ft., passive Perception 17",
+    language: "Common, Draconic",
+    CR: "8 (XP 3900)",
+    traits: (
+      <>
+        <p>
+          <strong>Amphibious.</strong> The dragon can breathe air and water.
+        </p>
+      </>
+    ),
+    actions: (
+      <>
+        <p className="mb-2">
+          <strong>Multiattack.</strong> The dragon makes three attacks: one with
+          its bite and two with its claws.
+        </p>
+
+        <p className="mb-2">
+          <strong>Bite.</strong> <em>Melee Weapon Attack:</em> +7 to hit, reach
+          10 ft., one target. <em>Hit:</em> 15 (2d10 + 4) piercing damage plus 7
+          (2d6) poison damage.
+        </p>
+
+        <p className="mb-2">
+          <strong>Claw.</strong> <em>Melee Weapon Attack:</em> +7 to hit, reach
+          5 ft., one target. <em>Hit:</em> 11 (2d6 + 4) slashing damage.
+        </p>
+
+        <p>
+          <strong>Poison Breath (Recharge 5–6).</strong> The dragon exhales
+          poisonous gas in a 30-foot cone. Each creature in that area must make
+          a DC 15 Constitution saving throw, taking 42 (12d6) poison damage on a
+          failed save, or half as much on a successful one.
+        </p>
+      </>
+    ),
+  },
+  {
+    name: "Venomfang",
     type: "Dragon",
     description: "Large Dragon, Lawful Evil",
     img: "https://static.wikia.nocookie.net/forgottenrealms/images/8/84/VenomFang.jpg/revision/latest?cb=20191007180410https://www.dndbeyond.com/avatars/thumbnails/16/431/1000/1000/636376315040015885.jpeg",
