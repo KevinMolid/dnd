@@ -14,6 +14,7 @@ import Handouts from "./pages/Handouts";
 import Quests from "./pages/Quests";
 import Login from "./pages/Login";
 import NewCharacter from "./pages/NewCharacter";
+import CharacterSheet from "./pages/CharacterSheet";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -46,6 +47,7 @@ function App() {
           <Route path="/handouts" element={<Handouts />} />
           <Route path="/quests" element={<Quests />} />
           <Route path="/characters/new" element={<NewCharacter />} />
+          <Route path="/characters/:characterId" element={<CharacterSheet />} />
         </Routes>
       </main>
     </BrowserRouter>

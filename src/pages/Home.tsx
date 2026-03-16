@@ -1,5 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
+import { db } from "../firebase";
+import { classesById, speciesById } from "../rulesets/dnd/dnd2024/helpers";
 
 type Campaign = {
   id: string;
@@ -18,10 +22,34 @@ type Character = {
   campaignName?: string;
 };
 
-const Home = () => {
-  const { appUser } = useAuth();
+type CharacterDoc = {
+  ownerUid: string;
+  campaignId: string | null;
+  name: string;
+  level: number;
+  classId: string;
+  speciesId: string;
+  backgroundId: string;
+  originFeatId: string | null;
+  abilityScores: {
+    str: number;
+    dex: number;
+    con: number;
+    int: number;
+    wis: number;
+    cha: number;
+  };
+  alignment?: string;
+  notes?: string;
+};
 
-  // Replace these with Firestore data later
+const Home = () => {
+  const { appUser, user } = useAuth();
+
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [charactersLoading, setCharactersLoading] = useState(true);
+
+  // Replace campaigns with Firestore data later
   const campaigns: Campaign[] = [
     {
       id: "1",
@@ -39,24 +67,48 @@ const Home = () => {
     },
   ];
 
-  const characters: Character[] = [
-    {
-      id: "1",
-      name: "Elaris",
-      race: "Elf",
-      className: "Wizard",
-      level: 4,
-      campaignName: "Curse of Strahd",
-    },
-    {
-      id: "2",
-      name: "Brom",
-      race: "Dwarf",
-      className: "Fighter",
-      level: 3,
-      campaignName: "Lost Mine of Phandelver",
-    },
-  ];
+  useEffect(() => {
+    if (!user) {
+      setCharacters([]);
+      setCharactersLoading(false);
+      return;
+    }
+
+    const q = query(
+      collection(db, "characters"),
+      where("ownerUid", "==", user.uid),
+    );
+
+    const unsub = onSnapshot(
+      q,
+      (snapshot) => {
+        const nextCharacters: Character[] = snapshot.docs.map((doc) => {
+          const data = doc.data() as CharacterDoc;
+
+          return {
+            id: doc.id,
+            name: data.name,
+            race: speciesById[data.speciesId]?.name ?? data.speciesId,
+            className: classesById[data.classId]?.name ?? data.classId,
+            level: data.level,
+            campaignName: undefined,
+          };
+        });
+
+        nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
+
+        setCharacters(nextCharacters);
+        setCharactersLoading(false);
+      },
+      (error) => {
+        console.error("Failed to load characters:", error);
+        setCharacters([]);
+        setCharactersLoading(false);
+      },
+    );
+
+    return () => unsub();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -187,7 +239,11 @@ const Home = () => {
               </Link>
             </div>
 
-            {characters.length === 0 ? (
+            {charactersLoading ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
+                <p className="text-sm text-zinc-400">Loading characters...</p>
+              </div>
+            ) : characters.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
                 <p className="text-sm text-zinc-300">No characters yet.</p>
                 <p className="mt-2 text-sm text-zinc-500">

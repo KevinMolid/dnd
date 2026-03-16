@@ -1,36 +1,10 @@
-import {
-  addDoc,
-  collection,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "./firebase";
-import { auth } from "./firebase";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "./firebase";
+import type { CharacterSheetData } from "./rulesets/dnd/dnd2024/types";
 
-export type CharacterData = {
-  campaignId: string | null;
-
-  name: string;
-  level: number;
-
-  classId: string;
-  speciesId: string;
-  backgroundId: string;
-  originFeatId: string | null;
-
-  abilityScores: {
-    str: number;
-    dex: number;
-    con: number;
-    int: number;
-    wis: number;
-    cha: number;
-  };
-
-  alignment: string;
-  notes: string;
-};
-
-export const createCharacter = async (data: CharacterData) => {
+export const createCharacter = async (
+  data: Omit<CharacterSheetData, "ownerUid" | "createdAt" | "updatedAt">,
+) => {
   const user = auth.currentUser;
 
   if (!user) {
@@ -42,22 +16,8 @@ export const createCharacter = async (data: CharacterData) => {
   }
 
   const docRef = await addDoc(collection(db, "characters"), {
+    ...data,
     ownerUid: user.uid,
-    campaignId: data.campaignId,
-
-    name: data.name.trim(),
-    level: data.level,
-
-    classId: data.classId,
-    speciesId: data.speciesId,
-    backgroundId: data.backgroundId,
-    originFeatId: data.originFeatId,
-
-    abilityScores: data.abilityScores,
-
-    alignment: data.alignment.trim(),
-    notes: data.notes.trim(),
-
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
