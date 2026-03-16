@@ -28,6 +28,13 @@ type CharacterDoc = {
   alignment?: string;
   notes?: string;
 
+  choices?: {
+    backgroundAbilityBonuses?: {
+      plus2: AbilityKey;
+      plus1: AbilityKey;
+    };
+  };
+
   // future-ready optional fields
   maxHp?: number;
   currentHp?: number;
@@ -70,6 +77,33 @@ const formatLabel = (value: string) =>
     .join(" ");
 
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
+
+const applyBackgroundBonuses = (
+  abilityScores: Record<AbilityKey, number>,
+  bonuses:
+    | {
+        plus2: AbilityKey;
+        plus1: AbilityKey;
+      }
+    | undefined,
+  allowedOptions: AbilityKey[],
+) => {
+  const nextScores = { ...abilityScores };
+
+  if (!bonuses) return nextScores;
+
+  const { plus2, plus1 } = bonuses;
+
+  if (allowedOptions.includes(plus2)) {
+    nextScores[plus2] += 2;
+  }
+
+  if (allowedOptions.includes(plus1) && plus1 !== plus2) {
+    nextScores[plus1] += 1;
+  }
+
+  return nextScores;
+};
 
 const formatModifier = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
@@ -168,15 +202,22 @@ const CharacterSheet = () => {
   const derived = useMemo(() => {
     if (!character) return null;
 
-    const dexMod = getAbilityModifier(character.abilityScores.dex);
-    const wisMod = getAbilityModifier(character.abilityScores.wis);
+    const background = backgroundsById[character.backgroundId];
+
+    const finalAbilityScores = applyBackgroundBonuses(
+      character.abilityScores,
+      character.choices?.backgroundAbilityBonuses,
+      background?.abilityOptions ?? [],
+    );
+
+    const dexMod = getAbilityModifier(finalAbilityScores.dex);
+    const wisMod = getAbilityModifier(finalAbilityScores.wis);
 
     return {
       className: classesById[character.classId]?.name ?? character.classId,
       speciesName:
         speciesById[character.speciesId]?.name ?? character.speciesId,
-      backgroundName:
-        backgroundsById[character.backgroundId]?.name ?? character.backgroundId,
+      backgroundName: background?.name ?? character.backgroundId,
       featName: character.originFeatId
         ? (originFeatsById[character.originFeatId]?.name ??
           character.originFeatId)
@@ -189,6 +230,7 @@ const CharacterSheet = () => {
       speed: character.speed ?? 30,
       currentHp: character.currentHp ?? character.maxHp ?? 0,
       maxHp: character.maxHp ?? 0,
+      finalAbilityScores,
     };
   }, [character]);
 
@@ -219,6 +261,15 @@ const CharacterSheet = () => {
       </div>
     );
   }
+
+  const fallbackSkills =
+    backgroundsById[character.backgroundId]?.skillProficiencies ?? [];
+
+  const fallbackTools = (
+    backgroundsById[character.backgroundId]?.toolProficiency
+      ? [backgroundsById[character.backgroundId]?.toolProficiency]
+      : []
+  ) as string[];
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -302,10 +353,12 @@ const CharacterSheet = () => {
           <div className="space-y-6 xl:col-span-2">
             <SectionCard title="Ability Scores">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {(Object.keys(character.abilityScores) as AbilityKey[]).map(
+                {(Object.keys(derived.finalAbilityScores) as AbilityKey[]).map(
                   (key) => {
-                    const score = character.abilityScores[key];
+                    const score = derived.finalAbilityScores[key];
                     const mod = getAbilityModifier(score);
+                    const baseScore = character.abilityScores[key];
+                    const bonus = score - baseScore;
 
                     return (
                       <div
@@ -323,6 +376,10 @@ const CharacterSheet = () => {
                             {formatModifier(mod)}
                           </p>
                         </div>
+                        <p className="mt-1 text-xs text-zinc-500">
+                          Base {baseScore}
+                          {bonus > 0 ? ` • +${bonus} background` : ""}
+                        </p>
                       </div>
                     );
                   },
@@ -337,8 +394,7 @@ const CharacterSheet = () => {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(character.skillProficiencies?.length
                       ? character.skillProficiencies
-                      : (backgroundsById[character.backgroundId]
-                          ?.skillProficiencies ?? [])
+                      : fallbackSkills
                     ).map((skill) => (
                       <span
                         key={skill}
@@ -355,10 +411,7 @@ const CharacterSheet = () => {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(character.toolProficiencies?.length
                       ? character.toolProficiencies
-                      : [
-                          backgroundsById[character.backgroundId]
-                            ?.toolProficiency,
-                        ].filter(Boolean)
+                      : fallbackTools
                     ).map((tool) => (
                       <span
                         key={tool}
