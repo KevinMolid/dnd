@@ -54,7 +54,6 @@ type CharacterDoc = {
     expertise?: Array<SkillId | "thieves-tools">;
   };
 
-  // legacy / fallback fields
   maxHp?: number;
   currentHp?: number;
   armorClass?: number;
@@ -181,6 +180,12 @@ const formatModifier = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
 const unique = <T,>(values: T[]) => [...new Set(values)];
 
+const getSneakAttackDice = (level: number) => {
+  if (level < 1) return null;
+  const dice = Math.ceil(level / 2);
+  return `${dice}d6`;
+};
+
 const StatCard = ({
   label,
   value,
@@ -290,9 +295,10 @@ const CharacterSheet = () => {
       character.proficiencyBonus ??
       2 + Math.floor((character.level - 1) / 4);
 
+    const strMod = getAbilityModifier(finalAbilityScores.str);
     const dexMod = getAbilityModifier(finalAbilityScores.dex);
-    const wisMod = getAbilityModifier(finalAbilityScores.wis);
     const conMod = getAbilityModifier(finalAbilityScores.con);
+    const wisMod = getAbilityModifier(finalAbilityScores.wis);
 
     const fallbackSkillProficiencies = unique<SkillId>([
       ...(background?.skillProficiencies ?? []),
@@ -306,7 +312,9 @@ const CharacterSheet = () => {
     ]);
 
     const expertise = unique<SkillId | "thieves-tools">([
-      ...(character.derived?.expertise ?? []),
+      ...((character.derived?.expertise ?? []) as Array<
+        SkillId | "thieves-tools"
+      >),
       ...(character.choices?.rogueExpertiseChoices ?? []),
     ]);
 
@@ -360,6 +368,17 @@ const CharacterSheet = () => {
           (character.level - 1) * (Math.floor(classDef.hitDie / 2) + 1 + conMod)
         : 0;
 
+    const genericAttackBonuses = {
+      strengthWeapon: strMod + proficiencyBonus,
+      finesseOrRanged: dexMod + proficiencyBonus,
+      unarmed: strMod + proficiencyBonus,
+    };
+
+    const rogueSneakAttack =
+      character.classId === "rogue"
+        ? getSneakAttackDice(character.level)
+        : null;
+
     return {
       className: classDef?.name ?? character.classId,
       speciesName:
@@ -396,13 +415,16 @@ const CharacterSheet = () => {
       savingThrowProficiencies,
       toolProficiencies:
         character.derived?.toolProficiencies ??
-        (character.toolProficiencies as string[] | undefined) ??
+        character.toolProficiencies ??
         (background?.toolProficiency ? [background.toolProficiency] : []),
       languages:
         character.derived?.languages ??
         character.languages ??
         speciesById[character.speciesId]?.languages ??
         [],
+      expertise,
+      genericAttackBonuses,
+      rogueSneakAttack,
     };
   }, [character]);
 
@@ -550,6 +572,73 @@ const CharacterSheet = () => {
               </div>
             </SectionCard>
 
+            <SectionCard title="Combat">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                  <p className="text-sm font-semibold text-zinc-200">
+                    Weapon Attack Bonuses
+                  </p>
+                  <div className="mt-3 space-y-2 text-sm text-zinc-300">
+                    <div className="flex items-center justify-between">
+                      <span>Strength-based weapon</span>
+                      <span className="font-semibold">
+                        {formatModifier(
+                          derived.genericAttackBonuses.strengthWeapon,
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Finesse / ranged weapon</span>
+                      <span className="font-semibold">
+                        {formatModifier(
+                          derived.genericAttackBonuses.finesseOrRanged,
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Unarmed strike</span>
+                      <span className="font-semibold">
+                        {formatModifier(derived.genericAttackBonuses.unarmed)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-xs text-zinc-500">
+                    These are generic bonuses for proficient attacks. Exact
+                    weapon entries will be more precise once weapon data is
+                    added.
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                  <p className="text-sm font-semibold text-zinc-200">
+                    Class Combat Features
+                  </p>
+                  <div className="mt-3 space-y-2 text-sm text-zinc-300">
+                    {derived.rogueSneakAttack && (
+                      <div className="flex items-center justify-between">
+                        <span>Sneak Attack</span>
+                        <span className="font-semibold">
+                          {derived.rogueSneakAttack}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span>Initiative</span>
+                      <span className="font-semibold">
+                        {formatModifier(derived.initiativeBonus)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span>Armor Class</span>
+                      <span className="font-semibold">
+                        {derived.armorClass}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+
             <SectionCard title="Skills">
               <div className="grid gap-2">
                 {derived.skillRows.map((skill) => (
@@ -608,84 +697,57 @@ const CharacterSheet = () => {
               </div>
             </SectionCard>
 
-            <SectionCard title="Proficiencies">
-              <div className="grid gap-5 md:grid-cols-2">
-                <div>
-                  <p className="text-sm font-semibold text-zinc-200">Skills</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {derived.skillProficiencies.length > 0 ? (
-                      derived.skillProficiencies.map((skill) => (
-                        <span
-                          key={skill}
-                          className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
-                        >
-                          {formatLabel(skill)}
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-sm text-zinc-500">None</p>
-                    )}
-                  </div>
-                </div>
+            <SectionCard title="Tools">
+              {derived.toolProficiencies.length > 0 ? (
+                <div className="grid gap-3">
+                  {derived.toolProficiencies.map((tool) => {
+                    const expertiseApplies = derived.expertise.includes(
+                      tool as SkillId | "thieves-tools",
+                    );
 
-                <div>
-                  <p className="text-sm font-semibold text-zinc-200">Tools</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {derived.toolProficiencies.length > 0 ? (
-                      derived.toolProficiencies.map((tool) => (
-                        <span
-                          key={tool}
-                          className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
-                        >
-                          {formatLabel(tool)}
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-sm text-zinc-500">None</p>
-                    )}
-                  </div>
-                </div>
+                    return (
+                      <div
+                        key={tool}
+                        className="rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-white">
+                              {formatLabel(tool)}
+                            </p>
+                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                              Proficient
+                            </span>
+                            {expertiseApplies && (
+                              <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
+                                Expertise
+                              </span>
+                            )}
+                          </div>
 
-                <div>
-                  <p className="text-sm font-semibold text-zinc-200">
-                    Saving Throw Proficiencies
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {derived.savingThrowProficiencies.length > 0 ? (
-                      derived.savingThrowProficiencies.map((save) => (
-                        <span
-                          key={save}
-                          className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
-                        >
-                          {abilityFullLabels[save]}
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-sm text-zinc-500">None</p>
-                    )}
-                  </div>
-                </div>
+                          <p className="text-sm text-zinc-300">
+                            +PB
+                            {expertiseApplies
+                              ? ` + doubled proficiency (${formatModifier(
+                                  derived.proficiencyBonus * 2,
+                                )})`
+                              : ` (${formatModifier(derived.proficiencyBonus)})`}
+                          </p>
+                        </div>
 
-                <div>
-                  <p className="text-sm font-semibold text-zinc-200">
-                    Languages
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {derived.languages.length > 0 ? (
-                      derived.languages.map((language) => (
-                        <span
-                          key={language}
-                          className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
-                        >
-                          {formatLabel(language)}
-                        </span>
-                      ))
-                    ) : (
-                      <p className="text-sm text-zinc-500">None</p>
-                    )}
-                  </div>
+                        <p className="mt-2 text-xs text-zinc-500">
+                          Tool checks use a relevant ability chosen by the DM or
+                          situation, plus your proficiency bonus if proficient.
+                        </p>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              ) : (
+                <p className="text-sm text-zinc-500">
+                  No tool proficiencies yet.
+                </p>
+              )}
             </SectionCard>
 
             <SectionCard title="Inventory">
@@ -810,7 +872,7 @@ const CharacterSheet = () => {
             <SectionCard title="Rules Notes">
               <p className="text-sm leading-6 text-zinc-300">
                 Initiative uses your Dexterity modifier. Dexterity saving throw
-                proficiency applies to Dexterity saves, not Initiative, unless a
+                proficiency affects Dexterity saves, not Initiative, unless a
                 separate feature says otherwise.
               </p>
             </SectionCard>
