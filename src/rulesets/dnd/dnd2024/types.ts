@@ -71,7 +71,18 @@ export type ArmorTrainingId =
 export type WeaponProficiencyId =
   | "simple-weapons"
   | "martial-weapons"
-  | "unarmed-strikes";
+  | "unarmed-strikes"
+  | "martial-finesse-or-light";
+
+export type WeaponMasteryChoiceId =
+  | "dagger"
+  | "dart"
+  | "light-crossbow"
+  | "rapier"
+  | "scimitar"
+  | "shortbow"
+  | "shortsword"
+  | "sling";
 
 export type OriginFeatId =
   | "alert"
@@ -88,11 +99,6 @@ export type OriginFeatId =
 export type RulesOption = {
   id: string;
   name: string;
-};
-
-export type BackgroundAbilityBonuses = {
-  plus2: AbilityKey;
-  plus1: AbilityKey;
 };
 
 export type FeatureGrant = {
@@ -136,25 +142,24 @@ export type ClassSpellcasting = {
 export type CharacterClass = RulesOption & {
   hitDie: number;
   primaryAbilities?: AbilityKey[];
-
   savingThrowProficiencies: [AbilityKey, AbilityKey];
-
   armorTraining: ArmorTrainingId[];
   weaponProficiencies: WeaponProficiencyId[];
-
   toolProficiencies?: ToolId[];
-
   skillChoice: {
     choose: number;
     options: SkillId[];
   };
-
   featuresByLevel: Record<number, FeatureGrant[]>;
-
   spellcasting?: ClassSpellcasting;
 };
 
 export type AbilityScores = Record<AbilityKey, number>;
+
+export type BackgroundAbilityBonuses = {
+  plus2: AbilityKey;
+  plus1: AbilityKey;
+};
 
 export type DerivedStats = {
   proficiencyBonus: number;
@@ -187,6 +192,10 @@ export type CharacterChoices = {
   toolChoices?: ToolId[];
   languageChoices?: LanguageId[];
   backgroundAbilityBonuses?: BackgroundAbilityBonuses;
+
+  rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
+  rogueBonusLanguage?: LanguageId;
+  rogueWeaponMasteryChoices?: WeaponMasteryChoiceId[];
 };
 
 export type DerivedCharacterData = {
@@ -199,6 +208,9 @@ export type DerivedCharacterData = {
   languages: LanguageId[];
   features: CharacterFeature[];
   spells: CharacterSpell[];
+
+  expertise: Array<SkillId | "thieves-tools">;
+  weaponMasteries: WeaponMasteryChoiceId[];
 };
 
 export type CharacterSheetData = {

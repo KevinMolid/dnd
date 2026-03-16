@@ -9,7 +9,7 @@ import {
   originFeatsById,
   speciesById,
 } from "../rulesets/dnd/dnd2024/helpers";
-import type { AbilityKey } from "../rulesets/dnd/dnd2024/types";
+import type { AbilityKey, SkillId } from "../rulesets/dnd/dnd2024/types";
 
 type CharacterDoc = {
   ownerUid: string;
@@ -33,9 +33,28 @@ type CharacterDoc = {
       plus2: AbilityKey;
       plus1: AbilityKey;
     };
+    classSkillChoices?: SkillId[];
+    rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
   };
 
-  // future-ready optional fields
+  derived?: {
+    stats?: {
+      proficiencyBonus?: number;
+      maxHp?: number;
+      currentHp?: number;
+      armorClass?: number;
+      speed?: number;
+      initiativeBonus?: number;
+      passivePerception?: number;
+    };
+    skillProficiencies?: SkillId[];
+    savingThrowProficiencies?: AbilityKey[];
+    toolProficiencies?: string[];
+    languages?: string[];
+    expertise?: Array<SkillId | "thieves-tools">;
+  };
+
+  // legacy / fallback fields
   maxHp?: number;
   currentHp?: number;
   armorClass?: number;
@@ -46,6 +65,7 @@ type CharacterDoc = {
   toolProficiencies?: string[];
   savingThrowProficiencies?: string[];
   languages?: string[];
+
   spells?: Array<{
     id: string;
     name: string;
@@ -53,6 +73,7 @@ type CharacterDoc = {
     school?: string;
     prepared?: boolean;
   }>;
+
   equipment?: Array<{
     id: string;
     name: string;
@@ -69,6 +90,57 @@ const abilityLabels: Record<AbilityKey, string> = {
   wis: "WIS",
   cha: "CHA",
 };
+
+const abilityFullLabels: Record<AbilityKey, string> = {
+  str: "Strength",
+  dex: "Dexterity",
+  con: "Constitution",
+  int: "Intelligence",
+  wis: "Wisdom",
+  cha: "Charisma",
+};
+
+const skillAbilityMap: Record<SkillId, AbilityKey> = {
+  acrobatics: "dex",
+  "animal-handling": "wis",
+  arcana: "int",
+  athletics: "str",
+  deception: "cha",
+  history: "int",
+  insight: "wis",
+  intimidation: "cha",
+  investigation: "int",
+  medicine: "wis",
+  nature: "int",
+  perception: "wis",
+  performance: "cha",
+  persuasion: "cha",
+  religion: "int",
+  "sleight-of-hand": "dex",
+  stealth: "dex",
+  survival: "wis",
+};
+
+const allSkills: SkillId[] = [
+  "acrobatics",
+  "animal-handling",
+  "arcana",
+  "athletics",
+  "deception",
+  "history",
+  "insight",
+  "intimidation",
+  "investigation",
+  "medicine",
+  "nature",
+  "perception",
+  "performance",
+  "persuasion",
+  "religion",
+  "sleight-of-hand",
+  "stealth",
+  "survival",
+];
 
 const formatLabel = (value: string) =>
   value
@@ -106,6 +178,8 @@ const applyBackgroundBonuses = (
 };
 
 const formatModifier = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
+
+const unique = <T,>(values: T[]) => [...new Set(values)];
 
 const StatCard = ({
   label,
@@ -203,6 +277,7 @@ const CharacterSheet = () => {
     if (!character) return null;
 
     const background = backgroundsById[character.backgroundId];
+    const classDef = classesById[character.classId];
 
     const finalAbilityScores = applyBackgroundBonuses(
       character.abilityScores,
@@ -210,11 +285,83 @@ const CharacterSheet = () => {
       background?.abilityOptions ?? [],
     );
 
+    const proficiencyBonus =
+      character.derived?.stats?.proficiencyBonus ??
+      character.proficiencyBonus ??
+      2 + Math.floor((character.level - 1) / 4);
+
     const dexMod = getAbilityModifier(finalAbilityScores.dex);
     const wisMod = getAbilityModifier(finalAbilityScores.wis);
+    const conMod = getAbilityModifier(finalAbilityScores.con);
+
+    const fallbackSkillProficiencies = unique<SkillId>([
+      ...(background?.skillProficiencies ?? []),
+      ...(character.choices?.classSkillChoices ?? []),
+    ]);
+
+    const skillProficiencies = unique<SkillId>([
+      ...(character.derived?.skillProficiencies ?? []),
+      ...((character.skillProficiencies as SkillId[] | undefined) ?? []),
+      ...fallbackSkillProficiencies,
+    ]);
+
+    const expertise = unique<SkillId | "thieves-tools">([
+      ...(character.derived?.expertise ?? []),
+      ...(character.choices?.rogueExpertiseChoices ?? []),
+    ]);
+
+    const savingThrowProficiencies = unique<AbilityKey>([
+      ...(character.derived?.savingThrowProficiencies ?? []),
+      ...((character.savingThrowProficiencies as AbilityKey[] | undefined) ??
+        []),
+      ...(classDef?.savingThrowProficiencies ?? []),
+    ]);
+
+    const skillRows = allSkills.map((skill) => {
+      const ability = skillAbilityMap[skill];
+      const baseMod = getAbilityModifier(finalAbilityScores[ability]);
+      const proficient = skillProficiencies.includes(skill);
+      const expertiseApplies = expertise.includes(skill);
+
+      const total =
+        baseMod +
+        (proficient ? proficiencyBonus : 0) +
+        (expertiseApplies ? proficiencyBonus : 0);
+
+      return {
+        id: skill,
+        name: formatLabel(skill),
+        ability,
+        proficient,
+        expertise: expertiseApplies,
+        total,
+      };
+    });
+
+    const saveRows = (Object.keys(abilityLabels) as AbilityKey[]).map(
+      (ability) => {
+        const baseMod = getAbilityModifier(finalAbilityScores[ability]);
+        const proficient = savingThrowProficiencies.includes(ability);
+        const total = baseMod + (proficient ? proficiencyBonus : 0);
+
+        return {
+          id: ability,
+          name: abilityFullLabels[ability],
+          proficient,
+          total,
+        };
+      },
+    );
+
+    const computedMaxHp =
+      classDef && character.level >= 1
+        ? classDef.hitDie +
+          conMod +
+          (character.level - 1) * (Math.floor(classDef.hitDie / 2) + 1 + conMod)
+        : 0;
 
     return {
-      className: classesById[character.classId]?.name ?? character.classId,
+      className: classDef?.name ?? character.classId,
       speciesName:
         speciesById[character.speciesId]?.name ?? character.speciesId,
       backgroundName: background?.name ?? character.backgroundId,
@@ -222,15 +369,40 @@ const CharacterSheet = () => {
         ? (originFeatsById[character.originFeatId]?.name ??
           character.originFeatId)
         : null,
-      proficiencyBonus:
-        character.proficiencyBonus ?? 2 + Math.floor((character.level - 1) / 4),
-      initiativeBonus: character.initiativeBonus ?? dexMod,
-      passivePerception: 10 + wisMod,
-      armorClass: character.armorClass ?? 10 + dexMod,
-      speed: character.speed ?? 30,
-      currentHp: character.currentHp ?? character.maxHp ?? 0,
-      maxHp: character.maxHp ?? 0,
+      proficiencyBonus,
+      initiativeBonus:
+        character.derived?.stats?.initiativeBonus ??
+        character.initiativeBonus ??
+        dexMod,
+      passivePerception:
+        character.derived?.stats?.passivePerception ?? 10 + wisMod,
+      armorClass:
+        character.derived?.stats?.armorClass ??
+        character.armorClass ??
+        10 + dexMod,
+      speed: character.derived?.stats?.speed ?? character.speed ?? 30,
+      currentHp:
+        character.derived?.stats?.currentHp ??
+        character.currentHp ??
+        character.derived?.stats?.maxHp ??
+        character.maxHp ??
+        computedMaxHp,
+      maxHp:
+        character.derived?.stats?.maxHp ?? character.maxHp ?? computedMaxHp,
       finalAbilityScores,
+      skillRows,
+      saveRows,
+      skillProficiencies,
+      savingThrowProficiencies,
+      toolProficiencies:
+        character.derived?.toolProficiencies ??
+        (character.toolProficiencies as string[] | undefined) ??
+        (background?.toolProficiency ? [background.toolProficiency] : []),
+      languages:
+        character.derived?.languages ??
+        character.languages ??
+        speciesById[character.speciesId]?.languages ??
+        [],
     };
   }, [character]);
 
@@ -261,15 +433,6 @@ const CharacterSheet = () => {
       </div>
     );
   }
-
-  const fallbackSkills =
-    backgroundsById[character.backgroundId]?.skillProficiencies ?? [];
-
-  const fallbackTools = (
-    backgroundsById[character.backgroundId]?.toolProficiency
-      ? [backgroundsById[character.backgroundId]?.toolProficiency]
-      : []
-  ) as string[];
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -387,39 +550,99 @@ const CharacterSheet = () => {
               </div>
             </SectionCard>
 
+            <SectionCard title="Skills">
+              <div className="grid gap-2">
+                {derived.skillRows.map((skill) => (
+                  <div
+                    key={skill.id}
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-white">{skill.name}</p>
+                        <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                          {abilityLabels[skill.ability]}
+                        </span>
+                        {skill.proficient && (
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                            Proficient
+                          </span>
+                        )}
+                        {skill.expertise && (
+                          <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
+                            Expertise
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <p className="ml-4 text-sm font-semibold text-zinc-200">
+                      {formatModifier(skill.total)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Saving Throws">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {derived.saveRows.map((save) => (
+                  <div
+                    key={save.id}
+                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-white">{save.name}</p>
+                      {save.proficient && (
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                          Proficient
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="ml-4 text-sm font-semibold text-zinc-200">
+                      {formatModifier(save.total)}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+
             <SectionCard title="Proficiencies">
               <div className="grid gap-5 md:grid-cols-2">
                 <div>
                   <p className="text-sm font-semibold text-zinc-200">Skills</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {(character.skillProficiencies?.length
-                      ? character.skillProficiencies
-                      : fallbackSkills
-                    ).map((skill) => (
-                      <span
-                        key={skill}
-                        className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
-                      >
-                        {formatLabel(skill)}
-                      </span>
-                    ))}
+                    {derived.skillProficiencies.length > 0 ? (
+                      derived.skillProficiencies.map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                        >
+                          {formatLabel(skill)}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-sm text-zinc-500">None</p>
+                    )}
                   </div>
                 </div>
 
                 <div>
                   <p className="text-sm font-semibold text-zinc-200">Tools</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {(character.toolProficiencies?.length
-                      ? character.toolProficiencies
-                      : fallbackTools
-                    ).map((tool) => (
-                      <span
-                        key={tool}
-                        className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
-                      >
-                        {formatLabel(tool)}
-                      </span>
-                    ))}
+                    {derived.toolProficiencies.length > 0 ? (
+                      derived.toolProficiencies.map((tool) => (
+                        <span
+                          key={tool}
+                          className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                        >
+                          {formatLabel(tool)}
+                        </span>
+                      ))
+                    ) : (
+                      <p className="text-sm text-zinc-500">None</p>
+                    )}
                   </div>
                 </div>
 
@@ -428,17 +651,17 @@ const CharacterSheet = () => {
                     Saving Throw Proficiencies
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {character.savingThrowProficiencies?.length ? (
-                      character.savingThrowProficiencies.map((save) => (
+                    {derived.savingThrowProficiencies.length > 0 ? (
+                      derived.savingThrowProficiencies.map((save) => (
                         <span
                           key={save}
                           className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
                         >
-                          {formatLabel(save)}
+                          {abilityFullLabels[save]}
                         </span>
                       ))
                     ) : (
-                      <p className="text-sm text-zinc-500">Not added yet.</p>
+                      <p className="text-sm text-zinc-500">None</p>
                     )}
                   </div>
                 </div>
@@ -448,17 +671,17 @@ const CharacterSheet = () => {
                     Languages
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {character.languages?.length ? (
-                      character.languages.map((language) => (
+                    {derived.languages.length > 0 ? (
+                      derived.languages.map((language) => (
                         <span
                           key={language}
                           className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
                         >
-                          {language}
+                          {formatLabel(language)}
                         </span>
                       ))
                     ) : (
-                      <p className="text-sm text-zinc-500">Not added yet.</p>
+                      <p className="text-sm text-zinc-500">None</p>
                     )}
                   </div>
                 </div>
@@ -582,6 +805,14 @@ const CharacterSheet = () => {
                   </dd>
                 </div>
               </dl>
+            </SectionCard>
+
+            <SectionCard title="Rules Notes">
+              <p className="text-sm leading-6 text-zinc-300">
+                Initiative uses your Dexterity modifier. Dexterity saving throw
+                proficiency applies to Dexterity saves, not Initiative, unless a
+                separate feature says otherwise.
+              </p>
             </SectionCard>
 
             <SectionCard title="Notes">

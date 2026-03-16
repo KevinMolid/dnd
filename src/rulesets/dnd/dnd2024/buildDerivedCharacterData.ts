@@ -11,14 +11,13 @@ import type {
   DerivedCharacterData,
   SkillId,
   ToolId,
+  WeaponMasteryChoiceId,
 } from "./types";
 
 const unique = <T>(values: T[]): T[] => [...new Set(values)];
 
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
-
 const getProficiencyBonus = (level: number) => 2 + Math.floor((level - 1) / 4);
-
 const getAverageHpPerLevel = (hitDie: number) => Math.floor(hitDie / 2) + 1;
 
 const applyBackgroundBonuses = (
@@ -33,14 +32,11 @@ const applyBackgroundBonuses = (
 
   const { plus2, plus1 } = bonuses;
 
-  const plus2Allowed = backgroundAbilityOptions.includes(plus2);
-  const plus1Allowed = backgroundAbilityOptions.includes(plus1);
-
-  if (plus2Allowed) {
+  if (backgroundAbilityOptions.includes(plus2)) {
     nextScores[plus2] += 2;
   }
 
-  if (plus1Allowed && plus1 !== plus2) {
+  if (backgroundAbilityOptions.includes(plus1) && plus1 !== plus2) {
     nextScores[plus1] += 1;
   }
 
@@ -71,6 +67,9 @@ export const buildDerivedCharacterData = (
   const extraToolChoices = character.choices?.toolChoices ?? [];
   const extraLanguageChoices = character.choices?.languageChoices ?? [];
 
+  const rogueBonusLanguage =
+    character.classId === "rogue" ? character.choices?.rogueBonusLanguage : undefined;
+
   const skillProficiencies = unique<SkillId>([
     ...(backgroundDef?.skillProficiencies ?? []),
     ...classSkillChoices,
@@ -92,13 +91,13 @@ export const buildDerivedCharacterData = (
   const languages = unique([
     ...(speciesDef?.languages ?? []),
     ...extraLanguageChoices,
+    ...(rogueBonusLanguage ? [rogueBonusLanguage] : []),
   ]);
 
   const classFeatures: CharacterFeature[] = classDef
     ? Object.entries(classDef.featuresByLevel)
         .flatMap(([level, features]) => {
           const numericLevel = Number(level);
-
           if (numericLevel > character.level) return [];
 
           return features.map((feature) => ({
@@ -157,8 +156,19 @@ export const buildDerivedCharacterData = (
     classDef && character.level > 0
       ? classDef.hitDie +
         conMod +
-        (character.level - 1) * (getAverageHpPerLevel(classDef.hitDie) + conMod)
+        (character.level - 1) *
+          (getAverageHpPerLevel(classDef.hitDie) + conMod)
       : undefined;
+
+  const expertise =
+    character.classId === "rogue"
+      ? unique(character.choices?.rogueExpertiseChoices ?? [])
+      : [];
+
+  const weaponMasteries: WeaponMasteryChoiceId[] =
+    character.classId === "rogue"
+      ? unique(character.choices?.rogueWeaponMasteryChoices ?? []).slice(0, 2)
+      : [];
 
   return {
     stats: {
@@ -179,5 +189,7 @@ export const buildDerivedCharacterData = (
     languages,
     features,
     spells: character.derived?.spells ?? [],
+    expertise,
+    weaponMasteries,
   };
 };

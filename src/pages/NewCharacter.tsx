@@ -11,7 +11,9 @@ import {
 import type {
   AbilityKey,
   CharacterSheetData,
+  LanguageId,
   SkillId,
+  WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
 
 const abilityLabels: Record<AbilityKey, string> = {
@@ -32,6 +34,35 @@ const defaultAbilityScores: Record<AbilityKey, number> = {
   cha: 10,
 };
 
+const languageOptions: LanguageId[] = [
+  "common",
+  "draconic",
+  "dwarvish",
+  "elvish",
+  "giant",
+  "gnomish",
+  "goblin",
+  "halfling",
+  "orc",
+  "primordial",
+  "sylvan",
+  "infernal",
+  "celestial",
+  "abyssal",
+  "undercommon",
+];
+
+const rogueWeaponMasteryOptions: WeaponMasteryChoiceId[] = [
+  "dagger",
+  "dart",
+  "light-crossbow",
+  "rapier",
+  "scimitar",
+  "shortbow",
+  "shortsword",
+  "sling",
+];
+
 const formatLabel = (value: string) =>
   value
     .split("-")
@@ -48,7 +79,9 @@ const NewCharacter = () => {
   const [alignment, setAlignment] = useState("");
   const [notes, setNotes] = useState("");
   const [abilityScores, setAbilityScores] = useState(defaultAbilityScores);
+
   const [classSkillChoices, setClassSkillChoices] = useState<SkillId[]>([]);
+
   const [backgroundBonusPlus2, setBackgroundBonusPlus2] = useState<AbilityKey>(
     backgrounds[0]?.abilityOptions[0] ?? "str",
   );
@@ -58,6 +91,15 @@ const NewCharacter = () => {
       "dex",
   );
 
+  const [rogueExpertiseChoices, setRogueExpertiseChoices] = useState<
+    Array<SkillId | "thieves-tools">
+  >([]);
+  const [rogueBonusLanguage, setRogueBonusLanguage] =
+    useState<LanguageId>("common");
+  const [rogueWeaponMasteryChoices, setRogueWeaponMasteryChoices] = useState<
+    WeaponMasteryChoiceId[]
+  >([]);
+
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -66,6 +108,8 @@ const NewCharacter = () => {
     () => getBackgroundById(backgroundId),
     [backgroundId],
   );
+
+  const isRogue = classId === "rogue";
 
   const grantedFeatId = backgroundDef?.originFeatId ?? null;
   const grantedFeatName = grantedFeatId
@@ -79,6 +123,18 @@ const NewCharacter = () => {
   const classSkillOptions = classDef?.skillChoice.options ?? [];
   const classSkillChoiceCount = classDef?.skillChoice.choose ?? 0;
 
+  const rogueExpertiseOptions = useMemo(() => {
+    if (!isRogue) return [] as Array<SkillId | "thieves-tools">;
+
+    const all = new Set<SkillId | "thieves-tools">([
+      ...grantedSkills,
+      ...classSkillChoices,
+      "thieves-tools",
+    ]);
+
+    return Array.from(all);
+  }, [classSkillChoices, grantedSkills, isRogue]);
+
   useEffect(() => {
     setClassSkillChoices((prev) =>
       prev
@@ -89,7 +145,6 @@ const NewCharacter = () => {
 
   useEffect(() => {
     const options = backgroundDef?.abilityOptions ?? [];
-
     if (options.length === 0) return;
 
     const nextPlus2 = options.includes(backgroundBonusPlus2)
@@ -109,7 +164,27 @@ const NewCharacter = () => {
     if (nextPlus1 !== backgroundBonusPlus1) {
       setBackgroundBonusPlus1(nextPlus1);
     }
-  }, [backgroundDef, backgroundBonusPlus1, backgroundBonusPlus2]);
+  }, [backgroundBonusPlus1, backgroundBonusPlus2, backgroundDef]);
+
+  useEffect(() => {
+    if (!isRogue) {
+      setRogueExpertiseChoices([]);
+      setRogueWeaponMasteryChoices([]);
+      return;
+    }
+
+    setRogueExpertiseChoices((prev) =>
+      prev
+        .filter((choice) => rogueExpertiseOptions.includes(choice))
+        .slice(0, 2),
+    );
+
+    setRogueWeaponMasteryChoices((prev) =>
+      prev
+        .filter((choice) => rogueWeaponMasteryOptions.includes(choice))
+        .slice(0, 2),
+    );
+  }, [isRogue, rogueExpertiseOptions]);
 
   const handleAbilityChange = (key: AbilityKey, value: string) => {
     const parsed = Number(value);
@@ -131,6 +206,34 @@ const NewCharacter = () => {
       }
 
       return [...prev, skill];
+    });
+  };
+
+  const toggleRogueExpertise = (choice: SkillId | "thieves-tools") => {
+    setRogueExpertiseChoices((prev) => {
+      if (prev.includes(choice)) {
+        return prev.filter((item) => item !== choice);
+      }
+
+      if (prev.length >= 2) {
+        return prev;
+      }
+
+      return [...prev, choice];
+    });
+  };
+
+  const toggleRogueWeaponMastery = (choice: WeaponMasteryChoiceId) => {
+    setRogueWeaponMasteryChoices((prev) => {
+      if (prev.includes(choice)) {
+        return prev.filter((item) => item !== choice);
+      }
+
+      if (prev.length >= 2) {
+        return prev;
+      }
+
+      return [...prev, choice];
     });
   };
 
@@ -163,6 +266,32 @@ const NewCharacter = () => {
 
     if (backgroundBonusPlus2 === backgroundBonusPlus1) {
       return "Your +2 and +1 background bonuses must be different abilities.";
+    }
+
+    if (isRogue) {
+      if (rogueExpertiseChoices.length !== 2) {
+        return "Rogue must choose 2 Expertise options.";
+      }
+
+      if (
+        rogueExpertiseChoices.some(
+          (choice) => !rogueExpertiseOptions.includes(choice),
+        )
+      ) {
+        return "One or more Rogue Expertise choices are invalid.";
+      }
+
+      if (!languageOptions.includes(rogueBonusLanguage)) {
+        return "Please choose a valid Rogue bonus language.";
+      }
+
+      if (rogueWeaponMasteryChoices.length !== 2) {
+        return "Rogue must choose 2 weapon mastery options.";
+      }
+
+      if (new Set(rogueWeaponMasteryChoices).size !== 2) {
+        return "Rogue weapon mastery choices must be different.";
+      }
     }
 
     return "";
@@ -199,6 +328,13 @@ const NewCharacter = () => {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
           },
+          ...(isRogue
+            ? {
+                rogueExpertiseChoices,
+                rogueBonusLanguage,
+                rogueWeaponMasteryChoices,
+              }
+            : {}),
         },
         equipment: [],
       };
@@ -222,6 +358,13 @@ const NewCharacter = () => {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
           },
+          ...(isRogue
+            ? {
+                rogueExpertiseChoices,
+                rogueBonusLanguage,
+                rogueWeaponMasteryChoices,
+              }
+            : {}),
         },
         derived,
         equipment: [],
@@ -400,10 +543,10 @@ const NewCharacter = () => {
 
             <div className="mt-8">
               <h3 className="mb-4 text-lg font-semibold text-white">
-                Ability Scores
+                Background Ability Bonuses
               </h3>
 
-              <div className="mb-6 grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label
                     htmlFor="backgroundBonusPlus2"
@@ -454,6 +597,126 @@ const NewCharacter = () => {
                   </select>
                 </div>
               </div>
+            </div>
+
+            {isRogue && (
+              <>
+                <div className="mt-8">
+                  <h3 className="mb-4 text-lg font-semibold text-white">
+                    Rogue Expertise
+                  </h3>
+
+                  <p className="mb-4 text-sm text-zinc-400">
+                    Choose 2 proficiencies to gain Expertise.
+                  </p>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {rogueExpertiseOptions.map((choice) => {
+                      const isSelected = rogueExpertiseChoices.includes(choice);
+
+                      return (
+                        <label
+                          key={choice}
+                          className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                            isSelected
+                              ? "border-white/25 bg-white/10"
+                              : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleRogueExpertise(choice)}
+                            className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                          />
+                          <span className="text-sm text-white">
+                            {choice === "thieves-tools"
+                              ? "Thieves' Tools"
+                              : formatLabel(choice)}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <p className="mt-3 text-xs text-zinc-500">
+                    Selected: {rogueExpertiseChoices.length} / 2
+                  </p>
+                </div>
+
+                <div className="mt-8 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="rogueBonusLanguage"
+                      className="text-sm font-medium text-zinc-200"
+                    >
+                      Thieves&apos; Cant bonus language
+                    </label>
+                    <select
+                      id="rogueBonusLanguage"
+                      value={rogueBonusLanguage}
+                      onChange={(e) =>
+                        setRogueBonusLanguage(e.target.value as LanguageId)
+                      }
+                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                    >
+                      {languageOptions.map((language) => (
+                        <option key={language} value={language}>
+                          {formatLabel(language)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mt-8">
+                  <h3 className="mb-4 text-lg font-semibold text-white">
+                    Rogue Weapon Mastery
+                  </h3>
+
+                  <p className="mb-4 text-sm text-zinc-400">
+                    Choose 2 weapon kinds for Weapon Mastery.
+                  </p>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {rogueWeaponMasteryOptions.map((choice) => {
+                      const isSelected =
+                        rogueWeaponMasteryChoices.includes(choice);
+
+                      return (
+                        <label
+                          key={choice}
+                          className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                            isSelected
+                              ? "border-white/25 bg-white/10"
+                              : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleRogueWeaponMastery(choice)}
+                            className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                          />
+                          <span className="text-sm text-white">
+                            {formatLabel(choice)}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <p className="mt-3 text-xs text-zinc-500">
+                    Selected: {rogueWeaponMasteryChoices.length} / 2
+                  </p>
+                </div>
+              </>
+            )}
+
+            <div className="mt-8">
+              <h3 className="mb-4 text-lg font-semibold text-white">
+                Base Ability Scores
+              </h3>
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {(Object.keys(abilityLabels) as AbilityKey[]).map((key) => (
@@ -512,20 +775,6 @@ const NewCharacter = () => {
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Background ability bonuses
-                </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
-                    +2 {abilityLabels[backgroundBonusPlus2]}
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
-                    +1 {abilityLabels[backgroundBonusPlus1]}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
                   Background skills
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
@@ -575,23 +824,72 @@ const NewCharacter = () => {
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Ability options
+                  Background ability bonuses
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {abilityOptions.length > 0 ? (
-                    abilityOptions.map((ability) => (
-                      <span
-                        key={ability}
-                        className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
-                      >
-                        {abilityLabels[ability]}
-                      </span>
-                    ))
-                  ) : (
-                    <p className="text-sm text-zinc-400">None</p>
-                  )}
+                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
+                    +2 {abilityLabels[backgroundBonusPlus2]}
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
+                    +1 {abilityLabels[backgroundBonusPlus1]}
+                  </span>
                 </div>
               </div>
+
+              {isRogue && (
+                <>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                      Rogue Expertise
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {rogueExpertiseChoices.length > 0 ? (
+                        rogueExpertiseChoices.map((choice) => (
+                          <span
+                            key={choice}
+                            className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                          >
+                            {choice === "thieves-tools"
+                              ? "Thieves' Tools"
+                              : formatLabel(choice)}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="text-sm text-zinc-400">None selected</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                      Thieves&apos; Cant bonus language
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-200">
+                      {formatLabel(rogueBonusLanguage)}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                      Rogue Weapon Mastery
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {rogueWeaponMasteryChoices.length > 0 ? (
+                        rogueWeaponMasteryChoices.map((choice) => (
+                          <span
+                            key={choice}
+                            className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                          >
+                            {formatLabel(choice)}
+                          </span>
+                        ))
+                      ) : (
+                        <p className="text-sm text-zinc-400">None selected</p>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {error && (
