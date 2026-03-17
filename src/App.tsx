@@ -15,6 +15,8 @@ import Quests from "./pages/Quests";
 import Login from "./pages/Login";
 import NewCharacter from "./pages/NewCharacter";
 import CharacterSheet from "./pages/CharacterSheet";
+import NewCampaign from "./pages/NewCampaign";
+import CampaignPage from "./pages/CampaignPage";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -48,6 +50,8 @@ function App() {
           <Route path="/quests" element={<Quests />} />
           <Route path="/characters/new" element={<NewCharacter />} />
           <Route path="/characters/:characterId" element={<CharacterSheet />} />
+          <Route path="/campaigns/new" element={<NewCampaign />} />
+          <Route path="/campaigns/:campaignId" element={<CampaignPage />} />
         </Routes>
       </main>
     </BrowserRouter>

@@ -1,14 +1,26 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import {
+  collection,
+  collectionGroup,
+  getDoc,
+  onSnapshot,
+  query,
+  where,
+} from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import { classesById, speciesById } from "../rulesets/dnd/dnd2024/helpers";
+import type {
+  CampaignDoc,
+  CampaignMemberDoc,
+  CampaignRole,
+} from "../types/campaign";
 
 type Campaign = {
   id: string;
   name: string;
-  role: "dm" | "player";
+  role: CampaignRole;
   system?: string;
   lastPlayed?: string;
 };
@@ -43,29 +55,98 @@ type CharacterDoc = {
   notes?: string;
 };
 
+const formatRoleLabel = (role: CampaignRole) => {
+  if (role === "gm") return "GM";
+  if (role === "co-gm") return "Co-GM";
+  return "Player";
+};
+
+const getRoleBadgeClass = (role: CampaignRole) => {
+  if (role === "gm") {
+    return "bg-emerald-500/15 text-emerald-300";
+  }
+
+  if (role === "co-gm") {
+    return "bg-amber-500/15 text-amber-300";
+  }
+
+  return "bg-blue-500/15 text-blue-300";
+};
+
 const Home = () => {
   const { appUser, user } = useAuth();
+
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
 
   const [characters, setCharacters] = useState<Character[]>([]);
   const [charactersLoading, setCharactersLoading] = useState(true);
 
-  // Replace campaigns with Firestore data later
-  const campaigns: Campaign[] = [
-    {
-      id: "1",
-      name: "Lost Mine of Phandelver",
-      role: "dm",
-      system: "D&D 5e",
-      lastPlayed: "2 days ago",
-    },
-    {
-      id: "2",
-      name: "Curse of Strahd",
-      role: "player",
-      system: "D&D 5e",
-      lastPlayed: "1 week ago",
-    },
-  ];
+  useEffect(() => {
+    if (!user) {
+      setCampaigns([]);
+      setCampaignsLoading(false);
+      return;
+    }
+
+    setCampaignsLoading(true);
+
+    const q = query(
+      collectionGroup(db, "members"),
+      where("uid", "==", user.uid),
+    );
+
+    const unsub = onSnapshot(
+      q,
+      async (snapshot) => {
+        try {
+          const nextCampaigns: Array<Campaign | null> = await Promise.all(
+            snapshot.docs.map(async (memberSnap): Promise<Campaign | null> => {
+              const memberData = memberSnap.data() as CampaignMemberDoc;
+
+              const campaignRef = memberSnap.ref.parent.parent;
+              if (!campaignRef) {
+                return null;
+              }
+
+              const campaignSnap = await getDoc(campaignRef);
+
+              if (!campaignSnap.exists()) {
+                return null;
+              }
+
+              const campaignData = campaignSnap.data() as CampaignDoc;
+
+              return {
+                id: campaignSnap.id,
+                name: campaignData.name,
+                role: memberData.role,
+                system: campaignData.systemLabel ?? campaignData.system,
+              };
+            }),
+          );
+
+          const cleanedCampaigns: Campaign[] = nextCampaigns
+            .filter((campaign): campaign is Campaign => campaign !== null)
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+          setCampaigns(cleanedCampaigns);
+          setCampaignsLoading(false);
+        } catch (error) {
+          console.error("Failed to load campaigns:", error);
+          setCampaigns([]);
+          setCampaignsLoading(false);
+        }
+      },
+      (error) => {
+        console.error("Failed to load campaign memberships:", error);
+        setCampaigns([]);
+        setCampaignsLoading(false);
+      },
+    );
+
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     if (!user) {
@@ -73,6 +154,8 @@ const Home = () => {
       setCharactersLoading(false);
       return;
     }
+
+    setCharactersLoading(true);
 
     const q = query(
       collection(db, "characters"),
@@ -129,13 +212,16 @@ const Home = () => {
             </p>
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <button className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200">
+              <Link
+                to="/campaigns/new"
+                className="rounded-2xl bg-white px-5 py-3 text-center text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+              >
                 Start new campaign
-              </button>
+              </Link>
 
               <Link
                 to="/characters/new"
-                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
               >
                 Create character
               </Link>
@@ -155,16 +241,23 @@ const Home = () => {
                 </p>
               </div>
 
-              <button className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+              <Link
+                to="/campaigns/new"
+                className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+              >
                 New campaign
-              </button>
+              </Link>
             </div>
 
-            {campaigns.length === 0 ? (
+            {campaignsLoading ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
+                <p className="text-sm text-zinc-400">Loading campaigns...</p>
+              </div>
+            ) : campaigns.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
                 <p className="text-sm text-zinc-300">No campaigns yet.</p>
                 <p className="mt-2 text-sm text-zinc-500">
-                  Create your first campaign or accept an invite from a DM.
+                  Create your first campaign or accept an invite from a GM.
                 </p>
               </div>
             ) : (
@@ -180,14 +273,13 @@ const Home = () => {
                           <h3 className="text-base font-semibold text-white sm:text-lg">
                             {campaign.name}
                           </h3>
+
                           <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                              campaign.role === "dm"
-                                ? "bg-emerald-500/15 text-emerald-300"
-                                : "bg-blue-500/15 text-blue-300"
-                            }`}
+                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
+                              campaign.role,
+                            )}`}
                           >
-                            {campaign.role === "dm" ? "DM" : "Player"}
+                            {formatRoleLabel(campaign.role)}
                           </span>
                         </div>
 
@@ -207,7 +299,8 @@ const Home = () => {
                           Open
                         </Link>
 
-                        {campaign.role === "dm" && (
+                        {(campaign.role === "gm" ||
+                          campaign.role === "co-gm") && (
                           <button className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
                             Manage
                           </button>

@@ -1,28 +1,28 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 type Props = {
   children: React.ReactNode;
   to: string;
 };
 
-const Tab = ({ children, to }: Props) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const isActive = location.pathname === to;
-
+const NavTab = ({ children, to }: Props) => {
   return (
-    <li
-      onClick={() => navigate(to)}
-      className={
-        "flex-1 flex flex-col px-2 pt-2 border-b-2 min-w-max text-sm md:text-base font-medium justify-center hover:cursor-pointer " +
-        (isActive
-          ? "border-amber-400 text-white"
-          : "text-slate-300 hover:text-white border-transparent")
-      }
-    >
-      {children}
+    <li className="shrink-0">
+      <NavLink
+        to={to}
+        className={({ isActive }) =>
+          [
+            "inline-flex items-center rounded-xl px-4 py-2 text-sm font-medium transition-colors sm:text-base",
+            isActive
+              ? "bg-white text-zinc-950"
+              : "text-zinc-300 hover:bg-white/10 hover:text-white",
+          ].join(" ")
+        }
+      >
+        {children}
+      </NavLink>
     </li>
   );
 };
 
-export default Tab;
+export default NavTab;

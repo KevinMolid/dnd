@@ -6,7 +6,7 @@ import {
   ReactNode,
   useCallback,
 } from "react";
-import { User, onAuthStateChanged } from "firebase/auth";
+import { User, onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, Timestamp } from "firebase/firestore";
 import { auth, db } from "../firebase";
 
@@ -22,6 +22,7 @@ type AuthContextType = {
   appUser: AppUser | null;
   loading: boolean;
   refreshAppUser: () => Promise<void>;
+  logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -29,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
   appUser: null,
   loading: true,
   refreshAppUser: async () => {},
+  logout: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -80,8 +82,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsub();
   }, [fetchAppUser]);
 
+  const logout = useCallback(async () => {
+    await signOut(auth);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, appUser, loading, refreshAppUser }}>
+    <AuthContext.Provider
+      value={{ user, appUser, loading, refreshAppUser, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
