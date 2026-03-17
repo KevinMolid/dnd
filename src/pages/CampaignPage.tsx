@@ -9,6 +9,8 @@ import type {
   CampaignRole,
 } from "../types/campaign";
 
+import InvitePlayersModal from "../components/InvitePlayersModal";
+
 type CampaignPageState =
   | "loading"
   | "ready"
@@ -44,6 +46,8 @@ const CampaignPage = () => {
     (CampaignDoc & { id: string }) | null
   >(null);
   const [membership, setMembership] = useState<CampaignMemberDoc | null>(null);
+
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
 
   useEffect(() => {
     const loadCampaign = async () => {
@@ -285,6 +289,15 @@ const CampaignPage = () => {
               >
                 Handouts
               </Link>
+
+              {isGm && (
+                <button
+                  onClick={() => setInviteModalOpen(true)}
+                  className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                >
+                  Invite players
+                </button>
+              )}
             </div>
           </div>
         </section>
@@ -477,6 +490,15 @@ const CampaignPage = () => {
           </aside>
         </div>
       </div>
+
+      {campaign && isGm && (
+        <InvitePlayersModal
+          campaignId={campaign.id}
+          campaignName={campaign.name}
+          isOpen={inviteModalOpen}
+          onClose={() => setInviteModalOpen(false)}
+        />
+      )}
     </div>
   );
 };

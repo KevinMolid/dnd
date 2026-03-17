@@ -17,6 +17,7 @@ import NewCharacter from "./pages/NewCharacter";
 import CharacterSheet from "./pages/CharacterSheet";
 import NewCampaign from "./pages/NewCampaign";
 import CampaignPage from "./pages/CampaignPage";
+import InvitePage from "./pages/InvitePage";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -52,6 +53,7 @@ function App() {
           <Route path="/characters/:characterId" element={<CharacterSheet />} />
           <Route path="/campaigns/new" element={<NewCampaign />} />
           <Route path="/campaigns/:campaignId" element={<CampaignPage />} />
+          <Route path="/invite/:inviteToken" element={<InvitePage />} />
         </Routes>
       </main>
     </BrowserRouter>
