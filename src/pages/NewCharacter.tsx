@@ -82,6 +82,11 @@ const formatTraitEffect = (effect: TraitEffect): string => {
         .map((condition) => formatLabel(condition))
         .join(", ")}`;
 
+    case "advantage-on-saving-throws":
+      return `Advantage on ${effect.abilities
+        .map((ability) => formatLabel(ability))
+        .join(", ")} saving throws`;
+
     case "spell":
       return effect.level
         ? `${effect.spellName} (available from level ${effect.level})`

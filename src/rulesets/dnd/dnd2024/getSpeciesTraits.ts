@@ -1,5 +1,5 @@
-import type { CharacterChoices, Trait } from "./types"
-import { species, elfLineages } from "./data"
+import type { CharacterChoices, Trait } from "./types";
+import { species, elfLineages, gnomeLineages } from "./data";
 
 export function getSpeciesTraits(
   speciesId: string,
@@ -18,6 +18,19 @@ export function getSpeciesTraits(
 
       if (typeof lineageId === "string") {
         const lineage = elfLineages.find((l) => l.id === lineageId);
+        if (lineage) {
+          traits.push(...lineage.traits);
+        }
+      }
+
+      break;
+    }
+
+    case "gnome": {
+      const lineageId = speciesTraitChoices?.["gnomish-lineage-choice"];
+
+      if (typeof lineageId === "string") {
+        const lineage = gnomeLineages.find((l) => l.id === lineageId);
         if (lineage) {
           traits.push(...lineage.traits);
         }

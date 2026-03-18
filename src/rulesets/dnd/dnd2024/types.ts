@@ -96,6 +96,10 @@ export type TraitEffect =
       conditions: Condition[];
     }
   | {
+      type: "advantage-on-saving-throws";
+      abilities: AbilityKey[];
+    }
+  | {
       type: "hp-max-bonus";
       amount: ScalingValue;
     }
@@ -214,6 +218,14 @@ export type ElfLineageId = "drow" | "high-elf" | "wood-elf";
 
 export type ElfLineage = {
   id: ElfLineageId;
+  name: string;
+  traits: Trait[];
+};
+
+export type GnomeLineageId = "forest-gnome" | "rock-gnome";
+
+export type GnomeLineage = {
+  id: GnomeLineageId;
   name: string;
   traits: Trait[];
 };
