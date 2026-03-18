@@ -2,30 +2,16 @@ import { useEffect, useMemo, useState } from "react";
 import Container from "../components/Container";
 import H1 from "../components/H1";
 import H2 from "../components/H2";
-import H4 from "../components/H4";
-import MapViewer from "../components/MapViewer";
 
-import { maps } from "../data/handouts/maps";
 import { drawings, letters } from "../data/handouts/images";
-import type { HandoutImage, MapHandout } from "../data/handouts/types";
+import type { HandoutImage } from "../data/handouts/types";
 import { itemList } from "../data/items";
-import { usePartyInventory } from "../context/PartyInventoryContext";
 
 const Handouts = () => {
-  const [selectedMap, setSelectedMap] = useState<MapHandout | null>(null);
   const [selectedImage, setSelectedImage] = useState<HandoutImage | null>(null);
   const [zoom, setZoom] = useState(1);
 
-  const {
-    players,
-    giveItemToPlayer,
-    giveItemToParty,
-    addMoneyToPlayer,
-    addMoneyToParty,
-  } = usePartyInventory();
-
   const [openSections, setOpenSections] = useState({
-    maps: true,
     items: true,
     drawings: true,
     letters: true,
@@ -64,14 +50,6 @@ const Handouts = () => {
       ...prev,
       [category]: !prev[category],
     }));
-  };
-
-  const openMap = (map: MapHandout) => {
-    setSelectedMap(map);
-  };
-
-  const closeMap = () => {
-    setSelectedMap(null);
   };
 
   const openImage = (image: HandoutImage) => {
@@ -114,46 +92,6 @@ const Handouts = () => {
   return (
     <Container>
       <H1>Handouts</H1>
-
-      <section className="mb-6">
-        <button
-          type="button"
-          onClick={() => toggleSection("maps")}
-          className="flex w-full items-center justify-between rounded-lg text-left"
-        >
-          <H2>
-            <span className="mr-4 text-white/70">
-              {openSections.maps ? (
-                <i className="fa-solid fa-caret-down"></i>
-              ) : (
-                <i className="fa-solid fa-caret-right"></i>
-              )}
-            </span>
-            Maps
-          </H2>
-        </button>
-
-        {openSections.maps && (
-          <div className="flex flex-wrap gap-2">
-            {maps.map((map) => (
-              <div key={map.title}>
-                <H4>{map.title}</H4>
-                <button
-                  type="button"
-                  onClick={() => openMap(map)}
-                  className="block cursor-pointer"
-                >
-                  <img
-                    className="aspect-square w-40 rounded object-cover transition hover:opacity-90"
-                    src={map.src}
-                    alt={map.title}
-                  />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
 
       <section className="mb-6">
         <button
@@ -324,16 +262,6 @@ const Handouts = () => {
           </div>
         )}
       </section>
-
-      <MapViewer
-        map={selectedMap}
-        onClose={closeMap}
-        players={players}
-        onGiveItemToPlayer={giveItemToPlayer}
-        onGiveItemToParty={giveItemToParty}
-        onGiveMoneyToPlayer={addMoneyToPlayer}
-        onGiveMoneyToParty={addMoneyToParty}
-      />
 
       {selectedImage && (
         <div
