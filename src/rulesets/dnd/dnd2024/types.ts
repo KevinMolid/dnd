@@ -230,6 +230,20 @@ export type GnomeLineage = {
   traits: Trait[];
 };
 
+export type GoliathAncestryId =
+  | "clouds-jaunt"
+  | "fires-burn"
+  | "frosts-chill"
+  | "hills-tumble"
+  | "stones-endurance"
+  | "storms-thunder";
+
+export type GoliathAncestry = {
+  id: GoliathAncestryId;
+  name: string;
+  traits: Trait[];
+};
+
 // Backward-compatible alias so older code using FeatureGrant still works
 export type FeatureGrant = Trait;
 

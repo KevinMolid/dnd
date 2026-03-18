@@ -4,6 +4,7 @@ import type {
   ElfLineage,
   Feat,
   GnomeLineage,
+  GoliathAncestry,
   Species,
 } from "./types";
 
@@ -275,50 +276,110 @@ export const species: Species[] = [
     ],
   },
   {
-  id: "gnome",
-  name: "Gnome",
-  size: "Small",
-  speed: 30,
-  languages: ["common", "gnomish"],
-  traits: [
-    {
-      id: "gnome-darkvision",
-      name: "Darkvision",
-      effects: [
-        {
-          type: "sense",
-          sense: "darkvision",
-          range: 60,
+    id: "gnome",
+    name: "Gnome",
+    size: "Small",
+    speed: 30,
+    languages: ["common", "gnomish"],
+    traits: [
+      {
+        id: "gnome-darkvision",
+        name: "Darkvision",
+        effects: [
+          {
+            type: "sense",
+            sense: "darkvision",
+            range: 60,
+          },
+        ],
+      },
+      {
+        id: "gnomish-cunning",
+        name: "Gnomish Cunning",
+        effects: [
+          {
+            type: "advantage-on-saving-throws",
+            abilities: ["int", "wis", "cha"],
+          },
+        ],
+      },
+      {
+        id: "gnomish-lineage",
+        name: "Gnomish Lineage",
+        choices: [
+          {
+            id: "gnomish-lineage-choice",
+            name: "Gnome Lineage",
+            choose: 1,
+            options: [
+              { id: "forest-gnome", name: "Forest Gnome" },
+              { id: "rock-gnome", name: "Rock Gnome" },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "goliath",
+    name: "Goliath",
+    size: "Medium",
+    speed: 35,
+    languages: ["common", "giant"],
+    traits: [
+      {
+        id: "giant-ancestry",
+        name: "Giant Ancestry",
+        description:
+          "Choose one supernatural giant ancestry benefit. You can use the chosen benefit a number of times equal to your Proficiency Bonus per Long Rest.",
+        choices: [
+          {
+            id: "giant-ancestry-choice",
+            name: "Giant Ancestry",
+            choose: 1,
+            options: [
+              { id: "clouds-jaunt", name: "Cloud's Jaunt" },
+              { id: "fires-burn", name: "Fire's Burn" },
+              { id: "frosts-chill", name: "Frost's Chill" },
+              { id: "hills-tumble", name: "Hill's Tumble" },
+              { id: "stones-endurance", name: "Stone's Endurance" },
+              { id: "storms-thunder", name: "Storm's Thunder" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "large-form",
+        name: "Large Form",
+        minLevel: 5,
+        activation: "bonus-action",
+        usage: {
+          type: "limited",
+          uses: { type: "fixed", value: 1 },
+          recharge: "long-rest",
         },
-      ],
-    },
-    {
-      id: "gnomish-cunning",
-      name: "Gnomish Cunning",
-      effects: [
-        {
-          type: "advantage-on-saving-throws",
-          abilities: ["int", "wis", "cha"],
-        },
-      ],
-    },
-    {
-      id: "gnomish-lineage",
-      name: "Gnomish Lineage",
-      choices: [
-        {
-          id: "gnomish-lineage-choice",
-          name: "Gnome Lineage",
-          choose: 1,
-          options: [
-            { id: "forest-gnome", name: "Forest Gnome" },
-            { id: "rock-gnome", name: "Rock Gnome" },
-          ],
-        },
-      ],
-    },
-  ],
-},
+        notes: [
+          "If you are in a big enough space, you can change your size to Large for 10 minutes.",
+          "During that time, you have Advantage on Strength checks.",
+          "Your Speed increases by 10 feet.",
+        ],
+      },
+      {
+        id: "powerful-build",
+        name: "Powerful Build",
+        effects: [
+          {
+            type: "advantage-on-saving-throws-against",
+            conditions: ["grappled"],
+          },
+        ],
+        notes: [
+          "You have Advantage on any saving throw you make to end the Grappled condition.",
+          "You also count as one size larger when determining your carrying capacity.",
+        ],
+      },
+    ],
+  }
 ];
 
 export const draconicAncestors = [
@@ -540,6 +601,135 @@ export const elfLineages: ElfLineage[] = [
               uses: { type: "fixed", value: 1 },
               recharge: "long-rest",
             },
+          },
+        ],
+      },
+    ],
+  },
+];
+
+export const goliathAncestries: GoliathAncestry[] = [
+  {
+    id: "clouds-jaunt",
+    name: "Cloud's Jaunt",
+    traits: [
+      {
+        id: "clouds-jaunt-trait",
+        name: "Cloud's Jaunt",
+        activation: "bonus-action",
+        usage: {
+          type: "limited",
+          uses: { type: "proficiency-bonus" },
+          recharge: "long-rest",
+        },
+        notes: [
+          "You magically teleport up to 30 feet to an unoccupied space you can see.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "fires-burn",
+    name: "Fire's Burn",
+    traits: [
+      {
+        id: "fires-burn-trait",
+        name: "Fire's Burn",
+        usage: {
+          type: "limited",
+          uses: { type: "proficiency-bonus" },
+          recharge: "long-rest",
+        },
+        effects: [
+          {
+            type: "text",
+            text: "When you hit a target with an attack roll and deal damage to it, you can also deal 1d10 Fire damage to that target.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "frosts-chill",
+    name: "Frost's Chill",
+    traits: [
+      {
+        id: "frosts-chill-trait",
+        name: "Frost's Chill",
+        usage: {
+          type: "limited",
+          uses: { type: "proficiency-bonus" },
+          recharge: "long-rest",
+        },
+        effects: [
+          {
+            type: "text",
+            text: "When you hit a target with an attack roll and deal damage to it, you can also deal 1d6 Cold damage to that target and reduce its Speed by 10 feet until the start of your next turn.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "hills-tumble",
+    name: "Hill's Tumble",
+    traits: [
+      {
+        id: "hills-tumble-trait",
+        name: "Hill's Tumble",
+        usage: {
+          type: "limited",
+          uses: { type: "proficiency-bonus" },
+          recharge: "long-rest",
+        },
+        effects: [
+          {
+            type: "text",
+            text: "When you hit a Large or smaller creature with an attack roll and deal damage to it, you can give that target the Prone condition.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "stones-endurance",
+    name: "Stone's Endurance",
+    traits: [
+      {
+        id: "stones-endurance-trait",
+        name: "Stone's Endurance",
+        activation: "reaction",
+        usage: {
+          type: "limited",
+          uses: { type: "proficiency-bonus" },
+          recharge: "long-rest",
+        },
+        effects: [
+          {
+            type: "text",
+            text: "When you take damage, you can roll 1d12 and add your Constitution modifier to reduce the damage by that total.",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "storms-thunder",
+    name: "Storm's Thunder",
+    traits: [
+      {
+        id: "storms-thunder-trait",
+        name: "Storm's Thunder",
+        activation: "reaction",
+        usage: {
+          type: "limited",
+          uses: { type: "proficiency-bonus" },
+          recharge: "long-rest",
+        },
+        effects: [
+          {
+            type: "text",
+            text: "When you take damage from a creature within 60 feet of you, you can deal 1d8 Thunder damage to that creature.",
           },
         ],
       },

@@ -1,5 +1,5 @@
 import type { CharacterChoices, Trait } from "./types";
-import { species, elfLineages, gnomeLineages } from "./data";
+import { species, elfLineages, gnomeLineages, goliathAncestries } from "./data";
 
 export function getSpeciesTraits(
   speciesId: string,
@@ -33,6 +33,19 @@ export function getSpeciesTraits(
         const lineage = gnomeLineages.find((l) => l.id === lineageId);
         if (lineage) {
           traits.push(...lineage.traits);
+        }
+      }
+
+      break;
+    }
+
+    case "goliath": {
+      const ancestryId = speciesTraitChoices?.["giant-ancestry-choice"];
+
+      if (typeof ancestryId === "string") {
+        const ancestry = goliathAncestries.find((a) => a.id === ancestryId);
+        if (ancestry) {
+          traits.push(...ancestry.traits);
         }
       }
 
