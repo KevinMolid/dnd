@@ -81,7 +81,6 @@ function Header() {
 
           <nav className="-mx-1 overflow-x-auto">
             <ul className="flex min-w-max items-center gap-1 px-1 pb-1">
-              <NavTab to="/historien">Story</NavTab>
               <NavTab to="/tips">Tips</NavTab>
               <NavTab to="/reglene">Rules</NavTab>
               <NavTab to="/karakterer">Characters</NavTab>
