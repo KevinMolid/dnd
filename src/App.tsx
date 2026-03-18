@@ -22,6 +22,7 @@ import CampaignMembersPage from "./pages/CampaignMembersPage";
 import CampaignCharactersPage from "./pages/CampaignCharactersPage";
 import CampaignSettingsPage from "./pages/CampaignSettingsPage";
 import CampaignMapsPage from "./pages/CampaignMapsPage";
+import CampaignJournalPage from "./pages/CampaignJournalPage";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -73,6 +74,10 @@ function App() {
           <Route
             path="/campaigns/:campaignId/maps"
             element={<CampaignMapsPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/journal"
+            element={<CampaignJournalPage />}
           />
         </Routes>
       </main>
