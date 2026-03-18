@@ -1,6 +1,7 @@
 import type {
   Background,
   CharacterClass,
+  ElfLineage,
   Feat,
   Species,
 } from "./types";
@@ -140,15 +141,293 @@ export const species: Species[] = [
     size: "Medium",
     speed: 30,
     languages: ["common"],
-    traits: [{ id: "resourceful", name: "Resourceful" }],
+    traits: [
+      { id: "resourceful", name: "Resourceful" },
+      { id: "skillful", name: "Skillful" },
+      { id: "versatile", name: "Versatile" },
+    ],
   },
   {
-    id: "elf",
-    name: "Elf",
+  id: "elf",
+  name: "Elf",
+  size: "Medium",
+  speed: 30,
+  languages: ["common", "elvish"],
+  traits: [
+    {
+      id: "darkvision",
+      name: "Darkvision",
+      effects: [
+        {
+          type: "sense",
+          sense: "darkvision",
+          range: 60,
+        },
+      ],
+    },
+    {
+      id: "fey-ancestry",
+      name: "Fey Ancestry",
+      effects: [
+        {
+          type: "advantage-on-saving-throws-against",
+          conditions: ["charmed"],
+        },
+      ],
+    },
+    {
+      id: "keen-senses",
+      name: "Keen Senses",
+      choices: [
+        {
+          id: "keen-senses-skill",
+          name: "Keen Senses Skill",
+          choose: 1,
+          options: [
+            { id: "insight", name: "Insight" },
+            { id: "perception", name: "Perception" },
+            { id: "survival", name: "Survival" },
+          ],
+        },
+      ],
+    },
+    {
+      id: "trance",
+      name: "Trance",
+      notes: [
+        "You don't need to sleep, and magic can't put you to sleep.",
+        "You can finish a Long Rest in 4 hours if you spend them in a trancelike meditation.",
+      ],
+    },
+    {
+      id: "elven-lineage",
+      name: "Elven Lineage",
+      description:
+        "Choose a lineage that grants you supernatural abilities and spells.",
+      choices: [
+        {
+          id: "elven-lineage-choice",
+          name: "Elven Lineage",
+          choose: 1,
+          options: [
+            { id: "drow", name: "Drow" },
+            { id: "high-elf", name: "High Elf" },
+            { id: "wood-elf", name: "Wood Elf" },
+          ],
+        },
+      ],
+    },
+  ],
+},
+  {
+  id: "dwarf",
+  name: "Dwarf",
+  size: "Medium",
+  speed: 30,
+  languages: ["common", "dwarvish"],
+  traits: [
+    { id: "darkvision", name: "Darkvision" },
+    { id: "dwarven-resilience", name: "Dwarven Resilience" },
+    { id: "dwarven-toughness", name: "Dwarven Toughness" },
+    { id: "stonecunning", name: "Stonecunning" },
+  ],
+},
+  {
+    id: "halfling",
+    name: "Halfling",
+    size: "Small",
+    speed: 30,
+    languages: ["common", "halfling"],
+    traits: [
+      { id: "brave", name: "Brave" },
+      { id: "halfling-nimbleness", name: "Halfling Nimbleness" },
+      { id: "luck", name: "Luck" },
+      { id: "naturally-stealthy", name: "Naturally Stealthy" },
+    ],
+  },
+  {
+    id: "aasimar",
+    name: "Aasimar",
     size: "Medium",
     speed: 30,
-    languages: ["common", "elvish"],
-    traits: [{ id: "darkvision", name: "Darkvision" }],
+    languages: ["common", "celestial"],
+    traits: [
+      { id: "darkvision", name: "Darkvision" },
+      { id: "celestial-resistance", name: "Celestial Resistance" },
+      { id: "healing-hands", name: "Healing Hands" },
+      { id: "light-bearer", name: "Light Bearer" },
+      { id: "celestial-revelation", name: "Celestial Revelation" },
+    ],
+  },
+  {
+    id: "dragonborn",
+    name: "Dragonborn",
+    size: "Medium",
+    speed: 30,
+    languages: ["common", "draconic"],
+    traits: [
+      { id: "draconic-ancestry", name: "Draconic Ancestry" },
+      { id: "breath-weapon", name: "Breath Weapon" },
+      { id: "damage-resistance", name: "Damage Resistance" },
+      { id: "darkvision", name: "Darkvision" },
+      { id: "draconic-flight", name: "Draconic Flight" },
+    ],
+  },
+];
+
+export const draconicAncestors = [
+  { id: "black", name: "Black", damageType: "acid" },
+  { id: "blue", name: "Blue", damageType: "lightning" },
+  { id: "brass", name: "Brass", damageType: "fire" },
+  { id: "bronze", name: "Bronze", damageType: "lightning" },
+  { id: "copper", name: "Copper", damageType: "acid" },
+  { id: "gold", name: "Gold", damageType: "fire" },
+  { id: "green", name: "Green", damageType: "poison" },
+  { id: "red", name: "Red", damageType: "fire" },
+  { id: "silver", name: "Silver", damageType: "cold" },
+  { id: "white", name: "White", damageType: "cold" },
+] as const;
+
+export const elfLineages: ElfLineage[] = [
+  {
+    id: "drow",
+    name: "Drow",
+    traits: [
+      {
+        id: "drow-darkvision",
+        name: "Superior Darkvision",
+        effects: [
+          {
+            type: "sense",
+            sense: "darkvision",
+            range: 120,
+          },
+        ],
+      },
+      {
+        id: "drow-magic",
+        name: "Drow Magic",
+        effects: [
+          {
+            type: "spell",
+            spellName: "Dancing Lights",
+            frequency: { type: "at-will" },
+          },
+          {
+            type: "spell",
+            spellName: "Faerie Fire",
+            level: 3,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+          {
+            type: "spell",
+            spellName: "Darkness",
+            level: 5,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+        ],
+        notes: [
+          "You always have these spells prepared.",
+          "You can cast them with spell slots if you have them.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "high-elf",
+    name: "High Elf",
+    traits: [
+      {
+        id: "high-elf-cantrip",
+        name: "High Elf Cantrip",
+        effects: [
+          {
+            type: "spell",
+            spellName: "Prestidigitation",
+            frequency: { type: "at-will" },
+          },
+        ],
+        notes: [
+          "You can replace this cantrip with another Wizard cantrip when you finish a Long Rest.",
+        ],
+      },
+      {
+        id: "high-elf-magic",
+        name: "High Elf Magic",
+        effects: [
+          {
+            type: "spell",
+            spellName: "Detect Magic",
+            level: 3,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+          {
+            type: "spell",
+            spellName: "Misty Step",
+            level: 5,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "wood-elf",
+    name: "Wood Elf",
+    traits: [
+      {
+        id: "wood-elf-speed",
+        name: "Fleet of Foot",
+        notes: ["Your speed increases to 35 feet."],
+      },
+      {
+        id: "wood-elf-magic",
+        name: "Wood Elf Magic",
+        effects: [
+          {
+            type: "spell",
+            spellName: "Druidcraft",
+            frequency: { type: "at-will" },
+          },
+          {
+            type: "spell",
+            spellName: "Longstrider",
+            level: 3,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+          {
+            type: "spell",
+            spellName: "Pass without Trace",
+            level: 5,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+        ],
+      },
+    ],
   },
 ];
 

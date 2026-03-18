@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createCharacter } from "../characters";
 import { backgrounds, classes, species } from "../rulesets/dnd/dnd2024/data";
 import { buildDerivedCharacterData } from "../rulesets/dnd/dnd2024/buildDerivedCharacterData";
+import { getSpeciesChoices } from "../rulesets/dnd/dnd2024/getSpeciesChoices";
 import {
   getBackgroundById,
   getClassById,
@@ -13,6 +14,7 @@ import type {
   CharacterSheetData,
   LanguageId,
   SkillId,
+  TraitChoice,
   WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
 
@@ -82,6 +84,10 @@ const NewCharacter = () => {
 
   const [classSkillChoices, setClassSkillChoices] = useState<SkillId[]>([]);
 
+  const [speciesTraitChoices, setSpeciesTraitChoices] = useState<
+    Record<string, string | string[]>
+  >({});
+
   const [backgroundBonusPlus2, setBackgroundBonusPlus2] = useState<AbilityKey>(
     backgrounds[0]?.abilityOptions[0] ?? "str",
   );
@@ -107,6 +113,11 @@ const NewCharacter = () => {
   const backgroundDef = useMemo(
     () => getBackgroundById(backgroundId),
     [backgroundId],
+  );
+
+  const speciesChoices = useMemo<TraitChoice[]>(
+    () => getSpeciesChoices(speciesId),
+    [speciesId],
   );
 
   const isRogue = classId === "rogue";
@@ -186,6 +197,46 @@ const NewCharacter = () => {
     );
   }, [isRogue, rogueExpertiseOptions]);
 
+  useEffect(() => {
+    setSpeciesTraitChoices((prev) => {
+      const next: Record<string, string | string[]> = {};
+
+      for (const choice of speciesChoices) {
+        const previousValue = prev[choice.id];
+
+        if (typeof previousValue === "string") {
+          const isStillValid = choice.options.some(
+            (option) => option.id === previousValue,
+          );
+
+          if (isStillValid) {
+            next[choice.id] = previousValue;
+            continue;
+          }
+        }
+
+        if (Array.isArray(previousValue)) {
+          const validValues = previousValue.filter((value) =>
+            choice.options.some((option) => option.id === value),
+          );
+
+          if (validValues.length > 0) {
+            next[choice.id] = validValues.slice(0, choice.choose);
+            continue;
+          }
+        }
+
+        if (choice.choose === 1 && choice.options.length > 0) {
+          next[choice.id] = choice.options[0].id;
+        } else {
+          next[choice.id] = [];
+        }
+      }
+
+      return next;
+    });
+  }, [speciesChoices]);
+
   const handleAbilityChange = (key: AbilityKey, value: string) => {
     const parsed = Number(value);
 
@@ -237,6 +288,13 @@ const NewCharacter = () => {
     });
   };
 
+  const setSpeciesChoiceValue = (choiceId: string, value: string) => {
+    setSpeciesTraitChoices((prev) => ({
+      ...prev,
+      [choiceId]: value,
+    }));
+  };
+
   const validateForm = () => {
     if (!name.trim()) {
       return "Character name is required.";
@@ -266,6 +324,36 @@ const NewCharacter = () => {
 
     if (backgroundBonusPlus2 === backgroundBonusPlus1) {
       return "Your +2 and +1 background bonuses must be different abilities.";
+    }
+
+    for (const choice of speciesChoices) {
+      const value = speciesTraitChoices[choice.id];
+
+      if (choice.choose === 1) {
+        if (typeof value !== "string") {
+          return `Please choose ${choice.name}.`;
+        }
+
+        const isValid = choice.options.some((option) => option.id === value);
+
+        if (!isValid) {
+          return `Please choose a valid option for ${choice.name}.`;
+        }
+      } else {
+        if (!Array.isArray(value) || value.length !== choice.choose) {
+          return `Please choose ${choice.choose} option${
+            choice.choose === 1 ? "" : "s"
+          } for ${choice.name}.`;
+        }
+
+        const allValid = value.every((selectedId) =>
+          choice.options.some((option) => option.id === selectedId),
+        );
+
+        if (!allValid) {
+          return `Please choose valid options for ${choice.name}.`;
+        }
+      }
     }
 
     if (isRogue) {
@@ -328,6 +416,7 @@ const NewCharacter = () => {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
           },
+          speciesTraitChoices,
           ...(isRogue
             ? {
                 rogueExpertiseChoices,
@@ -358,6 +447,7 @@ const NewCharacter = () => {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
           },
+          speciesTraitChoices,
           ...(isRogue
             ? {
                 rogueExpertiseChoices,
@@ -459,6 +549,118 @@ const NewCharacter = () => {
                   ))}
                 </select>
               </div>
+
+              {speciesChoices.length > 0 && (
+                <div className="space-y-4 sm:col-span-2">
+                  <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-300">
+                      Species Choices
+                    </h3>
+
+                    <div className="space-y-4">
+                      {speciesChoices.map((choice) => {
+                        const selectedValue = speciesTraitChoices[choice.id];
+
+                        return (
+                          <div key={choice.id} className="space-y-2">
+                            <label
+                              htmlFor={choice.id}
+                              className="text-sm font-medium text-zinc-200"
+                            >
+                              {choice.name}
+                            </label>
+
+                            {choice.choose === 1 ? (
+                              <select
+                                id={choice.id}
+                                value={
+                                  typeof selectedValue === "string"
+                                    ? selectedValue
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setSpeciesChoiceValue(
+                                    choice.id,
+                                    e.target.value,
+                                  )
+                                }
+                                className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                              >
+                                {choice.options.map((option) => (
+                                  <option key={option.id} value={option.id}>
+                                    {option.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                {choice.options.map((option) => {
+                                  const values = Array.isArray(selectedValue)
+                                    ? selectedValue
+                                    : [];
+                                  const isSelected = values.includes(option.id);
+
+                                  return (
+                                    <label
+                                      key={option.id}
+                                      className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                                        isSelected
+                                          ? "border-white/25 bg-white/10"
+                                          : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                                      }`}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => {
+                                          setSpeciesTraitChoices((prev) => {
+                                            const current = Array.isArray(
+                                              prev[choice.id],
+                                            )
+                                              ? (prev[choice.id] as string[])
+                                              : [];
+
+                                            if (current.includes(option.id)) {
+                                              return {
+                                                ...prev,
+                                                [choice.id]: current.filter(
+                                                  (item) => item !== option.id,
+                                                ),
+                                              };
+                                            }
+
+                                            if (
+                                              current.length >= choice.choose
+                                            ) {
+                                              return prev;
+                                            }
+
+                                            return {
+                                              ...prev,
+                                              [choice.id]: [
+                                                ...current,
+                                                option.id,
+                                              ],
+                                            };
+                                          });
+                                        }}
+                                        className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                                      />
+                                      <span className="text-sm text-white">
+                                        {option.name}
+                                      </span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2 sm:col-span-2">
                 <label
@@ -764,6 +966,42 @@ const NewCharacter = () => {
             </h2>
 
             <div className="space-y-5">
+              {speciesChoices.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                    Species choices
+                  </p>
+
+                  <div className="mt-2 space-y-2">
+                    {speciesChoices.map((choice) => {
+                      const selectedValue = speciesTraitChoices[choice.id];
+
+                      return (
+                        <div key={choice.id}>
+                          <p className="text-xs text-zinc-500">{choice.name}</p>
+                          <p className="text-sm text-zinc-200">
+                            {typeof selectedValue === "string"
+                              ? (choice.options.find(
+                                  (option) => option.id === selectedValue,
+                                )?.name ?? "None selected")
+                              : Array.isArray(selectedValue)
+                                ? selectedValue
+                                    .map(
+                                      (value) =>
+                                        choice.options.find(
+                                          (option) => option.id === value,
+                                        )?.name ?? value,
+                                    )
+                                    .join(", ")
+                                : "None selected"}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
                   Granted feat

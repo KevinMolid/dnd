@@ -1,4 +1,225 @@
-export type AbilityKey = "str" | "dex" | "con" | "int" | "wis" | "cha";
+export type Ability =
+  | "str"
+  | "dex"
+  | "con"
+  | "int"
+  | "wis"
+  | "cha";
+
+// Backward-compatible alias used throughout the app
+export type AbilityKey = Ability;
+
+export type DamageType =
+  | "acid"
+  | "bludgeoning"
+  | "cold"
+  | "fire"
+  | "force"
+  | "lightning"
+  | "necrotic"
+  | "piercing"
+  | "poison"
+  | "psychic"
+  | "radiant"
+  | "slashing"
+  | "thunder";
+
+export type Condition =
+  | "blinded"
+  | "charmed"
+  | "deafened"
+  | "frightened"
+  | "grappled"
+  | "incapacitated"
+  | "invisible"
+  | "paralyzed"
+  | "petrified"
+  | "poisoned"
+  | "prone"
+  | "restrained"
+  | "stunned"
+  | "unconscious";
+
+export type SenseType =
+  | "darkvision"
+  | "tremorsense"
+  | "blindsight"
+  | "truesight";
+
+export type RestType = "short-rest" | "long-rest";
+
+export type ActionType =
+  | "action"
+  | "bonus-action"
+  | "reaction"
+  | "attack-replacement"
+  | "magic-action"
+  | "no-action"
+  | "passive";
+
+export type DurationUnit = "round" | "minute" | "hour";
+
+export type ScalingValue =
+  | { type: "fixed"; value: number }
+  | { type: "proficiency-bonus" }
+  | { type: "level-based"; levels: Record<number, number> }
+  | { type: "ability-modifier"; ability: AbilityKey }
+  | {
+      type: "formula";
+      parts: Array<
+        | { type: "fixed"; value: number }
+        | { type: "proficiency-bonus" }
+        | { type: "ability-modifier"; ability: AbilityKey }
+      >;
+    };
+
+export type Usage =
+  | { type: "at-will" }
+  | {
+      type: "limited";
+      uses: ScalingValue;
+      recharge: RestType;
+    };
+
+export type TraitEffect =
+  | {
+      type: "sense";
+      sense: SenseType;
+      range: number;
+    }
+  | {
+      type: "resistance";
+      damageType: DamageType;
+    }
+  | {
+      type: "advantage-on-saving-throws-against";
+      conditions: Condition[];
+    }
+  | {
+      type: "hp-max-bonus";
+      amount: ScalingValue;
+    }
+  | {
+      type: "spell";
+      spellName: string;
+      level?: number;
+      school?: string;
+      castWith?: AbilityKey;
+      frequency?: Usage;
+    }
+  | {
+      type: "healing";
+      amount: ScalingValue;
+      target: "self" | "creature";
+      activation: ActionType;
+    }
+  | {
+      type: "transformation";
+      activation: ActionType;
+      duration: {
+        amount: number;
+        unit: DurationUnit;
+      };
+      frequency: Usage;
+    }
+  | {
+      type: "speed-bonus";
+      speedType: "fly" | "walk" | "swim" | "climb";
+      equals: "speed";
+      minimumLevel?: number;
+      duration?: {
+        amount: number;
+        unit: DurationUnit;
+      };
+      activation?: ActionType;
+      frequency?: Usage;
+    }
+  | {
+      type: "aoe-damage";
+      activation: ActionType;
+      area:
+        | { shape: "cone"; size: number }
+        | { shape: "line"; length: number; width: number };
+      save: {
+        ability: AbilityKey;
+        dc: ScalingValue;
+      };
+      damage: {
+        amount: ScalingValue;
+        damageType?: DamageType;
+        damageTypeFrom?: string;
+      };
+      halfOnSuccess?: boolean;
+      minimumLevel?: number;
+      frequency?: Usage;
+    }
+  | {
+      type: "condition";
+      condition: Condition;
+      save?: {
+        ability: AbilityKey;
+        dc: ScalingValue;
+      };
+      duration?: {
+        amount: number;
+        unit: DurationUnit;
+      };
+    }
+  | {
+      type: "light";
+      bright: number;
+      dim: number;
+      duration?: {
+        amount: number;
+        unit: DurationUnit;
+      };
+    }
+  | {
+      type: "choice-ref";
+      choiceId: string;
+    }
+  | {
+      type: "text";
+      text: string;
+    };
+
+export type TraitOption = {
+  id: string;
+  name: string;
+  description?: string;
+  effects?: TraitEffect[];
+};
+
+export type TraitChoice = {
+  id: string;
+  name: string;
+  choose: number;
+  options: TraitOption[];
+};
+
+export type Trait = {
+  id: string;
+  name: string;
+  description?: string;
+  minLevel?: number;
+  level?: number;
+  activation?: ActionType;
+  usage?: Usage;
+  effects?: TraitEffect[];
+  choices?: TraitChoice[];
+  notes?: string[];
+};
+
+export type ElfLineageId = "drow" | "high-elf" | "wood-elf";
+
+export type ElfLineage = {
+  id: ElfLineageId;
+  name: string;
+  traits: Trait[];
+};
+
+// Backward-compatible alias so older code using FeatureGrant still works
+export type FeatureGrant = Trait;
 
 export type SkillId =
   | "acrobatics"
@@ -101,16 +322,7 @@ export type RulesOption = {
   name: string;
 };
 
-export type FeatureGrant = {
-  id: string;
-  name: string;
-  level?: number;
-  description?: string;
-};
-
-export type Background = {
-  id: string;
-  name: string;
+export type Background = RulesOption & {
   abilityOptions: AbilityKey[];
   skillProficiencies: [SkillId, SkillId];
   toolProficiency: ToolId;
@@ -120,14 +332,15 @@ export type Background = {
 
 export type Species = RulesOption & {
   size?: "Small" | "Medium";
+  sizeOptions?: Array<"Small" | "Medium">;
   speed: number;
   languages: LanguageId[];
-  traits: FeatureGrant[];
+  traits: Trait[];
 };
 
 export type Feat = RulesOption & {
   category: "origin" | "general" | "epic";
-  traits: FeatureGrant[];
+  traits: Trait[];
 };
 
 export type SpellcastingType = "full" | "half" | "third" | "pact";
@@ -150,7 +363,7 @@ export type CharacterClass = RulesOption & {
     choose: number;
     options: SkillId[];
   };
-  featuresByLevel: Record<number, FeatureGrant[]>;
+  featuresByLevel: Record<number, Trait[]>;
   spellcasting?: ClassSpellcasting;
 };
 
@@ -196,6 +409,8 @@ export type CharacterChoices = {
   rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
   rogueBonusLanguage?: LanguageId;
   rogueWeaponMasteryChoices?: WeaponMasteryChoiceId[];
+
+  speciesTraitChoices?: Record<string, string | string[]>;
 };
 
 export type DerivedCharacterData = {
