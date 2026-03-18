@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEncounter } from "../context/EncounterContext";
+import type { MapHandout } from "../data/handouts/types";
 import { itemList, type ItemData } from "../data/items";
 import type { Money, PlayerCharacter } from "../data/players";
-import type { CampaignMap } from "../features/maps/types";
 
 type MapViewerProps = {
-  map: CampaignMap | null;
+  map: MapHandout | null;
   onClose: () => void;
   players: PlayerCharacter[];
   onGiveItemToPlayer: (itemId: string, playerName: string) => void;
@@ -119,21 +119,6 @@ const TreasureLink = ({ text, item }: { text: string; item: ItemData }) => {
         </span>
       </span>
     </span>
-  );
-};
-
-const renderParagraphs = (
-  paragraphs?: string[],
-  className = "space-y-2 text-sm leading-6 text-white/75",
-) => {
-  if (!paragraphs || paragraphs.length === 0) return null;
-
-  return (
-    <div className={className}>
-      {paragraphs.map((paragraph, index) => (
-        <p key={`${paragraph}-${index}`}>{paragraph}</p>
-      ))}
-    </div>
   );
 };
 
@@ -345,7 +330,7 @@ const MapViewer = ({
             >
               <div className="relative inline-block">
                 <img
-                  src={map.imageUrl}
+                  src={map.src}
                   alt={map.title}
                   className="block max-w-none select-none rounded"
                   draggable={false}
@@ -417,19 +402,18 @@ const MapViewer = ({
                   </section>
                 )}
 
-                {selectedRoom.description &&
-                  selectedRoom.description.length > 0 && (
-                    <section>
-                      {renderParagraphs(selectedRoom.description)}
-                    </section>
-                  )}
+                <section className="space-y-2 text-sm leading-6 text-white/75">
+                  {selectedRoom.description}
+                </section>
 
-                {selectedRoom.captives && selectedRoom.captives.length > 0 && (
+                {selectedRoom.captives && (
                   <section className="space-y-2">
                     <div className="text-sm font-semibold text-white/90">
                       Fanger
                     </div>
-                    {renderParagraphs(selectedRoom.captives)}
+                    <div className="space-y-2 text-sm leading-6 text-white/75">
+                      {selectedRoom.captives}
+                    </div>
                   </section>
                 )}
 
@@ -459,15 +443,16 @@ const MapViewer = ({
                   </section>
                 )}
 
-                {selectedRoom.developments &&
-                  selectedRoom.developments.length > 0 && (
-                    <section className="space-y-2">
-                      <div className="text-sm font-semibold text-white/90">
-                        Utvikling
-                      </div>
-                      {renderParagraphs(selectedRoom.developments)}
-                    </section>
-                  )}
+                {selectedRoom.developments && (
+                  <section className="space-y-2">
+                    <div className="text-sm font-semibold text-white/90">
+                      Utvikling
+                    </div>
+                    <div className="space-y-2 text-sm leading-6 text-white/75">
+                      {selectedRoom.developments}
+                    </div>
+                  </section>
+                )}
 
                 {selectedRoom.treasure && selectedRoom.treasure.length > 0 && (
                   <section className="space-y-2">
@@ -525,8 +510,8 @@ const MapViewer = ({
                       DM-Notater
                     </div>
                     <ul className="list-disc space-y-1 pl-5 text-sm text-white/75">
-                      {selectedRoom.notes.map((note, index) => (
-                        <li key={`${note}-${index}`}>{note}</li>
+                      {selectedRoom.notes.map((note) => (
+                        <li key={note}>{note}</li>
                       ))}
                     </ul>
                   </section>
