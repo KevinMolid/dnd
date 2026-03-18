@@ -14,9 +14,13 @@ import type {
   CharacterSheetData,
   LanguageId,
   SkillId,
+  Trait,
   TraitChoice,
+  TraitEffect,
   WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
+
+import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTraits";
 
 const abilityLabels: Record<AbilityKey, string> = {
   str: "Strength",
@@ -64,6 +68,76 @@ const rogueWeaponMasteryOptions: WeaponMasteryChoiceId[] = [
   "shortsword",
   "sling",
 ];
+
+const formatTraitEffect = (effect: TraitEffect): string => {
+  switch (effect.type) {
+    case "sense":
+      return `${formatLabel(effect.sense)} ${effect.range} ft.`;
+
+    case "resistance":
+      return `Resistance to ${formatLabel(effect.damageType)} damage`;
+
+    case "advantage-on-saving-throws-against":
+      return `Advantage on saves against ${effect.conditions
+        .map((condition) => formatLabel(condition))
+        .join(", ")}`;
+
+    case "spell":
+      return effect.level
+        ? `${effect.spellName} (available from level ${effect.level})`
+        : effect.spellName;
+
+    case "speed-bonus":
+      return effect.speedType === "walk"
+        ? "Movement speed bonus"
+        : `${formatLabel(effect.speedType)} speed`;
+
+    case "light":
+      return `Bright light ${effect.bright} ft., dim light ${effect.dim} ft.`;
+
+    case "hp-max-bonus":
+      return "Bonus to maximum Hit Points";
+
+    case "healing":
+      return "Healing effect";
+
+    case "aoe-damage":
+      return "Area damage effect";
+
+    case "transformation":
+      return "Transformation effect";
+
+    case "condition":
+      return `Applies ${formatLabel(effect.condition)}`;
+
+    case "choice-ref":
+      return `Choice reference: ${effect.choiceId}`;
+
+    case "text":
+      return effect.text;
+
+    default:
+      return "Special effect";
+  }
+};
+
+const getTraitSummaryLines = (trait: Trait): string[] => {
+  const lines: string[] = [];
+
+  if (trait.description) {
+    lines.push(trait.description);
+  }
+
+  if (trait.effects?.length) {
+    lines.push(...trait.effects.map((effect) => formatTraitEffect(effect)));
+  }
+
+  if (trait.notes?.length) {
+    lines.push(...trait.notes);
+  }
+
+  return lines;
+};
 
 const formatLabel = (value: string) =>
   value
@@ -126,6 +200,44 @@ const NewCharacter = () => {
   const grantedFeatName = grantedFeatId
     ? (getOriginFeatById(grantedFeatId)?.name ?? grantedFeatId)
     : null;
+
+  const activeAllTraits = useMemo(() => {
+    return getAllCharacterTraits({
+      classId,
+      speciesId,
+      backgroundId,
+      originFeatId: grantedFeatId,
+      level: 1,
+      choices: {
+        classSkillChoices,
+        backgroundAbilityBonuses: {
+          plus2: backgroundBonusPlus2,
+          plus1: backgroundBonusPlus1,
+        },
+        speciesTraitChoices,
+        ...(isRogue
+          ? {
+              rogueExpertiseChoices,
+              rogueBonusLanguage,
+              rogueWeaponMasteryChoices,
+            }
+          : {}),
+      },
+    });
+  }, [
+    backgroundBonusPlus1,
+    backgroundBonusPlus2,
+    backgroundId,
+    classId,
+    classSkillChoices,
+    grantedFeatId,
+    isRogue,
+    rogueBonusLanguage,
+    rogueExpertiseChoices,
+    rogueWeaponMasteryChoices,
+    speciesId,
+    speciesTraitChoices,
+  ]);
 
   const grantedSkills = backgroundDef?.skillProficiencies ?? [];
   const grantedTool = backgroundDef?.toolProficiency ?? null;
@@ -964,6 +1076,52 @@ const NewCharacter = () => {
             <h2 className="mb-5 text-xl font-semibold text-white">
               Character Summary
             </h2>
+
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Active traits & features
+              </p>
+
+              <div className="mt-3 space-y-3">
+                {activeAllTraits.length > 0 ? (
+                  activeAllTraits.map((trait) => {
+                    const lines = getTraitSummaryLines(trait);
+
+                    return (
+                      <div
+                        key={trait.id}
+                        className="rounded-2xl border border-white/10 bg-zinc-900/70 p-3"
+                      >
+                        <p className="text-sm font-medium text-white">
+                          {trait.name}
+                        </p>
+
+                        {lines.length > 0 ? (
+                          <ul className="mt-2 space-y-1">
+                            {lines.map((line, index) => (
+                              <li
+                                key={`${trait.id}-${index}`}
+                                className="text-xs leading-5 text-zinc-400"
+                              >
+                                • {line}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="mt-2 text-xs leading-5 text-zinc-500">
+                            No additional details yet.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-zinc-400">
+                    No active traits found.
+                  </p>
+                )}
+              </div>
+            </div>
 
             <div className="space-y-5">
               {speciesChoices.length > 0 && (

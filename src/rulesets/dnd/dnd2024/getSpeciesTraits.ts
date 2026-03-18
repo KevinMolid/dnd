@@ -1,5 +1,5 @@
-import type { CharacterChoices, Trait } from "../../rulesets/dnd/dnd2024/types"
-import { species, elfLineages } from "../../rulesets/dnd/dnd2024/data"
+import type { CharacterChoices, Trait } from "./types"
+import { species, elfLineages } from "./data"
 
 export function getSpeciesTraits(
   speciesId: string,
