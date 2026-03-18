@@ -146,7 +146,7 @@ const CampaignMapsPage = () => {
                         {map.title}
                       </div>
                       <div className="mt-1 text-sm text-white/55">
-                        {map.rooms?.length ?? 0} rom
+                        {map.rooms?.length ?? 0} areas
                       </div>
                     </div>
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useEncounter } from "../context/EncounterContext";
 import { itemList, type ItemData } from "../data/items";
@@ -31,6 +31,14 @@ type LinkedTreasureEntry =
       money: Partial<Money>;
       moneyLabel: string;
     };
+
+type ExtendedCampaignMap = CampaignMap & {
+  description?: string[];
+  overview?: string[];
+  generalDescription?: string[];
+  readAloud?: string;
+  overviewTitle?: string;
+};
 
 const normalizeItemText = (value: string) => {
   return value
@@ -149,6 +157,8 @@ const MapViewer = ({
   const navigate = useNavigate();
   const { loadEncounterTemplate } = useEncounter();
 
+  const mapData = map as ExtendedCampaignMap | null;
+
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [zoom, setZoom] = useState(1);
   const [isTreasureModalOpen, setIsTreasureModalOpen] = useState(false);
@@ -156,12 +166,64 @@ const MapViewer = ({
     Record<string, TreasureRecipient>
   >({});
 
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+
+  const overviewParagraphs =
+    mapData?.generalDescription ??
+    mapData?.overview ??
+    mapData?.description ??
+    [];
+
+  const fitMapToViewport = () => {
+    const viewport = viewportRef.current;
+    const image = imageRef.current;
+
+    if (!viewport || !image) return;
+
+    const naturalWidth = image.naturalWidth;
+    const naturalHeight = image.naturalHeight;
+
+    if (!naturalWidth || !naturalHeight) return;
+
+    const viewportWidth = viewport.clientWidth - 16;
+    const viewportHeight = viewport.clientHeight - 16;
+
+    if (viewportWidth <= 0 || viewportHeight <= 0) return;
+
+    const widthScale = viewportWidth / naturalWidth;
+    const heightScale = viewportHeight / naturalHeight;
+    const nextZoom = Math.max(
+      0.2,
+      Math.min(4, Number(Math.min(widthScale, heightScale).toFixed(3))),
+    );
+
+    setZoom(nextZoom);
+  };
+
   useEffect(() => {
     if (!map) return;
-    setZoom(1);
-    setSelectedRoomId(map.rooms?.[0]?.id ?? null);
+
+    setSelectedRoomId(null);
     setIsTreasureModalOpen(false);
     setTreasureAssignments({});
+
+    const timer = window.setTimeout(() => {
+      fitMapToViewport();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [map]);
+
+  useEffect(() => {
+    if (!map) return;
+
+    const handleResize = () => {
+      fitMapToViewport();
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, [map]);
 
   const selectedRoom = useMemo(() => {
@@ -264,11 +326,11 @@ const MapViewer = ({
   };
 
   const zoomOut = () => {
-    setZoom((prev) => Math.max(prev - 0.2, 0.5));
+    setZoom((prev) => Math.max(prev - 0.2, 0.2));
   };
 
   const resetZoom = () => {
-    setZoom(1);
+    fitMapToViewport();
   };
 
   useEffect(() => {
@@ -292,16 +354,17 @@ const MapViewer = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [map, onClose, isTreasureModalOpen]);
 
-  if (!map) return null;
+  if (!mapData) return null;
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 p-4 md:p-6">
       <div className="flex h-full flex-col overflow-hidden rounded-xl bg-zinc-950 text-white shadow-2xl">
         <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
           <div>
-            <div className="text-lg font-semibold">{map.title}</div>
+            <div className="text-lg font-semibold">{mapData.title}</div>
             <div className="text-sm text-white/60">
-              Click a numbered room marker to show its details.
+              Start on the overview, or click a numbered room marker to view its
+              details.
             </div>
           </div>
 
@@ -318,7 +381,7 @@ const MapViewer = ({
               onClick={resetZoom}
               className="rounded bg-white/10 px-3 py-1 hover:bg-white/20"
             >
-              Reset
+              Fit
             </button>
             <button
               type="button"
@@ -338,72 +401,158 @@ const MapViewer = ({
         </div>
 
         <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_600px]">
-          <div className="min-h-0 overflow-auto bg-zinc-900 p-4">
-            <div
-              className="inline-block origin-top-left"
-              style={{ transform: `scale(${zoom})` }}
-            >
-              <div className="relative inline-block">
-                <img
-                  src={map.imageUrl}
-                  alt={map.title}
-                  className="block max-w-none select-none rounded"
-                  draggable={false}
-                />
+          <div
+            ref={viewportRef}
+            className="min-h-0 overflow-auto bg-zinc-900 p-4"
+          >
+            <div className="flex min-h-full items-center justify-center">
+              <div
+                className="inline-block origin-center"
+                style={{ transform: `scale(${zoom})` }}
+              >
+                <div className="relative inline-block">
+                  <img
+                    ref={imageRef}
+                    src={mapData.imageUrl}
+                    alt={mapData.title}
+                    className="block max-w-none select-none rounded"
+                    draggable={false}
+                    onLoad={fitMapToViewport}
+                  />
 
-                {map.rooms?.flatMap((room) => {
-                  const isSelected = selectedRoomId === room.id;
+                  {mapData.rooms?.flatMap((room) => {
+                    const isSelected = selectedRoomId === room.id;
 
-                  return room.markers.map((marker, markerIndex) => (
-                    <button
-                      key={`${room.id}-${markerIndex}`}
-                      type="button"
-                      onClick={() => {
-                        setSelectedRoomId(room.id);
-                        setIsTreasureModalOpen(false);
-                      }}
-                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border text-xs font-bold shadow-lg transition ${
-                        isSelected
-                          ? "h-9 w-9 border-white bg-red-500 text-white"
-                          : "h-8 w-8 border-red-500 bg-stone-100 text-red-600 hover:bg-white"
-                      }`}
-                      style={{
-                        left: `${marker.x}%`,
-                        top: `${marker.y}%`,
-                      }}
-                      title={`${room.id}. ${room.name}`}
-                    >
-                      {room.id}
-                    </button>
-                  ));
-                })}
+                    return room.markers.map((marker, markerIndex) => (
+                      <button
+                        key={`${room.id}-${markerIndex}`}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRoomId(room.id);
+                          setIsTreasureModalOpen(false);
+                        }}
+                        className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border text-xs font-bold shadow-lg transition ${
+                          isSelected
+                            ? "h-9 w-9 border-white bg-red-500 text-white"
+                            : "h-8 w-8 border-red-500 bg-stone-100 text-red-600 hover:bg-white"
+                        }`}
+                        style={{
+                          left: `${marker.x}%`,
+                          top: `${marker.y}%`,
+                        }}
+                        title={`${room.id}. ${room.name}`}
+                      >
+                        {room.id}
+                      </button>
+                    ));
+                  })}
+                </div>
               </div>
             </div>
           </div>
 
           <aside className="min-h-0 overflow-auto border-t border-white/10 bg-zinc-950 p-4 lg:border-l lg:border-t-0">
-            {!map.rooms || map.rooms.length === 0 ? (
+            {selectedRoom === null ? (
+              <div className="space-y-5">
+                <div>
+                  <div className="text-xs uppercase tracking-wide text-white/50">
+                    Overview
+                  </div>
+                  <h3 className="text-xl font-bold">
+                    {mapData.overviewTitle ?? mapData.title}
+                  </h3>
+                </div>
+
+                {mapData.readAloud && (
+                  <section className="space-y-2">
+                    <div className="text-sm font-semibold text-yellow-300">
+                      Read aloud
+                    </div>
+                    <p className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-3 text-sm leading-6 text-yellow-50">
+                      {mapData.readAloud}
+                    </p>
+                  </section>
+                )}
+
+                {overviewParagraphs.length > 0 ? (
+                  <section>{renderParagraphs(overviewParagraphs)}</section>
+                ) : (
+                  <p className="text-sm text-white/70">
+                    This map does not yet have a general description.
+                  </p>
+                )}
+
+                <section className="space-y-3">
+                  <div className="text-sm font-semibold text-white/90">
+                    Rooms
+                  </div>
+
+                  {!mapData.rooms || mapData.rooms.length === 0 ? (
+                    <p className="text-sm text-white/70">No rooms yet.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {mapData.rooms
+                        .slice()
+                        .sort((a, b) => a.id - b.id)
+                        .map((room) => (
+                          <button
+                            key={room.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedRoomId(room.id);
+                              setIsTreasureModalOpen(false);
+                            }}
+                            className="flex w-full items-start justify-between rounded-lg border border-white/10 bg-white/5 p-3 text-left transition hover:bg-white/10"
+                          >
+                            <div>
+                              <div className="font-medium text-white">
+                                {room.id}. {room.name}
+                              </div>
+                              <div className="mt-1 text-sm text-white/55">
+                                {room.monsters?.length
+                                  ? `${room.monsters.length} monster entry${
+                                      room.monsters.length === 1 ? "" : "ies"
+                                    }`
+                                  : "No monsters listed"}
+                              </div>
+                            </div>
+
+                            <span className="rounded bg-white/10 px-2 py-1 text-xs text-white/70">
+                              Open
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </section>
+              </div>
+            ) : !mapData.rooms || mapData.rooms.length === 0 ? (
               <div className="space-y-3">
                 <div className="text-lg font-semibold">No room data yet</div>
                 <p className="text-sm text-white/70">
                   This map does not yet have interactive room markers and notes.
                 </p>
               </div>
-            ) : !selectedRoom ? (
-              <div className="space-y-3">
-                <div className="text-lg font-semibold">Select a room</div>
-                <p className="text-sm text-white/70">
-                  Click one of the numbered markers on the map to view room
-                  information.
-                </p>
-              </div>
             ) : (
               <div className="space-y-5">
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-white/50">
-                    Område {selectedRoom.id}
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-wide text-white/50">
+                      Område {selectedRoom.id}
+                    </div>
+                    <h3 className="text-xl font-bold">{selectedRoom.name}</h3>
                   </div>
-                  <h3 className="text-xl font-bold">{selectedRoom.name}</h3>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRoomId(null);
+                      setIsTreasureModalOpen(false);
+                    }}
+                    className="rounded bg-white/10 px-3 py-1 text-sm hover:bg-white/20"
+                  >
+                    Overview
+                  </button>
                 </div>
 
                 {selectedRoom.readAloud && (

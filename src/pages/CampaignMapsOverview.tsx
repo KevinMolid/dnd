@@ -75,7 +75,7 @@ const CampaignMapsOverview = ({
                         {map.title}
                       </div>
                       <div className="text-sm text-white/55">
-                        {map.rooms?.length ?? 0} rom
+                        {map.rooms?.length ?? 0} rooms
                       </div>
                     </div>
                   </div>
