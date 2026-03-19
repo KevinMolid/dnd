@@ -1,4 +1,4 @@
-import * as data from "./data/data";
+import * as data from "./data";
 import * as helpers from "./helpers";
 import { buildDerivedCharacterData } from "./buildDerivedCharacterData";
 
