@@ -7,6 +7,9 @@ import {
 import { getSpeciesGrantedFeatIds } from "./getSpeciesGrantedFeatIds";
 import { getSpeciesGrantedSkillProficiencies } from "./getSpeciesGrantedSkillProficiencies";
 import { getSpeciesTraits } from "./getSpeciesTraits";
+import { deriveRogueData } from "../../../utils/rogueUtils";
+import { unique, getFeatureRefsUpToLevel } from "../../../utils/classUtils";
+
 import type {
   AbilityKey,
   CharacterFeature,
@@ -16,10 +19,7 @@ import type {
   SkillId,
   ToolId,
   Trait,
-  WeaponMasteryChoiceId,
 } from "./types";
-
-const unique = <T>(values: T[]): T[] => [...new Set(values)];
 
 const uniqueById = <T extends { id: string }>(values: T[]): T[] => {
   const seen = new Set<string>();
@@ -35,7 +35,9 @@ const uniqueById = <T extends { id: string }>(values: T[]): T[] => {
 };
 
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
+
 const getProficiencyBonus = (level: number) => 2 + Math.floor((level - 1) / 4);
+
 const getAverageHpPerLevel = (hitDie: number) => Math.floor(hitDie / 2) + 1;
 
 const applyBackgroundBonuses = (
@@ -165,6 +167,21 @@ const getPassiveWalkSpeedBonus = (
   return bonus;
 };
 
+const getFeatureRefsFromTraits = (
+  traits: Trait[],
+  sourceType: CharacterFeature["sourceType"],
+  sourceId: string,
+  fallbackLevel = 1,
+): CharacterFeature[] => {
+  return traits.map((feature) => ({
+    id: feature.id,
+    name: feature.name,
+    level: feature.level ?? feature.minLevel ?? fallbackLevel,
+    sourceType,
+    sourceId,
+  }));
+};
+
 export const buildDerivedCharacterData = (
   character: CharacterSheetData,
 ): DerivedCharacterData => {
@@ -213,11 +230,6 @@ export const buildDerivedCharacterData = (
   const extraToolChoices = character.choices?.toolChoices ?? [];
   const extraLanguageChoices = character.choices?.languageChoices ?? [];
 
-  const rogueBonusLanguage =
-    character.classId === "rogue"
-      ? character.choices?.rogueBonusLanguage
-      : undefined;
-
   const skillProficiencies = unique<SkillId>([
     ...(backgroundDef?.skillProficiencies ?? []),
     ...classSkillChoices,
@@ -230,44 +242,29 @@ export const buildDerivedCharacterData = (
     ...extraToolChoices,
   ]);
 
-  const savingThrowProficiencies = classDef
-    ? [...classDef.savingThrowProficiencies]
-    : [];
+  const savingThrowProficiencies = [
+    ...(classDef?.savingThrowProficiencies ?? []),
+  ];
 
-  const armorTraining = classDef?.armorTraining ?? [];
-  const weaponProficiencies = classDef?.weaponProficiencies ?? [];
+  const armorTraining = [...(classDef?.armorTraining ?? [])];
+  const weaponProficiencies = [...(classDef?.weaponProficiencies ?? [])];
 
   const languages = unique([
     ...(speciesDef?.languages ?? []),
     ...extraLanguageChoices,
-    ...(rogueBonusLanguage ? [rogueBonusLanguage] : []),
   ]);
 
-  const classFeatures: CharacterFeature[] = classDef
-    ? Object.entries(classDef.featuresByLevel)
-        .flatMap(([level, features]) => {
-          const numericLevel = Number(level);
-          if (numericLevel > character.level) return [];
-
-          return features.map((feature) => ({
-            id: feature.id,
-            name: feature.name,
-            level: feature.level ?? feature.minLevel ?? numericLevel,
-            sourceType: "class" as const,
-            sourceId: classDef.id,
-          }));
-        })
-        .sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+    const classFeatures: CharacterFeature[] = classDef
+    ? getFeatureRefsUpToLevel(
+        "class",
+        classDef.id,
+        classDef.featuresByLevel,
+        character.level,
+      )
     : [];
 
   const speciesFeatures: CharacterFeature[] = speciesDef
-    ? speciesTraits.map((feature) => ({
-        id: feature.id,
-        name: feature.name,
-        level: feature.level ?? feature.minLevel ?? 1,
-        sourceType: "species" as const,
-        sourceId: speciesDef.id,
-      }))
+    ? getFeatureRefsFromTraits(speciesTraits, "species", speciesDef.id, 1)
     : [];
 
   const backgroundFeatures: CharacterFeature[] = backgroundDef
@@ -284,22 +281,10 @@ export const buildDerivedCharacterData = (
 
   const featFeatures: CharacterFeature[] = [
     ...(featDef
-      ? featDef.traits.map((feature) => ({
-          id: feature.id,
-          name: feature.name,
-          level: feature.level ?? feature.minLevel ?? 1,
-          sourceType: "feat" as const,
-          sourceId: featDef.id,
-        }))
+      ? getFeatureRefsFromTraits(featDef.traits, "feat", featDef.id, 1)
       : []),
     ...speciesGrantedFeats.flatMap((feat) =>
-      feat.traits.map((feature) => ({
-        id: feature.id,
-        name: feature.name,
-        level: feature.level ?? feature.minLevel ?? 1,
-        sourceType: "feat" as const,
-        sourceId: feat.id,
-      })),
+      getFeatureRefsFromTraits(feat.traits, "feat", feat.id, 1),
     ),
   ];
 
@@ -325,17 +310,7 @@ export const buildDerivedCharacterData = (
         speciesMaxHpBonus
       : undefined;
 
-  const expertise =
-    character.classId === "rogue"
-      ? unique(character.choices?.rogueExpertiseChoices ?? [])
-      : [];
-
-  const weaponMasteries: WeaponMasteryChoiceId[] =
-    character.classId === "rogue"
-      ? unique(character.choices?.rogueWeaponMasteryChoices ?? []).slice(0, 2)
-      : [];
-
-  return {
+  const baseDerived: DerivedCharacterData = {
     stats: {
       proficiencyBonus,
       maxHp,
@@ -356,7 +331,20 @@ export const buildDerivedCharacterData = (
     languages,
     features,
     spells: character.derived?.spells ?? [],
-    expertise,
-    weaponMasteries,
+    expertise: [],
+    weaponMasteries: [],
+  };
+
+  const rogueDerived = classDef?.id === "rogue"
+    ? deriveRogueData(character, classDef.featuresByLevel, baseDerived)
+    : baseDerived;
+
+  return {
+    ...baseDerived,
+    ...rogueDerived,
+    languages: unique(rogueDerived.languages ?? baseDerived.languages),
+    features: uniqueById(rogueDerived.features ?? baseDerived.features),
+    expertise: rogueDerived.expertise ?? baseDerived.expertise,
+    weaponMasteries: rogueDerived.weaponMasteries ?? baseDerived.weaponMasteries,
   };
 };

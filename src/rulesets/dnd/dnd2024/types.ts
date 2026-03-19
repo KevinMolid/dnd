@@ -291,6 +291,7 @@ export type ToolId =
   | "musical-instrument"
   | "navigators-tools"
   | "painters-supplies"
+  | "poisoners-kit"
   | "potters-tools"
   | "smiths-tools"
   | "thieves-tools"
@@ -315,7 +316,9 @@ export type LanguageId =
   | "infernal"
   | "celestial"
   | "abyssal"
-  | "undercommon";
+  | "undercommon"
+  | "deep-speech"
+  | "thieves-cant";
 
 export type ArmorTrainingId =
   | "light-armor"
@@ -330,14 +333,21 @@ export type WeaponProficiencyId =
   | "martial-finesse-or-light";
 
 export type WeaponMasteryChoiceId =
+  | "club"
   | "dagger"
   | "dart"
+  | "handaxe"
+  | "javelin"
   | "light-crossbow"
+  | "mace"
+  | "quarterstaff"
   | "rapier"
   | "scimitar"
   | "shortbow"
   | "shortsword"
-  | "sling";
+  | "sickle"
+  | "sling"
+  | "spear";
 
 export type OriginFeatId =
   | "alert"
@@ -386,6 +396,116 @@ export type ClassSpellcasting = {
   preparation: SpellPreparationType;
 };
 
+export type CharacterClassId =
+  | "barbarian"
+  | "bard"
+  | "cleric"
+  | "druid"
+  | "fighter"
+  | "monk"
+  | "paladin"
+  | "ranger"
+  | "rogue"
+  | "sorcerer"
+  | "warlock"
+  | "wizard";
+
+export type LevelNumber =
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9
+  | 10
+  | 11
+  | 12
+  | 13
+  | 14
+  | 15
+  | 16
+  | 17
+  | 18
+  | 19
+  | 20;
+
+export type LevelValueTable<T> = Partial<Record<LevelNumber, T>>;
+
+export type ChoiceSource =
+  | "skill-proficiencies"
+  | "tool-proficiencies"
+  | "languages"
+  | "weapon-mastery"
+  | "fighting-style"
+  | "cantrips"
+  | "spells"
+  | "invocations"
+  | "maneuvers"
+  | "expertise"
+  | "feat"
+  | "equipment"
+  | "subclass"
+  | "other";
+
+export type ChoiceDefinition<TOption extends string = string> = {
+  id: string;
+  level: number;
+  name: string;
+  choose: number;
+  source: ChoiceSource;
+  options?: TOption[];
+  description?: string;
+  restrictions?: string[];
+};
+
+export type ChoiceMapByLevel<TOption extends string = string> = Partial<
+  Record<number, ChoiceDefinition<TOption>[]>
+>;
+
+export type Currency = "cp" | "sp" | "ep" | "gp" | "pp";
+
+export type EquipmentItemGrant = {
+  type: "item";
+  id: string;
+  quantity?: number;
+};
+
+export type EquipmentCurrencyGrant = {
+  type: "currency";
+  amount: number;
+  currency: Currency;
+};
+
+export type EquipmentChoiceGrant = {
+  type: "choice";
+  choose: number;
+  options: EquipmentGrant[];
+};
+
+export type EquipmentGrant =
+  | EquipmentItemGrant
+  | EquipmentCurrencyGrant
+  | EquipmentChoiceGrant;
+
+export type StartingEquipmentOption = {
+  id: string;
+  label: string;
+  grants: EquipmentGrant[];
+};
+
+export type StartingEquipment = {
+  choose: 1;
+  options: StartingEquipmentOption[];
+};
+
+export type CharacterSubclass = RulesOption & {
+  classId: CharacterClassId;
+  featuresByLevel: Partial<Record<number, Trait[]>>;
+};
+
 export type CharacterClass = RulesOption & {
   hitDie: number;
   primaryAbilities?: AbilityKey[];
@@ -397,8 +517,9 @@ export type CharacterClass = RulesOption & {
     choose: number;
     options: SkillId[];
   };
-  featuresByLevel: Record<number, Trait[]>;
+  featuresByLevel: Partial<Record<number, Trait[]>>;
   spellcasting?: ClassSpellcasting;
+  startingEquipment?: StartingEquipment;
 };
 
 export type AbilityScores = Record<AbilityKey, number>;
@@ -421,7 +542,7 @@ export type DerivedStats = {
 export type CharacterFeature = {
   id: string;
   name: string;
-  sourceType: "class" | "species" | "background" | "feat";
+  sourceType: "class" | "species" | "background" | "feat" | "subclass";
   sourceId: string;
   level?: number;
 };
@@ -429,9 +550,27 @@ export type CharacterFeature = {
 export type CharacterSpell = {
   id: string;
   name: string;
-  source: "class" | "species" | "feat";
+  source: "class" | "species" | "feat" | "subclass";
   prepared?: boolean;
   alwaysPrepared?: boolean;
+};
+
+export type RogueCunningStrikeOptionId =
+  | "poison"
+  | "trip"
+  | "withdraw"
+  | "daze"
+  | "knock-out"
+  | "obscure";
+
+export type RogueCunningStrikeOption = {
+  id: RogueCunningStrikeOptionId;
+  name: string;
+  level: number;
+  costDice: number;
+  description: string;
+  savingThrow?: AbilityKey;
+  requires?: ToolId[];
 };
 
 export type CharacterChoices = {
@@ -469,7 +608,7 @@ export type CharacterSheetData = {
   name: string;
   level: number;
 
-  classId: string;
+  classId: CharacterClassId | string;
   speciesId: string;
   backgroundId: string;
   originFeatId: OriginFeatId | null;
