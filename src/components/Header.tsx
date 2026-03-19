@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Container from "./Container";
-import logo from "/images/logo.png";
+import logo from "/images/logo3.png";
 
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -78,7 +78,7 @@ function Header() {
                 className="h-12 w-12 shrink-0 rounded-xl object-cover sm:h-14 sm:w-14"
               />
 
-              <div className="min-w-0">
+              <div className="min-w-0 hidden sm:block">
                 <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
                   rphub
                 </p>
@@ -93,7 +93,7 @@ function Header() {
             <button
               type="button"
               onClick={() => setMenuOpen((prev) => !prev)}
-              className="group flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-1 pr-3 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-amber-400/70"
+              className="group flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-1 pr-3 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70"
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label="Open profile menu"
@@ -110,7 +110,7 @@ function Header() {
                 )}
               </div>
 
-              <div className="hidden text-left sm:block">
+              <div className="text-left">
                 <p className="max-w-[180px] truncate text-sm font-semibold text-white">
                   {loading ? "Loading..." : displayName}
                 </p>
@@ -120,7 +120,7 @@ function Header() {
               </div>
 
               <svg
-                className={`hidden h-4 w-4 text-zinc-400 transition sm:block ${
+                className={` h-4 w-4 text-zinc-400 transition ${
                   menuOpen ? "rotate-180" : ""
                 }`}
                 viewBox="0 0 20 20"
@@ -136,13 +136,13 @@ function Header() {
             </button>
 
             <div
-  className={`absolute right-0 top-full z-50 mt-3 w-[min(92vw,22rem)] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl ring-1 ring-black/40 transition-all duration-200 ${
+  className={`absolute right-0 top-full z-50 mt-3 w-[min(92vw,20rem)] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl ring-1 ring-black/40 transition-all duration-200 ${
     menuOpen
       ? "pointer-events-auto translate-y-0 opacity-100"
       : "pointer-events-none -translate-y-2 opacity-0"
   }`}
 >
-              <div className="border-b border-white/10 bg-white/5 p-4">
+              <div className="border-b border-white/10 bg-white/5 p-2">
                 <div className="flex items-center gap-3">
                   <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-800 text-base font-bold text-white">
                     {profileImage ? (
@@ -165,14 +165,14 @@ function Header() {
                 </div>
               </div>
 
-              <div className="p-2">
+              <div className="px-1 py-2 flex flex-col gap-1">
                 <button
                   type="button"
                   onClick={() => {
                     setMenuOpen(false);
                     navigate("/profile");
                   }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-white transition hover:bg-white/10"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-1 text-left text-sm font-medium text-white transition hover:bg-white/10"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-zinc-300">
                     <svg
@@ -193,7 +193,7 @@ function Header() {
                     setMenuOpen(false);
                     navigate("/settings");
                   }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-white transition hover:bg-white/10"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-1 text-left text-sm font-medium text-white transition hover:bg-white/10"
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-zinc-300">
                     <svg
@@ -213,14 +213,14 @@ function Header() {
                   <span>Account settings</span>
                 </button>
 
-                <div className="my-2 h-px bg-white/10" />
+                <div className="my-1 h-px bg-white/10" />
 
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-1 text-left text-sm font-medium text-white transition hover:bg-white/10"
                 >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-500/10 text-red-300">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white">
                     <svg
                       className="h-5 w-5"
                       viewBox="0 0 20 20"

@@ -195,18 +195,15 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-6 shadow-2xl sm:mb-10 sm:p-8">
+      <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">
+        <section className="mb-8 rounded-3xl border border-green-200/15 bg-gradient-to-br from-green-600/15 to-white/3 p-6 shadow-2xl sm:mb-10 sm:p-8">
           <div className="max-w-3xl">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
-              rphub
-            </p>
 
             <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
               Welcome{appUser?.displayName ? `, ${appUser.displayName}` : ""}
             </h1>
 
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-green-100/80 sm:text-base">
               Build campaigns, manage characters, and give players access only
               to what they should see.
             </p>
