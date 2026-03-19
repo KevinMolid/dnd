@@ -573,17 +573,36 @@ export type RogueCunningStrikeOption = {
   requires?: ToolId[];
 };
 
+export type LevelUpDecision = {
+  subclassId?: string;
+  featId?: string;
+  asi?: {
+    plus2?: AbilityKey;
+    plus1a?: AbilityKey;
+    plus1b?: AbilityKey;
+  };
+  expertise?: Array<SkillId | "thieves-tools">;
+  language?: LanguageId;
+  weaponMastery?: WeaponMasteryChoiceId[];
+};
+
+export type LevelUpDecisionsByLevel = Record<number, LevelUpDecision>;
+
 export type CharacterChoices = {
   classSkillChoices?: SkillId[];
   toolChoices?: ToolId[];
   languageChoices?: LanguageId[];
   backgroundAbilityBonuses?: BackgroundAbilityBonuses;
 
+  subclassId?: string;
+
   rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
   rogueBonusLanguage?: LanguageId;
   rogueWeaponMasteryChoices?: WeaponMasteryChoiceId[];
 
   speciesTraitChoices?: Record<string, string | string[]>;
+
+  levelUpDecisions?: LevelUpDecisionsByLevel;
 };
 
 export type DerivedCharacterData = {
@@ -601,11 +620,23 @@ export type DerivedCharacterData = {
   weaponMasteries: WeaponMasteryChoiceId[];
 };
 
+export type PendingLevelUp = {
+  fromLevel: number;
+  toLevel: number;
+  createdAt?: unknown;
+};
+
+export type LevelUpHistoryEntry = {
+  level: number;
+  completedAt?: unknown;
+};
+
 export type CharacterSheetData = {
   ownerUid: string;
   campaignId: string | null;
 
   name: string;
+  xp?: number;
   level: number;
 
   classId: CharacterClassId | string;
@@ -620,6 +651,9 @@ export type CharacterSheetData = {
 
   choices?: CharacterChoices;
   derived?: DerivedCharacterData;
+
+  pendingLevelUp?: PendingLevelUp | null;
+  levelUpHistory?: LevelUpHistoryEntry[];
 
   equipment?: {
     id: string;

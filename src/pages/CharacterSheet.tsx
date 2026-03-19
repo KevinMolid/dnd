@@ -9,7 +9,18 @@ import {
   originFeatsById,
   speciesById,
 } from "../rulesets/dnd/dnd2024/helpers";
-import type { AbilityKey, SkillId } from "../rulesets/dnd/dnd2024/types";
+import {
+  getXpProgressWithinLevel,
+  completePendingLevelUp,
+} from "../rulesets/dnd/dnd2024/xpProgression";
+import { getPendingLevelUpSteps } from "../rulesets/dnd/dnd2024/getPendingLevelUpSteps";
+import { applyLevelUpDecision } from "../rulesets/dnd/dnd2024/applyLevelUpDecision";
+import type {
+  AbilityKey,
+  SkillId,
+  LanguageId,
+  WeaponMasteryChoiceId,
+} from "../rulesets/dnd/dnd2024/types";
 
 type CharacterDoc = {
   ownerUid: string;
@@ -17,6 +28,7 @@ type CharacterDoc = {
 
   name: string;
   level: number;
+  xp?: number;
 
   classId: string;
   speciesId: string;
@@ -28,6 +40,11 @@ type CharacterDoc = {
   alignment?: string;
   notes?: string;
 
+  pendingLevelUp?: {
+    fromLevel: number;
+    toLevel: number;
+  } | null;
+
   choices?: {
     backgroundAbilityBonuses?: {
       plus2: AbilityKey;
@@ -35,6 +52,21 @@ type CharacterDoc = {
     };
     classSkillChoices?: SkillId[];
     rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
+    levelUpDecisions?: Record<
+      number,
+      {
+        subclassId?: string;
+        featId?: string;
+        asi?: {
+          plus2?: AbilityKey;
+          plus1a?: AbilityKey;
+          plus1b?: AbilityKey;
+        };
+        expertise?: Array<SkillId | "thieves-tools">;
+        language?: string;
+        weaponMastery?: string[];
+      }
+    >;
   };
 
   derived?: {
@@ -278,6 +310,28 @@ const CharacterSheet = () => {
     loadCharacter();
   }, [characterId, user]);
 
+  const handleApplyDecision = (
+    level: number,
+    decision:
+      | { subclassId: string }
+      | { featId: string }
+      | { expertise: Array<SkillId | "thieves-tools"> }
+      | { language: LanguageId }
+      | { weaponMastery: WeaponMasteryChoiceId[] },
+  ) => {
+    if (!character) return;
+
+    const updated = applyLevelUpDecision(character as any, level, decision);
+    setCharacter(updated as CharacterDoc);
+  };
+
+  const handleCompleteLevelUp = () => {
+    if (!character) return;
+
+    const updated = completePendingLevelUp(character as any);
+    setCharacter(updated as CharacterDoc);
+  };
+
   const derived = useMemo(() => {
     if (!character) return null;
 
@@ -379,6 +433,10 @@ const CharacterSheet = () => {
         ? getSneakAttackDice(character.level)
         : null;
 
+    const xp = character.xp ?? 0;
+    const xpProgress = getXpProgressWithinLevel(xp);
+    const pendingSteps = getPendingLevelUpSteps(character as any);
+
     return {
       className: classDef?.name ?? character.classId,
       speciesName:
@@ -425,6 +483,9 @@ const CharacterSheet = () => {
       expertise,
       genericAttackBonuses,
       rogueSneakAttack,
+      xp,
+      xpProgress,
+      pendingSteps,
     };
   }, [character]);
 
@@ -534,8 +595,152 @@ const CharacterSheet = () => {
           />
         </div>
 
+        <div className="mb-6">
+          <SectionCard title="Progression">
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm text-zinc-400">
+                  <span>XP</span>
+                  <span>
+                    {derived.xp} / {derived.xpProgress.nextLevelXp ?? "MAX"}
+                  </span>
+                </div>
+
+                <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-800">
+                  <div
+                    className="h-full bg-white"
+                    style={{
+                      width: `${derived.xpProgress.progressPercent}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="mt-2 flex justify-between text-xs text-zinc-500">
+                  <span>Level {derived.xpProgress.level}</span>
+                  <span>
+                    {derived.xpProgress.nextLevelXp === null
+                      ? "Max level reached"
+                      : `${derived.xpProgress.progressXp}/${derived.xpProgress.neededXp} XP this level`}
+                  </span>
+                </div>
+              </div>
+
+              {character.pendingLevelUp && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
+                  Level up available! ({character.pendingLevelUp.fromLevel} →{" "}
+                  {character.pendingLevelUp.toLevel})
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        </div>
+
         <div className="grid gap-6 xl:grid-cols-3">
           <div className="space-y-6 xl:col-span-2">
+            {derived.pendingSteps.length > 0 && (
+              <SectionCard title="Level Up">
+                <div className="space-y-3">
+                  {derived.pendingSteps.map((step) => (
+                    <div
+                      key={step.id}
+                      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-medium text-white">{step.title}</p>
+                          <p className="text-xs text-zinc-500">
+                            Level {step.level}
+                          </p>
+                          {step.description && (
+                            <p className="mt-2 text-sm text-zinc-400">
+                              {step.description}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {step.type === "subclass-choice" && (
+                            <button
+                              onClick={() =>
+                                handleApplyDecision(step.level, {
+                                  subclassId: "assassin",
+                                })
+                              }
+                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                            >
+                              Choose
+                            </button>
+                          )}
+
+                          {step.type === "feat-choice" && (
+                            <button
+                              onClick={() =>
+                                handleApplyDecision(step.level, {
+                                  featId: "alert",
+                                })
+                              }
+                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                            >
+                              Choose
+                            </button>
+                          )}
+
+                          {step.type === "expertise-choice" && (
+                            <button
+                              onClick={() =>
+                                handleApplyDecision(step.level, {
+                                  expertise: ["stealth", "perception"],
+                                })
+                              }
+                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                            >
+                              Choose
+                            </button>
+                          )}
+
+                          {step.type === "language-choice" && (
+                            <button
+                              onClick={() =>
+                                handleApplyDecision(step.level, {
+                                  language: "elvish" as LanguageId,
+                                })
+                              }
+                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                            >
+                              Choose
+                            </button>
+                          )}
+
+                          {step.type === "weapon-mastery-choice" && (
+                            <button
+                              onClick={() =>
+                                handleApplyDecision(step.level, {
+                                  weaponMastery: [
+                                    "dagger",
+                                    "shortsword",
+                                  ] as WeaponMasteryChoiceId[],
+                                })
+                              }
+                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                            >
+                              Choose
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={handleCompleteLevelUp}
+                    className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400"
+                  >
+                    Complete Level Up
+                  </button>
+                </div>
+              </SectionCard>
+            )}
+
             <SectionCard title="Ability Scores">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {(Object.keys(derived.finalAbilityScores) as AbilityKey[]).map(
