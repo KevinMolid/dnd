@@ -1,5 +1,11 @@
 import type { CharacterChoices, Trait } from "./types";
-import { species, elfLineages, gnomeLineages, goliathAncestries, tieflingLegacies } from "./data";
+import {
+  species,
+  elfLineages,
+  gnomeLineages,
+  goliathAncestries,
+  tieflingLegacies,
+} from "./data";
 
 export function getSpeciesTraits(
   speciesId: string,
