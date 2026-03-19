@@ -230,6 +230,14 @@ export type GnomeLineage = {
   traits: Trait[];
 };
 
+export type TieflingLegacyId = "abyssal" | "chthonic" | "infernal";
+
+export type TieflingLegacy = {
+  id: TieflingLegacyId;
+  name: string;
+  traits: Trait[];
+};
+
 export type GoliathAncestryId =
   | "clouds-jaunt"
   | "fires-burn"

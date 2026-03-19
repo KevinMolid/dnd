@@ -1,5 +1,5 @@
 import type { CharacterChoices, Trait } from "./types";
-import { species, elfLineages, gnomeLineages, goliathAncestries } from "./data";
+import { species, elfLineages, gnomeLineages, goliathAncestries, tieflingLegacies } from "./data";
 
 export function getSpeciesTraits(
   speciesId: string,
@@ -46,6 +46,19 @@ export function getSpeciesTraits(
         const ancestry = goliathAncestries.find((a) => a.id === ancestryId);
         if (ancestry) {
           traits.push(...ancestry.traits);
+        }
+      }
+
+      break;
+    }
+
+    case "tiefling": {
+      const legacyId = speciesTraitChoices?.["fiendish-legacy-choice"];
+
+      if (typeof legacyId === "string") {
+        const legacy = tieflingLegacies.find((l) => l.id === legacyId);
+        if (legacy) {
+          traits.push(...legacy.traits);
         }
       }
 

@@ -5,6 +5,7 @@ import type {
   Feat,
   GnomeLineage,
   GoliathAncestry,
+  TieflingLegacy,
   Species,
 } from "./types";
 
@@ -470,6 +471,114 @@ export const species: Species[] = [
         ],
       },
     ],
+  },
+  {
+    id: "orc",
+    name: "Orc",
+    size: "Medium",
+    speed: 30,
+    languages: ["common", "orc"],
+    traits: [
+      {
+        id: "adrenaline-rush",
+        name: "Adrenaline Rush",
+        activation: "bonus-action",
+        usage: {
+          type: "limited",
+          uses: { type: "proficiency-bonus" },
+          recharge: "short-rest",
+        },
+        notes: [
+          "You take the Dash action as a Bonus Action.",
+          "When you do so, you gain Temporary Hit Points equal to your Proficiency Bonus.",
+        ],
+      },
+      {
+        id: "darkvision",
+        name: "Darkvision",
+        effects: [
+          {
+            type: "sense",
+            sense: "darkvision",
+            range: 120,
+          },
+        ],
+      },
+      {
+        id: "relentless-endurance",
+        name: "Relentless Endurance",
+        usage: {
+          type: "limited",
+          uses: { type: "fixed", value: 1 },
+          recharge: "long-rest",
+        },
+        notes: [
+          "When you are reduced to 0 Hit Points but not killed outright, you can drop to 1 Hit Point instead.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "tiefling",
+    name: "Tiefling",
+    sizeOptions: ["Medium", "Small"],
+    speed: 30,
+    languages: ["common", "infernal"],
+    traits: [
+      {
+        id: "darkvision",
+        name: "Darkvision",
+        effects: [
+          {
+            type: "sense",
+            sense: "darkvision",
+            range: 60,
+          },
+        ],
+      },
+      {
+      id: "fiendish-legacy",
+      name: "Fiendish Legacy",
+      description:
+        "Choose a fiendish legacy that grants you supernatural abilities.",
+      choices: [
+        {
+          id: "fiendish-legacy-choice",
+          name: "Fiendish Legacy",
+          choose: 1,
+          options: [
+            { id: "abyssal", name: "Abyssal" },
+            { id: "chthonic", name: "Chthonic" },
+            { id: "infernal", name: "Infernal" },
+          ],
+        },
+        {
+          id: "fiendish-legacy-ability-choice",
+          name: "Fiendish Legacy Spellcasting Ability",
+          choose: 1,
+          options: [
+            { id: "int", name: "Intelligence" },
+            { id: "wis", name: "Wisdom" },
+            { id: "cha", name: "Charisma" },
+          ],
+        },
+      ],
+    },
+      {
+        id: "otherworldly-presence",
+        name: "Otherworldly Presence",
+        effects: [
+          {
+            type: "spell",
+            spellName: "Thaumaturgy",
+            frequency: { type: "at-will" },
+          },
+        ],
+        notes: [
+          "When you cast this spell, use the same spellcasting ability you chose for your Fiendish Legacy trait.",
+        ],
+      },
+    ],
   }
 ];
 
@@ -822,6 +931,147 @@ export const goliathAncestries: GoliathAncestry[] = [
             type: "text",
             text: "When you take damage from a creature within 60 feet of you, you can deal 1d8 Thunder damage to that creature.",
           },
+        ],
+      },
+    ],
+  },
+];
+
+export const tieflingLegacies: TieflingLegacy[] = [
+  {
+    id: "abyssal",
+    name: "Abyssal",
+    traits: [
+      {
+        id: "abyssal-legacy",
+        name: "Abyssal Legacy",
+        effects: [
+          {
+            type: "resistance",
+            damageType: "poison",
+          },
+          {
+            type: "spell",
+            spellName: "Poison Spray",
+            frequency: { type: "at-will" },
+          },
+          {
+            type: "spell",
+            spellName: "Ray of Sickness",
+            level: 3,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+          {
+            type: "spell",
+            spellName: "Hold Person",
+            level: 5,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+        ],
+        notes: [
+          "You always have the level 3 and level 5 spells prepared.",
+          "You can also cast them using spell slots you have of the appropriate level.",
+          "Use your chosen Fiendish Legacy spellcasting ability for these spells.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "chthonic",
+    name: "Chthonic",
+    traits: [
+      {
+        id: "chthonic-legacy",
+        name: "Chthonic Legacy",
+        effects: [
+          {
+            type: "resistance",
+            damageType: "necrotic",
+          },
+          {
+            type: "spell",
+            spellName: "Chill Touch",
+            frequency: { type: "at-will" },
+          },
+          {
+            type: "spell",
+            spellName: "False Life",
+            level: 3,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+          {
+            type: "spell",
+            spellName: "Ray of Enfeeblement",
+            level: 5,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+        ],
+        notes: [
+          "You always have the level 3 and level 5 spells prepared.",
+          "You can also cast them using spell slots you have of the appropriate level.",
+          "Use your chosen Fiendish Legacy spellcasting ability for these spells.",
+        ],
+      },
+    ],
+  },
+  {
+    id: "infernal",
+    name: "Infernal",
+    traits: [
+      {
+        id: "infernal-legacy",
+        name: "Infernal Legacy",
+        effects: [
+          {
+            type: "resistance",
+            damageType: "fire",
+          },
+          {
+            type: "spell",
+            spellName: "Fire Bolt",
+            frequency: { type: "at-will" },
+          },
+          {
+            type: "spell",
+            spellName: "Hellish Rebuke",
+            level: 3,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+          {
+            type: "spell",
+            spellName: "Darkness",
+            level: 5,
+            frequency: {
+              type: "limited",
+              uses: { type: "fixed", value: 1 },
+              recharge: "long-rest",
+            },
+          },
+        ],
+        notes: [
+          "You always have the level 3 and level 5 spells prepared.",
+          "You can also cast them using spell slots you have of the appropriate level.",
+          "Use your chosen Fiendish Legacy spellcasting ability for these spells.",
         ],
       },
     ],

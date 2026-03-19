@@ -1143,7 +1143,7 @@ const NewCharacter = () => {
               </div>
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-5 mt-8">
               {speciesChoices.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
