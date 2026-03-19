@@ -12,8 +12,10 @@ import type {
   CharacterFeature,
   CharacterSheetData,
   DerivedCharacterData,
+  ScalingValue,
   SkillId,
   ToolId,
+  Trait,
   WeaponMasteryChoiceId,
 } from "./types";
 
@@ -59,6 +61,110 @@ const applyBackgroundBonuses = (
   return nextScores;
 };
 
+const resolveScalingValue = (
+  value: ScalingValue,
+  context: {
+    level: number;
+    proficiencyBonus: number;
+    abilityScores: CharacterSheetData["abilityScores"];
+  },
+): number => {
+  switch (value.type) {
+    case "fixed":
+      return value.value;
+
+    case "proficiency-bonus":
+      return context.proficiencyBonus;
+
+    case "ability-modifier":
+      return getAbilityModifier(context.abilityScores[value.ability]);
+
+    case "level-based": {
+      const eligibleLevels = Object.keys(value.levels)
+        .map(Number)
+        .filter((lvl) => lvl <= context.level)
+        .sort((a, b) => b - a);
+
+      if (eligibleLevels.length === 0) {
+        return 0;
+      }
+
+      return value.levels[eligibleLevels[0]];
+    }
+
+    case "formula":
+      return value.parts.reduce((sum, part) => {
+        switch (part.type) {
+          case "fixed":
+            return sum + part.value;
+          case "proficiency-bonus":
+            return sum + context.proficiencyBonus;
+          case "ability-modifier":
+            return sum + getAbilityModifier(context.abilityScores[part.ability]);
+          default:
+            return sum;
+        }
+      }, 0);
+
+    default:
+      return 0;
+  }
+};
+
+const getSpeciesMaxHpBonus = (
+  traits: Trait[],
+  context: {
+    level: number;
+    proficiencyBonus: number;
+    abilityScores: CharacterSheetData["abilityScores"];
+  },
+): number => {
+  let bonus = 0;
+
+  for (const trait of traits) {
+    for (const effect of trait.effects ?? []) {
+      if (effect.type === "hp-max-bonus") {
+        bonus += resolveScalingValue(effect.amount, context);
+      }
+    }
+
+    // Temporary compatibility for Dwarven Toughness.
+    // The current data stores +1 in effects and the per-level scaling in notes.
+    if (trait.id === "dwarven-toughness") {
+      bonus += Math.max(0, context.level - 1);
+    }
+  }
+
+  return bonus;
+};
+
+const getPassiveWalkSpeedBonus = (
+  traits: Trait[],
+  level: number,
+): number => {
+  let bonus = 0;
+
+  for (const trait of traits) {
+    for (const effect of trait.effects ?? []) {
+      if (effect.type !== "speed-bonus") continue;
+      if (effect.speedType !== "walk") continue;
+      if (effect.minimumLevel && level < effect.minimumLevel) continue;
+
+      // Current model does not yet distinguish clearly between
+      // "walk speed becomes X" and "walk speed increases by X".
+      // So only structured fixed bonuses should be handled here later
+      // if you add such an effect type.
+    }
+
+    // Temporary compatibility for Wood Elf.
+    if (trait.id === "wood-elf-speed") {
+      bonus += 5;
+    }
+  }
+
+  return bonus;
+};
+
 export const buildDerivedCharacterData = (
   character: CharacterSheetData,
 ): DerivedCharacterData => {
@@ -70,6 +176,7 @@ export const buildDerivedCharacterData = (
     : undefined;
 
   const speciesTraits = getSpeciesTraits(character.speciesId, character.choices);
+
   const speciesGrantedSkillProficiencies = getSpeciesGrantedSkillProficiencies(
     character.speciesId,
     character.choices,
@@ -89,6 +196,14 @@ export const buildDerivedCharacterData = (
     character.choices,
     backgroundDef?.abilityOptions ?? [],
   );
+
+  const proficiencyBonus = getProficiencyBonus(character.level);
+
+  const scalingContext = {
+    level: character.level,
+    proficiencyBonus,
+    abilityScores: finalAbilityScores,
+  };
 
   const dexMod = getAbilityModifier(finalAbilityScores.dex);
   const wisMod = getAbilityModifier(finalAbilityScores.wis);
@@ -195,14 +310,19 @@ export const buildDerivedCharacterData = (
     ...featFeatures,
   ]);
 
-  const proficiencyBonus = getProficiencyBonus(character.level);
+  const speciesMaxHpBonus = getSpeciesMaxHpBonus(speciesTraits, scalingContext);
+  const passiveWalkSpeedBonus = getPassiveWalkSpeedBonus(
+    speciesTraits,
+    character.level,
+  );
 
   const maxHp =
     classDef && character.level > 0
       ? classDef.hitDie +
         conMod +
         (character.level - 1) *
-          (getAverageHpPerLevel(classDef.hitDie) + conMod)
+          (getAverageHpPerLevel(classDef.hitDie) + conMod) +
+        speciesMaxHpBonus
       : undefined;
 
   const expertise =
@@ -222,7 +342,9 @@ export const buildDerivedCharacterData = (
       currentHp: character.derived?.stats?.currentHp ?? maxHp,
       armorClass: character.derived?.stats?.armorClass ?? 10 + dexMod,
       initiativeBonus: character.derived?.stats?.initiativeBonus ?? dexMod,
-      speed: character.derived?.stats?.speed ?? speciesDef?.speed ?? 30,
+      speed:
+        character.derived?.stats?.speed ??
+        ((speciesDef?.speed ?? 30) + passiveWalkSpeedBonus),
       passivePerception:
         character.derived?.stats?.passivePerception ?? 10 + wisMod,
     },
