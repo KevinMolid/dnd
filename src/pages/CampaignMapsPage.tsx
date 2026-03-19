@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import MapViewer from "../components/MapViewer";
 import MapEditorModal from "../components/MapEditorModal";
 import CreateMapModal from "./CreateMapModal";
@@ -7,6 +7,7 @@ import { useAuth } from "../context/AuthContext";
 import { createCampaignMap } from "../features/maps/mapService";
 import { useCampaignMaps } from "../features/maps/useCampaignMaps";
 import type { CampaignMap } from "../features/maps/types";
+
 
 const DEFAULT_IMAGE_URL =
   "https://i.etsystatic.com/18388031/r/il/056bd0/6063210018/il_1080xN.6063210018_a4k1.jpg";
@@ -64,6 +65,16 @@ const CampaignMapsPage = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <Link
+            to={`/campaigns/${campaignId}`}
+              className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
+          >
+            ← Back to campaign
+          </Link>
+        </div>
+
         <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-6 shadow-2xl sm:mb-10 sm:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
