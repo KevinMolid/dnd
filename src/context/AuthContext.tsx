@@ -15,6 +15,7 @@ type AppUser = {
   email: string | null;
   displayName: string;
   createdAt?: Timestamp;
+  photoURL?: string;
 };
 
 type AuthContextType = {

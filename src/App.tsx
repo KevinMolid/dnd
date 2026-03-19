@@ -41,7 +41,7 @@ function App() {
     <BrowserRouter>
       <Header />
 
-      <main className="pt-6">
+      <main>
         <Routes>
           <Route index element={<Home />} />
           <Route path="tips" element={<Tips />} />

@@ -1,6 +1,5 @@
+import { useEffect, useMemo, useRef, useState } from "react";
 import Container from "./Container";
-import NavTab from "./NavTab";
-
 import logo from "/images/logo.png";
 
 import { Link, useNavigate } from "react-router-dom";
@@ -9,6 +8,9 @@ import { useAuth } from "../context/AuthContext";
 function Header() {
   const { appUser, user, loading, logout } = useAuth();
   const navigate = useNavigate();
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -25,72 +27,218 @@ function Header() {
     user?.email ||
     "User";
 
-  const email = appUser?.email || user?.email || "";
+  const email = user?.email || "";
+
+  const profileImage =
+    appUser?.photoURL?.trim() || user?.photoURL?.trim() || "";
+
+  const initials = useMemo(() => {
+    const source = displayName?.trim() || "U";
+    const parts = source.split(/\s+/).filter(Boolean);
+
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+  }, [displayName]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 text-white backdrop-blur">
       <Container>
-        <div className="flex flex-col gap-4 py-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <Link to="/" className="min-w-0">
-              <div className="flex items-center gap-3">
-                <img
-                  src={logo}
-                  alt="rphub logo"
-                  className="h-12 w-12 shrink-0 rounded-xl object-cover sm:h-14 sm:w-14"
-                />
+        <div className="flex items-center justify-between gap-4 py-4">
+          <Link to="/" className="min-w-0">
+            <div className="flex items-center gap-3">
+              <img
+                src={logo}
+                alt="rphub logo"
+                className="h-12 w-12 shrink-0 rounded-xl object-cover sm:h-14 sm:w-14"
+              />
 
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-zinc-500">
-                    Tabletop Campaign Hub
-                  </p>
-                  <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                    rphub
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Run the campaign. Reveal the world.
-                  </p>
-                </div>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                  rphub
+                </p>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-zinc-500">
+                  Tabletop Campaign Hub
+                </p>
               </div>
-            </Link>
+            </div>
+          </Link>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-              <div className="min-w-0 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Signed in as
-                </p>
-                <p className="mt-1 truncate text-sm font-medium text-white sm:text-base">
-                  {loading ? "Loading..." : displayName}
-                </p>
-                {email && (
-                  <p className="mt-1 truncate text-xs text-zinc-400 sm:text-sm">
-                    {email}
-                  </p>
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="group flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-1 pr-3 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-amber-400/70"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label="Open profile menu"
+            >
+              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-800 text-sm font-bold text-white">
+                {profileImage ? (
+                  <img
+                    src={profileImage}
+                    alt={displayName}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span>{loading ? "..." : initials}</span>
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 active:scale-[0.99]"
+              <div className="hidden text-left sm:block">
+                <p className="max-w-[180px] truncate text-sm font-semibold text-white">
+                  {loading ? "Loading..." : displayName}
+                </p>
+                <p className="max-w-[180px] truncate text-xs text-zinc-400">
+                  {email}
+                </p>
+              </div>
+
+              <svg
+                className={`hidden h-4 w-4 text-zinc-400 transition sm:block ${
+                  menuOpen ? "rotate-180" : ""
+                }`}
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
               >
-                Log out
-              </button>
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+
+            <div
+  className={`absolute right-0 top-full z-50 mt-3 w-[min(92vw,22rem)] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl ring-1 ring-black/40 transition-all duration-200 ${
+    menuOpen
+      ? "pointer-events-auto translate-y-0 opacity-100"
+      : "pointer-events-none -translate-y-2 opacity-0"
+  }`}
+>
+              <div className="border-b border-white/10 bg-white/5 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-800 text-base font-bold text-white">
+                    {profileImage ? (
+                      <img
+                        src={profileImage}
+                        alt={displayName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span>{loading ? "..." : initials}</span>
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">
+                      {loading ? "Loading..." : displayName}
+                    </p>
+                    <p className="truncate text-xs text-zinc-400">{email}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate("/profile");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-white transition hover:bg-white/10"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-zinc-300">
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M10 2a4 4 0 100 8 4 4 0 000-8zM3 16a5 5 0 015-5h4a5 5 0 015 5v1H3v-1z" />
+                    </svg>
+                  </span>
+                  <span>Profile settings</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    navigate("/settings");
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-white transition hover:bg-white/10"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-zinc-300">
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M11.49 3.17a1 1 0 00-1.98 0l-.12.95a1 1 0 01-.83.86l-.96.14a1 1 0 00-.56 1.7l.69.68a1 1 0 01.28.88l-.17.95a1 1 0 001.45 1.05l.86-.45a1 1 0 01.93 0l.86.45a1 1 0 001.45-1.05l-.17-.95a1 1 0 01.28-.88l.69-.68a1 1 0 00-.56-1.7l-.96-.14a1 1 0 01-.83-.86l-.12-.95zM10 13a3 3 0 100-6 3 3 0 000 6z"
+                        clipRule="evenodd"
+                      />
+                      <path d="M4 11a6 6 0 1112 0 6 6 0 01-12 0z" />
+                    </svg>
+                  </span>
+                  <span>Account settings</span>
+                </button>
+
+                <div className="my-2 h-px bg-white/10" />
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-500/10 text-red-300">
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M3 4.75A1.75 1.75 0 014.75 3h5.5a.75.75 0 010 1.5h-5.5a.25.25 0 00-.25.25v10.5c0 .138.112.25.25.25h5.5a.75.75 0 010 1.5h-5.5A1.75 1.75 0 013 15.25V4.75zm9.22 2.47a.75.75 0 011.06 0l2.25 2.25a.75.75 0 010 1.06l-2.25 2.25a.75.75 0 11-1.06-1.06l.97-.97H8.75a.75.75 0 010-1.5h4.44l-.97-.97a.75.75 0 010-1.06z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </span>
+                  <span>Log out</span>
+                </button>
+              </div>
             </div>
           </div>
-
-          <nav className="-mx-1 overflow-x-auto">
-            <ul className="flex min-w-max items-center gap-1 px-1 pb-1">
-              <NavTab to="/tips">Tips</NavTab>
-              <NavTab to="/reglene">Rules</NavTab>
-              <NavTab to="/karakterer">Characters</NavTab>
-              <NavTab to="/stats">Stats</NavTab>
-              <NavTab to="/kamp">Combat</NavTab>
-              <NavTab to="/spillere">Players</NavTab>
-              <NavTab to="/handouts">Handouts</NavTab>
-              <NavTab to="/quests">Quests</NavTab>
-            </ul>
-          </nav>
         </div>
       </Container>
     </header>
