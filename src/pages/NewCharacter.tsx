@@ -4,6 +4,7 @@ import { createCharacter } from "../characters";
 import { backgrounds, classes, species } from "../rulesets/dnd/dnd2024/data";
 import { buildDerivedCharacterData } from "../rulesets/dnd/dnd2024/buildDerivedCharacterData";
 import { getSpeciesChoices } from "../rulesets/dnd/dnd2024/getSpeciesChoices";
+import { getSpeciesGrantedFeatIds } from "../rulesets/dnd/dnd2024/getSpeciesGrantedFeatIds";
 import {
   getBackgroundById,
   getClassById,
@@ -201,17 +202,31 @@ const NewCharacter = () => {
 
   const isRogue = classId === "rogue";
 
-  const grantedFeatId = backgroundDef?.originFeatId ?? null;
-  const grantedFeatName = grantedFeatId
-    ? (getOriginFeatById(grantedFeatId)?.name ?? grantedFeatId)
+  const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
+  const backgroundGrantedFeatName = backgroundGrantedFeatId
+    ? (getOriginFeatById(backgroundGrantedFeatId)?.name ??
+      backgroundGrantedFeatId)
     : null;
+
+  const speciesGrantedFeatIds = useMemo(
+    () => getSpeciesGrantedFeatIds(speciesId, { speciesTraitChoices }),
+    [speciesId, speciesTraitChoices],
+  );
+
+  const speciesGrantedFeatNames = useMemo(
+    () =>
+      speciesGrantedFeatIds.map(
+        (featId) => getOriginFeatById(featId)?.name ?? featId,
+      ),
+    [speciesGrantedFeatIds],
+  );
 
   const activeAllTraits = useMemo(() => {
     return getAllCharacterTraits({
       classId,
       speciesId,
       backgroundId,
-      originFeatId: grantedFeatId,
+      originFeatId: backgroundGrantedFeatId,
       level: 1,
       choices: {
         classSkillChoices,
@@ -235,7 +250,7 @@ const NewCharacter = () => {
     backgroundId,
     classId,
     classSkillChoices,
-    grantedFeatId,
+    backgroundGrantedFeatId,
     isRogue,
     rogueBonusLanguage,
     rogueExpertiseChoices,
@@ -523,7 +538,7 @@ const NewCharacter = () => {
         classId,
         speciesId,
         backgroundId,
-        originFeatId: grantedFeatId,
+        originFeatId: backgroundGrantedFeatId,
         abilityScores,
         alignment: alignment.trim(),
         notes: notes.trim(),
@@ -554,7 +569,7 @@ const NewCharacter = () => {
         classId,
         speciesId,
         backgroundId,
-        originFeatId: grantedFeatId,
+        originFeatId: backgroundGrantedFeatId,
         abilityScores,
         alignment: alignment.trim(),
         notes: notes.trim(),
@@ -1167,11 +1182,32 @@ const NewCharacter = () => {
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Granted feat
+                  Background feat
                 </p>
                 <p className="mt-2 text-sm text-zinc-200">
-                  {grantedFeatName ?? "None"}
+                  {backgroundGrantedFeatName ?? "None"}
                 </p>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Species feat
+                </p>
+
+                {speciesGrantedFeatNames.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {speciesGrantedFeatNames.map((featName) => (
+                      <span
+                        key={featName}
+                        className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                      >
+                        {featName}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-zinc-400">None</p>
+                )}
               </div>
 
               <div>

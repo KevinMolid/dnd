@@ -1,4 +1,5 @@
 import type { CharacterSheetData, Trait } from "./types";
+import { getSpeciesGrantedFeatIds } from "./getSpeciesGrantedFeatIds";
 import { getSpeciesTraits } from "./getSpeciesTraits";
 import {
   getBackgroundById,
@@ -38,6 +39,18 @@ export function getAllCharacterTraits(
 
   if (character.originFeatId) {
     const feat = getOriginFeatById(character.originFeatId);
+    if (feat) {
+      allTraits.push(...feat.traits);
+    }
+  }
+
+  const speciesGrantedFeatIds = getSpeciesGrantedFeatIds(
+    character.speciesId,
+    character.choices,
+  );
+
+  for (const featId of speciesGrantedFeatIds) {
+    const feat = getOriginFeatById(featId);
     if (feat) {
       allTraits.push(...feat.traits);
     }

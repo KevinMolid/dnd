@@ -4,6 +4,9 @@ import {
   getOriginFeatById,
   getSpeciesById,
 } from "./helpers";
+import { getSpeciesGrantedFeatIds } from "./getSpeciesGrantedFeatIds";
+import { getSpeciesGrantedSkillProficiencies } from "./getSpeciesGrantedSkillProficiencies";
+import { getSpeciesTraits } from "./getSpeciesTraits";
 import type {
   AbilityKey,
   CharacterFeature,
@@ -15,6 +18,19 @@ import type {
 } from "./types";
 
 const unique = <T>(values: T[]): T[] => [...new Set(values)];
+
+const uniqueById = <T extends { id: string }>(values: T[]): T[] => {
+  const seen = new Set<string>();
+  const result: T[] = [];
+
+  for (const value of values) {
+    if (seen.has(value.id)) continue;
+    seen.add(value.id);
+    result.push(value);
+  }
+
+  return result;
+};
 
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
 const getProficiencyBonus = (level: number) => 2 + Math.floor((level - 1) / 4);
@@ -53,6 +69,21 @@ export const buildDerivedCharacterData = (
     ? getOriginFeatById(character.originFeatId)
     : undefined;
 
+  const speciesTraits = getSpeciesTraits(character.speciesId, character.choices);
+  const speciesGrantedSkillProficiencies = getSpeciesGrantedSkillProficiencies(
+    character.speciesId,
+    character.choices,
+  );
+
+  const speciesGrantedFeatIds = getSpeciesGrantedFeatIds(
+    character.speciesId,
+    character.choices,
+  );
+
+  const speciesGrantedFeats = speciesGrantedFeatIds
+    .map((featId) => getOriginFeatById(featId))
+    .filter((feat): feat is NonNullable<typeof feat> => Boolean(feat));
+
   const finalAbilityScores = applyBackgroundBonuses(
     character.abilityScores,
     character.choices,
@@ -68,11 +99,14 @@ export const buildDerivedCharacterData = (
   const extraLanguageChoices = character.choices?.languageChoices ?? [];
 
   const rogueBonusLanguage =
-    character.classId === "rogue" ? character.choices?.rogueBonusLanguage : undefined;
+    character.classId === "rogue"
+      ? character.choices?.rogueBonusLanguage
+      : undefined;
 
   const skillProficiencies = unique<SkillId>([
     ...(backgroundDef?.skillProficiencies ?? []),
     ...classSkillChoices,
+    ...speciesGrantedSkillProficiencies,
   ]);
 
   const toolProficiencies = unique<ToolId>([
@@ -103,7 +137,7 @@ export const buildDerivedCharacterData = (
           return features.map((feature) => ({
             id: feature.id,
             name: feature.name,
-            level: feature.level ?? numericLevel,
+            level: feature.level ?? feature.minLevel ?? numericLevel,
             sourceType: "class" as const,
             sourceId: classDef.id,
           }));
@@ -112,10 +146,10 @@ export const buildDerivedCharacterData = (
     : [];
 
   const speciesFeatures: CharacterFeature[] = speciesDef
-    ? speciesDef.traits.map((feature) => ({
+    ? speciesTraits.map((feature) => ({
         id: feature.id,
         name: feature.name,
-        level: feature.level ?? 1,
+        level: feature.level ?? feature.minLevel ?? 1,
         sourceType: "species" as const,
         sourceId: speciesDef.id,
       }))
@@ -133,22 +167,33 @@ export const buildDerivedCharacterData = (
       ]
     : [];
 
-  const featFeatures: CharacterFeature[] = featDef
-    ? featDef.traits.map((feature) => ({
+  const featFeatures: CharacterFeature[] = [
+    ...(featDef
+      ? featDef.traits.map((feature) => ({
+          id: feature.id,
+          name: feature.name,
+          level: feature.level ?? feature.minLevel ?? 1,
+          sourceType: "feat" as const,
+          sourceId: featDef.id,
+        }))
+      : []),
+    ...speciesGrantedFeats.flatMap((feat) =>
+      feat.traits.map((feature) => ({
         id: feature.id,
         name: feature.name,
-        level: feature.level ?? 1,
+        level: feature.level ?? feature.minLevel ?? 1,
         sourceType: "feat" as const,
-        sourceId: featDef.id,
-      }))
-    : [];
+        sourceId: feat.id,
+      })),
+    ),
+  ];
 
-  const features = [
+  const features = uniqueById<CharacterFeature>([
     ...classFeatures,
     ...speciesFeatures,
     ...backgroundFeatures,
     ...featFeatures,
-  ];
+  ]);
 
   const proficiencyBonus = getProficiencyBonus(character.level);
 
