@@ -440,15 +440,6 @@ const CampaignPage = () => {
               >
                 Handouts
               </Link>
-
-              {isGm && (
-                <button
-                  onClick={() => setInviteModalOpen(true)}
-                  className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-                >
-                  Invite players
-                </button>
-              )}
             </div>
           </div>
         </section>
