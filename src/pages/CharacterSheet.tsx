@@ -1057,14 +1057,6 @@ const CharacterSheet = () => {
               </dl>
             </SectionCard>
 
-            <SectionCard title="Rules Notes">
-              <p className="text-sm leading-6 text-zinc-300">
-                Initiative uses your Dexterity modifier. Dexterity saving throw
-                proficiency affects Dexterity saves, not Initiative, unless a
-                separate feature says otherwise.
-              </p>
-            </SectionCard>
-
             <SectionCard title="Notes">
               {character.notes ? (
                 <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
