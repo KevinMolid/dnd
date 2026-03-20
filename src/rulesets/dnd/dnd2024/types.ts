@@ -506,6 +506,12 @@ export type CharacterSubclass = RulesOption & {
   featuresByLevel: Partial<Record<number, Trait[]>>;
 };
 
+export type CharacterSubclassOption = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
 export type CharacterClass = RulesOption & {
   hitDie: number;
   primaryAbilities?: AbilityKey[];
@@ -520,6 +526,8 @@ export type CharacterClass = RulesOption & {
   featuresByLevel: Partial<Record<number, Trait[]>>;
   spellcasting?: ClassSpellcasting;
   startingEquipment?: StartingEquipment;
+  subclasses?: CharacterSubclassOption[];
+  weaponMasteryOptions?: WeaponMasteryChoiceId[];
 };
 
 export type AbilityScores = Record<AbilityKey, number>;

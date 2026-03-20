@@ -22,6 +22,8 @@ import type {
   WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
 
+import { getCharacterHp } from "../rulesets/dnd/dnd2024/getCharacterHp";
+
 type CharacterDoc = {
   ownerUid: string;
   campaignId: string | null;
@@ -291,13 +293,6 @@ const CharacterSheet = () => {
 
         const data = snap.data() as CharacterDoc;
 
-        if (user && data.ownerUid !== user.uid) {
-          setError("You do not have access to this character.");
-          setCharacter(null);
-          setLoading(false);
-          return;
-        }
-
         setCharacter(data);
       } catch (err: any) {
         console.error(err);
@@ -351,7 +346,6 @@ const CharacterSheet = () => {
 
     const strMod = getAbilityModifier(finalAbilityScores.str);
     const dexMod = getAbilityModifier(finalAbilityScores.dex);
-    const conMod = getAbilityModifier(finalAbilityScores.con);
     const wisMod = getAbilityModifier(finalAbilityScores.wis);
 
     const fallbackSkillProficiencies = unique<SkillId>([
@@ -415,12 +409,7 @@ const CharacterSheet = () => {
       },
     );
 
-    const computedMaxHp =
-      classDef && character.level >= 1
-        ? classDef.hitDie +
-          conMod +
-          (character.level - 1) * (Math.floor(classDef.hitDie / 2) + 1 + conMod)
-        : 0;
+    const hpData = getCharacterHp(character as any);
 
     const genericAttackBonuses = {
       strengthWeapon: strMod + proficiencyBonus,
@@ -458,14 +447,8 @@ const CharacterSheet = () => {
         character.armorClass ??
         10 + dexMod,
       speed: character.derived?.stats?.speed ?? character.speed ?? 30,
-      currentHp:
-        character.derived?.stats?.currentHp ??
-        character.currentHp ??
-        character.derived?.stats?.maxHp ??
-        character.maxHp ??
-        computedMaxHp,
-      maxHp:
-        character.derived?.stats?.maxHp ?? character.maxHp ?? computedMaxHp,
+      currentHp: hpData.currentHp,
+      maxHp: hpData.maxHp,
       finalAbilityScores,
       skillRows,
       saveRows,

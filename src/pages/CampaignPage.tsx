@@ -19,9 +19,13 @@ import type {
 } from "../types/campaign";
 
 import {
-  getLevelFromXp,
   getXpProgressWithinLevel,
+  getLevelFromXp,
 } from "../rulesets/dnd/dnd2024/xpProgression";
+
+import { getCharacterHp } from "../rulesets/dnd/dnd2024/getCharacterHp";
+
+import { applyLevelUpDecision } from "../rulesets/dnd/dnd2024/applyLevelUpDecision";
 
 import Avatar from "../components/Avatar";
 
@@ -39,10 +43,45 @@ type CampaignPageState =
 type CharacterDoc = {
   ownerUid: string;
   campaignId: string | null;
+
   name: string;
   level: number;
+  xp?: number;
+
   classId: string;
   speciesId: string;
+
+  abilityScores?: Record<string, number>;
+
+  maxHp?: number;
+  currentHp?: number;
+  hp?: number;
+
+  conditions?: string[];
+
+  pendingLevelUp?: {
+    fromLevel: number;
+    toLevel: number;
+  } | null;
+
+  choices?: {
+    backgroundAbilityBonuses?: {
+      plus2: string;
+      plus1: string;
+    };
+    classSkillChoices?: string[];
+    rogueExpertiseChoices?: Array<string>;
+    levelUpDecisions?: Record<number, any>;
+  };
+
+  derived?: {
+    stats?: {
+      maxHp?: number;
+      currentHp?: number;
+    };
+  };
+
+  subclassId?: string | null;
 };
 
 type AppUserDoc = {
@@ -56,18 +95,30 @@ type CampaignCharacter = {
   ownerName?: string;
   ownerEmail?: string;
   campaignId: string | null;
+
   name: string;
   race?: string;
   className?: string;
-  level?: number;
+  classId: string;
+  speciesId: string;
 
-  hp?: number;
-  maxHp?: number;
+  level?: number;
+  derivedLevel?: number;
+  levelUpAvailable?: boolean;
+
   xp?: number;
+  currentHp?: number;
+  maxHp?: number;
   conditions?: string[];
 
-  levelUpAvailable?: boolean;
-  derivedLevel?: number;
+  abilityScores?: Record<string, number>;
+  pendingLevelUp?: {
+    fromLevel: number;
+    toLevel: number;
+  } | null;
+  choices?: CharacterDoc["choices"];
+  derived?: CharacterDoc["derived"];
+  subclassId?: string | null;
 };
 
 const ALL_CONDITIONS = [
@@ -237,7 +288,9 @@ const CampaignPage = () => {
               const xp = (data as any).xp ?? 0;
               const currentLevel = data.level ?? 1;
               const derivedLevel = getLevelFromXp(xp);
-              const levelUpAvailable = derivedLevel > currentLevel;
+              const levelUpAvailable =
+                !!data.pendingLevelUp || derivedLevel > currentLevel;
+              const hpData = getCharacterHp(data as any);
 
               return {
                 id: characterSnap.id,
@@ -245,15 +298,25 @@ const CampaignPage = () => {
                 ownerName,
                 ownerEmail,
                 campaignId: data.campaignId,
+
                 name: data.name,
+                classId: data.classId,
+                speciesId: data.speciesId,
+
                 race: speciesById[data.speciesId]?.name ?? data.speciesId,
                 className: classesById[data.classId]?.name ?? data.classId,
                 level: currentLevel,
 
-                hp: (data as any).hp ?? 10,
-                maxHp: (data as any).maxHp ?? 10,
                 xp,
-                conditions: (data as any).conditions ?? [],
+                currentHp: hpData.currentHp,
+                maxHp: hpData.maxHp,
+                conditions: data.conditions ?? [],
+
+                abilityScores: data.abilityScores,
+                pendingLevelUp: data.pendingLevelUp ?? null,
+                choices: data.choices ?? {},
+                derived: data.derived ?? {},
+                subclassId: data.subclassId ?? null,
 
                 derivedLevel,
                 levelUpAvailable,
@@ -327,6 +390,42 @@ const CampaignPage = () => {
     }
   };
 
+  const buildPendingLevelUp = (
+    currentLevel: number,
+    nextXp: number,
+    existingPending?: { fromLevel: number; toLevel: number } | null,
+  ) => {
+    const derivedLevel = getLevelFromXp(nextXp);
+
+    if (derivedLevel <= currentLevel) {
+      return null;
+    }
+
+    return {
+      fromLevel: existingPending?.fromLevel ?? currentLevel,
+      toLevel: derivedLevel,
+    };
+  };
+
+  const updateCharacterXp = async (
+    character: CampaignCharacter,
+    nextXp: number,
+  ) => {
+    const safeXp = Math.max(0, nextXp);
+    const currentLevel = character.level ?? 1;
+
+    const pendingLevelUp = buildPendingLevelUp(
+      currentLevel,
+      safeXp,
+      character.pendingLevelUp ?? null,
+    );
+
+    await updateCharacter(character.id, {
+      xp: safeXp,
+      pendingLevelUp,
+    });
+  };
+
   const toggleCondition = async (
     character: CampaignCharacter,
     condition: string,
@@ -339,16 +438,102 @@ const CampaignPage = () => {
     await updateCharacter(character.id, { conditions: next });
   };
 
-  const handleLevelUp = async (character: CampaignCharacter, updates: any) => {
+  const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
+
+  const getUpdatedConScore = (updated: CampaignCharacter) => {
+    const baseCon = updated.abilityScores?.con ?? 10;
+    const decisions = updated.choices?.levelUpDecisions ?? {};
+
+    let bonus = 0;
+
+    Object.values(decisions).forEach((decision: any) => {
+      if (decision?.asi?.plus2 === "con") bonus += 2;
+      if (decision?.asi?.plus1a === "con") bonus += 1;
+      if (decision?.asi?.plus1b === "con") bonus += 1;
+    });
+
+    return baseCon + bonus;
+  };
+
+  const handleLevelUp = async (
+    character: CampaignCharacter,
+    decisionsByLevel: Record<number, any>,
+  ) => {
     try {
-      await updateCharacter(character.id, updates);
+      if (!character.pendingLevelUp) {
+        console.error("No pending level up found.");
+        return;
+      }
+
+      let updated: any = structuredClone(character);
+
+      const mergedLevelUpDecisions = {
+        ...(updated.choices?.levelUpDecisions ?? {}),
+        ...decisionsByLevel,
+      };
+
+      updated = {
+        ...updated,
+        choices: {
+          ...(updated.choices ?? {}),
+          levelUpDecisions: mergedLevelUpDecisions,
+        },
+      };
+
+      for (const [levelKey, decision] of Object.entries(decisionsByLevel)) {
+        updated = applyLevelUpDecision(updated, Number(levelKey), decision);
+      }
+
+      const oldMaxHp = updated.derived?.stats?.maxHp ?? updated.maxHp ?? 0;
+      const oldCurrentHp =
+        updated.derived?.stats?.currentHp ?? updated.currentHp ?? oldMaxHp;
+
+      const nextLevel = character.pendingLevelUp.toLevel;
+
+      updated = {
+        ...updated,
+        level: nextLevel,
+        pendingLevelUp: null,
+      };
+
+      const classDef = classesById[updated.classId];
+      const conScore = getUpdatedConScore(updated);
+      const conMod = getAbilityModifier(conScore);
+
+      const newMaxHp =
+        classDef && updated.level >= 1
+          ? classDef.hitDie +
+            conMod +
+            (updated.level - 1) * (Math.floor(classDef.hitDie / 2) + 1 + conMod)
+          : oldMaxHp;
+
+      const hpGain = Math.max(0, newMaxHp - oldMaxHp);
+      const nextCurrentHp = Math.min(newMaxHp, oldCurrentHp + hpGain);
+
+      await updateDoc(doc(db, "characters", character.id), {
+        level: nextLevel,
+        currentHp: nextCurrentHp,
+        maxHp: newMaxHp,
+        pendingLevelUp: null,
+        choices: updated.choices ?? {},
+        subclassId: updated.subclassId ?? null,
+      });
+
+      setLevelUpCharacter(null);
     } catch (err) {
       console.error("Level up failed", err);
     }
   };
 
   const handleApplyXp = async (updates: { id: string; xp: number }[]) => {
-    await Promise.all(updates.map((u) => updateCharacter(u.id, { xp: u.xp })));
+    await Promise.all(
+      updates.map(async (u) => {
+        const character = campaignCharacters.find((c) => c.id === u.id);
+        if (!character) return;
+
+        await updateCharacterXp(character, u.xp);
+      }),
+    );
   };
 
   if (pageState === "loading") {
@@ -682,7 +867,7 @@ const CampaignPage = () => {
 
               <div className="space-y-3">
                 {campaignCharacters.map((character) => {
-                  const hp = character.hp ?? 0;
+                  const hp = character.currentHp ?? 0;
                   const maxHp = character.maxHp ?? 1;
                   const hpPercent = Math.max(
                     0,
@@ -872,7 +1057,7 @@ const CampaignPage = () => {
                                     );
 
                                     updateCharacter(character.id, {
-                                      hp: nextHp,
+                                      currentHp: nextHp,
                                     });
                                     setHpAdjustments((prev) => ({
                                       ...prev,
@@ -906,13 +1091,12 @@ const CampaignPage = () => {
                                 />
 
                                 <button
-                                  onClick={() => {
-                                    updateCharacter(character.id, {
-                                      xp: Math.max(
-                                        0,
-                                        (character.xp ?? 0) + pendingXpDelta,
-                                      ),
-                                    });
+                                  onClick={async () => {
+                                    await updateCharacterXp(
+                                      character,
+                                      (character.xp ?? 0) + pendingXpDelta,
+                                    );
+
                                     setXpAdjustments((prev) => ({
                                       ...prev,
                                       [character.id]: 0,
