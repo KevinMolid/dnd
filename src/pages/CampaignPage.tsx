@@ -20,6 +20,8 @@ import type {
   CampaignRole,
 } from "../types/campaign";
 
+import Avatar from "../components/Avatar";
+
 import InvitePlayersModal from "../components/InvitePlayersModal";
 
 type CampaignPageState =
@@ -562,6 +564,86 @@ const CampaignPage = () => {
                   </>
                 )}
               </div>
+            </section>
+
+            <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
+              <div className="mb-5 flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-white sm:text-2xl">
+                    Party overview
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Current party members in this campaign.
+                  </p>
+                </div>
+
+                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">
+                  {campaignCharacters.length} member
+                  {campaignCharacters.length === 1 ? "" : "s"}
+                </div>
+              </div>
+
+              {campaignCharactersLoading ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
+                  <p className="text-sm text-zinc-400">Loading party...</p>
+                </div>
+              ) : campaignCharacters.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
+                  <p className="text-sm text-zinc-300">No party members yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {campaignCharacters.map((character) => (
+                    <div
+                      key={character.id}
+                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+                    >
+                      {/* LEFT SIDE */}
+                      <div className="flex items-center gap-4 min-w-0">
+                        <Avatar
+                          uid={character.ownerUid}
+                          name={character.ownerName}
+                          email={character.ownerEmail}
+                          size="md"
+                        />
+
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">
+                            {character.name}
+                          </p>
+
+                          <p className="text-xs text-zinc-400 truncate">
+                            {[character.race, character.className]
+                              .filter(Boolean)
+                              .join(" • ")}
+                          </p>
+
+                          <p className="text-xs text-zinc-500 truncate">
+                            {character.ownerName ||
+                              character.ownerEmail ||
+                              character.ownerUid}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* RIGHT SIDE */}
+                      <div className="flex items-center gap-3">
+                        {/* LEVEL BADGE */}
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white">
+                          Lv {character.level ?? "-"}
+                        </div>
+
+                        <Link
+                          to={`/characters/${character.id}`}
+                          className="rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                        >
+                          Open
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
