@@ -23,7 +23,10 @@ import {
   getLevelFromXp,
 } from "../rulesets/dnd/dnd2024/xpProgression";
 
-import { getCharacterHp } from "../rulesets/dnd/dnd2024/getCharacterHp";
+import {
+  getCharacterHp,
+  recalculateMaxHp,
+} from "../rulesets/dnd/dnd2024/getCharacterHp";
 
 import { applyLevelUpDecision } from "../rulesets/dnd/dnd2024/applyLevelUpDecision";
 
@@ -438,23 +441,6 @@ const CampaignPage = () => {
     await updateCharacter(character.id, { conditions: next });
   };
 
-  const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
-
-  const getUpdatedConScore = (updated: CampaignCharacter) => {
-    const baseCon = updated.abilityScores?.con ?? 10;
-    const decisions = updated.choices?.levelUpDecisions ?? {};
-
-    let bonus = 0;
-
-    Object.values(decisions).forEach((decision: any) => {
-      if (decision?.asi?.plus2 === "con") bonus += 2;
-      if (decision?.asi?.plus1a === "con") bonus += 1;
-      if (decision?.asi?.plus1b === "con") bonus += 1;
-    });
-
-    return baseCon + bonus;
-  };
-
   const handleLevelUp = async (
     character: CampaignCharacter,
     decisionsByLevel: Record<number, any>,
@@ -484,9 +470,7 @@ const CampaignPage = () => {
         updated = applyLevelUpDecision(updated, Number(levelKey), decision);
       }
 
-      const oldMaxHp = updated.derived?.stats?.maxHp ?? updated.maxHp ?? 0;
-      const oldCurrentHp =
-        updated.derived?.stats?.currentHp ?? updated.currentHp ?? oldMaxHp;
+      const oldHp = getCharacterHp(character);
 
       const nextLevel = character.pendingLevelUp.toLevel;
 
@@ -496,24 +480,14 @@ const CampaignPage = () => {
         pendingLevelUp: null,
       };
 
-      const classDef = classesById[updated.classId];
-      const conScore = getUpdatedConScore(updated);
-      const conMod = getAbilityModifier(conScore);
-
-      const newMaxHp =
-        classDef && updated.level >= 1
-          ? classDef.hitDie +
-            conMod +
-            (updated.level - 1) * (Math.floor(classDef.hitDie / 2) + 1 + conMod)
-          : oldMaxHp;
-
-      const hpGain = Math.max(0, newMaxHp - oldMaxHp);
-      const nextCurrentHp = Math.min(newMaxHp, oldCurrentHp + hpGain);
+      const newMaxHp = recalculateMaxHp(updated);
+      const hpGain = Math.max(0, newMaxHp - oldHp.maxHp);
+      const newCurrentHp = Math.min(newMaxHp, oldHp.currentHp + hpGain);
 
       await updateDoc(doc(db, "characters", character.id), {
         level: nextLevel,
-        currentHp: nextCurrentHp,
         maxHp: newMaxHp,
+        currentHp: newCurrentHp,
         pendingLevelUp: null,
         choices: updated.choices ?? {},
         subclassId: updated.subclassId ?? null,
