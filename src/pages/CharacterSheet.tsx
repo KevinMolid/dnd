@@ -7,6 +7,7 @@ import {
   backgroundsById,
   classesById,
   featsById,
+  getSubclassById,
   speciesById,
 } from "../rulesets/dnd/dnd2024/helpers";
 import {
@@ -20,74 +21,18 @@ import type {
   SkillId,
   LanguageId,
   WeaponMasteryChoiceId,
+  Trait,
+  TraitEffect,
 } from "../rulesets/dnd/dnd2024/types";
 
+import type { CharacterSheetData } from "../rulesets/dnd/dnd2024/types";
+
 import { getCharacterHp } from "../rulesets/dnd/dnd2024/getCharacterHp";
+import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTraits";
+import { getSpeciesTraits } from "../rulesets/dnd/dnd2024/getSpeciesTraits";
+import { getSpeciesGrantedFeatIds } from "../rulesets/dnd/dnd2024/getSpeciesGrantedFeatIds";
 
-type CharacterDoc = {
-  ownerUid: string;
-  campaignId: string | null;
-
-  name: string;
-  level: number;
-  xp?: number;
-
-  classId: string;
-  speciesId: string;
-  backgroundId: string;
-  originFeatId: string | null;
-
-  abilityScores: Record<AbilityKey, number>;
-
-  alignment?: string;
-  notes?: string;
-
-  pendingLevelUp?: {
-    fromLevel: number;
-    toLevel: number;
-  } | null;
-
-  choices?: {
-    backgroundAbilityBonuses?: {
-      plus2: AbilityKey;
-      plus1: AbilityKey;
-    };
-    classSkillChoices?: SkillId[];
-    rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
-    levelUpDecisions?: Record<
-      number,
-      {
-        subclassId?: string;
-        featId?: string;
-        asi?: {
-          plus2?: AbilityKey;
-          plus1a?: AbilityKey;
-          plus1b?: AbilityKey;
-        };
-        expertise?: Array<SkillId | "thieves-tools">;
-        language?: string;
-        weaponMastery?: string[];
-      }
-    >;
-  };
-
-  derived?: {
-    stats?: {
-      proficiencyBonus?: number;
-      maxHp?: number;
-      currentHp?: number;
-      armorClass?: number;
-      speed?: number;
-      initiativeBonus?: number;
-      passivePerception?: number;
-    };
-    skillProficiencies?: SkillId[];
-    savingThrowProficiencies?: AbilityKey[];
-    toolProficiencies?: string[];
-    languages?: string[];
-    expertise?: Array<SkillId | "thieves-tools">;
-  };
-
+type CharacterDoc = CharacterSheetData & {
   maxHp?: number;
   currentHp?: number;
   armorClass?: number;
@@ -98,20 +43,12 @@ type CharacterDoc = {
   toolProficiencies?: string[];
   savingThrowProficiencies?: string[];
   languages?: string[];
-
   spells?: Array<{
     id: string;
     name: string;
     level?: number;
     school?: string;
     prepared?: boolean;
-  }>;
-
-  equipment?: Array<{
-    id: string;
-    name: string;
-    quantity: number;
-    equipped?: boolean;
   }>;
 };
 
@@ -262,6 +199,286 @@ const SectionCard = ({
   );
 };
 
+type TraitGroupKey =
+  | "species"
+  | "class"
+  | "subclass"
+  | "background"
+  | "feats"
+  | "other";
+
+type TraitGroup = {
+  key: TraitGroupKey;
+  title: string;
+  subtitle?: string;
+  traits: Trait[];
+};
+
+const dedupeTraits = (traits: Trait[]) => {
+  const seen = new Set<string>();
+  const result: Trait[] = [];
+
+  for (const trait of traits) {
+    if (seen.has(trait.id)) continue;
+    seen.add(trait.id);
+    result.push(trait);
+  }
+
+  return result;
+};
+
+const formatUsage = (usage: Trait["usage"]) => {
+  if (!usage) return null;
+
+  if (usage.type === "at-will") {
+    return "At will";
+  }
+
+  if (usage.type === "limited") {
+    if (usage.recharge === "short-rest") return "Limited • Short Rest";
+    if (usage.recharge === "long-rest") return "Limited • Long Rest";
+    return "Limited use";
+  }
+
+  return null;
+};
+
+const getEffectLabel = (effect: TraitEffect) => {
+  switch (effect.type) {
+    case "sense":
+      return `${formatLabel(effect.sense)} ${effect.range} ft`;
+    case "resistance":
+      return `${formatLabel(effect.damageType)} resistance`;
+    case "advantage-on-saving-throws-against":
+      return `Advantage vs ${effect.conditions.map(formatLabel).join(", ")}`;
+    case "advantage-on-saving-throws":
+      return `Advantage on ${effect.abilities.map((a) => a.toUpperCase()).join(", ")} saves`;
+    case "hp-max-bonus":
+      return "HP maximum bonus";
+    case "spell":
+      return `Spell: ${effect.spellName}`;
+    case "healing":
+      return "Healing";
+    case "transformation":
+      return "Transformation";
+    case "speed-bonus":
+      return `${formatLabel(effect.speedType)} speed`;
+    case "aoe-damage":
+      return "Area damage";
+    case "condition":
+      return `Condition: ${formatLabel(effect.condition)}`;
+    case "light":
+      return "Creates light";
+    case "choice-ref":
+      return "Choice";
+    case "text":
+      return "Special effect";
+    default:
+      return "Feature";
+  }
+};
+
+const getGroupMeta = (key: TraitGroupKey) => {
+  switch (key) {
+    case "species":
+      return {
+        label: "SP",
+        className: "border-sky-500/20 bg-sky-500/10 text-sky-300",
+      };
+    case "class":
+      return {
+        label: "CL",
+        className: "border-violet-500/20 bg-violet-500/10 text-violet-300",
+      };
+    case "subclass":
+      return {
+        label: "SC",
+        className: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-300",
+      };
+    case "background":
+      return {
+        label: "BG",
+        className: "border-amber-500/20 bg-amber-500/10 text-amber-300",
+      };
+    case "feats":
+      return {
+        label: "FT",
+        className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
+      };
+    default:
+      return {
+        label: "TR",
+        className: "border-white/10 bg-white/5 text-zinc-300",
+      };
+  }
+};
+
+const SourceBadge = ({ groupKey }: { groupKey: TraitGroupKey }) => {
+  const meta = getGroupMeta(groupKey);
+
+  return (
+    <div
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border text-[11px] font-bold tracking-[0.18em] ${meta.className}`}
+    >
+      {meta.label}
+    </div>
+  );
+};
+
+const TraitPill = ({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "accent";
+}) => {
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${
+        tone === "accent"
+          ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+          : "border border-white/10 bg-zinc-800 text-zinc-300"
+      }`}
+    >
+      {children}
+    </span>
+  );
+};
+
+const TraitCard = ({ trait }: { trait: Trait }) => {
+  const usageLabel = formatUsage(trait.usage);
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-950/60 p-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-base font-semibold text-white">{trait.name}</p>
+
+              {typeof trait.level === "number" && (
+                <TraitPill>Level {trait.level}</TraitPill>
+              )}
+
+              {typeof trait.minLevel === "number" &&
+                typeof trait.level !== "number" && (
+                  <TraitPill>Min Level {trait.minLevel}</TraitPill>
+                )}
+
+              {trait.activation && (
+                <TraitPill>{formatLabel(trait.activation)}</TraitPill>
+              )}
+
+              {usageLabel && <TraitPill tone="accent">{usageLabel}</TraitPill>}
+            </div>
+
+            {trait.description && (
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                {trait.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {trait.effects && trait.effects.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {trait.effects.map((effect, index) => (
+              <TraitPill key={`${trait.id}-effect-${index}`}>
+                {getEffectLabel(effect)}
+              </TraitPill>
+            ))}
+          </div>
+        )}
+
+        {trait.choices && trait.choices.length > 0 && (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Choices
+            </p>
+
+            <div className="space-y-3">
+              {trait.choices.map((choice) => (
+                <div key={choice.id}>
+                  <p className="text-sm font-medium text-zinc-200">
+                    {choice.name} • Choose {choice.choose}
+                  </p>
+
+                  {choice.options?.length ? (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {choice.options.map((option) => (
+                        <TraitPill key={option.id}>{option.name}</TraitPill>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {trait.notes && trait.notes.length > 0 && (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Notes
+            </p>
+
+            <ul className="space-y-1 text-sm text-zinc-400">
+              {trait.notes.map((note, index) => (
+                <li key={`${trait.id}-note-${index}`}>• {note}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const TraitGroupSection = ({
+  group,
+  isOpen,
+  onToggle,
+}: {
+  group: TraitGroup;
+  isOpen: boolean;
+  onToggle: () => void;
+}) => {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-zinc-900/60">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-white/5"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <SourceBadge groupKey={group.key} />
+
+          <div className="min-w-0">
+            <p className="text-base font-semibold text-white">{group.title}</p>
+            <p className="mt-1 text-xs text-zinc-500">
+              {group.subtitle ??
+                `${group.traits.length} trait${group.traits.length === 1 ? "" : "s"}`}
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
+          {isOpen ? "Hide" : "Show"}
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="border-t border-white/10 px-4 py-4">
+          <div className="space-y-3">
+            {group.traits.map((trait) => (
+              <TraitCard key={trait.id} trait={trait} />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const CharacterSheet = () => {
   const { characterId } = useParams();
   const { user } = useAuth();
@@ -269,6 +486,17 @@ const CharacterSheet = () => {
   const [character, setCharacter] = useState<CharacterDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const [openTraitGroups, setOpenTraitGroups] = useState<
+    Record<TraitGroupKey, boolean>
+  >({
+    species: true,
+    class: true,
+    subclass: true,
+    background: true,
+    feats: true,
+    other: false,
+  });
 
   useEffect(() => {
     const loadCharacter = async () => {
@@ -304,6 +532,13 @@ const CharacterSheet = () => {
 
     loadCharacter();
   }, [characterId, user]);
+
+  const toggleTraitGroup = (key: TraitGroupKey) => {
+    setOpenTraitGroups((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
 
   const handleApplyDecision = (
     level: number,
@@ -426,6 +661,127 @@ const CharacterSheet = () => {
     const xpProgress = getXpProgressWithinLevel(xp);
     const pendingSteps = getPendingLevelUpSteps(character as any);
 
+    const levelUpDecisions = character.choices?.levelUpDecisions ?? {};
+
+    const speciesTraits = dedupeTraits(
+      getSpeciesTraits(character.speciesId, character.choices),
+    );
+
+    const classTraits = dedupeTraits(
+      Array.from({ length: character.level }, (_, index) => index + 1).flatMap(
+        (level) => classDef?.featuresByLevel[level] ?? [],
+      ),
+    );
+
+    const selectedSubclassId =
+      character.choices?.subclassId ??
+      Object.values(levelUpDecisions).find(
+        (decision: any) => typeof decision?.subclassId === "string",
+      )?.subclassId ??
+      null;
+
+    const subclassDef = selectedSubclassId
+      ? getSubclassById(selectedSubclassId)
+      : null;
+
+    const subclassTraits = dedupeTraits(
+      subclassDef
+        ? Array.from(
+            { length: character.level },
+            (_, index) => index + 1,
+          ).flatMap((level) => subclassDef.featuresByLevel[level] ?? [])
+        : [],
+    );
+
+    const backgroundTraits = dedupeTraits(
+      background?.originFeatId
+        ? (featsById[background.originFeatId]?.traits ?? [])
+        : [],
+    );
+
+    const originFeatTraits = dedupeTraits(
+      character.originFeatId
+        ? (featsById[character.originFeatId]?.traits ?? [])
+        : [],
+    );
+
+    const speciesGrantedFeatTraits = dedupeTraits(
+      getSpeciesGrantedFeatIds(character.speciesId, character.choices).flatMap(
+        (featId) => featsById[featId]?.traits ?? [],
+      ),
+    );
+
+    const levelUpFeatTraits = dedupeTraits(
+      Object.values(levelUpDecisions).flatMap((decision: any) =>
+        decision?.featId ? (featsById[decision.featId]?.traits ?? []) : [],
+      ),
+    );
+
+    const featTraits = dedupeTraits([
+      ...originFeatTraits,
+      ...speciesGrantedFeatTraits,
+      ...levelUpFeatTraits,
+    ]);
+
+    const allTraits = getAllCharacterTraits(character as any);
+
+    const groupedTraitCandidates: TraitGroup[] = [
+      {
+        key: "species",
+        title: `${speciesById[character.speciesId]?.name ?? "Species"} Traits`,
+        subtitle: "Ancestry, senses, resistances, innate gifts",
+        traits: speciesTraits,
+      },
+      {
+        key: "class",
+        title: `${classDef?.name ?? "Class"} Features`,
+        subtitle: "Features gained from your class levels",
+        traits: classTraits,
+      },
+      {
+        key: "subclass",
+        title: `${subclassDef?.name ?? "Subclass"} Features`,
+        subtitle: "Specialized features from your subclass",
+        traits: subclassTraits,
+      },
+      {
+        key: "background",
+        title: `${background?.name ?? "Background"} Traits`,
+        subtitle: "Background benefits and granted origin feature",
+        traits: backgroundTraits,
+      },
+      {
+        key: "feats",
+        title: "Feats & Special Training",
+        subtitle: "Origin feat, species-granted feats, and level-up feats",
+        traits: featTraits,
+      },
+    ];
+
+    const groupedTraits: TraitGroup[] = groupedTraitCandidates
+      .filter((group) => group.traits.length > 0)
+      .map((group) => ({
+        ...group,
+        traits: dedupeTraits(group.traits),
+      }));
+
+    const groupedTraitIds = new Set(
+      groupedTraits.flatMap((group) => group.traits.map((trait) => trait.id)),
+    );
+
+    const otherTraits = allTraits.filter(
+      (trait) => !groupedTraitIds.has(trait.id),
+    );
+
+    if (otherTraits.length > 0) {
+      groupedTraits.push({
+        key: "other",
+        title: "Other Traits",
+        subtitle: "Rules content not yet assigned to a source group",
+        traits: dedupeTraits(otherTraits),
+      });
+    }
+
     return {
       className: classDef?.name ?? character.classId,
       speciesName:
@@ -434,6 +790,7 @@ const CharacterSheet = () => {
       featName: character.originFeatId
         ? (featsById[character.originFeatId]?.name ?? character.originFeatId)
         : null,
+      subclassName: subclassDef?.name ?? null,
       proficiencyBonus,
       initiativeBonus:
         character.derived?.stats?.initiativeBonus ??
@@ -468,6 +825,7 @@ const CharacterSheet = () => {
       xp,
       xpProgress,
       pendingSteps,
+      traitGroups: groupedTraits,
     };
   }, [character]);
 
@@ -514,8 +872,9 @@ const CharacterSheet = () => {
               </h1>
 
               <p className="mt-3 text-sm leading-6 text-zinc-400 sm:text-base">
-                {derived.speciesName} • {derived.className} • Level{" "}
-                {character.level}
+                {derived.speciesName} • {derived.className}
+                {derived.subclassName ? ` • ${derived.subclassName}` : ""} •
+                Level {character.level}
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
@@ -577,7 +936,7 @@ const CharacterSheet = () => {
           />
         </div>
 
-        <div className="mb-6">
+        <div className="mb-6 flex flex-col gap-6">
           <SectionCard title="Progression">
             <div className="space-y-4">
               <div>
@@ -614,6 +973,34 @@ const CharacterSheet = () => {
                 </div>
               )}
             </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Features & Traits"
+            right={
+              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400">
+                {derived.traitGroups.reduce(
+                  (total, group) => total + group.traits.length,
+                  0,
+                )}{" "}
+                total
+              </div>
+            }
+          >
+            {derived.traitGroups.length > 0 ? (
+              <div className="space-y-3">
+                {derived.traitGroups.map((group) => (
+                  <TraitGroupSection
+                    key={group.key}
+                    group={group}
+                    isOpen={openTraitGroups[group.key]}
+                    onToggle={() => toggleTraitGroup(group.key)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">No traits found yet.</p>
+            )}
           </SectionCard>
         </div>
 
