@@ -185,6 +185,23 @@ export type TraitEffect =
   | {
       type: "text";
       text: string;
+    }
+  | {
+      type: "item-grant";
+      itemId: string;
+      quantity?: number;
+    }
+  | {
+      type: "tool-proficiency";
+      tool: ToolId;
+    }
+  | {
+      type: "language-grant";
+      language: LanguageId;
+    }
+  | {
+      type: "skill-proficiency";
+      skill: SkillId;
     };
 
 export type TraitOption = {
@@ -503,6 +520,7 @@ export type StartingEquipment = {
 
 export type CharacterSubclass = RulesOption & {
   classId: CharacterClassId;
+  description?: string;
   featuresByLevel: Partial<Record<number, Trait[]>>;
 };
 

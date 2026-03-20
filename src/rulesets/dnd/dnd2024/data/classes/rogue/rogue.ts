@@ -50,6 +50,14 @@ export const rogue: CharacterClass = {
       },
     ],
   },
+  subclasses: [
+    {
+      id: "assassin",
+      name: "Assassin",
+      description:
+        "A Rogue who specializes in stealth, poison, and disguise to eliminate foes with deadly efficiency.",
+    },
+  ],
   featuresByLevel: {
     1: [
       {

@@ -3,12 +3,14 @@ import {
   getClassById,
   getFeatById,
   getSpeciesById,
+  getSubclassById,
 } from "./helpers";
 import { getSpeciesGrantedFeatIds } from "./getSpeciesGrantedFeatIds";
 import { getSpeciesGrantedSkillProficiencies } from "./getSpeciesGrantedSkillProficiencies";
 import { getSpeciesTraits } from "./getSpeciesTraits";
 import { deriveRogueData } from "../../../utils/rogueUtils";
 import { unique, getFeatureRefsUpToLevel } from "../../../utils/classUtils";
+import { getChosenSubclassId } from "./getChosenSubclassId";
 
 import type {
   AbilityKey,
@@ -34,11 +36,70 @@ const uniqueById = <T extends { id: string }>(values: T[]): T[] => {
   return result;
 };
 
+const getTraitsUpToLevel = (
+  traitsByLevel: Partial<Record<number, Trait[]>>,
+  level: number,
+): Trait[] => {
+  return Object.entries(traitsByLevel)
+    .map(([lvl, traits]) => ({
+      level: Number(lvl),
+      traits: traits ?? [],
+    }))
+    .filter((entry) => entry.level <= level)
+    .flatMap((entry) => entry.traits);
+};
+
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
 
 const getProficiencyBonus = (level: number) => 2 + Math.floor((level - 1) / 4);
 
 const getAverageHpPerLevel = (hitDie: number) => Math.floor(hitDie / 2) + 1;
+
+const applyTraitEffectsToDerived = (
+  traits: Trait[],
+  derived: DerivedCharacterData,
+): DerivedCharacterData => {
+  const next: DerivedCharacterData = {
+    ...derived,
+    skillProficiencies: [...derived.skillProficiencies],
+    toolProficiencies: [...derived.toolProficiencies],
+    languages: [...derived.languages],
+  };
+
+  for (const trait of traits) {
+    for (const effect of trait.effects ?? []) {
+      switch (effect.type) {
+        case "tool-proficiency":
+          if (!next.toolProficiencies.includes(effect.tool)) {
+            next.toolProficiencies.push(effect.tool);
+          }
+          break;
+
+        case "language-grant":
+          if (!next.languages.includes(effect.language)) {
+            next.languages.push(effect.language);
+          }
+          break;
+
+        case "skill-proficiency":
+          if (!next.skillProficiencies.includes(effect.skill)) {
+            next.skillProficiencies.push(effect.skill);
+          }
+          break;
+
+        default:
+          break;
+      }
+    }
+  }
+
+  return {
+    ...next,
+    skillProficiencies: unique(next.skillProficiencies),
+    toolProficiencies: unique(next.toolProficiencies),
+    languages: unique(next.languages),
+  };
+};
 
 const applyBackgroundBonuses = (
   abilityScores: CharacterSheetData["abilityScores"],
@@ -140,10 +201,7 @@ const getSpeciesMaxHpBonus = (
   return bonus;
 };
 
-const getPassiveWalkSpeedBonus = (
-  traits: Trait[],
-  level: number,
-): number => {
+const getPassiveWalkSpeedBonus = (traits: Trait[], level: number): number => {
   let bonus = 0;
 
   for (const trait of traits) {
@@ -191,6 +249,9 @@ export const buildDerivedCharacterData = (
   const featDef = character.originFeatId
     ? getFeatById(character.originFeatId)
     : undefined;
+
+  const subclassId = getChosenSubclassId(character.choices);
+  const subclassDef = getSubclassById(subclassId);
 
   const speciesTraits = getSpeciesTraits(character.speciesId, character.choices);
 
@@ -254,11 +315,20 @@ export const buildDerivedCharacterData = (
     ...extraLanguageChoices,
   ]);
 
-    const classFeatures: CharacterFeature[] = classDef
+  const classFeatures: CharacterFeature[] = classDef
     ? getFeatureRefsUpToLevel(
         "class",
         classDef.id,
         classDef.featuresByLevel,
+        character.level,
+      )
+    : [];
+
+  const subclassFeatures: CharacterFeature[] = subclassDef
+    ? getFeatureRefsUpToLevel(
+        "subclass",
+        subclassDef.id,
+        subclassDef.featuresByLevel,
         character.level,
       )
     : [];
@@ -290,6 +360,7 @@ export const buildDerivedCharacterData = (
 
   const features = uniqueById<CharacterFeature>([
     ...classFeatures,
+    ...subclassFeatures,
     ...speciesFeatures,
     ...backgroundFeatures,
     ...featFeatures,
@@ -335,16 +406,34 @@ export const buildDerivedCharacterData = (
     weaponMasteries: [],
   };
 
-  const rogueDerived = classDef?.id === "rogue"
-    ? deriveRogueData(character, classDef.featuresByLevel, baseDerived)
+  const derivedWithSubclassEffects = subclassDef
+    ? applyTraitEffectsToDerived(
+        getTraitsUpToLevel(subclassDef.featuresByLevel, character.level),
+        baseDerived,
+      )
     : baseDerived;
 
+  const rogueDerived =
+    classDef?.id === "rogue"
+      ? deriveRogueData(
+          character,
+          classDef.featuresByLevel,
+          derivedWithSubclassEffects,
+        )
+      : derivedWithSubclassEffects;
+
   return {
-    ...baseDerived,
+    ...derivedWithSubclassEffects,
     ...rogueDerived,
-    languages: unique(rogueDerived.languages ?? baseDerived.languages),
-    features: uniqueById(rogueDerived.features ?? baseDerived.features),
-    expertise: rogueDerived.expertise ?? baseDerived.expertise,
-    weaponMasteries: rogueDerived.weaponMasteries ?? baseDerived.weaponMasteries,
+    languages: unique(
+      rogueDerived.languages ?? derivedWithSubclassEffects.languages,
+    ),
+    features: uniqueById(
+      rogueDerived.features ?? derivedWithSubclassEffects.features,
+    ),
+    expertise: rogueDerived.expertise ?? derivedWithSubclassEffects.expertise,
+    weaponMasteries:
+      rogueDerived.weaponMasteries ??
+      derivedWithSubclassEffects.weaponMasteries,
   };
 };
