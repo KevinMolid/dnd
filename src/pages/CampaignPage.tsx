@@ -7,14 +7,11 @@ import {
   onSnapshot,
   query,
   where,
-  updateDoc, 
+  updateDoc,
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
-import {
-  classesById,
-  speciesById,
-} from "../rulesets/dnd/dnd2024/helpers";
+import { classesById, speciesById } from "../rulesets/dnd/dnd2024/helpers";
 import type {
   CampaignDoc,
   CampaignMemberDoc,
@@ -30,6 +27,7 @@ import Avatar from "../components/Avatar";
 
 import LevelUpModal from "../components/levelUpModal";
 import InvitePlayersModal from "../components/InvitePlayersModal";
+import XpDistributionModal from "../components/XpDistributionModal";
 
 type CampaignPageState =
   | "loading"
@@ -72,6 +70,24 @@ type CampaignCharacter = {
   derivedLevel?: number;
 };
 
+const ALL_CONDITIONS = [
+  "Blinded",
+  "Charmed",
+  "Deafened",
+  "Frightened",
+  "Grappled",
+  "Incapacitated",
+  "Invisible",
+  "Paralyzed",
+  "Petrified",
+  "Poisoned",
+  "Prone",
+  "Restrained",
+  "Stunned",
+  "Unconscious",
+  "Exhaustion",
+] as const;
+
 const formatRoleLabel = (role: CampaignRole) => {
   if (role === "gm") return "GM";
   if (role === "co-gm") return "Co-GM";
@@ -102,6 +118,7 @@ const CampaignPage = () => {
   const [membership, setMembership] = useState<CampaignMemberDoc | null>(null);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [xpModalOpen, setXpModalOpen] = useState(false);
 
   const [campaignCharacters, setCampaignCharacters] = useState<
     CampaignCharacter[]
@@ -114,7 +131,21 @@ const CampaignPage = () => {
 
   const [usersById, setUsersById] = useState<Record<string, AppUserDoc>>({});
 
-  const [levelUpCharacter, setLevelUpCharacter] = useState<CampaignCharacter | null>(null);
+  const [expandedCharacterId, setExpandedCharacterId] = useState<string | null>(
+    null,
+  );
+  const [hpAdjustments, setHpAdjustments] = useState<Record<string, number>>(
+    {},
+  );
+  const [xpAdjustments, setXpAdjustments] = useState<Record<string, number>>(
+    {},
+  );
+  const [openConditionMenuId, setOpenConditionMenuId] = useState<string | null>(
+    null,
+  );
+
+  const [levelUpCharacter, setLevelUpCharacter] =
+    useState<CampaignCharacter | null>(null);
 
   useEffect(() => {
     const loadCampaign = async () => {
@@ -167,18 +198,18 @@ const CampaignPage = () => {
   }, [campaignId, user]);
 
   useEffect(() => {
-  const unsub = onSnapshot(collection(db, "users"), (snapshot) => {
-    const map: Record<string, AppUserDoc> = {};
+    const unsub = onSnapshot(collection(db, "users"), (snapshot) => {
+      const map: Record<string, AppUserDoc> = {};
 
-    snapshot.docs.forEach((docSnap) => {
-      map[docSnap.id] = docSnap.data() as AppUserDoc;
+      snapshot.docs.forEach((docSnap) => {
+        map[docSnap.id] = docSnap.data() as AppUserDoc;
+      });
+
+      setUsersById(map);
     });
 
-    setUsersById(map);
-  });
-
-  return () => unsub();
-}, []);
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (pageState !== "ready" || !campaignId) return;
@@ -202,7 +233,6 @@ const CampaignPage = () => {
 
               const ownerName = owner?.displayName ?? "";
               const ownerEmail = owner?.email ?? "";
-
 
               const xp = (data as any).xp ?? 0;
               const currentLevel = data.level ?? 1;
@@ -297,12 +327,28 @@ const CampaignPage = () => {
     }
   };
 
+  const toggleCondition = async (
+    character: CampaignCharacter,
+    condition: string,
+  ) => {
+    const current = character.conditions ?? [];
+    const next = current.includes(condition)
+      ? current.filter((c) => c !== condition)
+      : [...current, condition];
+
+    await updateCharacter(character.id, { conditions: next });
+  };
+
   const handleLevelUp = async (character: CampaignCharacter, updates: any) => {
     try {
       await updateCharacter(character.id, updates);
     } catch (err) {
       console.error("Level up failed", err);
     }
+  };
+
+  const handleApplyXp = async (updates: { id: string; xp: number }[]) => {
+    await Promise.all(updates.map((u) => updateCharacter(u.id, { xp: u.xp })));
   };
 
   if (pageState === "loading") {
@@ -614,32 +660,46 @@ const CampaignPage = () => {
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
               <div className="mb-5 flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-white sm:text-2xl">
-                    Party control
-                  </h2>
+                <div className="w-full">
+                  <div className="w-full flex justify-between">
+                    <h2 className="text-xl font-semibold text-white sm:text-2xl">
+                      Party control
+                    </h2>
+                    {isGm && (
+                      <button
+                        onClick={() => setXpModalOpen(true)}
+                        className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
+                      >
+                        Award XP
+                      </button>
+                    )}
+                  </div>
                   <p className="mt-1 text-sm text-zinc-400">
                     Live overview and quick controls for the party.
                   </p>
                 </div>
               </div>
 
-              {campaignCharacters.map((character) => {
-                const hpPercent = Math.max(
-                  0,
-                  Math.min(100, ((character.hp ?? 0) / (character.maxHp ?? 1)) * 100),
-                );
-                const xpData = getXpProgressWithinLevel(character.xp ?? 0);
+              <div className="space-y-3">
+                {campaignCharacters.map((character) => {
+                  const hp = character.hp ?? 0;
+                  const maxHp = character.maxHp ?? 1;
+                  const hpPercent = Math.max(
+                    0,
+                    Math.min(100, (hp / maxHp) * 100),
+                  );
+                  const xpData = getXpProgressWithinLevel(character.xp ?? 0);
+                  const isExpanded = expandedCharacterId === character.id;
+                  const pendingHpDelta = hpAdjustments[character.id] ?? 0;
+                  const pendingXpDelta = xpAdjustments[character.id] ?? 0;
 
-                return (
-                  <div
-                    key={character.id}
-                    className="mb-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                  >
-                    <div className="flex flex-col gap-4">
-                      {/* TOP ROW */}
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                  return (
+                    <div
+                      key={character.id}
+                      className="rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-4 transition hover:border-white/15"
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="min-w-0 flex items-center gap-3">
                           <Avatar
                             uid={character.ownerUid}
                             name={character.ownerName}
@@ -647,191 +707,281 @@ const CampaignPage = () => {
                             size="md"
                           />
 
-                          <div>
-                            <p className="font-semibold text-white">
-                              {character.name}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="truncate text-sm font-semibold text-white sm:text-base">
+                                {character.name}
+                              </p>
+
+                              {character.levelUpAvailable &&
+                                user?.uid === character.ownerUid && (
+                                  <button
+                                    onClick={() =>
+                                      setLevelUpCharacter(character)
+                                    }
+                                    className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300 transition hover:bg-amber-400/15"
+                                  >
+                                    Level up
+                                  </button>
+                                )}
+                            </div>
+
+                            <p className="mt-1 truncate text-xs text-zinc-500">
+                              Played by{" "}
+                              {character.ownerName ||
+                                character.ownerEmail ||
+                                "Unknown player"}
                             </p>
-                            <p className="text-xs text-zinc-400">
+
+                            <p className="mt-1 truncate text-xs text-zinc-400">
                               {[character.race, character.className]
                                 .filter(Boolean)
-                                .join(" • ")}{" "}
-                              • Lv {character.level}
+                                .join(" • ")}
+                              {character.level
+                                ? ` • Lv ${character.level}`
+                                : ""}
                             </p>
                           </div>
                         </div>
 
-                        <Link
-                          to={`/characters/${character.id}`}
-                          className="text-xs text-zinc-400 hover:text-white"
-                        >
-                          Open →
-                        </Link>
-
-                        {character.levelUpAvailable &&
-                          user?.uid === character.ownerUid && (
-                            <button
-                              onClick={() => setLevelUpCharacter(character)}
-                              className="ml-2 text-xs bg-amber-400/20 text-amber-300 px-2 py-1 rounded hover:bg-amber-400/30"
-                            >
-                              Level up
-                            </button>
-                        )}
-                      </div>
-
-                      {/* HP BAR */}
-                      <div>
-                        <div className="flex justify-between text-xs text-zinc-400 mb-1">
-                          <span>HP</span>
-                          <span>
-                            {character.hp} / {character.maxHp}
-                          </span>
-                        </div>
-
-                        <div className="h-2 w-full bg-zinc-800 rounded">
-                          <div
-                            className="h-2 bg-emerald-400 rounded transition-all"
-                            style={{ width: `${hpPercent}%` }}
-                          />
-                        </div>
-
-                        {isGm && (
-                          <div className="mt-2 flex gap-2">
-                            <button
-                              onClick={() =>
-                                updateCharacter(character.id, {
-                                  hp: Math.max(0, (character.hp ?? 0) - 1),
-                                })
-                              }
-                              className="px-2 py-1 text-xs bg-red-500/20 text-red-300 rounded"
-                            >
-                              -1
-                            </button>
-
-                            <button
-                              onClick={() =>
-                                updateCharacter(character.id, {
-                                  hp: Math.min(
-                                    character.maxHp ?? 0,
-                                    (character.hp ?? 0) + 1,
-                                  ),
-                                })
-                              }
-                              className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-300 rounded"
-                            >
-                              +1
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* XP */}
-                      <div className="flex items-center justify-between text-xs text-zinc-400">
-                        <div>
-                          <div className="flex justify-between text-xs text-zinc-400 mb-1">
-                            <span>XP</span>
-                            <span>
-                              {character.xp} / {xpData.nextLevelXp ?? "MAX"}
+                        <div className="flex flex-col gap-3 lg:items-end">
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+                              HP {hp}/{maxHp}
                             </span>
-                          </div>
 
-                          <div className="h-2 w-full bg-zinc-800 rounded">
-                            <div
-                              className={`h-2 rounded transition-all ${
-                                character.levelUpAvailable
-                                  ? "bg-amber-400 animate-pulse"
-                                  : "bg-blue-400"
-                              }`}
-                              style={{ width: `${xpData.progressPercent}%` }}
-                              title={`${xpData.progressXp} / ${xpData.neededXp} XP this level`}
-                            />
-                          </div>
-
-                          <div className="flex justify-between mt-1 text-[10px] text-zinc-500">
-                            <span>Lv {xpData.level}</span>
+                            <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-300">
+                              XP {character.xp ?? 0}
+                            </span>
 
                             {xpData.nextLevelXp !== null ? (
-                              <span>{xpData.neededXp} XP to next</span>
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-zinc-400">
+                                {xpData.neededXp} to next
+                              </span>
                             ) : (
-                              <span>Max level</span>
+                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-zinc-400">
+                                Max level
+                              </span>
                             )}
                           </div>
 
-                          {isGm && (
-                            <div className="mt-2 flex gap-2">
-                              <button
-                                onClick={() =>
-                                  updateCharacter(character.id, {
-                                    xp: (character.xp ?? 0) + 50,
-                                  })
-                                }
-                                className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded"
-                              >
-                                +50 XP
-                              </button>
+                          <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/5">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                hpPercent <= 25
+                                  ? "bg-red-400"
+                                  : hpPercent <= 60
+                                    ? "bg-amber-400"
+                                    : "bg-emerald-400"
+                              }`}
+                              style={{ width: `${hpPercent}%` }}
+                            />
+                          </div>
 
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            {(character.conditions ?? []).length > 0 ? (
+                              (character.conditions ?? []).map((condition) => (
+                                <span
+                                  key={condition}
+                                  className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300"
+                                >
+                                  {condition}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-zinc-500">
+                                No conditions
+                              </span>
+                            )}
+
+                            {isGm && (
                               <button
                                 onClick={() =>
-                                  updateCharacter(character.id, {
-                                    xp: (character.xp ?? 0) + 200,
-                                  })
+                                  setExpandedCharacterId((prev) =>
+                                    prev === character.id ? null : character.id,
+                                  )
                                 }
-                                className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded"
+                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/10"
                               >
-                                +200 XP
+                                {isExpanded ? "Close" : "Manage"}
                               </button>
+                            )}
+
+                            <Link
+                              to={`/characters/${character.id}`}
+                              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                            >
+                              Open
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+
+                      {isGm && isExpanded && (
+                        <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                          <div className="grid gap-3 lg:grid-cols-3">
+                            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                              <p className="text-xs font-medium text-zinc-400">
+                                Adjust HP
+                              </p>
+                              <div className="mt-3 flex items-center gap-2">
+                                <button
+                                  onClick={() =>
+                                    setHpAdjustments((prev) => ({
+                                      ...prev,
+                                      [character.id]:
+                                        (prev[character.id] ?? 0) - 1,
+                                    }))
+                                  }
+                                  className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-sm text-white transition hover:bg-white/10"
+                                >
+                                  −
+                                </button>
+
+                                <input
+                                  type="number"
+                                  value={pendingHpDelta}
+                                  onChange={(e) =>
+                                    setHpAdjustments((prev) => ({
+                                      ...prev,
+                                      [character.id]:
+                                        Number(e.target.value) || 0,
+                                    }))
+                                  }
+                                  className="h-9 w-20 rounded-lg border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none"
+                                />
+
+                                <button
+                                  onClick={() =>
+                                    setHpAdjustments((prev) => ({
+                                      ...prev,
+                                      [character.id]:
+                                        (prev[character.id] ?? 0) + 1,
+                                    }))
+                                  }
+                                  className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-sm text-white transition hover:bg-white/10"
+                                >
+                                  +
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    const nextHp = Math.max(
+                                      0,
+                                      Math.min(maxHp, hp + pendingHpDelta),
+                                    );
+
+                                    updateCharacter(character.id, {
+                                      hp: nextHp,
+                                    });
+                                    setHpAdjustments((prev) => ({
+                                      ...prev,
+                                      [character.id]: 0,
+                                    }));
+                                  }}
+                                  className="ml-auto rounded-lg bg-white px-3 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                                >
+                                  Apply
+                                </button>
+                              </div>
                             </div>
-                          )}
+
+                            <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                              <p className="text-xs font-medium text-zinc-400">
+                                Award XP
+                              </p>
+                              <div className="mt-3 flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  value={pendingXpDelta}
+                                  onChange={(e) =>
+                                    setXpAdjustments((prev) => ({
+                                      ...prev,
+                                      [character.id]:
+                                        Number(e.target.value) || 0,
+                                    }))
+                                  }
+                                  className="h-9 w-24 rounded-lg border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none"
+                                  placeholder="0"
+                                />
+
+                                <button
+                                  onClick={() => {
+                                    updateCharacter(character.id, {
+                                      xp: Math.max(
+                                        0,
+                                        (character.xp ?? 0) + pendingXpDelta,
+                                      ),
+                                    });
+                                    setXpAdjustments((prev) => ({
+                                      ...prev,
+                                      [character.id]: 0,
+                                    }));
+                                  }}
+                                  className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                                >
+                                  Apply
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="relative rounded-xl border border-white/10 bg-white/5 p-3">
+                              <p className="text-xs font-medium text-zinc-400">
+                                Conditions
+                              </p>
+
+                              <button
+                                onClick={() =>
+                                  setOpenConditionMenuId((prev) =>
+                                    prev === character.id ? null : character.id,
+                                  )
+                                }
+                                className="mt-3 inline-flex h-9 items-center rounded-lg border border-white/10 bg-zinc-950 px-3 text-xs text-white transition hover:bg-white/10"
+                              >
+                                Edit conditions
+                              </button>
+
+                              {openConditionMenuId === character.id && (
+                                <div className="absolute left-3 right-3 top-[76px] z-20 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
+                                  <div className="grid gap-1">
+                                    {ALL_CONDITIONS.map((condition) => {
+                                      const active = (
+                                        character.conditions ?? []
+                                      ).includes(condition);
+
+                                      return (
+                                        <button
+                                          key={condition}
+                                          onClick={() =>
+                                            toggleCondition(
+                                              character,
+                                              condition,
+                                            )
+                                          }
+                                          className={`flex items-center justify-between rounded-lg px-3 py-2 text-left text-xs transition ${
+                                            active
+                                              ? "bg-amber-500/10 text-amber-300"
+                                              : "text-zinc-300 hover:bg-white/5"
+                                          }`}
+                                        >
+                                          <span>{condition}</span>
+                                          <span className="text-[10px]">
+                                            {active ? "Selected" : ""}
+                                          </span>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-
-                        {isGm && (
-                          <button
-                            onClick={() =>
-                              updateCharacter(character.id, {
-                                xp: (character.xp ?? 0) + 50,
-                              })
-                            }
-                            className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded"
-                          >
-                            +50 XP
-                          </button>
-                        )}
-                      </div>
-
-                      {/* CONDITIONS */}
-                      <div>
-                        <p className="text-xs text-zinc-400 mb-1">Conditions</p>
-
-                        <div className="flex flex-wrap gap-2">
-                          {(character.conditions ?? []).map((c) => (
-                            <span
-                              key={c}
-                              className="px-2 py-1 text-xs bg-amber-500/20 text-amber-300 rounded"
-                            >
-                              {c}
-                            </span>
-                          ))}
-
-                          {isGm && (
-                            <button
-                              onClick={() =>
-                                updateCharacter(character.id, {
-                                  conditions: [
-                                    ...(character.conditions ?? []),
-                                    "Poisoned",
-                                  ],
-                                })
-                              }
-                              className="px-2 py-1 text-xs border border-white/10 rounded text-zinc-400 hover:text-white"
-                            >
-                              + Add
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
@@ -898,8 +1048,8 @@ const CampaignPage = () => {
                           <p className="mt-1 text-sm text-zinc-500">
                             Player:{" "}
                             {character.ownerName ||
-                            character.ownerEmail ||
-                            character.ownerUid}
+                              character.ownerEmail ||
+                              character.ownerUid}
                           </p>
                         </div>
 
@@ -978,9 +1128,7 @@ const CampaignPage = () => {
                       <div className="flex items-center justify-between gap-3">
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-white">
-                            {member.displayName ||
-                              member.email ||
-                              member.uid}
+                            {member.displayName || member.email || member.uid}
                           </p>
                           <p className="mt-1 text-sm text-zinc-400">
                             {member.email || "No email available"}
@@ -1062,11 +1210,16 @@ const CampaignPage = () => {
         <LevelUpModal
           character={levelUpCharacter}
           onClose={() => setLevelUpCharacter(null)}
-          onConfirm={(updates) =>
-            handleLevelUp(levelUpCharacter, updates)
-          }
+          onConfirm={(updates) => handleLevelUp(levelUpCharacter, updates)}
         />
       )}
+
+      <XpDistributionModal
+        characters={campaignCharacters}
+        isOpen={xpModalOpen}
+        onClose={() => setXpModalOpen(false)}
+        onApply={handleApplyXp}
+      />
     </div>
   );
 };
