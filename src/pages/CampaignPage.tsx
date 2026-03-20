@@ -7,6 +7,7 @@ import {
   onSnapshot,
   query,
   where,
+  updateDoc, 
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
@@ -55,6 +56,11 @@ type CampaignCharacter = {
   race?: string;
   className?: string;
   level?: number;
+
+  hp?: number;
+  maxHp?: number;
+  xp?: number;
+  conditions?: string[];
 };
 
 const formatRoleLabel = (role: CampaignRole) => {
@@ -197,6 +203,11 @@ const CampaignPage = () => {
                 race: speciesById[data.speciesId]?.name ?? data.speciesId,
                 className: classesById[data.classId]?.name ?? data.classId,
                 level: data.level,
+
+                hp: (data as any).hp ?? 10,
+                maxHp: (data as any).maxHp ?? 10,
+                xp: (data as any).xp ?? 0,
+                conditions: (data as any).conditions ?? [],
               } satisfies CampaignCharacter;
             }),
           );
@@ -259,10 +270,18 @@ const CampaignPage = () => {
     return campaign.systemLabel ?? campaign.system ?? "Tabletop RPG";
   }, [campaign]);
 
+  const updateCharacter = async (id: string, updates: any) => {
+    try {
+      await updateDoc(doc(db, "characters", id), updates);
+    } catch (err) {
+      console.error("Failed to update character", err);
+    }
+  };
+
   if (pageState === "loading") {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl py-6 sm:py-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             <p className="text-sm text-zinc-400">Loading campaign...</p>
           </div>
@@ -299,7 +318,7 @@ const CampaignPage = () => {
   if (pageState === "forbidden") {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-4xl py-6 sm:py-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             <h1 className="text-2xl font-bold text-white">Access denied</h1>
             <p className="mt-3 text-sm text-zinc-400">
@@ -322,7 +341,7 @@ const CampaignPage = () => {
   if (pageState === "error" || !campaign || !membership) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-4xl py-6 sm:py-8">
           <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center">
             <h1 className="text-2xl font-bold text-white">
               Something went wrong
@@ -353,7 +372,7 @@ const CampaignPage = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">
         <div className="mb-6 flex items-center justify-between gap-4">
           <Link
             to="/"
@@ -570,80 +589,156 @@ const CampaignPage = () => {
               <div className="mb-5 flex items-center justify-between">
                 <div>
                   <h2 className="text-xl font-semibold text-white sm:text-2xl">
-                    Party overview
+                    Party control
                   </h2>
                   <p className="mt-1 text-sm text-zinc-400">
-                    Current party members in this campaign.
+                    Live overview and quick controls for the party.
                   </p>
-                </div>
-
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">
-                  {campaignCharacters.length} member
-                  {campaignCharacters.length === 1 ? "" : "s"}
                 </div>
               </div>
 
-              {campaignCharactersLoading ? (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
-                  <p className="text-sm text-zinc-400">Loading party...</p>
-                </div>
-              ) : campaignCharacters.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
-                  <p className="text-sm text-zinc-300">No party members yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {campaignCharacters.map((character) => (
-                    <div
-                      key={character.id}
-                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
-                    >
-                      {/* LEFT SIDE */}
-                      <div className="flex items-center gap-4 min-w-0">
-                        <Avatar
-                          uid={character.ownerUid}
-                          name={character.ownerName}
-                          email={character.ownerEmail}
-                          size="md"
-                        />
+              {campaignCharacters.map((character) => {
+                const hpPercent = Math.max(
+                  0,
+                  Math.min(100, ((character.hp ?? 0) / (character.maxHp ?? 1)) * 100),
+                );
 
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-white truncate">
-                            {character.name}
-                          </p>
+                return (
+                  <div
+                    key={character.id}
+                    className="mb-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                  >
+                    <div className="flex flex-col gap-4">
+                      {/* TOP ROW */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Avatar
+                            uid={character.ownerUid}
+                            name={character.ownerName}
+                            email={character.ownerEmail}
+                            size="md"
+                          />
 
-                          <p className="text-xs text-zinc-400 truncate">
-                            {[character.race, character.className]
-                              .filter(Boolean)
-                              .join(" • ")}
-                          </p>
-
-                          <p className="text-xs text-zinc-500 truncate">
-                            {character.ownerName ||
-                              character.ownerEmail ||
-                              character.ownerUid}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* RIGHT SIDE */}
-                      <div className="flex items-center gap-3">
-                        {/* LEVEL BADGE */}
-                        <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-white">
-                          Lv {character.level ?? "-"}
+                          <div>
+                            <p className="font-semibold text-white">
+                              {character.name}
+                            </p>
+                            <p className="text-xs text-zinc-400">
+                              {[character.race, character.className]
+                                .filter(Boolean)
+                                .join(" • ")}{" "}
+                              • Lv {character.level}
+                            </p>
+                          </div>
                         </div>
 
                         <Link
                           to={`/characters/${character.id}`}
-                          className="rounded-xl bg-white px-3 py-1.5 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                          className="text-xs text-zinc-400 hover:text-white"
                         >
-                          Open
+                          Open →
                         </Link>
                       </div>
+
+                      {/* HP BAR */}
+                      <div>
+                        <div className="flex justify-between text-xs text-zinc-400 mb-1">
+                          <span>HP</span>
+                          <span>
+                            {character.hp} / {character.maxHp}
+                          </span>
+                        </div>
+
+                        <div className="h-2 w-full bg-zinc-800 rounded">
+                          <div
+                            className="h-2 bg-emerald-400 rounded transition-all"
+                            style={{ width: `${hpPercent}%` }}
+                          />
+                        </div>
+
+                        {isGm && (
+                          <div className="mt-2 flex gap-2">
+                            <button
+                              onClick={() =>
+                                updateCharacter(character.id, {
+                                  hp: Math.max(0, (character.hp ?? 0) - 1),
+                                })
+                              }
+                              className="px-2 py-1 text-xs bg-red-500/20 text-red-300 rounded"
+                            >
+                              -1
+                            </button>
+
+                            <button
+                              onClick={() =>
+                                updateCharacter(character.id, {
+                                  hp: Math.min(
+                                    character.maxHp ?? 0,
+                                    (character.hp ?? 0) + 1,
+                                  ),
+                                })
+                              }
+                              className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-300 rounded"
+                            >
+                              +1
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* XP */}
+                      <div className="flex items-center justify-between text-xs text-zinc-400">
+                        <span>XP: {character.xp}</span>
+
+                        {isGm && (
+                          <button
+                            onClick={() =>
+                              updateCharacter(character.id, {
+                                xp: (character.xp ?? 0) + 50,
+                              })
+                            }
+                            className="px-2 py-1 bg-blue-500/20 text-blue-300 rounded"
+                          >
+                            +50 XP
+                          </button>
+                        )}
+                      </div>
+
+                      {/* CONDITIONS */}
+                      <div>
+                        <p className="text-xs text-zinc-400 mb-1">Conditions</p>
+
+                        <div className="flex flex-wrap gap-2">
+                          {(character.conditions ?? []).map((c) => (
+                            <span
+                              key={c}
+                              className="px-2 py-1 text-xs bg-amber-500/20 text-amber-300 rounded"
+                            >
+                              {c}
+                            </span>
+                          ))}
+
+                          {isGm && (
+                            <button
+                              onClick={() =>
+                                updateCharacter(character.id, {
+                                  conditions: [
+                                    ...(character.conditions ?? []),
+                                    "Poisoned",
+                                  ],
+                                })
+                              }
+                              className="px-2 py-1 text-xs border border-white/10 rounded text-zinc-400 hover:text-white"
+                            >
+                              + Add
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                );
+              })}
             </section>
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">

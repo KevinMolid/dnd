@@ -339,7 +339,7 @@ const CampaignJournalPage = () => {
   if (pageState === "not-found") {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl py-6 sm:py-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             <h1 className="text-2xl font-bold text-white">
               Campaign not found
@@ -364,7 +364,7 @@ const CampaignJournalPage = () => {
   if (pageState === "forbidden") {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl py-6 sm:py-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             <h1 className="text-2xl font-bold text-white">Access denied</h1>
             <p className="mt-3 text-sm text-zinc-400">
@@ -387,7 +387,7 @@ const CampaignJournalPage = () => {
   if (pageState === "error" || !campaign || !membership) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl py-6 sm:py-8">
           <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center">
             <h1 className="text-2xl font-bold text-white">
               Something went wrong
@@ -418,7 +418,7 @@ const CampaignJournalPage = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl py-6 sm:py-8">
         <div className="mb-6 flex items-center justify-between gap-4">
           <Link
             to={`/campaigns/${campaign.id}`}
