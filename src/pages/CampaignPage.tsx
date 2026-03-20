@@ -21,8 +21,14 @@ import type {
   CampaignRole,
 } from "../types/campaign";
 
+import {
+  getLevelFromXp,
+  getXpProgressWithinLevel,
+} from "../rulesets/dnd/dnd2024/xpProgression";
+
 import Avatar from "../components/Avatar";
 
+import LevelUpModal from "../components/levelUpModal";
 import InvitePlayersModal from "../components/InvitePlayersModal";
 
 type CampaignPageState =
@@ -61,6 +67,9 @@ type CampaignCharacter = {
   maxHp?: number;
   xp?: number;
   conditions?: string[];
+
+  levelUpAvailable?: boolean;
+  derivedLevel?: number;
 };
 
 const formatRoleLabel = (role: CampaignRole) => {
@@ -104,6 +113,8 @@ const CampaignPage = () => {
   const [membersLoading, setMembersLoading] = useState(true);
 
   const [usersById, setUsersById] = useState<Record<string, AppUserDoc>>({});
+
+  const [levelUpCharacter, setLevelUpCharacter] = useState<CampaignCharacter | null>(null);
 
   useEffect(() => {
     const loadCampaign = async () => {
@@ -193,6 +204,11 @@ const CampaignPage = () => {
               const ownerEmail = owner?.email ?? "";
 
 
+              const xp = (data as any).xp ?? 0;
+              const currentLevel = data.level ?? 1;
+              const derivedLevel = getLevelFromXp(xp);
+              const levelUpAvailable = derivedLevel > currentLevel;
+
               return {
                 id: characterSnap.id,
                 ownerUid: data.ownerUid,
@@ -202,12 +218,15 @@ const CampaignPage = () => {
                 name: data.name,
                 race: speciesById[data.speciesId]?.name ?? data.speciesId,
                 className: classesById[data.classId]?.name ?? data.classId,
-                level: data.level,
+                level: currentLevel,
 
                 hp: (data as any).hp ?? 10,
                 maxHp: (data as any).maxHp ?? 10,
-                xp: (data as any).xp ?? 0,
+                xp,
                 conditions: (data as any).conditions ?? [],
+
+                derivedLevel,
+                levelUpAvailable,
               } satisfies CampaignCharacter;
             }),
           );
@@ -275,6 +294,14 @@ const CampaignPage = () => {
       await updateDoc(doc(db, "characters", id), updates);
     } catch (err) {
       console.error("Failed to update character", err);
+    }
+  };
+
+  const handleLevelUp = async (character: CampaignCharacter, updates: any) => {
+    try {
+      await updateCharacter(character.id, updates);
+    } catch (err) {
+      console.error("Level up failed", err);
     }
   };
 
@@ -602,6 +629,7 @@ const CampaignPage = () => {
                   0,
                   Math.min(100, ((character.hp ?? 0) / (character.maxHp ?? 1)) * 100),
                 );
+                const xpData = getXpProgressWithinLevel(character.xp ?? 0);
 
                 return (
                   <div
@@ -638,6 +666,16 @@ const CampaignPage = () => {
                         >
                           Open →
                         </Link>
+
+                        {character.levelUpAvailable &&
+                          user?.uid === character.ownerUid && (
+                            <button
+                              onClick={() => setLevelUpCharacter(character)}
+                              className="ml-2 text-xs bg-amber-400/20 text-amber-300 px-2 py-1 rounded hover:bg-amber-400/30"
+                            >
+                              Level up
+                            </button>
+                        )}
                       </div>
 
                       {/* HP BAR */}
@@ -688,7 +726,62 @@ const CampaignPage = () => {
 
                       {/* XP */}
                       <div className="flex items-center justify-between text-xs text-zinc-400">
-                        <span>XP: {character.xp}</span>
+                        <div>
+                          <div className="flex justify-between text-xs text-zinc-400 mb-1">
+                            <span>XP</span>
+                            <span>
+                              {character.xp} / {xpData.nextLevelXp ?? "MAX"}
+                            </span>
+                          </div>
+
+                          <div className="h-2 w-full bg-zinc-800 rounded">
+                            <div
+                              className={`h-2 rounded transition-all ${
+                                character.levelUpAvailable
+                                  ? "bg-amber-400 animate-pulse"
+                                  : "bg-blue-400"
+                              }`}
+                              style={{ width: `${xpData.progressPercent}%` }}
+                              title={`${xpData.progressXp} / ${xpData.neededXp} XP this level`}
+                            />
+                          </div>
+
+                          <div className="flex justify-between mt-1 text-[10px] text-zinc-500">
+                            <span>Lv {xpData.level}</span>
+
+                            {xpData.nextLevelXp !== null ? (
+                              <span>{xpData.neededXp} XP to next</span>
+                            ) : (
+                              <span>Max level</span>
+                            )}
+                          </div>
+
+                          {isGm && (
+                            <div className="mt-2 flex gap-2">
+                              <button
+                                onClick={() =>
+                                  updateCharacter(character.id, {
+                                    xp: (character.xp ?? 0) + 50,
+                                  })
+                                }
+                                className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded"
+                              >
+                                +50 XP
+                              </button>
+
+                              <button
+                                onClick={() =>
+                                  updateCharacter(character.id, {
+                                    xp: (character.xp ?? 0) + 200,
+                                  })
+                                }
+                                className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded"
+                              >
+                                +200 XP
+                              </button>
+                            </div>
+                          )}
+                        </div>
 
                         {isGm && (
                           <button
@@ -962,6 +1055,16 @@ const CampaignPage = () => {
           campaignName={campaign.name}
           isOpen={inviteModalOpen}
           onClose={() => setInviteModalOpen(false)}
+        />
+      )}
+
+      {levelUpCharacter && (
+        <LevelUpModal
+          character={levelUpCharacter}
+          onClose={() => setLevelUpCharacter(null)}
+          onConfirm={(updates) =>
+            handleLevelUp(levelUpCharacter, updates)
+          }
         />
       )}
     </div>
