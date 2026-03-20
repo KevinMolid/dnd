@@ -1,7 +1,7 @@
 import {
   getBackgroundById,
   getClassById,
-  getOriginFeatById,
+  getFeatById,
   getSpeciesById,
 } from "./helpers";
 import { getSpeciesGrantedFeatIds } from "./getSpeciesGrantedFeatIds";
@@ -189,7 +189,7 @@ export const buildDerivedCharacterData = (
   const speciesDef = getSpeciesById(character.speciesId);
   const backgroundDef = getBackgroundById(character.backgroundId);
   const featDef = character.originFeatId
-    ? getOriginFeatById(character.originFeatId)
+    ? getFeatById(character.originFeatId)
     : undefined;
 
   const speciesTraits = getSpeciesTraits(character.speciesId, character.choices);
@@ -205,7 +205,7 @@ export const buildDerivedCharacterData = (
   );
 
   const speciesGrantedFeats = speciesGrantedFeatIds
-    .map((featId) => getOriginFeatById(featId))
+    .map((featId) => getFeatById(featId))
     .filter((feat): feat is NonNullable<typeof feat> => Boolean(feat));
 
   const finalAbilityScores = applyBackgroundBonuses(

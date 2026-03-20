@@ -1,6 +1,6 @@
 import type { Feat } from "../types";
 
-export const originFeats: Feat[] = [
+export const feats: Feat[] = [
   { id: "alert", name: "Alert", category: "origin", traits: [] },
   { id: "crafter", name: "Crafter", category: "origin", traits: [] },
   { id: "healer", name: "Healer", category: "origin", traits: [] },

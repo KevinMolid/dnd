@@ -1,6 +1,7 @@
 export { backgrounds } from "./backgrounds";
-export { originFeats } from "./feats";
+export { feats } from "./feats";
 export { classes } from "./classes";
+export { subclasses } from "./subclasses";
 export {
   species,
   elfLineages,

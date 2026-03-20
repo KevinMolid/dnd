@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext";
 import {
   backgroundsById,
   classesById,
-  originFeatsById,
+  featsById,
   speciesById,
 } from "../rulesets/dnd/dnd2024/helpers";
 import {
@@ -432,8 +432,7 @@ const CharacterSheet = () => {
         speciesById[character.speciesId]?.name ?? character.speciesId,
       backgroundName: background?.name ?? character.backgroundId,
       featName: character.originFeatId
-        ? (originFeatsById[character.originFeatId]?.name ??
-          character.originFeatId)
+        ? (featsById[character.originFeatId]?.name ?? character.originFeatId)
         : null,
       proficiencyBonus,
       initiativeBonus:

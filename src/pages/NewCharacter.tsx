@@ -8,7 +8,7 @@ import { getSpeciesGrantedFeatIds } from "../rulesets/dnd/dnd2024/getSpeciesGran
 import {
   getBackgroundById,
   getClassById,
-  getOriginFeatById,
+  getFeatById,
 } from "../rulesets/dnd/dnd2024/helpers";
 import type {
   AbilityKey,
@@ -204,8 +204,7 @@ const NewCharacter = () => {
 
   const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
   const backgroundGrantedFeatName = backgroundGrantedFeatId
-    ? (getOriginFeatById(backgroundGrantedFeatId)?.name ??
-      backgroundGrantedFeatId)
+    ? (getFeatById(backgroundGrantedFeatId)?.name ?? backgroundGrantedFeatId)
     : null;
 
   const speciesGrantedFeatIds = useMemo(
@@ -216,7 +215,7 @@ const NewCharacter = () => {
   const speciesGrantedFeatNames = useMemo(
     () =>
       speciesGrantedFeatIds.map(
-        (featId) => getOriginFeatById(featId)?.name ?? featId,
+        (featId) => getFeatById(featId)?.name ?? featId,
       ),
     [speciesGrantedFeatIds],
   );
