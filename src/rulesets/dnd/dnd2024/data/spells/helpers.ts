@@ -70,8 +70,14 @@ export const getCantripsKnownForLevel = (
 ): number => {
   if (!rules.cantrips) return 0;
 
-  const base = rules.cantrips.knownByLevel[level] ?? 0;
-  return base;
+  const matchingLevels = Object.keys(rules.cantrips.knownByLevel)
+    .map(Number)
+    .filter((definedLevel) => definedLevel <= level)
+    .sort((a, b) => b - a);
+
+  if (matchingLevels.length === 0) return 0;
+
+  return rules.cantrips.knownByLevel[matchingLevels[0] as LevelNumber] ?? 0;
 };
 
 export const getPreparedSpellCountForLevel = (

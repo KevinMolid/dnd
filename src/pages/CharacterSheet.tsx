@@ -23,7 +23,18 @@ import type {
   WeaponMasteryChoiceId,
   Trait,
   TraitEffect,
+  LevelNumber,
+  CharacterSpell,
+  SpellId,
 } from "../rulesets/dnd/dnd2024/types";
+
+import {
+  getSpellById,
+  getSpellSlotsForLevel,
+  getCantripsKnownForLevel,
+  getPreparedSpellCountForLevel,
+  getKnownSpellCountForLevel,
+} from "../rulesets/dnd/dnd2024/data/spells/helpers";
 
 import type { CharacterSheetData } from "../rulesets/dnd/dnd2024/types";
 
@@ -43,13 +54,7 @@ type CharacterDoc = CharacterSheetData & {
   toolProficiencies?: string[];
   savingThrowProficiencies?: string[];
   languages?: string[];
-  spells?: Array<{
-    id: string;
-    name: string;
-    level?: number;
-    school?: string;
-    prepared?: boolean;
-  }>;
+  subclassId: string;
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
@@ -256,7 +261,7 @@ const getEffectLabel = (effect: TraitEffect) => {
     case "hp-max-bonus":
       return "HP maximum bonus";
     case "spell":
-      return `Spell: ${effect.spellName}`;
+      return `Spell: ${effect.spellId}`;
     case "healing":
       return "Healing";
     case "transformation":
@@ -479,6 +484,65 @@ const TraitGroupSection = ({
   );
 };
 
+const collectSpellSelectionsFromLevelUp = (
+  levelUpDecisions: Record<number, any> | undefined,
+  maxLevel: number,
+) => {
+  const cantripIds: SpellId[] = [];
+  const spellSelections: Array<{ spellId: SpellId; level: number }> = [];
+
+  if (!levelUpDecisions) {
+    return { cantripIds, spellSelections };
+  }
+
+  const sortedLevels = Object.keys(levelUpDecisions)
+    .map(Number)
+    .filter((level) => level <= maxLevel)
+    .sort((a, b) => a - b);
+
+  for (const level of sortedLevels) {
+    const decision = levelUpDecisions[level];
+    if (!decision) continue;
+
+    if (Array.isArray(decision.cantripChoices)) {
+      for (const spellId of decision.cantripChoices) {
+        if (!cantripIds.includes(spellId)) {
+          cantripIds.push(spellId);
+        }
+      }
+    }
+
+    if (Array.isArray(decision.spellChoices)) {
+      for (const spell of decision.spellChoices) {
+        if (
+          spell &&
+          typeof spell.spellId === "string" &&
+          !spellSelections.some((s) => s.spellId === spell.spellId)
+        ) {
+          spellSelections.push(spell);
+        }
+      }
+    }
+  }
+
+  return { cantripIds, spellSelections };
+};
+
+const getOrdinalSuffix = (value: number) => {
+  if (value % 100 >= 11 && value % 100 <= 13) return "th";
+
+  switch (value % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
+};
+
 const CharacterSheet = () => {
   const { characterId } = useParams();
   const { user } = useAuth();
@@ -674,6 +738,7 @@ const CharacterSheet = () => {
     );
 
     const selectedSubclassId =
+      character.subclassId ??
       character.choices?.subclassId ??
       Object.values(levelUpDecisions).find(
         (decision: any) => typeof decision?.subclassId === "string",
@@ -692,6 +757,150 @@ const CharacterSheet = () => {
           ).flatMap((level) => subclassDef.featuresByLevel[level] ?? [])
         : [],
     );
+
+    const activeSpellcasting =
+      subclassDef?.spellcasting ?? classDef?.spellcasting ?? null;
+
+    const levelUpDecisionMap = character.choices?.levelUpDecisions ?? {};
+
+    const spellcastingAbility = activeSpellcasting?.castingAbility ?? null;
+
+    const spellcastingAbilityMod = spellcastingAbility
+      ? getAbilityModifier(finalAbilityScores[spellcastingAbility])
+      : null;
+
+    const spellSaveDc =
+      spellcastingAbilityMod !== null
+        ? 8 + proficiencyBonus + spellcastingAbilityMod
+        : null;
+
+    const spellAttackBonus =
+      spellcastingAbilityMod !== null
+        ? proficiencyBonus + spellcastingAbilityMod
+        : null;
+
+    const spellSlots = activeSpellcasting
+      ? getSpellSlotsForLevel(
+          activeSpellcasting,
+          character.level as LevelNumber,
+        )
+      : {};
+
+    const cantripsKnown = activeSpellcasting
+      ? getCantripsKnownForLevel(
+          activeSpellcasting,
+          character.level as LevelNumber,
+        )
+      : 0;
+
+    const spellsPrepared = activeSpellcasting?.preparedSpells
+      ? getPreparedSpellCountForLevel(
+          activeSpellcasting,
+          character.level as LevelNumber,
+        )
+      : 0;
+
+    const spellsKnown = activeSpellcasting?.learnedSpells
+      ? getKnownSpellCountForLevel(
+          activeSpellcasting,
+          character.level as LevelNumber,
+        )
+      : 0;
+
+    const collectedSpellChoices = collectSpellSelectionsFromLevelUp(
+      levelUpDecisionMap,
+      character.level,
+    );
+
+    const fixedCantripIds = activeSpellcasting?.cantrips?.fixedKnown ?? [];
+
+    const allKnownCantripIds = unique<SpellId>([
+      ...fixedCantripIds,
+      ...collectedSpellChoices.cantripIds,
+    ]);
+
+    const derivedKnownSpells: CharacterSpell[] = [
+      ...allKnownCantripIds.map((spellId) => ({
+        spellId,
+        level: 0 as const,
+        sourceType: activeSpellcasting?.sourceType ?? ("subclass" as const),
+        sourceId:
+          activeSpellcasting?.sourceId ??
+          selectedSubclassId ??
+          character.classId,
+        known: true,
+        prepared: true,
+        countsAgainstKnownLimit: true,
+        countsAgainstPreparationLimit: false,
+      })),
+      ...collectedSpellChoices.spellSelections.map((selection) => ({
+        spellId: selection.spellId,
+        level: selection.level as any,
+        sourceType: activeSpellcasting?.sourceType ?? ("subclass" as const),
+        sourceId:
+          activeSpellcasting?.sourceId ??
+          selectedSubclassId ??
+          character.classId,
+        known: true,
+        prepared: true,
+        countsAgainstKnownLimit: true,
+        countsAgainstPreparationLimit: true,
+      })),
+    ];
+
+    const spells = unique(derivedKnownSpells.map((spell) => spell.spellId))
+      .map((spellId) =>
+        derivedKnownSpells.find((spell) => spell.spellId === spellId),
+      )
+      .filter(Boolean)
+      .map((spell) => {
+        const spellData = getSpellById(spell!.spellId);
+
+        return {
+          ...spell!,
+          level: spellData?.level ?? spell!.level,
+          school: spellData?.school,
+          name: spellData?.name ?? spell!.spellId,
+        };
+      })
+      .sort((a, b) => {
+        const levelDiff = (a.level ?? 0) - (b.level ?? 0);
+        if (levelDiff !== 0) return levelDiff;
+        return a.name.localeCompare(b.name);
+      });
+
+    const groupedSpells = spells
+      .reduce<
+        Array<{
+          level: number;
+          title: string;
+          spells: typeof spells;
+        }>
+      >((groups, spell) => {
+        const spellLevel = spell.level ?? 0;
+
+        let group = groups.find((entry) => entry.level === spellLevel);
+
+        if (!group) {
+          group = {
+            level: spellLevel,
+            title:
+              spellLevel === 0
+                ? "Cantrips"
+                : `${spellLevel}${getOrdinalSuffix(spellLevel)}-Level Spells`,
+            spells: [],
+          };
+          groups.push(group);
+        }
+
+        group.spells.push(spell);
+        return groups;
+      }, [])
+      .sort((a, b) => a.level - b.level)
+      .map((group) => ({
+        ...group,
+        spells: [...group.spells].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
 
     const backgroundTraits = dedupeTraits(
       background?.originFeatId
@@ -826,6 +1035,17 @@ const CharacterSheet = () => {
       xpProgress,
       pendingSteps,
       traitGroups: groupedTraits,
+      activeSpellcasting,
+      spellcastingAbility,
+      spellcastingAbilityMod,
+      spellSaveDc,
+      spellAttackBonus,
+      spellSlots,
+      cantripsKnown,
+      spellsKnown,
+      spellsPrepared,
+      spells,
+      groupedSpells,
     };
   }, [character]);
 
@@ -1348,38 +1568,167 @@ const CharacterSheet = () => {
             </SectionCard>
 
             <SectionCard title="Spells">
-              {character.spells?.length ? (
-                <div className="space-y-3">
-                  {character.spells.map((spell) => (
-                    <div
-                      key={spell.id}
-                      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <p className="font-medium text-white">{spell.name}</p>
-                        <div className="flex items-center gap-2">
-                          {typeof spell.level === "number" && (
-                            <span className="rounded-full border border-white/10 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300">
-                              Level {spell.level}
-                            </span>
-                          )}
-                          {spell.prepared && (
-                            <span className="rounded-full border border-white/10 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-300">
-                              Prepared
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {spell.school && (
-                        <p className="mt-2 text-sm text-zinc-500">
-                          {spell.school}
+              {derived.activeSpellcasting ? (
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Spellcasting Ability
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-white">
+                        {derived.spellcastingAbility
+                          ? abilityFullLabels[derived.spellcastingAbility]
+                          : "—"}
+                      </p>
+                      {derived.spellcastingAbilityMod !== null && (
+                        <p className="mt-1 text-sm text-zinc-400">
+                          Mod {formatModifier(derived.spellcastingAbilityMod)}
                         </p>
                       )}
                     </div>
-                  ))}
+
+                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Spell Save DC
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-white">
+                        {derived.spellSaveDc ?? "—"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Spell Attack Bonus
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-white">
+                        {derived.spellAttackBonus !== null
+                          ? formatModifier(derived.spellAttackBonus)
+                          : "—"}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Spellcasting Source
+                      </p>
+                      <p className="mt-2 text-lg font-semibold text-white">
+                        {derived.subclassName ?? derived.className}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                    <p className="text-sm font-semibold text-zinc-200">
+                      Spell Slots
+                    </p>
+
+                    {Object.keys(derived.spellSlots).length > 0 ? (
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        {Object.entries(derived.spellSlots).map(
+                          ([slotLevel, count]) => (
+                            <div
+                              key={slotLevel}
+                              className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
+                            >
+                              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                                Level {slotLevel}
+                              </p>
+                              <p className="mt-2 text-xl font-bold text-white">
+                                {count}
+                              </p>
+                              <p className="mt-1 text-xs text-zinc-400">
+                                slot{count === 1 ? "" : "s"}
+                              </p>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-sm text-zinc-500">
+                        No spell slots available yet.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                    <div className="flex flex-wrap gap-3 text-sm">
+                      <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
+                        Cantrips known: {derived.cantripsKnown}
+                      </span>
+
+                      {derived.spellsPrepared > 0 && (
+                        <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
+                          Spells prepared: {derived.spellsPrepared}
+                        </span>
+                      )}
+
+                      {derived.spellsKnown > 0 && (
+                        <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
+                          Spells known: {derived.spellsKnown}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {derived.groupedSpells.length > 0 ? (
+                    <div className="space-y-4">
+                      {derived.groupedSpells.map((group) => (
+                        <div
+                          key={group.level}
+                          className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4"
+                        >
+                          <div className="mb-3 flex items-center justify-between gap-3">
+                            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-300">
+                              {group.title}
+                            </h3>
+
+                            <span className="rounded-full border border-white/10 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400">
+                              {group.spells.length} spell
+                              {group.spells.length === 1 ? "" : "s"}
+                            </span>
+                          </div>
+
+                          <div className="space-y-3">
+                            {group.spells.map((spell) => (
+                              <div
+                                key={spell.spellId}
+                                className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                              >
+                                <div className="flex items-center justify-between gap-4">
+                                  <p className="font-medium text-white">
+                                    {spell.name}
+                                  </p>
+
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    {spell.prepared && (
+                                      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
+                                        Prepared
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {spell.school && (
+                                  <p className="mt-2 text-sm text-zinc-500">
+                                    {spell.school}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-zinc-500">
+                      No spells known yet.
+                    </p>
+                  )}
                 </div>
               ) : (
-                <p className="text-sm text-zinc-500">No spells added yet.</p>
+                <p className="text-sm text-zinc-500">
+                  This character does not currently have spellcasting.
+                </p>
               )}
             </SectionCard>
           </div>
