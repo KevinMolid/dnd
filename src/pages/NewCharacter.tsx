@@ -15,6 +15,7 @@ import type {
   CharacterSheetData,
   LanguageId,
   SkillId,
+  ToolId,
   Trait,
   TraitChoice,
   TraitEffect,
@@ -177,6 +178,10 @@ const NewCharacter = () => {
       "dex",
   );
 
+  const [backgroundToolChoice, setBackgroundToolChoice] = useState<ToolId | "">(
+    "",
+  );
+
   const [rogueExpertiseChoices, setRogueExpertiseChoices] = useState<
     Array<SkillId | "thieves-tools">
   >([]);
@@ -194,6 +199,16 @@ const NewCharacter = () => {
     () => getBackgroundById(backgroundId),
     [backgroundId],
   );
+
+  const backgroundToolRules = backgroundDef?.toolProficiencyOptions;
+
+  const backgroundToolOptions =
+    backgroundToolRules?.type === "choice" ? backgroundToolRules.options : [];
+
+  const grantedTool =
+    backgroundToolRules?.type === "fixed"
+      ? backgroundToolRules.tool
+      : backgroundToolChoice || null;
 
   const speciesChoices = useMemo<TraitChoice[]>(
     () => getSpeciesChoices(speciesId),
@@ -233,6 +248,7 @@ const NewCharacter = () => {
           plus2: backgroundBonusPlus2,
           plus1: backgroundBonusPlus1,
         },
+        backgroundToolChoice: backgroundToolChoice || undefined,
         speciesTraitChoices,
         ...(isRogue
           ? {
@@ -247,6 +263,7 @@ const NewCharacter = () => {
     backgroundBonusPlus1,
     backgroundBonusPlus2,
     backgroundId,
+    backgroundToolChoice,
     classId,
     classSkillChoices,
     backgroundGrantedFeatId,
@@ -259,7 +276,6 @@ const NewCharacter = () => {
   ]);
 
   const grantedSkills = backgroundDef?.skillProficiencies ?? [];
-  const grantedTool = backgroundDef?.toolProficiency ?? null;
   const abilityOptions = backgroundDef?.abilityOptions ?? [];
 
   const classSkillOptions = classDef?.skillChoice.options ?? [];
@@ -307,6 +323,26 @@ const NewCharacter = () => {
       setBackgroundBonusPlus1(nextPlus1);
     }
   }, [backgroundBonusPlus1, backgroundBonusPlus2, backgroundDef]);
+
+  useEffect(() => {
+    if (!backgroundToolRules) {
+      setBackgroundToolChoice("");
+      return;
+    }
+
+    if (backgroundToolRules.type === "fixed") {
+      setBackgroundToolChoice("");
+      return;
+    }
+
+    setBackgroundToolChoice((prev) => {
+      if (prev && backgroundToolRules.options.includes(prev)) {
+        return prev;
+      }
+
+      return backgroundToolRules.options[0] ?? "";
+    });
+  }, [backgroundToolRules]);
 
   useEffect(() => {
     if (!isRogue) {
@@ -457,6 +493,16 @@ const NewCharacter = () => {
       return "Your +2 and +1 background bonuses must be different abilities.";
     }
 
+    if (backgroundToolRules?.type === "choice") {
+      if (!backgroundToolChoice) {
+        return "Please choose a background tool proficiency.";
+      }
+
+      if (!backgroundToolRules.options.includes(backgroundToolChoice)) {
+        return "Please choose a valid background tool proficiency.";
+      }
+    }
+
     for (const choice of speciesChoices) {
       const value = speciesTraitChoices[choice.id];
 
@@ -547,6 +593,7 @@ const NewCharacter = () => {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
           },
+          backgroundToolChoice: backgroundToolChoice || undefined,
           speciesTraitChoices,
           ...(isRogue
             ? {
@@ -578,6 +625,7 @@ const NewCharacter = () => {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
           },
+          backgroundToolChoice: backgroundToolChoice || undefined,
           speciesTraitChoices,
           ...(isRogue
             ? {
@@ -931,6 +979,37 @@ const NewCharacter = () => {
                 </div>
               </div>
             </div>
+
+            {backgroundToolRules?.type === "choice" && (
+              <div className="mt-8">
+                <h3 className="mb-4 text-lg font-semibold text-white">
+                  Background Tool Proficiency
+                </h3>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="backgroundToolChoice"
+                    className="text-sm font-medium text-zinc-200"
+                  >
+                    Choose tool proficiency
+                  </label>
+                  <select
+                    id="backgroundToolChoice"
+                    value={backgroundToolChoice}
+                    onChange={(e) =>
+                      setBackgroundToolChoice(e.target.value as ToolId)
+                    }
+                    className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                  >
+                    {backgroundToolOptions.map((tool) => (
+                      <option key={tool} value={tool}>
+                        {formatLabel(tool)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
 
             {isRogue && (
               <>

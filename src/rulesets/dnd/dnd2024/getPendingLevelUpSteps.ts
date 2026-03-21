@@ -14,6 +14,12 @@ import {
   rogueLanguageChoice,
   rogueWeaponMasteryChoices,
 } from "./data/classes/rogue";
+import {
+  paladinBlessedWarriorCantripChoice,
+  paladinFightingStyleChoicesByLevel,
+  paladinSubclassChoicesByLevel,
+  paladinWeaponMasteryChoices,
+} from "./data/classes/paladin";
 
 export type PendingLevelUpStepType =
   | "feature"
@@ -238,7 +244,16 @@ const getCantripChoiceCountGrantedAtLevel = (
 
   let granted = 0;
 
-  if (level === 3 && typeof rules.cantrips.chooseAtStart === "number") {
+  const definedLevels = Object.keys(rules.cantrips.knownByLevel)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  const firstCantripLevel = definedLevels[0];
+
+  if (
+    level === firstCantripLevel &&
+    typeof rules.cantrips.chooseAtStart === "number"
+  ) {
     granted += rules.cantrips.chooseAtStart;
   }
 
@@ -255,40 +270,163 @@ const getPreparedSpellChoiceCountGrantedAtLevel = (
 
   let granted = 0;
 
+  const definedLevels = Object.keys(rules.preparedSpells.preparedByLevel)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  const firstPreparedLevel = definedLevels[0];
+
   if (
-    level === 3 &&
+    level === firstPreparedLevel &&
     typeof rules.preparedSpells.chooseAtStart?.count === "number"
   ) {
     granted += rules.preparedSpells.chooseAtStart.count;
   }
 
-  const levels = Object.keys(rules.preparedSpells.preparedByLevel)
-    .map(Number)
-    .filter((definedLevel) => definedLevel <= level)
-    .sort((a, b) => b - a);
-
-  const previousLevels = Object.keys(rules.preparedSpells.preparedByLevel)
-    .map(Number)
-    .filter((definedLevel) => definedLevel <= level - 1)
-    .sort((a, b) => b - a);
+  const levels = definedLevels.filter((definedLevel) => definedLevel <= level);
+  const previousLevels = definedLevels.filter(
+    (definedLevel) => definedLevel <= level - 1,
+  );
 
   const currentCount =
     levels.length > 0
-      ? rules.preparedSpells.preparedByLevel[levels[0] as LevelNumber] ?? 0
+      ? rules.preparedSpells.preparedByLevel[
+          levels[levels.length - 1] as LevelNumber
+        ] ?? 0
       : 0;
 
   const previousCount =
     previousLevels.length > 0
       ? rules.preparedSpells.preparedByLevel[
-          previousLevels[0] as LevelNumber
+          previousLevels[previousLevels.length - 1] as LevelNumber
         ] ?? 0
       : 0;
 
-  if (level !== 3 && currentCount > previousCount) {
+  if (level !== firstPreparedLevel && currentCount > previousCount) {
     granted += currentCount - previousCount;
   }
 
   return granted;
+};
+
+const getClassSpellcastingChoiceSteps = (
+  character: CharacterSheetData,
+  rules: SpellcastingRules,
+  level: LevelNumber,
+  className: string,
+): PendingLevelUpStep[] => {
+  const steps: PendingLevelUpStep[] = [];
+  const decisions = character.choices?.levelUpDecisions?.[level];
+
+  const cantripChoicesRequired = getCantripChoiceCountGrantedAtLevel(rules, level);
+  const chosenCantrips = decisions?.cantripChoices ?? [];
+
+  if (cantripChoicesRequired > 0 && chosenCantrips.length < cantripChoicesRequired) {
+    steps.push({
+      level,
+      type: "cantrip-choice",
+      id: `${rules.sourceId}-class-cantrips-${level}`,
+      title:
+        level === 1 || level === 3
+          ? `${className} Cantrips`
+          : "Choose Additional Cantrip",
+      description:
+        level === 1 || level === 3
+          ? `Choose ${cantripChoicesRequired} cantrip${cantripChoicesRequired > 1 ? "s" : ""} for ${className}.`
+          : `Choose ${cantripChoicesRequired} additional cantrip${cantripChoicesRequired > 1 ? "s" : ""}.`,
+      choice: {
+        id: `${rules.sourceId}-class-cantrip-choice-${level}`,
+        level,
+        name: `${className} Cantrip Choice`,
+        choose: cantripChoicesRequired,
+        source: "cantrips",
+      },
+    });
+  }
+
+  const spellChoicesRequired = getPreparedSpellChoiceCountGrantedAtLevel(rules, level);
+  const chosenSpells = decisions?.spellChoices ?? [];
+
+  if (spellChoicesRequired > 0 && chosenSpells.length < spellChoicesRequired) {
+    const spellLevel =
+      level === 1 || level === 3
+        ? rules.preparedSpells?.chooseAtStart?.spellLevel ?? 1
+        : undefined;
+
+    steps.push({
+      level,
+      type: "spell-choice",
+      id: `${rules.sourceId}-class-spells-${level}`,
+      title:
+        level === 1 || level === 3
+          ? `${className} Spells`
+          : "Choose Additional Spell",
+      description:
+        level === 1 || level === 3
+          ? `Choose ${spellChoicesRequired} level ${spellLevel} spell${spellChoicesRequired > 1 ? "s" : ""} for ${className}.`
+          : `Choose ${spellChoicesRequired} additional spell${spellChoicesRequired > 1 ? "s" : ""} for ${className}.`,
+      choice: {
+        id: `${rules.sourceId}-class-spell-choice-${level}`,
+        level,
+        name: `${className} Spell Choice`,
+        choose: spellChoicesRequired,
+        source: "spells",
+        restrictions:
+          spellLevel !== undefined
+            ? [`Must be a level ${spellLevel} spell.`]
+            : undefined,
+      },
+    });
+  }
+
+  const priorCantrips = collectPriorCantripChoices(character, level);
+  const priorSpells = collectPriorSpellChoices(character, level);
+
+  if (
+    canReplaceCantripAtLevel(rules, level) &&
+    priorCantrips.length > 0 &&
+    !(decisions?.cantripReplacements?.length)
+  ) {
+    steps.push({
+      level,
+      type: "cantrip-replacement",
+      id: `${rules.sourceId}-class-cantrip-replacement-${level}`,
+      title: "Replace a Cantrip",
+      description:
+        "You can replace one cantrip you already know with another eligible cantrip.",
+      choice: {
+        id: `${rules.sourceId}-class-cantrip-replacement-choice-${level}`,
+        level,
+        name: `${className} Cantrip Replacement`,
+        choose: 1,
+        source: "cantrips",
+      },
+    });
+  }
+
+  if (
+    canReplaceSpellAtLevel(rules, level) &&
+    priorSpells.length > 0 &&
+    !(decisions?.spellReplacements?.length)
+  ) {
+    steps.push({
+      level,
+      type: "spell-replacement",
+      id: `${rules.sourceId}-class-spell-replacement-${level}`,
+      title: "Replace a Spell",
+      description:
+        "You can replace one spell you already know with another eligible spell.",
+      choice: {
+        id: `${rules.sourceId}-class-spell-replacement-choice-${level}`,
+        level,
+        name: `${className} Spell Replacement`,
+        choose: 1,
+        source: "spells",
+      },
+    });
+  }
+
+  return steps;
 };
 
 const getSubclassSpellcastingChoiceSteps = (
@@ -458,6 +596,73 @@ const getRoguePendingChoiceSteps = (
   return steps;
 };
 
+const getPaladinPendingChoiceSteps = (
+  character: CharacterSheetData,
+  level: LevelNumber,
+): PendingLevelUpStep[] => {
+  if (character.classId !== "paladin") return [];
+
+  const steps: PendingLevelUpStep[] = [];
+  const decisions = character.choices?.levelUpDecisions?.[level];
+
+  const weaponMasteryDefinition = paladinWeaponMasteryChoices[level]?.[0];
+  if (weaponMasteryDefinition && !decisions?.weaponMastery) {
+    steps.push({
+      level,
+      type: "weapon-mastery-choice",
+      id: `paladin-weapon-mastery-${level}`,
+      title: "Choose Weapon Masteries",
+      description: weaponMasteryDefinition.description,
+      choice: weaponMasteryDefinition as ChoiceDefinition<string>,
+    });
+  }
+
+  const fightingStyleDefinition = paladinFightingStyleChoicesByLevel[level]?.[0];
+  if (fightingStyleDefinition && !decisions?.fightingStyleId) {
+    steps.push({
+      level,
+      type: "feat-choice",
+      id: `paladin-fighting-style-${level}`,
+      title: "Choose Fighting Style",
+      description: fightingStyleDefinition.description,
+      choice: fightingStyleDefinition as ChoiceDefinition<string>,
+    });
+  }
+
+  const subclassDefinition = paladinSubclassChoicesByLevel[level]?.[0];
+  if (subclassDefinition && !decisions?.subclassId) {
+    steps.push({
+      level,
+      type: "subclass-choice",
+      id: `paladin-subclass-choice-${level}`,
+      title: "Choose Subclass",
+      description: subclassDefinition.description,
+      choice: subclassDefinition as ChoiceDefinition<string>,
+    });
+  }
+
+  const choseBlessedWarrior =
+    decisions?.fightingStyleId === "blessed-warrior" ||
+    character.choices?.levelUpDecisions?.[2]?.fightingStyleId === "blessed-warrior";
+
+  if (
+    level === 2 &&
+    choseBlessedWarrior &&
+    !(decisions?.cantripChoices?.length)
+  ) {
+    steps.push({
+      level,
+      type: "cantrip-choice",
+      id: "paladin-blessed-warrior-cantrips",
+      title: "Choose Blessed Warrior Cantrips",
+      description: paladinBlessedWarriorCantripChoice.description,
+      choice: paladinBlessedWarriorCantripChoice as ChoiceDefinition<string>,
+    });
+  }
+
+  return steps;
+};
+
 export const getPendingLevelUpSteps = (
   character: CharacterSheetData,
   subclass?: CharacterSubclass | null,
@@ -550,11 +755,23 @@ export const getPendingLevelUpSteps = (
       }
     }
 
+    if (classDef.spellcasting) {
+      steps.push(
+        ...getClassSpellcastingChoiceSteps(
+          character,
+          classDef.spellcasting,
+          level,
+          classDef.name,
+        ),
+      );
+    }
+
     if (subclass) {
       steps.push(...getSubclassSpellcastingChoiceSteps(character, subclass, level));
     }
 
     steps.push(...getRoguePendingChoiceSteps(character, level));
+    steps.push(...getPaladinPendingChoiceSteps(character, level));
   }
 
   return uniqueById(steps).sort((a, b) => {

@@ -240,6 +240,25 @@ const getFeatureRefsFromTraits = (
   }));
 };
 
+const getBackgroundToolProficiencies = (
+  character: CharacterSheetData,
+): ToolId[] => {
+  const backgroundDef = getBackgroundById(character.backgroundId);
+  if (!backgroundDef?.toolProficiencyOptions) return [];
+
+  const toolRules = backgroundDef.toolProficiencyOptions;
+
+  if (toolRules.type === "fixed") {
+    return [toolRules.tool];
+  }
+
+  if (toolRules.type === "choice" && character.choices?.backgroundToolChoice) {
+    return [character.choices.backgroundToolChoice];
+  }
+
+  return [];
+};
+
 export const buildDerivedCharacterData = (
   character: CharacterSheetData,
 ): DerivedCharacterData => {
@@ -289,6 +308,7 @@ export const buildDerivedCharacterData = (
 
   const classSkillChoices = character.choices?.classSkillChoices ?? [];
   const extraToolChoices = character.choices?.toolChoices ?? [];
+  const backgroundToolProficiencies = getBackgroundToolProficiencies(character);
   const extraLanguageChoices = character.choices?.languageChoices ?? [];
 
   const skillProficiencies = unique<SkillId>([
@@ -298,7 +318,7 @@ export const buildDerivedCharacterData = (
   ]);
 
   const toolProficiencies = unique<ToolId>([
-    ...(backgroundDef ? [backgroundDef.toolProficiency] : []),
+    ...backgroundToolProficiencies,
     ...(classDef?.toolProficiencies ?? []),
     ...extraToolChoices,
   ]);

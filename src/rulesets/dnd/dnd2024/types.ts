@@ -316,7 +316,61 @@ export type ToolId =
   | "weavers-tools"
   | "woodcarvers-tools"
   | "vehicles-land"
-  | "vehicles-water";
+  | "vehicles-water"
+  | "glassblowers-tools"
+  | "jewelers-tools";
+
+export type ToolChoiceGroup =
+  | "artisan-tools"
+  | "gaming-set"
+  | "musical-instrument";
+
+export type BackgroundToolProficiency =
+  | {
+      type: "fixed";
+      tool: ToolId;
+    }
+  | {
+      type: "choice";
+      choose: 1;
+      options: ToolId[];
+      optionGroup?: ToolChoiceGroup;
+    };
+
+export type BackgroundFeatGrant =
+  | {
+      type: "fixed";
+      featId: OriginFeatId;
+    }
+  | {
+      type: "magic-initiate";
+      featId: "magic-initiate";
+      spellListId: Extract<SpellListId, "cleric" | "druid" | "wizard">;
+    };
+
+export type BackgroundEquipmentOption = {
+  id: string;
+  label: string;
+  grants: EquipmentGrant[];
+};
+
+export type BackgroundEquipment = {
+  choose: 1;
+  options: [BackgroundEquipmentOption, BackgroundEquipmentOption];
+};
+
+export type Background = RulesOption & {
+  abilityOptions: AbilityKey[];
+  skillProficiencies: [SkillId, SkillId];
+
+  toolProficiency?: ToolId;
+  originFeatId?: OriginFeatId;
+  equipmentGold?: number;
+
+  toolProficiencyOptions?: BackgroundToolProficiency;
+  featGrant?: BackgroundFeatGrant;
+  equipment?: BackgroundEquipment;
+};
 
 export type LanguageId =
   | "common"
@@ -364,7 +418,27 @@ export type WeaponMasteryChoiceId =
   | "shortsword"
   | "sickle"
   | "sling"
-  | "spear";
+  | "spear"
+  | "battleaxe"
+  | "flail"
+  | "glaive"
+  | "greataxe"
+  | "greatclub"
+  | "greatsword"
+  | "halberd"
+  | "lance"
+  | "light-hammer"
+  | "longbow"
+  | "longsword"
+  | "maul"
+  | "morningstar"
+  | "pike"
+  | "trident"
+  | "war-pick"
+  | "warhammer"
+  | "whip"
+  | "heavy-crossbow"
+  | "hand-crossbow";
 
 export type OriginFeatId =
   | "alert"
@@ -381,14 +455,6 @@ export type OriginFeatId =
 export type RulesOption = {
   id: string;
   name: string;
-};
-
-export type Background = RulesOption & {
-  abilityOptions: AbilityKey[];
-  skillProficiencies: [SkillId, SkillId];
-  toolProficiency: ToolId;
-  originFeatId: OriginFeatId;
-  equipmentGold: number;
 };
 
 export type Species = RulesOption & {
@@ -548,6 +614,21 @@ export type CharacterClassId =
   | "sorcerer"
   | "warlock"
   | "wizard";
+
+export type FightingStyleId =
+  | "archery"
+  | "blind-fighting"
+  | "defense"
+  | "dueling"
+  | "great-weapon-fighting"
+  | "interception"
+  | "protection"
+  | "two-weapon-fighting"
+  | "blessed-warrior"
+  | "druidic-warrior"
+  | "thrown-weapon-fighting"
+  | "superior-technique"
+  | "unarmed-fighting";
 
 export type LevelNumber =
   | 1
@@ -744,6 +825,7 @@ export type CantripReplacement = {
 export type LevelUpDecision = {
   subclassId?: string;
   featId?: string;
+  fightingStyleId?: FightingStyleId;
   asi?: {
     plus2?: AbilityKey;
     plus1a?: AbilityKey;
@@ -774,6 +856,8 @@ export type CharacterChoices = {
   toolChoices?: ToolId[];
   languageChoices?: LanguageId[];
   backgroundAbilityBonuses?: BackgroundAbilityBonuses;
+
+  backgroundToolChoice?: ToolId;
 
   subclassId?: string;
 
