@@ -160,6 +160,22 @@ const getRoleBadgeClass = (role: CampaignRole) => {
   return "bg-blue-500/15 text-blue-300 border border-blue-400/20";
 };
 
+const removeUndefinedDeep = <T,>(value: T): T => {
+  if (Array.isArray(value)) {
+    return value.map((item) => removeUndefinedDeep(item)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    const cleanedEntries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([key, entryValue]) => [key, removeUndefinedDeep(entryValue)]);
+
+    return Object.fromEntries(cleanedEntries) as T;
+  }
+
+  return value;
+};
+
 const CampaignPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
@@ -453,25 +469,28 @@ const CampaignPage = () => {
 
       let updated: any = structuredClone(character);
 
-      const mergedLevelUpDecisions = {
+      const cleanedIncomingDecisions = removeUndefinedDeep(decisionsByLevel);
+
+      const mergedLevelUpDecisions = removeUndefinedDeep({
         ...(updated.choices?.levelUpDecisions ?? {}),
-        ...decisionsByLevel,
-      };
+        ...cleanedIncomingDecisions,
+      });
 
       updated = {
         ...updated,
-        choices: {
+        choices: removeUndefinedDeep({
           ...(updated.choices ?? {}),
           levelUpDecisions: mergedLevelUpDecisions,
-        },
+        }),
       };
 
-      for (const [levelKey, decision] of Object.entries(decisionsByLevel)) {
+      for (const [levelKey, decision] of Object.entries(
+        cleanedIncomingDecisions,
+      )) {
         updated = applyLevelUpDecision(updated, Number(levelKey), decision);
       }
 
       const oldHp = getCharacterHp(character);
-
       const nextLevel = character.pendingLevelUp.toLevel;
 
       updated = {
@@ -484,7 +503,7 @@ const CampaignPage = () => {
       const hpGain = Math.max(0, newMaxHp - oldHp.maxHp);
       const newCurrentHp = Math.min(newMaxHp, oldHp.currentHp + hpGain);
 
-      await updateDoc(doc(db, "characters", character.id), {
+      const payload = removeUndefinedDeep({
         level: nextLevel,
         maxHp: newMaxHp,
         currentHp: newCurrentHp,
@@ -492,6 +511,8 @@ const CampaignPage = () => {
         choices: updated.choices ?? {},
         subclassId: updated.subclassId ?? null,
       });
+
+      await updateDoc(doc(db, "characters", character.id), payload);
 
       setLevelUpCharacter(null);
     } catch (err) {

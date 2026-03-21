@@ -1,25 +1,20 @@
 import { useMemo, useState } from "react";
-import { classesById } from "../rulesets/dnd/dnd2024/helpers";
+import { classesById, subclassesById } from "../rulesets/dnd/dnd2024/helpers";
 import { getPendingLevelUpSteps } from "../rulesets/dnd/dnd2024/getPendingLevelUpSteps";
+import {
+  getAvailableCantripsForRules,
+  getAvailableLeveledSpellsForRules,
+} from "../rulesets/dnd/dnd2024/data/spells/helpers";
 import type {
   AbilityKey,
   LanguageId,
+  LevelNumber,
+  LevelUpDecision,
   SkillId,
+  SpellId,
+  SpellSelection,
   WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
-
-type LevelUpDecision = {
-  subclassId?: string;
-  featId?: string;
-  asi?: {
-    plus2?: AbilityKey;
-    plus1a?: AbilityKey;
-    plus1b?: AbilityKey;
-  };
-  expertise?: Array<SkillId | "thieves-tools">;
-  language?: LanguageId;
-  weaponMastery?: WeaponMasteryChoiceId[];
-};
 
 type Props = {
   character: any;
@@ -93,11 +88,6 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     Record<number, LevelUpDecision>
   >({});
 
-  const pendingSteps = useMemo(
-    () => getPendingLevelUpSteps(character as any),
-    [character],
-  );
-
   const classDef = classesById[character.classId];
 
   const subclassOptions = useMemo(() => {
@@ -107,6 +97,23 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
   const weaponMasteryOptions = useMemo(() => {
     return classDef?.weaponMasteryOptions ?? [];
   }, [classDef]);
+
+  const selectedSubclassId =
+    decisionsByLevel[3]?.subclassId ??
+    character.choices?.levelUpDecisions?.[3]?.subclassId ??
+    character.choices?.subclassId ??
+    character.subclassId;
+
+  const selectedSubclass = useMemo(() => {
+    return selectedSubclassId ? subclassesById[selectedSubclassId] : undefined;
+  }, [selectedSubclassId]);
+
+  const pendingSteps = useMemo(
+    () => getPendingLevelUpSteps(character as any, selectedSubclass),
+    [character, selectedSubclass],
+  );
+
+  const activeSubclassSpellcasting = selectedSubclass?.spellcasting;
 
   const updateDecision = (level: number, patch: Partial<LevelUpDecision>) => {
     setDecisionsByLevel((prev) => ({
@@ -150,6 +157,56 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
         : current;
 
     updateDecision(level, { weaponMastery: next });
+  };
+
+  const toggleCantripChoice = (
+    level: number,
+    spellId: SpellId,
+    maxChoices: number,
+  ) => {
+    const current = decisionsByLevel[level]?.cantripChoices ?? [];
+    const exists = current.includes(spellId);
+
+    const next = exists
+      ? current.filter((id) => id !== spellId)
+      : current.length < maxChoices
+        ? [...current, spellId]
+        : current;
+
+    updateDecision(level, { cantripChoices: next });
+  };
+
+  const toggleSpellChoice = (
+    level: number,
+    spell: SpellSelection,
+    maxChoices: number,
+  ) => {
+    const current = decisionsByLevel[level]?.spellChoices ?? [];
+    const exists = current.some((s) => s.spellId === spell.spellId);
+
+    const next = exists
+      ? current.filter((s) => s.spellId !== spell.spellId)
+      : current.length < maxChoices
+        ? [...current, spell]
+        : current;
+
+    updateDecision(level, { spellChoices: next });
+  };
+
+  const getAvailableCantripsForStep = (stepLevel: LevelNumber) => {
+    if (!activeSubclassSpellcasting) return [];
+
+    void stepLevel; // intentional: reserved for future use
+
+    return getAvailableCantripsForRules(activeSubclassSpellcasting);
+  };
+
+  const getAvailableLeveledSpellsForStep = (stepLevel: LevelNumber) => {
+    if (!activeSubclassSpellcasting) return [];
+    return getAvailableLeveledSpellsForRules(
+      activeSubclassSpellcasting,
+      stepLevel,
+    );
   };
 
   const isFeatStepComplete = (decision: LevelUpDecision | undefined) => {
@@ -200,6 +257,26 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       return (
         Array.isArray(decision?.weaponMastery) &&
         decision.weaponMastery.length >= requiredCount
+      );
+    }
+
+    if (step.type === "cantrip-choice") {
+      const requiredCount =
+        typeof step.choice?.choose === "number" ? step.choice.choose : 1;
+
+      return (
+        Array.isArray(decision?.cantripChoices) &&
+        decision.cantripChoices.length >= requiredCount
+      );
+    }
+
+    if (step.type === "spell-choice") {
+      const requiredCount =
+        typeof step.choice?.choose === "number" ? step.choice.choose : 1;
+
+      return (
+        Array.isArray(decision?.spellChoices) &&
+        decision.spellChoices.length >= requiredCount
       );
     }
 
@@ -257,6 +334,11 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
           ) : (
             pendingSteps.map((step) => {
               const decision = decisionsByLevel[step.level] ?? {};
+              const stepLevel = step.level as LevelNumber;
+              const availableStepCantrips =
+                getAvailableCantripsForStep(stepLevel);
+              const availableStepLeveledSpells =
+                getAvailableLeveledSpellsForStep(stepLevel);
 
               return (
                 <div
@@ -558,6 +640,93 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                           </button>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {step.type === "cantrip-choice" && (
+                    <div>
+                      <p className="mb-2 text-sm text-zinc-400">
+                        Choose {step.choice?.choose ?? 1} cantrip
+                        {(step.choice?.choose ?? 1) > 1 ? "s" : ""}.
+                      </p>
+
+                      {!activeSubclassSpellcasting ? (
+                        <p className="text-sm text-zinc-500">
+                          Select a spellcasting subclass first.
+                        </p>
+                      ) : (
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {availableStepCantrips.map((spell) => (
+                            <button
+                              key={spell.id}
+                              onClick={() =>
+                                toggleCantripChoice(
+                                  step.level,
+                                  spell.id,
+                                  step.choice?.choose ?? 1,
+                                )
+                              }
+                              className={choiceButtonClass(
+                                (decision.cantripChoices ?? []).includes(
+                                  spell.id,
+                                ),
+                              )}
+                            >
+                              <span className="block font-medium">
+                                {spell.name}
+                              </span>
+                              <span className="mt-1 block text-xs text-zinc-400">
+                                {spell.school}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {step.type === "spell-choice" && (
+                    <div>
+                      <p className="mb-2 text-sm text-zinc-400">
+                        Choose {step.choice?.choose ?? 1} spell
+                        {(step.choice?.choose ?? 1) > 1 ? "s" : ""}.
+                      </p>
+
+                      {!activeSubclassSpellcasting ? (
+                        <p className="text-sm text-zinc-500">
+                          Select a spellcasting subclass first.
+                        </p>
+                      ) : (
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {availableStepLeveledSpells.map((spell) => (
+                            <button
+                              key={spell.id}
+                              onClick={() =>
+                                toggleSpellChoice(
+                                  step.level,
+                                  {
+                                    spellId: spell.id,
+                                    level: spell.level,
+                                  },
+                                  step.choice?.choose ?? 1,
+                                )
+                              }
+                              className={choiceButtonClass(
+                                (decision.spellChoices ?? []).some(
+                                  (selected) => selected.spellId === spell.id,
+                                ),
+                              )}
+                            >
+                              <span className="block font-medium">
+                                {spell.name}
+                              </span>
+                              <span className="mt-1 block text-xs text-zinc-400">
+                                Level {spell.level} · {spell.school}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

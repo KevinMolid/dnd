@@ -57,6 +57,12 @@ export const rogue: CharacterClass = {
       description:
         "A Rogue who specializes in stealth, poison, and disguise to eliminate foes with deadly efficiency.",
     },
+    {
+      id: "arcane-trickster",
+      name: "Arcane Trickster",
+      description:
+        "A Rogue who blends stealth and agility with Wizard magic to misdirect, infiltrate, and outmaneuver enemies.",
+    },
   ],
   featuresByLevel: {
     1: [

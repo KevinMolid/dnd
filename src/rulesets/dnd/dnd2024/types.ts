@@ -105,7 +105,7 @@ export type TraitEffect =
     }
   | {
       type: "spell";
-      spellName: string;
+      spellId: SpellId;
       level?: number;
       school?: string;
       castWith?: AbilityKey;
@@ -404,14 +404,136 @@ export type Feat = RulesOption & {
   traits: Trait[];
 };
 
-export type SpellcastingType = "full" | "half" | "third" | "pact";
-export type SpellPreparationType = "prepared" | "known";
-
-export type ClassSpellcasting = {
-  ability: AbilityKey;
-  type: SpellcastingType;
-  preparation: SpellPreparationType;
+export type Spell = {
+  id: SpellId;
+  name: string;
+  level: SpellLevel;
+  school: string;
+  classes: SpellListId[];
+  ritual?: boolean;
+  concentration?: boolean;
 };
+
+export type SpellId = string;
+
+export type SpellLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
+export type SpellListId =
+  | "wizard"
+  | "cleric"
+  | "druid"
+  | "bard"
+  | "sorcerer"
+  | "warlock"
+  | "paladin"
+  | "ranger";
+
+export type SpellcastingProgressionType =
+  | "full"
+  | "half"
+  | "third"
+  | "pact"
+  | "custom";
+
+export type SpellPreparationMode =
+  | "prepared"
+  | "known"
+  | "spellbook"
+  | "custom";
+
+export type SpellcastingSourceType =
+  | "class"
+  | "subclass"
+  | "species"
+  | "background"
+  | "feat";
+
+export type SpellSlotTable = Partial<
+  Record<LevelNumber, Partial<Record<Exclude<SpellLevel, 0>, number>>>
+>;
+
+export type CantripProgression = {
+  knownByLevel: LevelValueTable<number>;
+  fixedKnown?: SpellId[];
+  chooseAtStart?: number;
+  additionalChoicesByLevel?: LevelValueTable<number>;
+  replacementRules?: string[];
+};
+
+export type LearnedSpellProgression = {
+  knownByLevel: LevelValueTable<number>;
+  chooseAtStart?: {
+    count: number;
+    spellLevel: Exclude<SpellLevel, 0>;
+  };
+  replacementRules?: string[];
+};
+
+export type PreparedSpellProgression = {
+  preparedByLevel: LevelValueTable<number>;
+  chooseAtStart?: {
+    count: number;
+    spellLevel: Exclude<SpellLevel, 0>;
+  };
+  replacementRules?: string[];
+};
+
+export type SpellbookProgression = {
+  startingSpellbookCount: number;
+  startingSpellLevel: Exclude<SpellLevel, 0>;
+  spellsAddedPerLevel?: number;
+  preparationCountFormula?:
+    | "casting-ability-mod-plus-level"
+    | "casting-ability-mod-plus-half-level"
+    | "custom";
+  replacementRules?: string[];
+};
+
+export type SpellGrantRule = {
+  spellId: SpellId;
+  minCharacterLevel?: number;
+  spellLevel?: SpellLevel;
+  alwaysPrepared?: boolean;
+  countsAgainstLimit?: boolean;
+  note?: string;
+};
+
+export type SpellcastingRules = {
+  id: string;
+  name: string;
+  sourceType: SpellcastingSourceType;
+  sourceId: string;
+
+  castingAbility: AbilityKey;
+  spellListId: SpellListId;
+
+  progressionType: SpellcastingProgressionType;
+  preparationMode: SpellPreparationMode;
+
+  ritualCasting?: boolean;
+
+  slotTableId?: SpellSlotTableId;
+  customSlotTable?: SpellSlotTable;
+
+  cantrips?: CantripProgression;
+
+  learnedSpells?: LearnedSpellProgression;
+  preparedSpells?: PreparedSpellProgression;
+  spellbook?: SpellbookProgression;
+
+  fixedSpells?: SpellGrantRule[];
+  recommendedSpells?: SpellGrantRule[];
+
+  notes?: string[];
+};
+
+export type SpellSlotTableId =
+  | "full-caster"
+  | "half-caster"
+  | "third-caster"
+  | "pact-magic"
+  | "arcane-trickster"
+  | "eldritch-knight";
 
 export type CharacterClassId =
   | "barbarian"
@@ -522,6 +644,7 @@ export type CharacterSubclass = RulesOption & {
   classId: CharacterClassId;
   description?: string;
   featuresByLevel: Partial<Record<number, Trait[]>>;
+  spellcasting?: SpellcastingRules;
 };
 
 export type CharacterSubclassOption = {
@@ -542,7 +665,7 @@ export type CharacterClass = RulesOption & {
     options: SkillId[];
   };
   featuresByLevel: Partial<Record<number, Trait[]>>;
-  spellcasting?: ClassSpellcasting;
+  spellcasting?: SpellcastingRules;
   startingEquipment?: StartingEquipment;
   subclasses?: CharacterSubclassOption[];
   weaponMasteryOptions?: WeaponMasteryChoiceId[];
@@ -574,11 +697,19 @@ export type CharacterFeature = {
 };
 
 export type CharacterSpell = {
-  id: string;
-  name: string;
-  source: "class" | "species" | "feat" | "subclass";
+  spellId: SpellId;
+  level?: SpellLevel;
+  school?: string;
+
+  sourceType: SpellcastingSourceType;
+  sourceId: string;
+
   prepared?: boolean;
   alwaysPrepared?: boolean;
+  known?: boolean;
+  inSpellbook?: boolean;
+  countsAgainstPreparationLimit?: boolean;
+  countsAgainstKnownLimit?: boolean;
 };
 
 export type RogueCunningStrikeOptionId =
@@ -610,9 +741,19 @@ export type LevelUpDecision = {
   expertise?: Array<SkillId | "thieves-tools">;
   language?: LanguageId;
   weaponMastery?: WeaponMasteryChoiceId[];
+
+  cantripChoices?: SpellId[];
+  spellChoices?: SpellSelection[];
 };
 
 export type LevelUpDecisionsByLevel = Record<number, LevelUpDecision>;
+
+export type SpellSelection = {
+  spellId: SpellId;
+  level: SpellLevel;
+};
+
+export type SpellSelectionsBySource = Record<string, SpellSelection[]>;
 
 export type CharacterChoices = {
   classSkillChoices?: SkillId[];
@@ -628,6 +769,11 @@ export type CharacterChoices = {
 
   speciesTraitChoices?: Record<string, string | string[]>;
 
+  classCantripChoices?: SpellId[];
+  classSpellChoices?: SpellSelection[];
+  subclassCantripChoices?: SpellId[];
+  subclassSpellChoices?: SpellSelection[];
+
   levelUpDecisions?: LevelUpDecisionsByLevel;
 };
 
@@ -641,9 +787,26 @@ export type DerivedCharacterData = {
   languages: LanguageId[];
   features: CharacterFeature[];
   spells: CharacterSpell[];
+  spellcasting?: DerivedSpellcastingData;
 
   expertise: Array<SkillId | "thieves-tools">;
   weaponMasteries: WeaponMasteryChoiceId[];
+};
+
+export type DerivedSpellcastingData = {
+  castingAbility: AbilityKey;
+  spellListId: SpellListId;
+  preparationMode: SpellPreparationMode;
+  progressionType: SpellcastingProgressionType;
+
+  spellSaveDc?: number;
+  spellAttackBonus?: number;
+
+  cantripsKnown?: number;
+  spellsKnown?: number;
+  spellsPrepared?: number;
+
+  availableSlots?: Partial<Record<Exclude<SpellLevel, 0>, number>>;
 };
 
 export type PendingLevelUp = {

@@ -4,6 +4,8 @@ import type {
   CharacterFeature,
   CharacterSubclass,
   ChoiceDefinition,
+  LevelNumber,
+  SpellcastingRules,
 } from "./types";
 import {
   rogueExpertiseChoicesByLevel,
@@ -17,7 +19,9 @@ export type PendingLevelUpStepType =
   | "feat-choice"
   | "expertise-choice"
   | "language-choice"
-  | "weapon-mastery-choice";
+  | "weapon-mastery-choice"
+  | "cantrip-choice"
+  | "spell-choice";
 
 export type PendingLevelUpStep = {
   level: number;
@@ -65,13 +69,17 @@ const uniqueById = <T extends { id: string }>(values: T[]): T[] => {
   return result;
 };
 
-const getPendingLevelRange = (character: CharacterSheetData): number[] => {
+const getPendingLevelRange = (character: CharacterSheetData): LevelNumber[] => {
   const pending = character.pendingLevelUp;
   if (!pending) return [];
 
-  const levels: number[] = [];
-  for (let level = pending.fromLevel + 1; level <= pending.toLevel; level += 1) {
-    levels.push(level);
+  const levels: LevelNumber[] = [];
+  for (
+    let level = pending.fromLevel + 1;
+    level <= pending.toLevel;
+    level += 1
+  ) {
+    levels.push(level as LevelNumber);
   }
 
   return levels;
@@ -91,16 +99,134 @@ const toFeatureRef = (
   };
 };
 
+const getCantripChoiceCountGrantedAtLevel = (
+  rules: SpellcastingRules,
+  level: LevelNumber,
+): number => {
+  if (!rules.cantrips) return 0;
+
+  let granted = 0;
+
+  if (level === 3 && typeof rules.cantrips.chooseAtStart === "number") {
+    granted += rules.cantrips.chooseAtStart;
+  }
+
+  granted += rules.cantrips.additionalChoicesByLevel?.[level] ?? 0;
+
+  return granted;
+};
+
+const getPreparedSpellChoiceCountGrantedAtLevel = (
+  rules: SpellcastingRules,
+  level: LevelNumber,
+): number => {
+  if (!rules.preparedSpells) return 0;
+
+  let granted = 0;
+
+  if (
+    level === 3 &&
+    typeof rules.preparedSpells.chooseAtStart?.count === "number"
+  ) {
+    granted += rules.preparedSpells.chooseAtStart.count;
+  }
+
+  const previousLevel = (level - 1) as LevelNumber;
+
+  const previousCount =
+    level > 1 ? (rules.preparedSpells.preparedByLevel[previousLevel] ?? 0) : 0;
+
+  const currentCount = rules.preparedSpells.preparedByLevel[level] ?? 0;
+
+  if (level !== 3 && currentCount > previousCount) {
+    granted += currentCount - previousCount;
+  }
+
+  return granted;
+};
+
+const getSubclassSpellcastingChoiceSteps = (
+  character: CharacterSheetData,
+  subclass: CharacterSubclass,
+  level: LevelNumber,
+): PendingLevelUpStep[] => {
+  const rules = subclass.spellcasting;
+  if (!rules) return [];
+
+  const steps: PendingLevelUpStep[] = [];
+  const decisions = character.choices?.levelUpDecisions?.[level];
+
+  const cantripChoicesRequired = getCantripChoiceCountGrantedAtLevel(rules, level);
+  const chosenCantrips = decisions?.cantripChoices ?? [];
+
+  if (cantripChoicesRequired > 0 && chosenCantrips.length < cantripChoicesRequired) {
+    steps.push({
+      level,
+      type: "cantrip-choice",
+      id: `${subclass.id}-cantrips-${level}`,
+      title:
+        level === 3
+          ? `${subclass.name} Cantrips`
+          : "Choose Additional Cantrip",
+      description:
+        level === 3
+          ? `Choose ${cantripChoicesRequired} cantrips for ${subclass.name}.`
+          : `Choose ${cantripChoicesRequired} additional cantrip${cantripChoicesRequired > 1 ? "s" : ""}.`,
+      choice: {
+        id: `${subclass.id}-cantrip-choice-${level}`,
+        level,
+        name: `${subclass.name} Cantrip Choice`,
+        choose: cantripChoicesRequired,
+        source: "cantrips",
+      },
+    });
+  }
+
+  const spellChoicesRequired = getPreparedSpellChoiceCountGrantedAtLevel(rules, level);
+  const chosenSpells = decisions?.spellChoices ?? [];
+
+  if (spellChoicesRequired > 0 && chosenSpells.length < spellChoicesRequired) {
+    const spellLevel =
+      level === 3
+        ? rules.preparedSpells?.chooseAtStart?.spellLevel ?? 1
+        : undefined;
+
+    steps.push({
+      level,
+      type: "spell-choice",
+      id: `${subclass.id}-spells-${level}`,
+      title:
+        level === 3 ? `${subclass.name} Spells` : "Choose Additional Spell",
+      description:
+        level === 3
+          ? `Choose ${spellChoicesRequired} level ${spellLevel} spell${spellChoicesRequired > 1 ? "s" : ""} for ${subclass.name}.`
+          : `Choose ${spellChoicesRequired} additional spell${spellChoicesRequired > 1 ? "s" : ""} for ${subclass.name}.`,
+      choice: {
+        id: `${subclass.id}-spell-choice-${level}`,
+        level,
+        name: `${subclass.name} Spell Choice`,
+        choose: spellChoicesRequired,
+        source: "spells",
+        restrictions:
+          spellLevel !== undefined
+            ? [`Must be a level ${spellLevel} spell.`]
+            : undefined,
+      },
+    });
+  }
+
+  return steps;
+};
+
 const getRoguePendingChoiceSteps = (
   character: CharacterSheetData,
-  level: number,
+  level: LevelNumber,
 ): PendingLevelUpStep[] => {
   if (character.classId !== "rogue") return [];
 
   const steps: PendingLevelUpStep[] = [];
   const decisions = character.choices?.levelUpDecisions?.[level];
 
-  // Expertise
   const expertiseDefinition = rogueExpertiseChoicesByLevel[level]?.[0];
   if (expertiseDefinition && !decisions?.expertise) {
     steps.push({
@@ -113,7 +239,6 @@ const getRoguePendingChoiceSteps = (
     });
   }
 
-  // Language (level 1)
   if (level === 1 && !decisions?.language) {
     steps.push({
       level,
@@ -125,7 +250,6 @@ const getRoguePendingChoiceSteps = (
     });
   }
 
-  // Weapon mastery
   const weaponMasteryDefinition = rogueWeaponMasteryChoices[level]?.[0];
   if (weaponMasteryDefinition && !decisions?.weaponMastery) {
     steps.push({
@@ -161,7 +285,11 @@ export const getPendingLevelUpSteps = (
 
       const decisions = character.choices?.levelUpDecisions?.[level];
 
-      if (ASI_FEATURE_IDS.has(feature.id) && !decisions?.featId && !decisions?.asi) {
+      if (
+        ASI_FEATURE_IDS.has(feature.id) &&
+        !decisions?.featId &&
+        !decisions?.asi
+      ) {
         steps.push({
           level,
           type: "feat-choice",
@@ -174,7 +302,14 @@ export const getPendingLevelUpSteps = (
       }
 
       if (SUBCLASS_FEATURE_IDS.has(feature.id)) {
-        if (!decisions?.subclassId) {
+        const activeSubclassId = decisions?.subclassId ?? subclass?.id;
+        const activeSubclass = activeSubclassId
+          ? subclass && subclass.id === activeSubclassId
+            ? subclass
+            : null
+          : null;
+
+        if (!activeSubclassId) {
           steps.push({
             level,
             type: "subclass-choice",
@@ -183,8 +318,9 @@ export const getPendingLevelUpSteps = (
             description: feature.description,
             feature: featureRef,
           });
-        } else if (subclass) {
-  const subclassFeatures = subclass.featuresByLevel[level] ?? [];
+        } else if (activeSubclass) {
+          const subclassFeatures = activeSubclass.featuresByLevel[level] ?? [];
+
           for (const subclassFeature of subclassFeatures) {
             steps.push({
               level,
@@ -196,12 +332,24 @@ export const getPendingLevelUpSteps = (
                 id: subclassFeature.id,
                 name: subclassFeature.name,
                 sourceType: "subclass",
-                sourceId: subclass.id,
-                level: subclassFeature.level ?? subclassFeature.minLevel ?? level,
+                sourceId: activeSubclass.id,
+                level:
+                  subclassFeature.level ??
+                  subclassFeature.minLevel ??
+                  level,
               },
             });
           }
+
+          steps.push(
+            ...getSubclassSpellcastingChoiceSteps(
+              character,
+              activeSubclass,
+              level,
+            ),
+          );
         }
+
         continue;
       }
 
