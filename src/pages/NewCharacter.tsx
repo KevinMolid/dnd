@@ -90,8 +90,8 @@ const formatTraitEffect = (effect: TraitEffect): string => {
 
     case "spell":
       return effect.level
-        ? `${effect.spellName} (available from level ${effect.level})`
-        : effect.spellName;
+        ? `${effect.spellId} (available from level ${effect.level})`
+        : effect.spellId;
 
     case "speed-bonus":
       return effect.speedType === "walk"

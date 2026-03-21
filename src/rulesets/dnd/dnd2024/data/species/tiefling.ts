@@ -52,7 +52,7 @@ export const tiefling: Species = {
       effects: [
         {
           type: "spell",
-          spellName: "Thaumaturgy",
+          spellId: "Thaumaturgy",
           frequency: { type: "at-will" },
         },
       ],

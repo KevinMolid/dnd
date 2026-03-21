@@ -22,12 +22,12 @@ export const elfLineages: ElfLineage[] = [
         effects: [
           {
             type: "spell",
-            spellName: "Dancing Lights",
+            spellId: "Dancing Lights",
             frequency: { type: "at-will" },
           },
           {
             type: "spell",
-            spellName: "Faerie Fire",
+            spellId: "Faerie Fire",
             level: 3,
             frequency: {
               type: "limited",
@@ -37,7 +37,7 @@ export const elfLineages: ElfLineage[] = [
           },
           {
             type: "spell",
-            spellName: "Darkness",
+            spellId: "Darkness",
             level: 5,
             frequency: {
               type: "limited",
@@ -63,7 +63,7 @@ export const elfLineages: ElfLineage[] = [
         effects: [
           {
             type: "spell",
-            spellName: "Prestidigitation",
+            spellId: "Prestidigitation",
             frequency: { type: "at-will" },
           },
         ],
@@ -77,7 +77,7 @@ export const elfLineages: ElfLineage[] = [
         effects: [
           {
             type: "spell",
-            spellName: "Detect Magic",
+            spellId: "Detect Magic",
             level: 3,
             frequency: {
               type: "limited",
@@ -87,7 +87,7 @@ export const elfLineages: ElfLineage[] = [
           },
           {
             type: "spell",
-            spellName: "Misty Step",
+            spellId: "Misty Step",
             level: 5,
             frequency: {
               type: "limited",
@@ -114,12 +114,12 @@ export const elfLineages: ElfLineage[] = [
         effects: [
           {
             type: "spell",
-            spellName: "Druidcraft",
+            spellId: "Druidcraft",
             frequency: { type: "at-will" },
           },
           {
             type: "spell",
-            spellName: "Longstrider",
+            spellId: "Longstrider",
             level: 3,
             frequency: {
               type: "limited",
@@ -129,7 +129,7 @@ export const elfLineages: ElfLineage[] = [
           },
           {
             type: "spell",
-            spellName: "Pass without Trace",
+            spellId: "Pass without Trace",
             level: 5,
             frequency: {
               type: "limited",

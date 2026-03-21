@@ -11,12 +11,12 @@ export const gnomeLineages: GnomeLineage[] = [
         effects: [
           {
             type: "spell",
-            spellName: "Minor Illusion",
+            spellId: "Minor Illusion",
             frequency: { type: "at-will" },
           },
           {
             type: "spell",
-            spellName: "Speak with Animals",
+            spellId: "Speak with Animals",
             frequency: {
               type: "limited",
               uses: { type: "proficiency-bonus" },
@@ -41,12 +41,12 @@ export const gnomeLineages: GnomeLineage[] = [
         effects: [
           {
             type: "spell",
-            spellName: "Mending",
+            spellId: "Mending",
             frequency: { type: "at-will" },
           },
           {
             type: "spell",
-            spellName: "Prestidigitation",
+            spellId: "Prestidigitation",
             frequency: { type: "at-will" },
           },
         ],
