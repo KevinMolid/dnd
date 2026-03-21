@@ -774,6 +774,8 @@ export type CharacterChoices = {
   subclassCantripChoices?: SpellId[];
   subclassSpellChoices?: SpellSelection[];
 
+  preparedSpellIdsBySource?: Record<string, SpellId[]>;
+
   levelUpDecisions?: LevelUpDecisionsByLevel;
 };
 

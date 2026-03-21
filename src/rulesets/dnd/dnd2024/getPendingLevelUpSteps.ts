@@ -340,14 +340,6 @@ export const getPendingLevelUpSteps = (
               },
             });
           }
-
-          steps.push(
-            ...getSubclassSpellcastingChoiceSteps(
-              character,
-              activeSubclass,
-              level,
-            ),
-          );
         }
 
         continue;
@@ -363,6 +355,10 @@ export const getPendingLevelUpSteps = (
           feature: featureRef,
         });
       }
+    }
+
+    if (subclass) {
+      steps.push(...getSubclassSpellcastingChoiceSteps(character, subclass, level));
     }
 
     steps.push(...getRoguePendingChoiceSteps(character, level));

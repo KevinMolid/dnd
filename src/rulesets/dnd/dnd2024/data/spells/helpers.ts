@@ -153,3 +153,23 @@ export const areSpellIdsValid = (spellIds: SpellId[]): boolean => {
 export const getSpellName = (spellId: SpellId): string => {
   return getSpellById(spellId)?.name ?? spellId;
 };
+
+export const canPrepareSpells = (
+  rules: Pick<SpellcastingRules, "preparationMode"> | null | undefined,
+): boolean => {
+  return rules?.preparationMode === "prepared";
+};
+
+export const getPreparedSpellSourceKey = (
+  rules: Pick<SpellcastingRules, "sourceId"> | null | undefined,
+): string | null => {
+  return rules?.sourceId ?? null;
+};
+
+export const getPreparedSpellIdsForSource = (
+  preparedSpellIdsBySource: Record<string, SpellId[]> | undefined,
+  sourceKey: string | null,
+): SpellId[] => {
+  if (!sourceKey) return [];
+  return preparedSpellIdsBySource?.[sourceKey] ?? [];
+};

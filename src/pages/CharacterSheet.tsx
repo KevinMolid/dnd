@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -54,7 +54,7 @@ type CharacterDoc = CharacterSheetData & {
   toolProficiencies?: string[];
   savingThrowProficiencies?: string[];
   languages?: string[];
-  subclassId: string;
+  subclassId?: string | null;
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
@@ -763,6 +763,11 @@ const CharacterSheet = () => {
 
     const levelUpDecisionMap = character.choices?.levelUpDecisions ?? {};
 
+    const canChangePreparedSpells =
+      activeSpellcasting?.preparationMode === "prepared";
+
+    const preparedSpellSourceKey = activeSpellcasting?.sourceId ?? null;
+
     const spellcastingAbility = activeSpellcasting?.castingAbility ?? null;
 
     const spellcastingAbilityMod = spellcastingAbility
@@ -786,21 +791,21 @@ const CharacterSheet = () => {
         )
       : {};
 
-    const cantripsKnown = activeSpellcasting
+    const cantripsKnownCapacity = activeSpellcasting
       ? getCantripsKnownForLevel(
           activeSpellcasting,
           character.level as LevelNumber,
         )
       : 0;
 
-    const spellsPrepared = activeSpellcasting?.preparedSpells
+    const preparedSpellCapacity = activeSpellcasting?.preparedSpells
       ? getPreparedSpellCountForLevel(
           activeSpellcasting,
           character.level as LevelNumber,
         )
       : 0;
 
-    const spellsKnown = activeSpellcasting?.learnedSpells
+    const knownSpellCapacity = activeSpellcasting?.learnedSpells
       ? getKnownSpellCountForLevel(
           activeSpellcasting,
           character.level as LevelNumber,
@@ -819,6 +824,51 @@ const CharacterSheet = () => {
       ...collectedSpellChoices.cantripIds,
     ]);
 
+    const selectedCantripCount = allKnownCantripIds.length;
+    const selectedLeveledSpellCount =
+      collectedSpellChoices.spellSelections.length;
+
+    const availablePreparedSpellOptions =
+      activeSpellcasting && canChangePreparedSpells
+        ? collectedSpellChoices.spellSelections
+            .map((selection) => getSpellById(selection.spellId))
+            .filter((spell): spell is NonNullable<typeof spell> =>
+              Boolean(spell),
+            )
+        : [];
+
+    const storedPreparedSpellIds =
+      character.choices?.preparedSpellIdsBySource?.[
+        preparedSpellSourceKey ?? ""
+      ] ?? [];
+
+    const defaultPreparedSpellIds = collectedSpellChoices.spellSelections.map(
+      (selection) => selection.spellId,
+    );
+
+    const effectivePreparedSpellIds =
+      storedPreparedSpellIds.length > 0
+        ? storedPreparedSpellIds
+        : defaultPreparedSpellIds;
+
+    const validPreparedSpellIds = effectivePreparedSpellIds.filter((spellId) =>
+      availablePreparedSpellOptions.some((spell) => spell.id === spellId),
+    );
+
+    const missingPreparedSpellCount =
+      canChangePreparedSpells && preparedSpellCapacity > 0
+        ? Math.max(0, preparedSpellCapacity - validPreparedSpellIds.length)
+        : 0;
+
+    const preparedSpells = validPreparedSpellIds
+      .map((spellId) => getSpellById(spellId))
+      .filter((spell): spell is NonNullable<typeof spell> => Boolean(spell))
+      .sort((a, b) => {
+        const levelDiff = (a.level ?? 0) - (b.level ?? 0);
+        if (levelDiff !== 0) return levelDiff;
+        return a.name.localeCompare(b.name);
+      });
+
     const derivedKnownSpells: CharacterSpell[] = [
       ...allKnownCantripIds.map((spellId) => ({
         spellId,
@@ -829,7 +879,7 @@ const CharacterSheet = () => {
           selectedSubclassId ??
           character.classId,
         known: true,
-        prepared: true,
+        prepared: false,
         countsAgainstKnownLimit: true,
         countsAgainstPreparationLimit: false,
       })),
@@ -842,7 +892,7 @@ const CharacterSheet = () => {
           selectedSubclassId ??
           character.classId,
         known: true,
-        prepared: true,
+        prepared: false,
         countsAgainstKnownLimit: true,
         countsAgainstPreparationLimit: true,
       })),
@@ -852,15 +902,15 @@ const CharacterSheet = () => {
       .map((spellId) =>
         derivedKnownSpells.find((spell) => spell.spellId === spellId),
       )
-      .filter(Boolean)
+      .filter((spell): spell is NonNullable<typeof spell> => Boolean(spell))
       .map((spell) => {
-        const spellData = getSpellById(spell!.spellId);
+        const spellData = getSpellById(spell.spellId);
 
         return {
-          ...spell!,
-          level: spellData?.level ?? spell!.level,
+          ...spell,
+          level: spellData?.level ?? spell.level,
           school: spellData?.school,
-          name: spellData?.name ?? spell!.spellId,
+          name: spellData?.name ?? spell.spellId,
         };
       })
       .sort((a, b) => {
@@ -1041,13 +1091,70 @@ const CharacterSheet = () => {
       spellSaveDc,
       spellAttackBonus,
       spellSlots,
-      cantripsKnown,
-      spellsKnown,
-      spellsPrepared,
+      cantripsKnown: cantripsKnownCapacity,
+      spellsKnown: knownSpellCapacity,
+      spellsPrepared: preparedSpellCapacity,
       spells,
       groupedSpells,
+      selectedCantripCount,
+      selectedLeveledSpellCount,
+      canChangePreparedSpells,
+      preparedSpellSourceKey,
+      availablePreparedSpellOptions,
+      validPreparedSpellIds,
+      preparedSpells,
+      missingPreparedSpellCount,
     };
   }, [character]);
+
+  const handleSetPreparedSpells = async (
+    sourceKey: string,
+    spellIds: SpellId[],
+  ) => {
+    if (!characterId || !character) return;
+
+    try {
+      const nextPreparedBySource = {
+        ...(character.choices?.preparedSpellIdsBySource ?? {}),
+        [sourceKey]: spellIds,
+      };
+
+      await updateDoc(doc(db, "characters", characterId), {
+        "choices.preparedSpellIdsBySource": nextPreparedBySource,
+      });
+
+      setCharacter((prev) =>
+        prev
+          ? {
+              ...prev,
+              choices: {
+                ...(prev.choices ?? {}),
+                preparedSpellIdsBySource: nextPreparedBySource,
+              },
+            }
+          : prev,
+      );
+    } catch (err) {
+      console.error("Failed to update prepared spells", err);
+    }
+  };
+
+  const togglePreparedSpell = async (
+    sourceKey: string,
+    spellId: SpellId,
+    currentPreparedSpellIds: SpellId[],
+    maxPrepared: number,
+  ) => {
+    const exists = currentPreparedSpellIds.includes(spellId);
+
+    const next = exists
+      ? currentPreparedSpellIds.filter((id) => id !== spellId)
+      : currentPreparedSpellIds.length < maxPrepared
+        ? [...currentPreparedSpellIds, spellId]
+        : currentPreparedSpellIds;
+
+    await handleSetPreparedSpells(sourceKey, next);
+  };
 
   if (loading) {
     return (
@@ -1653,12 +1760,23 @@ const CharacterSheet = () => {
                   <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
                     <div className="flex flex-wrap gap-3 text-sm">
                       <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
-                        Cantrips known: {derived.cantripsKnown}
+                        Cantrips: {derived.selectedCantripCount}
+                        {derived.cantripsKnown > 0
+                          ? ` / ${derived.cantripsKnown}`
+                          : ""}
                       </span>
 
                       {derived.spellsPrepared > 0 && (
-                        <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
-                          Spells prepared: {derived.spellsPrepared}
+                        <span
+                          className={`rounded-full px-3 py-1 ${
+                            derived.missingPreparedSpellCount > 0
+                              ? "border border-amber-500/20 bg-amber-500/10 text-amber-300"
+                              : "border border-white/10 bg-zinc-800 text-zinc-300"
+                          }`}
+                        >
+                          Prepared spells:{" "}
+                          {derived.validPreparedSpellIds.length} /{" "}
+                          {derived.spellsPrepared}
                         </span>
                       )}
 
@@ -1667,8 +1785,120 @@ const CharacterSheet = () => {
                           Spells known: {derived.spellsKnown}
                         </span>
                       )}
+
+                      {derived.selectedLeveledSpellCount > 0 && (
+                        <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
+                          Chosen spell pool: {derived.selectedLeveledSpellCount}
+                        </span>
+                      )}
                     </div>
+
+                    {derived.canChangePreparedSpells &&
+                      derived.missingPreparedSpellCount > 0 && (
+                        <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
+                          This character is missing{" "}
+                          {derived.missingPreparedSpellCount} prepared spell
+                          {derived.missingPreparedSpellCount === 1 ? "" : "s"}.
+                        </div>
+                      )}
                   </div>
+
+                  {derived.canChangePreparedSpells && (
+                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-300">
+                          Currently Prepared
+                        </h3>
+
+                        <span className="rounded-full border border-white/10 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400">
+                          {derived.validPreparedSpellIds.length} /{" "}
+                          {derived.spellsPrepared}
+                        </span>
+                      </div>
+
+                      {derived.preparedSpells.length > 0 ? (
+                        <div className="space-y-3">
+                          {derived.preparedSpells.map((spell) => (
+                            <div
+                              key={spell.id}
+                              className="rounded-2xl border border-white/10 bg-zinc-950/60 p-4"
+                            >
+                              <div className="flex items-center justify-between gap-4">
+                                <p className="font-medium text-white">
+                                  {spell.name}
+                                </p>
+
+                                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
+                                  Prepared
+                                </span>
+                              </div>
+
+                              <p className="mt-2 text-sm text-zinc-500">
+                                Level {spell.level} • {spell.school}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-zinc-500">
+                          No prepared spells selected yet.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {derived.canChangePreparedSpells &&
+                    derived.preparedSpellSourceKey &&
+                    derived.availablePreparedSpellOptions.length > 0 && (
+                      <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                        <div className="mb-3 flex items-center justify-between gap-3">
+                          <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-300">
+                            Prepare Spells
+                          </h3>
+
+                          <span className="rounded-full border border-white/10 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400">
+                            Select up to {derived.spellsPrepared}
+                          </span>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {derived.availablePreparedSpellOptions.map(
+                            (spell) => {
+                              const selected =
+                                derived.validPreparedSpellIds.includes(
+                                  spell.id,
+                                );
+
+                              return (
+                                <button
+                                  key={spell.id}
+                                  onClick={() =>
+                                    togglePreparedSpell(
+                                      derived.preparedSpellSourceKey!,
+                                      spell.id,
+                                      derived.validPreparedSpellIds,
+                                      derived.spellsPrepared,
+                                    )
+                                  }
+                                  className={`rounded-xl border px-3 py-3 text-left transition ${
+                                    selected
+                                      ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200"
+                                      : "border-white/10 bg-zinc-950/60 text-zinc-300 hover:bg-white/5"
+                                  }`}
+                                >
+                                  <span className="block font-medium">
+                                    {spell.name}
+                                  </span>
+                                  <span className="mt-1 block text-xs text-zinc-500">
+                                    Level {spell.level} • {spell.school}
+                                  </span>
+                                </button>
+                              );
+                            },
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                   {derived.groupedSpells.length > 0 ? (
                     <div className="space-y-4">
@@ -1698,14 +1928,6 @@ const CharacterSheet = () => {
                                   <p className="font-medium text-white">
                                     {spell.name}
                                   </p>
-
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    {spell.prepared && (
-                                      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">
-                                        Prepared
-                                      </span>
-                                    )}
-                                  </div>
                                 </div>
 
                                 {spell.school && (
