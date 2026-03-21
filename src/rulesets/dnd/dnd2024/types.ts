@@ -744,6 +744,17 @@ export type LevelUpDecision = {
 
   cantripChoices?: SpellId[];
   spellChoices?: SpellSelection[];
+
+  cantripReplacements?: Array<{
+    removeSpellId: SpellId;
+    addSpellId: SpellId;
+  }>;
+
+  spellReplacements?: Array<{
+    removeSpellId: SpellId;
+    addSpellId: SpellId;
+    level: number;
+  }>;
 };
 
 export type LevelUpDecisionsByLevel = Record<number, LevelUpDecision>;

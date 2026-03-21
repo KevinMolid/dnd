@@ -131,12 +131,27 @@ const getPreparedSpellChoiceCountGrantedAtLevel = (
     granted += rules.preparedSpells.chooseAtStart.count;
   }
 
-  const previousLevel = (level - 1) as LevelNumber;
+  const levels = Object.keys(rules.preparedSpells.preparedByLevel)
+    .map(Number)
+    .filter((definedLevel) => definedLevel <= level)
+    .sort((a, b) => b - a);
+
+  const previousLevels = Object.keys(rules.preparedSpells.preparedByLevel)
+    .map(Number)
+    .filter((definedLevel) => definedLevel <= level - 1)
+    .sort((a, b) => b - a);
+
+  const currentCount =
+    levels.length > 0
+      ? rules.preparedSpells.preparedByLevel[levels[0] as LevelNumber] ?? 0
+      : 0;
 
   const previousCount =
-    level > 1 ? (rules.preparedSpells.preparedByLevel[previousLevel] ?? 0) : 0;
-
-  const currentCount = rules.preparedSpells.preparedByLevel[level] ?? 0;
+    previousLevels.length > 0
+      ? rules.preparedSpells.preparedByLevel[
+          previousLevels[0] as LevelNumber
+        ] ?? 0
+      : 0;
 
   if (level !== 3 && currentCount > previousCount) {
     granted += currentCount - previousCount;
@@ -156,10 +171,16 @@ const getSubclassSpellcastingChoiceSteps = (
   const steps: PendingLevelUpStep[] = [];
   const decisions = character.choices?.levelUpDecisions?.[level];
 
-  const cantripChoicesRequired = getCantripChoiceCountGrantedAtLevel(rules, level);
+  const cantripChoicesRequired = getCantripChoiceCountGrantedAtLevel(
+    rules,
+    level,
+  );
   const chosenCantrips = decisions?.cantripChoices ?? [];
 
-  if (cantripChoicesRequired > 0 && chosenCantrips.length < cantripChoicesRequired) {
+  if (
+    cantripChoicesRequired > 0 &&
+    chosenCantrips.length < cantripChoicesRequired
+  ) {
     steps.push({
       level,
       type: "cantrip-choice",
@@ -170,8 +191,12 @@ const getSubclassSpellcastingChoiceSteps = (
           : "Choose Additional Cantrip",
       description:
         level === 3
-          ? `Choose ${cantripChoicesRequired} cantrips for ${subclass.name}.`
-          : `Choose ${cantripChoicesRequired} additional cantrip${cantripChoicesRequired > 1 ? "s" : ""}.`,
+          ? `Choose ${cantripChoicesRequired} Wizard cantrip${
+              cantripChoicesRequired > 1 ? "s" : ""
+            } for ${subclass.name}.`
+          : `Choose ${cantripChoicesRequired} additional Wizard cantrip${
+              cantripChoicesRequired > 1 ? "s" : ""
+            }.`,
       choice: {
         id: `${subclass.id}-cantrip-choice-${level}`,
         level,
@@ -182,14 +207,15 @@ const getSubclassSpellcastingChoiceSteps = (
     });
   }
 
-  const spellChoicesRequired = getPreparedSpellChoiceCountGrantedAtLevel(rules, level);
+  const spellChoicesRequired = getPreparedSpellChoiceCountGrantedAtLevel(
+    rules,
+    level,
+  );
   const chosenSpells = decisions?.spellChoices ?? [];
 
   if (spellChoicesRequired > 0 && chosenSpells.length < spellChoicesRequired) {
-    const spellLevel =
-      level === 3
-        ? rules.preparedSpells?.chooseAtStart?.spellLevel ?? 1
-        : undefined;
+    const startSpellLevel =
+      level === 3 ? rules.preparedSpells?.chooseAtStart?.spellLevel ?? 1 : null;
 
     steps.push({
       level,
@@ -199,18 +225,24 @@ const getSubclassSpellcastingChoiceSteps = (
         level === 3 ? `${subclass.name} Spells` : "Choose Additional Spell",
       description:
         level === 3
-          ? `Choose ${spellChoicesRequired} level ${spellLevel} spell${spellChoicesRequired > 1 ? "s" : ""} for ${subclass.name}.`
-          : `Choose ${spellChoicesRequired} additional spell${spellChoicesRequired > 1 ? "s" : ""} for ${subclass.name}.`,
+          ? `Choose ${spellChoicesRequired} Wizard spell${
+              spellChoicesRequired > 1 ? "s" : ""
+            } for ${subclass.name}.`
+          : `Choose ${spellChoicesRequired} additional Wizard spell${
+              spellChoicesRequired > 1 ? "s" : ""
+            } for ${subclass.name}.`,
       choice: {
         id: `${subclass.id}-spell-choice-${level}`,
         level,
         name: `${subclass.name} Spell Choice`,
         choose: spellChoicesRequired,
         source: "spells",
-        restrictions:
-          spellLevel !== undefined
-            ? [`Must be a level ${spellLevel} spell.`]
-            : undefined,
+        restrictions: [
+          ...(startSpellLevel !== null
+            ? [`Must be a level ${startSpellLevel} spell.`]
+            : []),
+          "Must be a spell level for which you have spell slots.",
+        ],
       },
     });
   }

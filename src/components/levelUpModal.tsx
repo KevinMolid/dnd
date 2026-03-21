@@ -115,6 +115,16 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
   const activeSubclassSpellcasting = selectedSubclass?.spellcasting;
 
+  const getEffectiveDecisionForLevel = (level: number): LevelUpDecision => {
+    const saved = character.choices?.levelUpDecisions?.[level] ?? {};
+    const local = decisionsByLevel[level] ?? {};
+
+    return {
+      ...saved,
+      ...local,
+    };
+  };
+
   const updateDecision = (level: number, patch: Partial<LevelUpDecision>) => {
     setDecisionsByLevel((prev) => ({
       ...prev,
@@ -201,12 +211,29 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     return getAvailableCantripsForRules(activeSubclassSpellcasting);
   };
 
-  const getAvailableLeveledSpellsForStep = (stepLevel: LevelNumber) => {
+  const getAvailableLeveledSpellsForStep = (step: any) => {
     if (!activeSubclassSpellcasting) return [];
-    return getAvailableLeveledSpellsForRules(
+
+    let spells = getAvailableLeveledSpellsForRules(
       activeSubclassSpellcasting,
-      stepLevel,
+      step.level as LevelNumber,
     );
+
+    const restrictions = step.choice?.restrictions ?? [];
+
+    const levelRestriction = restrictions.find((restriction: string) =>
+      restriction.startsWith("Must be a level "),
+    );
+
+    if (levelRestriction) {
+      const match = levelRestriction.match(/Must be a level (\d+) spell/);
+      if (match) {
+        const restrictedLevel = Number(match[1]);
+        spells = spells.filter((spell) => spell.level === restrictedLevel);
+      }
+    }
+
+    return spells;
   };
 
   const isFeatStepComplete = (decision: LevelUpDecision | undefined) => {
@@ -226,7 +253,7 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
   };
 
   const isStepComplete = (step: any) => {
-    const decision = decisionsByLevel[step.level];
+    const decision = getEffectiveDecisionForLevel(step.level);
 
     if (step.type === "subclass-choice") {
       return !!decision?.subclassId;
@@ -333,12 +360,14 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
             </div>
           ) : (
             pendingSteps.map((step) => {
-              const decision = decisionsByLevel[step.level] ?? {};
+              const decision = getEffectiveDecisionForLevel(step.level);
               const stepLevel = step.level as LevelNumber;
               const availableStepCantrips =
                 getAvailableCantripsForStep(stepLevel);
               const availableStepLeveledSpells =
-                getAvailableLeveledSpellsForStep(stepLevel);
+                step.type === "spell-choice"
+                  ? getAvailableLeveledSpellsForStep(step)
+                  : [];
 
               return (
                 <div

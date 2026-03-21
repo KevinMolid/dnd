@@ -14,7 +14,7 @@ export const arcaneTrickster: CharacterSubclass = {
     castingAbility: "int",
     spellListId: "wizard",
     progressionType: "third",
-    preparationMode: "prepared",
+    preparationMode: "custom",
     ritualCasting: false,
     slotTableId: "third-caster",
     cantrips: {
