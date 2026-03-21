@@ -5,16 +5,18 @@ export const applyLevelUpDecision = (
   level: number,
   decision: Partial<LevelUpDecision>,
 ): CharacterSheetData => {
-  const existing = character.choices?.levelUpDecisions ?? {};
+  const existingChoices = character.choices ?? {};
+  const existingLevelUpDecisions = existingChoices.levelUpDecisions ?? {};
+  const existingLevelDecision = existingLevelUpDecisions[level] ?? {};
 
   return {
     ...character,
     choices: {
-      ...character.choices,
+      ...existingChoices,
       levelUpDecisions: {
-        ...existing,
+        ...existingLevelUpDecisions,
         [level]: {
-          ...existing[level],
+          ...existingLevelDecision,
           ...decision,
         },
       },

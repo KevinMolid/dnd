@@ -12,6 +12,7 @@ import type {
   LevelUpDecision,
   SkillId,
   SpellId,
+  SpellLevel,
   SpellSelection,
   WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
@@ -82,6 +83,19 @@ const choiceButtonClass = (selected: boolean) =>
       : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white",
   ].join(" ");
 
+const replacementButtonClass = (
+  selected: boolean,
+  tone: "remove" | "add" = "add",
+) =>
+  [
+    "rounded-xl border px-3 py-2 text-sm transition text-left",
+    selected
+      ? tone === "remove"
+        ? "border-red-400/40 bg-red-400/15 text-red-200"
+        : "border-emerald-400/40 bg-emerald-400/15 text-emerald-200"
+      : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white",
+  ].join(" ");
+
 const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
   const [loading, setLoading] = useState(false);
   const [decisionsByLevel, setDecisionsByLevel] = useState<
@@ -123,6 +137,107 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       ...saved,
       ...local,
     };
+  };
+
+  const collectExistingSpellStateBeforeLevel = (level: number) => {
+    const decisions = character.choices?.levelUpDecisions ?? {};
+
+    const cantripIds: SpellId[] = [];
+    const spellSelections: SpellSelection[] = [];
+
+    const priorLevels = Object.keys(decisions)
+      .map(Number)
+      .filter((l) => l < level)
+      .sort((a, b) => a - b);
+
+    for (const priorLevel of priorLevels) {
+      const decision = decisions[priorLevel];
+      if (!decision) continue;
+
+      if (Array.isArray(decision.cantripChoices)) {
+        for (const spellId of decision.cantripChoices) {
+          if (!cantripIds.includes(spellId)) {
+            cantripIds.push(spellId);
+          }
+        }
+      }
+
+      if (Array.isArray(decision.spellChoices)) {
+        for (const spell of decision.spellChoices) {
+          if (
+            spell &&
+            typeof spell.spellId === "string" &&
+            !spellSelections.some((s) => s.spellId === spell.spellId)
+          ) {
+            spellSelections.push(spell);
+          }
+        }
+      }
+
+      if (Array.isArray(decision.cantripReplacements)) {
+        for (const replacement of decision.cantripReplacements) {
+          const removeIndex = cantripIds.indexOf(replacement.removeSpellId);
+          if (removeIndex >= 0) {
+            cantripIds.splice(removeIndex, 1);
+          }
+          if (!cantripIds.includes(replacement.addSpellId)) {
+            cantripIds.push(replacement.addSpellId);
+          }
+        }
+      }
+
+      if (Array.isArray(decision.spellReplacements)) {
+        for (const replacement of decision.spellReplacements) {
+          const removeIndex = spellSelections.findIndex(
+            (s) => s.spellId === replacement.removeSpellId,
+          );
+          if (removeIndex >= 0) {
+            spellSelections.splice(removeIndex, 1);
+          }
+          if (
+            !spellSelections.some((s) => s.spellId === replacement.addSpellId)
+          ) {
+            spellSelections.push({
+              spellId: replacement.addSpellId,
+              level: replacement.level,
+            });
+          }
+        }
+      }
+    }
+
+    return { cantripIds, spellSelections };
+  };
+
+  const getAvailableCantripsForStep = (stepLevel: LevelNumber) => {
+    if (!activeSubclassSpellcasting) return [];
+    void stepLevel;
+    return getAvailableCantripsForRules(activeSubclassSpellcasting);
+  };
+
+  const getAvailableLeveledSpellsForStep = (step: any) => {
+    if (!activeSubclassSpellcasting) return [];
+
+    let spells = getAvailableLeveledSpellsForRules(
+      activeSubclassSpellcasting,
+      step.level as LevelNumber,
+    );
+
+    const restrictions = step.choice?.restrictions ?? [];
+
+    const levelRestriction = restrictions.find((restriction: string) =>
+      restriction.startsWith("Must be a level "),
+    );
+
+    if (levelRestriction) {
+      const match = levelRestriction.match(/Must be a level (\d+) spell/);
+      if (match) {
+        const restrictedLevel = Number(match[1]);
+        spells = spells.filter((spell) => spell.level === restrictedLevel);
+      }
+    }
+
+    return spells;
   };
 
   const updateDecision = (level: number, patch: Partial<LevelUpDecision>) => {
@@ -203,42 +318,90 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     updateDecision(level, { spellChoices: next });
   };
 
-  const getAvailableCantripsForStep = (stepLevel: LevelNumber) => {
-    if (!activeSubclassSpellcasting) return [];
+  const setCantripReplacementRemove = (
+    level: number,
+    index: number,
+    removeSpellId: SpellId,
+  ) => {
+    const current = [...(decisionsByLevel[level]?.cantripReplacements ?? [])];
+    const existing = current[index] ?? {
+      removeSpellId,
+      addSpellId: "" as SpellId,
+    };
 
-    void stepLevel; // intentional: reserved for future use
+    current[index] = {
+      ...existing,
+      removeSpellId,
+    };
 
-    return getAvailableCantripsForRules(activeSubclassSpellcasting);
+    updateDecision(level, { cantripReplacements: current });
   };
 
-  const getAvailableLeveledSpellsForStep = (step: any) => {
-    if (!activeSubclassSpellcasting) return [];
+  const setCantripReplacementAdd = (
+    level: number,
+    index: number,
+    addSpellId: SpellId,
+  ) => {
+    const current = [...(decisionsByLevel[level]?.cantripReplacements ?? [])];
+    const existing = current[index] ?? {
+      removeSpellId: "" as SpellId,
+      addSpellId,
+    };
 
-    let spells = getAvailableLeveledSpellsForRules(
-      activeSubclassSpellcasting,
-      step.level as LevelNumber,
-    );
+    current[index] = {
+      ...existing,
+      addSpellId,
+    };
 
-    const restrictions = step.choice?.restrictions ?? [];
+    updateDecision(level, { cantripReplacements: current });
+  };
 
-    const levelRestriction = restrictions.find((restriction: string) =>
-      restriction.startsWith("Must be a level "),
-    );
+  const setSpellReplacementRemove = (
+    level: number,
+    index: number,
+    removeSpellId: SpellId,
+    existingLevel: number,
+  ) => {
+    const current = [...(decisionsByLevel[level]?.spellReplacements ?? [])];
+    const foundExisting = current[index] ?? {
+      removeSpellId,
+      addSpellId: "" as SpellId,
+      level: existingLevel,
+    };
 
-    if (levelRestriction) {
-      const match = levelRestriction.match(/Must be a level (\d+) spell/);
-      if (match) {
-        const restrictedLevel = Number(match[1]);
-        spells = spells.filter((spell) => spell.level === restrictedLevel);
-      }
-    }
+    current[index] = {
+      ...foundExisting,
+      removeSpellId,
+      level: existingLevel as SpellLevel,
+    };
 
-    return spells;
+    updateDecision(level, { spellReplacements: current });
+  };
+
+  const setSpellReplacementAdd = (
+    level: number,
+    index: number,
+    addSpellId: SpellId,
+    newLevel: number,
+  ) => {
+    const current = [...(decisionsByLevel[level]?.spellReplacements ?? [])];
+    const existing = current[index] ?? {
+      removeSpellId: "" as SpellId,
+      addSpellId,
+      level: newLevel,
+    };
+
+    current[index] = {
+      ...existing,
+      addSpellId,
+      level: newLevel as SpellLevel,
+    };
+
+    updateDecision(level, { spellReplacements: current });
   };
 
   const isFeatStepComplete = (decision: LevelUpDecision | undefined) => {
     if (decision?.featId) return true;
-
     if (decision?.asi?.plus2) return true;
 
     if (
@@ -307,6 +470,32 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       );
     }
 
+    if (step.type === "cantrip-replacement") {
+      const requiredCount =
+        typeof step.choice?.choose === "number" ? step.choice.choose : 1;
+
+      return (
+        Array.isArray(decision?.cantripReplacements) &&
+        decision.cantripReplacements.length >= requiredCount &&
+        decision.cantripReplacements.every(
+          (replacement) => replacement.removeSpellId && replacement.addSpellId,
+        )
+      );
+    }
+
+    if (step.type === "spell-replacement") {
+      const requiredCount =
+        typeof step.choice?.choose === "number" ? step.choice.choose : 1;
+
+      return (
+        Array.isArray(decision?.spellReplacements) &&
+        decision.spellReplacements.length >= requiredCount &&
+        decision.spellReplacements.every(
+          (replacement) => replacement.removeSpellId && replacement.addSpellId,
+        )
+      );
+    }
+
     return true;
   };
 
@@ -327,7 +516,7 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl sm:p-8">
+      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-white sm:text-2xl">
@@ -365,9 +554,14 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
               const availableStepCantrips =
                 getAvailableCantripsForStep(stepLevel);
               const availableStepLeveledSpells =
-                step.type === "spell-choice"
+                step.type === "spell-choice" ||
+                step.type === "spell-replacement"
                   ? getAvailableLeveledSpellsForStep(step)
                   : [];
+
+              const existingSpellState = collectExistingSpellStateBeforeLevel(
+                step.level,
+              );
 
               return (
                 <div
@@ -756,6 +950,192 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                           ))}
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {step.type === "cantrip-replacement" && (
+                    <div className="space-y-4">
+                      {Array.from({
+                        length: step.choice?.choose ?? 1,
+                      }).map((_, index) => {
+                        const replacement =
+                          decision.cantripReplacements?.[index] ?? null;
+
+                        const removableCantrips = existingSpellState.cantripIds;
+                        const addableCantrips = availableStepCantrips.filter(
+                          (spell) =>
+                            !existingSpellState.cantripIds.includes(spell.id) ||
+                            spell.id === replacement?.addSpellId,
+                        );
+
+                        return (
+                          <div
+                            key={index}
+                            className="rounded-xl border border-white/10 bg-white/5 p-4"
+                          >
+                            <p className="mb-3 text-sm font-medium text-zinc-200">
+                              Replacement {index + 1}
+                            </p>
+
+                            <div className="grid gap-4 lg:grid-cols-2">
+                              <div>
+                                <p className="mb-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                                  Remove known cantrip
+                                </p>
+                                <div className="grid gap-2">
+                                  {removableCantrips.map((spellId) => (
+                                    <button
+                                      key={spellId}
+                                      onClick={() =>
+                                        setCantripReplacementRemove(
+                                          step.level,
+                                          index,
+                                          spellId,
+                                        )
+                                      }
+                                      className={replacementButtonClass(
+                                        replacement?.removeSpellId === spellId,
+                                        "remove",
+                                      )}
+                                    >
+                                      {formatLabel(spellId)}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className="mb-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                                  Add new cantrip
+                                </p>
+                                <div className="grid gap-2">
+                                  {addableCantrips.map((spell) => (
+                                    <button
+                                      key={spell.id}
+                                      onClick={() =>
+                                        setCantripReplacementAdd(
+                                          step.level,
+                                          index,
+                                          spell.id,
+                                        )
+                                      }
+                                      className={replacementButtonClass(
+                                        replacement?.addSpellId === spell.id,
+                                        "add",
+                                      )}
+                                    >
+                                      <span className="block font-medium">
+                                        {spell.name}
+                                      </span>
+                                      <span className="mt-1 block text-xs text-zinc-400">
+                                        {spell.school}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {step.type === "spell-replacement" && (
+                    <div className="space-y-4">
+                      {Array.from({
+                        length: step.choice?.choose ?? 1,
+                      }).map((_, index) => {
+                        const replacement =
+                          decision.spellReplacements?.[index] ?? null;
+
+                        const removableSpells =
+                          existingSpellState.spellSelections;
+                        const addableSpells = availableStepLeveledSpells.filter(
+                          (spell) =>
+                            !existingSpellState.spellSelections.some(
+                              (existing) => existing.spellId === spell.id,
+                            ) || spell.id === replacement?.addSpellId,
+                        );
+
+                        return (
+                          <div
+                            key={index}
+                            className="rounded-xl border border-white/10 bg-white/5 p-4"
+                          >
+                            <p className="mb-3 text-sm font-medium text-zinc-200">
+                              Replacement {index + 1}
+                            </p>
+
+                            <div className="grid gap-4 lg:grid-cols-2">
+                              <div>
+                                <p className="mb-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                                  Remove known spell
+                                </p>
+                                <div className="grid gap-2">
+                                  {removableSpells.map((spellSelection) => (
+                                    <button
+                                      key={spellSelection.spellId}
+                                      onClick={() =>
+                                        setSpellReplacementRemove(
+                                          step.level,
+                                          index,
+                                          spellSelection.spellId,
+                                          spellSelection.level,
+                                        )
+                                      }
+                                      className={replacementButtonClass(
+                                        replacement?.removeSpellId ===
+                                          spellSelection.spellId,
+                                        "remove",
+                                      )}
+                                    >
+                                      <span className="block font-medium">
+                                        {formatLabel(spellSelection.spellId)}
+                                      </span>
+                                      <span className="mt-1 block text-xs text-zinc-400">
+                                        Level {spellSelection.level}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div>
+                                <p className="mb-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                                  Add new spell
+                                </p>
+                                <div className="grid gap-2">
+                                  {addableSpells.map((spell) => (
+                                    <button
+                                      key={spell.id}
+                                      onClick={() =>
+                                        setSpellReplacementAdd(
+                                          step.level,
+                                          index,
+                                          spell.id,
+                                          spell.level,
+                                        )
+                                      }
+                                      className={replacementButtonClass(
+                                        replacement?.addSpellId === spell.id,
+                                        "add",
+                                      )}
+                                    >
+                                      <span className="block font-medium">
+                                        {spell.name}
+                                      </span>
+                                      <span className="mt-1 block text-xs text-zinc-400">
+                                        Level {spell.level} · {spell.school}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

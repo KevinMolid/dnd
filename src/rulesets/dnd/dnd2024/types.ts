@@ -730,6 +730,17 @@ export type RogueCunningStrikeOption = {
   requires?: ToolId[];
 };
 
+export type SpellReplacement = {
+  removeSpellId: SpellId;
+  addSpellId: SpellId;
+  level: SpellLevel;
+};
+
+export type CantripReplacement = {
+  removeSpellId: SpellId;
+  addSpellId: SpellId;
+};
+
 export type LevelUpDecision = {
   subclassId?: string;
   featId?: string;
@@ -745,16 +756,8 @@ export type LevelUpDecision = {
   cantripChoices?: SpellId[];
   spellChoices?: SpellSelection[];
 
-  cantripReplacements?: Array<{
-    removeSpellId: SpellId;
-    addSpellId: SpellId;
-  }>;
-
-  spellReplacements?: Array<{
-    removeSpellId: SpellId;
-    addSpellId: SpellId;
-    level: number;
-  }>;
+  cantripReplacements?: CantripReplacement[];
+  spellReplacements?: SpellReplacement[];
 };
 
 export type LevelUpDecisionsByLevel = Record<number, LevelUpDecision>;

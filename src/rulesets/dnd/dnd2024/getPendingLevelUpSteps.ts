@@ -21,7 +21,9 @@ export type PendingLevelUpStepType =
   | "language-choice"
   | "weapon-mastery-choice"
   | "cantrip-choice"
-  | "spell-choice";
+  | "spell-choice"
+  | "cantrip-replacement"
+  | "spell-replacement";
 
 export type PendingLevelUpStep = {
   level: number;
