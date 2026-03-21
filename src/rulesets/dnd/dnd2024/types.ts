@@ -731,14 +731,14 @@ export type RogueCunningStrikeOption = {
 };
 
 export type SpellReplacement = {
-  removeSpellId: SpellId;
-  addSpellId: SpellId;
-  level: SpellLevel;
+  removeSpellId?: SpellId;
+  addSpellId?: SpellId;
+  level?: SpellLevel;
 };
 
 export type CantripReplacement = {
-  removeSpellId: SpellId;
-  addSpellId: SpellId;
+  removeSpellId?: SpellId;
+  addSpellId?: SpellId;
 };
 
 export type LevelUpDecision = {

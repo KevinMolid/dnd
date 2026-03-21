@@ -6,6 +6,8 @@ import type {
   ChoiceDefinition,
   LevelNumber,
   SpellcastingRules,
+  SpellId,
+  SpellLevel,
 } from "./types";
 import {
   rogueExpertiseChoicesByLevel,
@@ -85,6 +87,133 @@ const getPendingLevelRange = (character: CharacterSheetData): LevelNumber[] => {
   }
 
   return levels;
+};
+
+const collectPriorCantripChoices = (
+  character: CharacterSheetData,
+  upToLevel: number,
+): SpellId[] => {
+  const result: SpellId[] = [];
+  const levelUpDecisions = character.choices?.levelUpDecisions ?? {};
+
+  const levels = Object.keys(levelUpDecisions)
+    .map(Number)
+    .filter((level) => level < upToLevel)
+    .sort((a, b) => a - b);
+
+  for (const level of levels) {
+    const decision = levelUpDecisions[level];
+    if (!decision) continue;
+
+    if (Array.isArray(decision.cantripChoices)) {
+      for (const spellId of decision.cantripChoices) {
+        if (spellId && !result.includes(spellId)) {
+          result.push(spellId);
+        }
+      }
+    }
+
+    if (Array.isArray(decision.cantripReplacements)) {
+      for (const replacement of decision.cantripReplacements) {
+        if (!replacement?.removeSpellId || !replacement?.addSpellId) continue;
+
+        const removeIndex = result.indexOf(replacement.removeSpellId);
+        if (removeIndex >= 0) {
+          result.splice(removeIndex, 1);
+        }
+
+        if (!result.includes(replacement.addSpellId)) {
+          result.push(replacement.addSpellId);
+        }
+      }
+    }
+  }
+
+  return result;
+};
+
+const collectPriorSpellChoices = (
+  character: CharacterSheetData,
+  upToLevel: number,
+): Array<{ spellId: SpellId; level: SpellLevel }> => {
+  const result: Array<{ spellId: SpellId; level: SpellLevel }> = [];
+  const levelUpDecisions = character.choices?.levelUpDecisions ?? {};
+
+  const levels = Object.keys(levelUpDecisions)
+    .map(Number)
+    .filter((level) => level < upToLevel)
+    .sort((a, b) => a - b);
+
+  for (const level of levels) {
+    const decision = levelUpDecisions[level];
+    if (!decision) continue;
+
+    if (Array.isArray(decision.spellChoices)) {
+      for (const spell of decision.spellChoices) {
+        if (
+          spell &&
+          spell.spellId &&
+          typeof spell.level === "number" &&
+          !result.some((entry) => entry.spellId === spell.spellId)
+        ) {
+          result.push({
+            spellId: spell.spellId,
+            level: spell.level as SpellLevel,
+          });
+        }
+      }
+    }
+
+    if (Array.isArray(decision.spellReplacements)) {
+      for (const replacement of decision.spellReplacements) {
+        if (
+          !replacement?.removeSpellId ||
+          !replacement?.addSpellId ||
+          typeof replacement.level !== "number"
+        ) {
+          continue;
+        }
+
+        const removeIndex = result.findIndex(
+          (entry) => entry.spellId === replacement.removeSpellId,
+        );
+
+        if (removeIndex >= 0) {
+          result.splice(removeIndex, 1);
+        }
+
+        if (!result.some((entry) => entry.spellId === replacement.addSpellId)) {
+          result.push({
+            spellId: replacement.addSpellId,
+            level: replacement.level as SpellLevel,
+          });
+        }
+      }
+    }
+  }
+
+  return result;
+};
+
+const canReplaceCantripAtLevel = (
+  rules: SpellcastingRules,
+  level: LevelNumber,
+): boolean => {
+  if (!rules.cantrips?.replacementRules?.length) return false;
+  return level > 3;
+};
+
+const canReplaceSpellAtLevel = (
+  rules: SpellcastingRules,
+  level: LevelNumber,
+): boolean => {
+  const hasReplacementRules =
+    !!rules.learnedSpells?.replacementRules?.length ||
+    !!rules.preparedSpells?.replacementRules?.length;
+
+  if (!hasReplacementRules) return false;
+
+  return level > 3;
 };
 
 const toFeatureRef = (
@@ -173,16 +302,10 @@ const getSubclassSpellcastingChoiceSteps = (
   const steps: PendingLevelUpStep[] = [];
   const decisions = character.choices?.levelUpDecisions?.[level];
 
-  const cantripChoicesRequired = getCantripChoiceCountGrantedAtLevel(
-    rules,
-    level,
-  );
+  const cantripChoicesRequired = getCantripChoiceCountGrantedAtLevel(rules, level);
   const chosenCantrips = decisions?.cantripChoices ?? [];
 
-  if (
-    cantripChoicesRequired > 0 &&
-    chosenCantrips.length < cantripChoicesRequired
-  ) {
+  if (cantripChoicesRequired > 0 && chosenCantrips.length < cantripChoicesRequired) {
     steps.push({
       level,
       type: "cantrip-choice",
@@ -193,12 +316,8 @@ const getSubclassSpellcastingChoiceSteps = (
           : "Choose Additional Cantrip",
       description:
         level === 3
-          ? `Choose ${cantripChoicesRequired} Wizard cantrip${
-              cantripChoicesRequired > 1 ? "s" : ""
-            } for ${subclass.name}.`
-          : `Choose ${cantripChoicesRequired} additional Wizard cantrip${
-              cantripChoicesRequired > 1 ? "s" : ""
-            }.`,
+          ? `Choose ${cantripChoicesRequired} cantrips for ${subclass.name}.`
+          : `Choose ${cantripChoicesRequired} additional cantrip${cantripChoicesRequired > 1 ? "s" : ""}.`,
       choice: {
         id: `${subclass.id}-cantrip-choice-${level}`,
         level,
@@ -209,15 +328,14 @@ const getSubclassSpellcastingChoiceSteps = (
     });
   }
 
-  const spellChoicesRequired = getPreparedSpellChoiceCountGrantedAtLevel(
-    rules,
-    level,
-  );
+  const spellChoicesRequired = getPreparedSpellChoiceCountGrantedAtLevel(rules, level);
   const chosenSpells = decisions?.spellChoices ?? [];
 
   if (spellChoicesRequired > 0 && chosenSpells.length < spellChoicesRequired) {
-    const startSpellLevel =
-      level === 3 ? rules.preparedSpells?.chooseAtStart?.spellLevel ?? 1 : null;
+    const spellLevel =
+      level === 3
+        ? rules.preparedSpells?.chooseAtStart?.spellLevel ?? 1
+        : undefined;
 
     steps.push({
       level,
@@ -227,24 +345,65 @@ const getSubclassSpellcastingChoiceSteps = (
         level === 3 ? `${subclass.name} Spells` : "Choose Additional Spell",
       description:
         level === 3
-          ? `Choose ${spellChoicesRequired} Wizard spell${
-              spellChoicesRequired > 1 ? "s" : ""
-            } for ${subclass.name}.`
-          : `Choose ${spellChoicesRequired} additional Wizard spell${
-              spellChoicesRequired > 1 ? "s" : ""
-            } for ${subclass.name}.`,
+          ? `Choose ${spellChoicesRequired} level ${spellLevel} spell${spellChoicesRequired > 1 ? "s" : ""} for ${subclass.name}.`
+          : `Choose ${spellChoicesRequired} additional spell${spellChoicesRequired > 1 ? "s" : ""} for ${subclass.name}.`,
       choice: {
         id: `${subclass.id}-spell-choice-${level}`,
         level,
         name: `${subclass.name} Spell Choice`,
         choose: spellChoicesRequired,
         source: "spells",
-        restrictions: [
-          ...(startSpellLevel !== null
-            ? [`Must be a level ${startSpellLevel} spell.`]
-            : []),
-          "Must be a spell level for which you have spell slots.",
-        ],
+        restrictions:
+          spellLevel !== undefined
+            ? [`Must be a level ${spellLevel} spell.`]
+            : undefined,
+      },
+    });
+  }
+
+  const priorCantrips = collectPriorCantripChoices(character, level);
+  const priorSpells = collectPriorSpellChoices(character, level);
+
+  if (
+    canReplaceCantripAtLevel(rules, level) &&
+    priorCantrips.length > 0 &&
+    !(decisions?.cantripReplacements?.length)
+  ) {
+    steps.push({
+      level,
+      type: "cantrip-replacement",
+      id: `${subclass.id}-cantrip-replacement-${level}`,
+      title: "Replace a Cantrip",
+      description:
+        "You can replace one cantrip you already know with another eligible cantrip.",
+      choice: {
+        id: `${subclass.id}-cantrip-replacement-choice-${level}`,
+        level,
+        name: `${subclass.name} Cantrip Replacement`,
+        choose: 1,
+        source: "cantrips",
+      },
+    });
+  }
+
+  if (
+    canReplaceSpellAtLevel(rules, level) &&
+    priorSpells.length > 0 &&
+    !(decisions?.spellReplacements?.length)
+  ) {
+    steps.push({
+      level,
+      type: "spell-replacement",
+      id: `${subclass.id}-spell-replacement-${level}`,
+      title: "Replace a Spell",
+      description:
+        "You can replace one spell you already know with another eligible spell.",
+      choice: {
+        id: `${subclass.id}-spell-replacement-choice-${level}`,
+        level,
+        name: `${subclass.name} Spell Replacement`,
+        choose: 1,
+        source: "spells",
       },
     });
   }
