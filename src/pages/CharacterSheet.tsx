@@ -20,6 +20,7 @@ import type {
   AbilityKey,
   SkillId,
   LanguageId,
+  Money,
   WeaponMasteryChoiceId,
   Trait,
   TraitEffect,
@@ -55,6 +56,7 @@ type CharacterDoc = CharacterSheetData & {
   savingThrowProficiencies?: string[];
   languages?: string[];
   subclassId?: string | null;
+  money?: Money;
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
@@ -1170,6 +1172,13 @@ const CharacterSheet = () => {
       groupedSpells,
       selectedCantripCount,
       selectedLeveledSpellCount,
+      money: {
+        cp: character.money?.cp ?? 0,
+        sp: character.money?.sp ?? 0,
+        ep: character.money?.ep ?? 0,
+        gp: character.money?.gp ?? 0,
+        pp: character.money?.pp ?? 0,
+      },
     };
   }, [character]);
 
@@ -1937,6 +1946,24 @@ const CharacterSheet = () => {
                   </dd>
                 </div>
               </dl>
+            </SectionCard>
+
+            <SectionCard title="Money">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
+                {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
+                  <div
+                    key={currency}
+                    className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                      {currency.toUpperCase()}
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-white">
+                      {derived.money[currency] ?? 0}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </SectionCard>
 
             <SectionCard title="Notes">

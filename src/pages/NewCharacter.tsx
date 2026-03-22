@@ -15,6 +15,7 @@ import type {
   AbilityKey,
   CharacterSheetData,
   LanguageId,
+  Money,
   SkillId,
   SpellId,
   SpellSelection,
@@ -24,6 +25,9 @@ import type {
   TraitEffect,
   WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
+
+import { resolveEquipmentGrants } from "../rulesets/dnd/dnd2024/resolveEquipmentGrant";
+import type { EquipmentGrant } from "../rulesets/dnd/dnd2024/types";
 
 import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTraits";
 
@@ -186,6 +190,10 @@ const NewCharacter = () => {
     "",
   );
 
+  const [classEquipmentOptionId, setClassEquipmentOptionId] = useState("");
+  const [backgroundEquipmentOptionId, setBackgroundEquipmentOptionId] =
+    useState("");
+
   const [rogueExpertiseChoices, setRogueExpertiseChoices] = useState<
     Array<SkillId | "thieves-tools">
   >([]);
@@ -203,6 +211,8 @@ const NewCharacter = () => {
 
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // Memos
 
   const classDef = useMemo(() => getClassById(classId), [classId]);
   const backgroundDef = useMemo(
@@ -233,6 +243,22 @@ const NewCharacter = () => {
   const speciesChoices = useMemo<TraitChoice[]>(
     () => getSpeciesChoices(speciesId),
     [speciesId],
+  );
+
+  const selectedClassEquipmentOption = useMemo(
+    () =>
+      classDef?.startingEquipment?.options.find(
+        (option) => option.id === classEquipmentOptionId,
+      ) ?? null,
+    [classDef, classEquipmentOptionId],
+  );
+
+  const selectedBackgroundEquipmentOption = useMemo(
+    () =>
+      backgroundDef?.equipment?.options.find(
+        (option) => option.id === backgroundEquipmentOptionId,
+      ) ?? null,
+    [backgroundDef, backgroundEquipmentOptionId],
   );
 
   const isRogue = classId === "rogue";
@@ -373,6 +399,53 @@ const NewCharacter = () => {
     speciesTraitChoices,
   ]);
 
+  const resolvedStartingEquipment = useMemo(() => {
+    const grants: EquipmentGrant[] = [
+      ...(selectedClassEquipmentOption?.grants ?? []),
+      ...(selectedBackgroundEquipmentOption?.grants ?? []),
+    ];
+
+    return resolveEquipmentGrants(grants, {
+      resolveChoice: (grant) => {
+        const itemOptions = grant.options.filter(
+          (option): option is Extract<EquipmentGrant, { type: "item" }> =>
+            option.type === "item",
+        );
+
+        if (itemOptions.length === 0) {
+          return [];
+        }
+
+        if (
+          backgroundToolRules?.type === "choice" &&
+          backgroundToolChoice &&
+          itemOptions.some((option) => option.id === backgroundToolChoice)
+        ) {
+          return itemOptions.filter(
+            (option) => option.id === backgroundToolChoice,
+          );
+        }
+
+        return itemOptions.slice(0, grant.choose);
+      },
+    });
+  }, [
+    backgroundToolChoice,
+    backgroundToolRules,
+    selectedBackgroundEquipmentOption,
+    selectedClassEquipmentOption,
+  ]);
+
+  const startingMoney = useMemo<Money>(() => {
+    return {
+      cp: resolvedStartingEquipment.currency.cp ?? 0,
+      sp: resolvedStartingEquipment.currency.sp ?? 0,
+      ep: resolvedStartingEquipment.currency.ep ?? 0,
+      gp: resolvedStartingEquipment.currency.gp ?? 0,
+      pp: resolvedStartingEquipment.currency.pp ?? 0,
+    };
+  }, [resolvedStartingEquipment.currency]);
+
   const grantedSkills = backgroundDef?.skillProficiencies ?? [];
   const abilityOptions = backgroundDef?.abilityOptions ?? [];
 
@@ -390,6 +463,8 @@ const NewCharacter = () => {
 
     return Array.from(all);
   }, [classSkillChoices, grantedSkills, isRogue]);
+
+  // Effects
 
   useEffect(() => {
     setClassSkillChoices((prev) =>
@@ -441,6 +516,30 @@ const NewCharacter = () => {
       return backgroundToolRules.options[0] ?? "";
     });
   }, [backgroundToolRules]);
+
+  useEffect(() => {
+    const options = classDef?.startingEquipment?.options ?? [];
+    if (options.length === 0) {
+      setClassEquipmentOptionId("");
+      return;
+    }
+
+    setClassEquipmentOptionId((prev) =>
+      options.some((option) => option.id === prev) ? prev : options[0].id,
+    );
+  }, [classDef]);
+
+  useEffect(() => {
+    const options = backgroundDef?.equipment?.options ?? [];
+    if (options.length === 0) {
+      setBackgroundEquipmentOptionId("");
+      return;
+    }
+
+    setBackgroundEquipmentOptionId((prev) =>
+      options.some((option) => option.id === prev) ? prev : options[0].id,
+    );
+  }, [backgroundDef]);
 
   useEffect(() => {
     if (!hasBackgroundMagicInitiate) {
@@ -627,6 +726,13 @@ const NewCharacter = () => {
       }.`;
     }
 
+    if (
+      classDef?.startingEquipment?.options?.length &&
+      !selectedClassEquipmentOption
+    ) {
+      return "Please choose a class starting equipment option.";
+    }
+
     if (!abilityOptions.includes(backgroundBonusPlus2)) {
       return "Please choose a valid +2 background ability bonus.";
     }
@@ -637,6 +743,13 @@ const NewCharacter = () => {
 
     if (backgroundBonusPlus2 === backgroundBonusPlus1) {
       return "Your +2 and +1 background bonuses must be different abilities.";
+    }
+
+    if (
+      backgroundDef?.equipment?.options?.length &&
+      !selectedBackgroundEquipmentOption
+    ) {
+      return "Please choose a background equipment option.";
     }
 
     if (backgroundToolRules?.type === "choice") {
@@ -790,7 +903,8 @@ const NewCharacter = () => {
               }
             : {}),
         },
-        equipment: [],
+        equipment: resolvedStartingEquipment.items,
+        money: startingMoney,
       };
 
       const derived = buildDerivedCharacterData(baseCharacter);
@@ -830,7 +944,8 @@ const NewCharacter = () => {
             : {}),
         },
         derived,
-        equipment: [],
+        equipment: resolvedStartingEquipment.items,
+        money: startingMoney,
       });
 
       navigate("/");
@@ -1288,6 +1403,85 @@ const NewCharacter = () => {
               </div>
             )}
 
+            {classDef?.startingEquipment?.options?.length ? (
+              <div className="mt-8">
+                <h3 className="mb-4 text-lg font-semibold text-white">
+                  Class Starting Equipment
+                </h3>
+
+                <div className="space-y-3">
+                  {classDef.startingEquipment.options.map((option) => {
+                    const isSelected = classEquipmentOptionId === option.id;
+
+                    return (
+                      <label
+                        key={option.id}
+                        className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
+                          isSelected
+                            ? "border-white/25 bg-white/10"
+                            : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="class-equipment"
+                          checked={isSelected}
+                          onChange={() => setClassEquipmentOptionId(option.id)}
+                          className="mt-1 h-4 w-4 border-white/20 bg-zinc-900"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            {option.label}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {backgroundDef?.equipment?.options?.length ? (
+              <div className="mt-8">
+                <h3 className="mb-4 text-lg font-semibold text-white">
+                  Background Equipment
+                </h3>
+
+                <div className="space-y-3">
+                  {backgroundDef.equipment.options.map((option) => {
+                    const isSelected =
+                      backgroundEquipmentOptionId === option.id;
+
+                    return (
+                      <label
+                        key={option.id}
+                        className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
+                          isSelected
+                            ? "border-white/25 bg-white/10"
+                            : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="background-equipment"
+                          checked={isSelected}
+                          onChange={() =>
+                            setBackgroundEquipmentOptionId(option.id)
+                          }
+                          className="mt-1 h-4 w-4 border-white/20 bg-zinc-900"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            {option.label}
+                          </p>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
             {isRogue && (
               <>
                 <div className="mt-8">
@@ -1671,6 +1865,54 @@ const NewCharacter = () => {
                     +1 {abilityLabels[backgroundBonusPlus1]}
                   </span>
                 </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Starting equipment
+                </p>
+
+                <div className="mt-2 space-y-2">
+                  {resolvedStartingEquipment.items.length > 0 ? (
+                    resolvedStartingEquipment.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 px-3 py-2"
+                      >
+                        <span className="text-sm text-zinc-200">
+                          {item.name}
+                        </span>
+                        <span className="text-xs text-zinc-400">
+                          x{item.quantity}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-zinc-400">
+                      No equipment selected
+                    </p>
+                  )}
+                </div>
+
+                {startingMoney.cp ||
+                startingMoney.sp ||
+                startingMoney.ep ||
+                startingMoney.gp ||
+                startingMoney.pp ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(["cp", "sp", "ep", "gp", "pp"] as const).map(
+                      (currency) =>
+                        startingMoney[currency] ? (
+                          <span
+                            key={currency}
+                            className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                          >
+                            {startingMoney[currency]} {currency.toUpperCase()}
+                          </span>
+                        ) : null,
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               {isRogue && (

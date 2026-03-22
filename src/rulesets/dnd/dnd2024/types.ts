@@ -687,6 +687,28 @@ export type ChoiceMapByLevel<TOption extends string = string> = Partial<
 
 export type Currency = "cp" | "sp" | "ep" | "gp" | "pp";
 
+export type Money = Partial<Record<Currency, number>>;
+
+export type ItemCategory =
+  | "weapon"
+  | "armor"
+  | "shield"
+  | "tool"
+  | "gear"
+  | "container"
+  | "ammunition"
+  | "clothing"
+  | "consumable"
+  | "holy-symbol"
+  | "misc";
+
+export type Item = {
+  id: string;
+  name: string;
+  category: ItemCategory;
+  stackable?: boolean;
+};
+
 export type EquipmentItemGrant = {
   type: "item";
   id: string;
@@ -959,6 +981,8 @@ export type CharacterSheetData = {
     quantity: number;
     equipped?: boolean;
   }[];
+
+  money?: Money;
 
   createdAt?: unknown;
   updatedAt?: unknown;
