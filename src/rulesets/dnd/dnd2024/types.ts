@@ -791,6 +791,12 @@ export type CharacterSpell = {
   inSpellbook?: boolean;
   countsAgainstPreparationLimit?: boolean;
   countsAgainstKnownLimit?: boolean;
+
+  usage?: {
+    type: "at-will" | "limited";
+    recharge?: "short-rest" | "long-rest";
+    max?: number;
+  };
 };
 
 export type RogueCunningStrikeOptionId =
@@ -858,6 +864,9 @@ export type CharacterChoices = {
   backgroundAbilityBonuses?: BackgroundAbilityBonuses;
 
   backgroundToolChoice?: ToolId;
+  backgroundFeatSpellListId?: Extract<SpellListId, "cleric" | "druid" | "wizard">;
+  backgroundFeatCantripChoices?: SpellId[];
+  backgroundFeatSpellChoices?: SpellSelection[];
 
   subclassId?: string;
 

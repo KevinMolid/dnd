@@ -123,7 +123,45 @@ const formatLabel = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
+const formatSpellUsage = (usage?: CharacterSpell["usage"]): string | null => {
+  if (!usage) return null;
+
+  if (usage.type === "at-will") {
+    return "At will";
+  }
+
+  if (usage.type === "limited") {
+    const count = usage.max ?? 1;
+
+    if (usage.recharge === "long-rest") {
+      return `${count} / Long Rest`;
+    }
+
+    if (usage.recharge === "short-rest") {
+      return `${count} / Short Rest`;
+    }
+
+    return `${count} use${count === 1 ? "" : "s"}`;
+  }
+
+  return null;
+};
+
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
+
+const getMagicInitiateCastingAbility = (
+  spellListId: string | undefined,
+): AbilityKey => {
+  switch (spellListId) {
+    case "cleric":
+    case "druid":
+      return "wis";
+    case "wizard":
+      return "int";
+    default:
+      return "int";
+  }
+};
 
 const applyBackgroundBonuses = (
   abilityScores: Record<AbilityKey, number>,
@@ -758,8 +796,41 @@ const CharacterSheet = () => {
         : [],
     );
 
-    const activeSpellcasting =
+    const classOrSubclassSpellcasting =
       subclassDef?.spellcasting ?? classDef?.spellcasting ?? null;
+
+    const backgroundFeatSpellListId =
+      character.choices?.backgroundFeatSpellListId;
+
+    const backgroundFeatCantripChoices =
+      character.choices?.backgroundFeatCantripChoices ?? [];
+
+    const backgroundFeatSpellChoices =
+      character.choices?.backgroundFeatSpellChoices ?? [];
+
+    const hasBackgroundMagicInitiate =
+      character.originFeatId === "magic-initiate" &&
+      !!backgroundFeatSpellListId &&
+      (backgroundFeatCantripChoices.length > 0 ||
+        backgroundFeatSpellChoices.length > 0);
+
+    const magicInitiateSpellcasting = hasBackgroundMagicInitiate
+      ? {
+          id: "background-magic-initiate",
+          name: `Magic Initiate (${formatLabel(backgroundFeatSpellListId!)})`,
+          sourceType: "feat" as const,
+          sourceId: "magic-initiate",
+          castingAbility: getMagicInitiateCastingAbility(
+            backgroundFeatSpellListId,
+          ),
+          spellListId: backgroundFeatSpellListId,
+          preparationMode: "known" as const,
+          progressionType: "custom" as const,
+        }
+      : null;
+
+    const activeSpellcasting =
+      classOrSubclassSpellcasting ?? magicInitiateSpellcasting;
 
     const spellcastingAbility = activeSpellcasting?.castingAbility ?? null;
 
@@ -777,64 +848,79 @@ const CharacterSheet = () => {
         ? proficiencyBonus + spellcastingAbilityMod
         : null;
 
-    const spellSlots = activeSpellcasting
+    const spellSlots = classOrSubclassSpellcasting
       ? getSpellSlotsForLevel(
-          activeSpellcasting,
+          classOrSubclassSpellcasting,
           character.level as LevelNumber,
         )
       : {};
 
-    const cantripsKnownCapacity = activeSpellcasting
+    const cantripsKnownCapacity = classOrSubclassSpellcasting
       ? getCantripsKnownForLevel(
-          activeSpellcasting,
+          classOrSubclassSpellcasting,
           character.level as LevelNumber,
         )
-      : 0;
+      : hasBackgroundMagicInitiate
+        ? 2
+        : 0;
 
-    const spellListCapacity = activeSpellcasting?.preparedSpells
+    const spellListCapacity = classOrSubclassSpellcasting?.preparedSpells
       ? getPreparedSpellCountForLevel(
-          activeSpellcasting,
+          classOrSubclassSpellcasting,
           character.level as LevelNumber,
         )
       : 0;
 
-    const knownSpellCapacity = activeSpellcasting?.learnedSpells
+    const knownSpellCapacity = classOrSubclassSpellcasting?.learnedSpells
       ? getKnownSpellCountForLevel(
-          activeSpellcasting,
+          classOrSubclassSpellcasting,
           character.level as LevelNumber,
         )
-      : 0;
+      : hasBackgroundMagicInitiate
+        ? 1
+        : 0;
 
     const collectedSpellChoices = collectSpellSelectionsFromLevelUp(
       levelUpDecisions,
       character.level,
     );
 
-    const fixedCantripIds = activeSpellcasting?.cantrips?.fixedKnown ?? [];
+    const fixedCantripIds =
+      classOrSubclassSpellcasting?.cantrips?.fixedKnown ?? [];
 
     const allKnownCantripIds = unique<SpellId>([
       ...fixedCantripIds,
       ...collectedSpellChoices.cantripIds,
     ]);
 
-    const selectedCantripCount = allKnownCantripIds.length;
+    const selectedCantripCount =
+      allKnownCantripIds.length + backgroundFeatCantripChoices.length;
+
     const selectedLeveledSpellCount =
-      collectedSpellChoices.spellSelections.length;
+      collectedSpellChoices.spellSelections.length +
+      backgroundFeatSpellChoices.length;
 
     const missingSpellListCount =
       activeSpellcasting?.preparationMode === "custom" && spellListCapacity > 0
         ? Math.max(0, spellListCapacity - selectedLeveledSpellCount)
         : 0;
 
+    const sourceType =
+      activeSpellcasting?.sourceType ??
+      (hasBackgroundMagicInitiate ? ("feat" as const) : ("subclass" as const));
+
+    const sourceId =
+      activeSpellcasting?.sourceId ??
+      (hasBackgroundMagicInitiate
+        ? "magic-initiate"
+        : (selectedSubclassId ?? character.classId));
+
     const derivedKnownSpells: CharacterSpell[] = [
       ...allKnownCantripIds.map((spellId) => ({
         spellId,
         level: 0 as const,
-        sourceType: activeSpellcasting?.sourceType ?? ("subclass" as const),
-        sourceId:
-          activeSpellcasting?.sourceId ??
-          selectedSubclassId ??
-          character.classId,
+        sourceType,
+        sourceId,
         known: true,
         prepared: false,
         countsAgainstKnownLimit: true,
@@ -843,15 +929,40 @@ const CharacterSheet = () => {
       ...collectedSpellChoices.spellSelections.map((selection) => ({
         spellId: selection.spellId,
         level: selection.level as any,
-        sourceType: activeSpellcasting?.sourceType ?? ("subclass" as const),
-        sourceId:
-          activeSpellcasting?.sourceId ??
-          selectedSubclassId ??
-          character.classId,
+        sourceType,
+        sourceId,
         known: true,
         prepared: false,
         countsAgainstKnownLimit: true,
         countsAgainstPreparationLimit: true,
+      })),
+      ...backgroundFeatCantripChoices.map((spellId) => ({
+        spellId,
+        level: 0 as const,
+        sourceType: "feat" as const,
+        sourceId: "magic-initiate",
+        known: true,
+        prepared: false,
+        countsAgainstKnownLimit: false,
+        countsAgainstPreparationLimit: false,
+        usage: {
+          type: "at-will" as const,
+        },
+      })),
+      ...backgroundFeatSpellChoices.map((selection) => ({
+        spellId: selection.spellId,
+        level: selection.level,
+        sourceType: "feat" as const,
+        sourceId: "magic-initiate",
+        known: true,
+        prepared: false,
+        countsAgainstKnownLimit: false,
+        countsAgainstPreparationLimit: false,
+        usage: {
+          type: "limited" as const,
+          recharge: "long-rest" as const,
+          max: 1,
+        },
       })),
     ];
 
@@ -1004,7 +1115,10 @@ const CharacterSheet = () => {
         speciesById[character.speciesId]?.name ?? character.speciesId,
       backgroundName: background?.name ?? character.backgroundId,
       featName: character.originFeatId
-        ? (featsById[character.originFeatId]?.name ?? character.originFeatId)
+        ? character.originFeatId === "magic-initiate" &&
+          backgroundFeatSpellListId
+          ? `${featsById[character.originFeatId]?.name ?? character.originFeatId} (${formatLabel(backgroundFeatSpellListId)})`
+          : (featsById[character.originFeatId]?.name ?? character.originFeatId)
         : null,
       subclassName: subclassDef?.name ?? null,
       proficiencyBonus,
@@ -1718,24 +1832,36 @@ const CharacterSheet = () => {
                           </div>
 
                           <div className="space-y-3">
-                            {group.spells.map((spell) => (
-                              <div
-                                key={spell.spellId}
-                                className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                              >
-                                <div className="flex items-center justify-between gap-4">
-                                  <p className="font-medium text-white">
-                                    {spell.name}
-                                  </p>
-                                </div>
+                            {group.spells.map((spell) => {
+                              const usageLabel = formatSpellUsage(spell.usage);
 
-                                {spell.school && (
-                                  <p className="mt-2 text-sm text-zinc-500">
-                                    {spell.school}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
+                              return (
+                                <div
+                                  key={spell.spellId}
+                                  className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                                >
+                                  <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                      <p className="font-medium text-white">
+                                        {spell.name}
+                                      </p>
+
+                                      {spell.school && (
+                                        <p className="mt-1 text-sm text-zinc-500">
+                                          {spell.school}
+                                        </p>
+                                      )}
+                                    </div>
+
+                                    {usageLabel && (
+                                      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                                        {usageLabel}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       ))}

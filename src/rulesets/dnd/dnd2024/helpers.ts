@@ -4,7 +4,10 @@ import type {
   CharacterSubclass,
   Feat,
   Species,
+  BackgroundFeatGrant,
+  CharacterSheetData,
 } from "./types";
+
 import {
   backgrounds,
   classes,
@@ -53,4 +56,26 @@ export const getChosenSubclassId = (
   }
 
   return undefined;
+};
+
+export const getBackgroundFeatGrant = (
+  character: CharacterSheetData,
+): BackgroundFeatGrant | null => {
+  const background = getBackgroundById(character.backgroundId);
+  if (!background?.featGrant) return null;
+
+  if (background.featGrant.type === "fixed") {
+    return background.featGrant;
+  }
+
+  if (background.featGrant.type === "magic-initiate") {
+    return {
+      ...background.featGrant,
+      spellListId:
+        character.choices?.backgroundFeatSpellListId ??
+        background.featGrant.spellListId,
+    };
+  }
+
+  return null;
 };

@@ -5,6 +5,7 @@ import { backgrounds, classes, species } from "../rulesets/dnd/dnd2024/data";
 import { buildDerivedCharacterData } from "../rulesets/dnd/dnd2024/buildDerivedCharacterData";
 import { getSpeciesChoices } from "../rulesets/dnd/dnd2024/getSpeciesChoices";
 import { getSpeciesGrantedFeatIds } from "../rulesets/dnd/dnd2024/getSpeciesGrantedFeatIds";
+import { getAvailableSpells } from "../rulesets/dnd/dnd2024/getAvailableSpells";
 import {
   getBackgroundById,
   getClassById,
@@ -15,6 +16,8 @@ import type {
   CharacterSheetData,
   LanguageId,
   SkillId,
+  SpellId,
+  SpellSelection,
   ToolId,
   Trait,
   TraitChoice,
@@ -155,6 +158,7 @@ const formatLabel = (value: string) =>
 const NewCharacter = () => {
   const navigate = useNavigate();
 
+  // States
   const [name, setName] = useState("");
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [speciesId, setSpeciesId] = useState(species[0]?.id ?? "");
@@ -191,6 +195,12 @@ const NewCharacter = () => {
     WeaponMasteryChoiceId[]
   >([]);
 
+  const [backgroundFeatCantripChoices, setBackgroundFeatCantripChoices] =
+    useState<SpellId[]>([]);
+  const [backgroundFeatSpellChoices, setBackgroundFeatSpellChoices] = useState<
+    SpellSelection[]
+  >([]);
+
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -199,6 +209,16 @@ const NewCharacter = () => {
     () => getBackgroundById(backgroundId),
     [backgroundId],
   );
+
+  const backgroundFeatGrant = backgroundDef?.featGrant;
+  const backgroundFeatSpellListId =
+    backgroundFeatGrant?.type === "magic-initiate"
+      ? backgroundFeatGrant.spellListId
+      : undefined;
+
+  const hasBackgroundMagicInitiate =
+    backgroundFeatGrant?.type === "magic-initiate" &&
+    !!backgroundFeatSpellListId;
 
   const backgroundToolRules = backgroundDef?.toolProficiencyOptions;
 
@@ -218,9 +238,80 @@ const NewCharacter = () => {
   const isRogue = classId === "rogue";
 
   const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
-  const backgroundGrantedFeatName = backgroundGrantedFeatId
-    ? (getFeatById(backgroundGrantedFeatId)?.name ?? backgroundGrantedFeatId)
-    : null;
+  const backgroundGrantedFeatName = useMemo(() => {
+    if (!backgroundGrantedFeatId) return null;
+
+    const featName =
+      getFeatById(backgroundGrantedFeatId)?.name ?? backgroundGrantedFeatId;
+
+    if (backgroundFeatGrant?.type === "magic-initiate") {
+      return `${featName} (${formatLabel(backgroundFeatGrant.spellListId)})`;
+    }
+
+    return featName;
+  }, [backgroundFeatGrant, backgroundGrantedFeatId]);
+
+  const backgroundMagicInitiateCantrips = useMemo(() => {
+    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) return [];
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId,
+        backgroundId,
+        originFeatId: backgroundGrantedFeatId,
+        abilityScores,
+      } as CharacterSheetData,
+      {
+        spellListId: backgroundFeatSpellListId,
+        maxLevel: 0,
+        includeCantrips: true,
+      },
+    );
+  }, [
+    abilityScores,
+    backgroundFeatSpellListId,
+    backgroundGrantedFeatId,
+    backgroundId,
+    classId,
+    hasBackgroundMagicInitiate,
+    speciesId,
+  ]);
+
+  const backgroundMagicInitiateLevelOneSpells = useMemo(() => {
+    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) return [];
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId,
+        backgroundId,
+        originFeatId: backgroundGrantedFeatId,
+        abilityScores,
+      } as CharacterSheetData,
+      {
+        spellListId: backgroundFeatSpellListId,
+        maxLevel: 1,
+        includeCantrips: false,
+      },
+    ).filter((spell) => spell.level === 1);
+  }, [
+    abilityScores,
+    backgroundFeatSpellListId,
+    backgroundGrantedFeatId,
+    backgroundId,
+    classId,
+    hasBackgroundMagicInitiate,
+    speciesId,
+  ]);
 
   const speciesGrantedFeatIds = useMemo(
     () => getSpeciesGrantedFeatIds(speciesId, { speciesTraitChoices }),
@@ -248,7 +339,14 @@ const NewCharacter = () => {
           plus2: backgroundBonusPlus2,
           plus1: backgroundBonusPlus1,
         },
-        backgroundToolChoice: backgroundToolChoice || undefined,
+        ...(backgroundToolChoice ? { backgroundToolChoice } : {}),
+        ...(backgroundFeatSpellListId ? { backgroundFeatSpellListId } : {}),
+        ...(backgroundFeatCantripChoices.length > 0
+          ? { backgroundFeatCantripChoices }
+          : {}),
+        ...(backgroundFeatSpellChoices.length > 0
+          ? { backgroundFeatSpellChoices }
+          : {}),
         speciesTraitChoices,
         ...(isRogue
           ? {
@@ -345,6 +443,36 @@ const NewCharacter = () => {
   }, [backgroundToolRules]);
 
   useEffect(() => {
+    if (!hasBackgroundMagicInitiate) {
+      setBackgroundFeatCantripChoices([]);
+      setBackgroundFeatSpellChoices([]);
+      return;
+    }
+
+    setBackgroundFeatCantripChoices((prev) =>
+      prev
+        .filter((spellId) =>
+          backgroundMagicInitiateCantrips.some((spell) => spell.id === spellId),
+        )
+        .slice(0, 2),
+    );
+
+    setBackgroundFeatSpellChoices((prev) =>
+      prev
+        .filter((selection) =>
+          backgroundMagicInitiateLevelOneSpells.some(
+            (spell) => spell.id === selection.spellId && selection.level === 1,
+          ),
+        )
+        .slice(0, 1),
+    );
+  }, [
+    backgroundMagicInitiateCantrips,
+    backgroundMagicInitiateLevelOneSpells,
+    hasBackgroundMagicInitiate,
+  ]);
+
+  useEffect(() => {
     if (!isRogue) {
       setRogueExpertiseChoices([]);
       setRogueWeaponMasteryChoices([]);
@@ -425,6 +553,24 @@ const NewCharacter = () => {
 
       return [...prev, skill];
     });
+  };
+
+  const toggleBackgroundFeatCantrip = (spellId: SpellId) => {
+    setBackgroundFeatCantripChoices((prev) => {
+      if (prev.includes(spellId)) {
+        return prev.filter((id) => id !== spellId);
+      }
+
+      if (prev.length >= 2) {
+        return prev;
+      }
+
+      return [...prev, spellId];
+    });
+  };
+
+  const setBackgroundFeatSpellChoice = (spellId: SpellId) => {
+    setBackgroundFeatSpellChoices([{ spellId, level: 1 }]);
   };
 
   const toggleRogueExpertise = (choice: SkillId | "thieves-tools") => {
@@ -533,6 +679,40 @@ const NewCharacter = () => {
       }
     }
 
+    if (hasBackgroundMagicInitiate) {
+      if (backgroundFeatCantripChoices.length !== 2) {
+        return "Please choose 2 cantrips for Magic Initiate.";
+      }
+
+      const validCantrips = backgroundFeatCantripChoices.every((spellId) =>
+        backgroundMagicInitiateCantrips.some((spell) => spell.id === spellId),
+      );
+
+      if (!validCantrips) {
+        return "Please choose valid Magic Initiate cantrips.";
+      }
+
+      if (new Set(backgroundFeatCantripChoices).size !== 2) {
+        return "Magic Initiate cantrip choices must be different.";
+      }
+
+      if (backgroundFeatSpellChoices.length !== 1) {
+        return "Please choose 1 level 1 spell for Magic Initiate.";
+      }
+
+      const chosenSpell = backgroundFeatSpellChoices[0];
+
+      const validSpell =
+        chosenSpell?.level === 1 &&
+        backgroundMagicInitiateLevelOneSpells.some(
+          (spell) => spell.id === chosenSpell.spellId,
+        );
+
+      if (!validSpell) {
+        return "Please choose a valid Magic Initiate level 1 spell.";
+      }
+    }
+
     if (isRogue) {
       if (rogueExpertiseChoices.length !== 2) {
         return "Rogue must choose 2 Expertise options.";
@@ -593,7 +773,14 @@ const NewCharacter = () => {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
           },
-          backgroundToolChoice: backgroundToolChoice || undefined,
+          ...(backgroundToolChoice ? { backgroundToolChoice } : {}),
+          ...(backgroundFeatSpellListId ? { backgroundFeatSpellListId } : {}),
+          ...(backgroundFeatCantripChoices.length > 0
+            ? { backgroundFeatCantripChoices }
+            : {}),
+          ...(backgroundFeatSpellChoices.length > 0
+            ? { backgroundFeatSpellChoices }
+            : {}),
           speciesTraitChoices,
           ...(isRogue
             ? {
@@ -625,7 +812,14 @@ const NewCharacter = () => {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
           },
-          backgroundToolChoice: backgroundToolChoice || undefined,
+          ...(backgroundToolChoice ? { backgroundToolChoice } : {}),
+          ...(backgroundFeatSpellListId ? { backgroundFeatSpellListId } : {}),
+          ...(backgroundFeatCantripChoices.length > 0
+            ? { backgroundFeatCantripChoices }
+            : {}),
+          ...(backgroundFeatSpellChoices.length > 0
+            ? { backgroundFeatSpellChoices }
+            : {}),
           speciesTraitChoices,
           ...(isRogue
             ? {
@@ -1011,6 +1205,89 @@ const NewCharacter = () => {
               </div>
             )}
 
+            {hasBackgroundMagicInitiate && (
+              <div className="mt-8 space-y-6">
+                <div>
+                  <h3 className="mb-4 text-lg font-semibold text-white">
+                    Magic Initiate Cantrips
+                  </h3>
+
+                  <p className="mb-4 text-sm text-zinc-400">
+                    Choose 2 cantrips from the{" "}
+                    {backgroundFeatSpellListId
+                      ? formatLabel(backgroundFeatSpellListId)
+                      : ""}{" "}
+                    spell list.
+                  </p>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {backgroundMagicInitiateCantrips.map((spell) => {
+                      const isSelected = backgroundFeatCantripChoices.includes(
+                        spell.id,
+                      );
+
+                      return (
+                        <label
+                          key={spell.id}
+                          className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                            isSelected
+                              ? "border-white/25 bg-white/10"
+                              : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() =>
+                              toggleBackgroundFeatCantrip(spell.id)
+                            }
+                            className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                          />
+                          <span className="text-sm text-white">
+                            {spell.name}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+
+                  <p className="mt-3 text-xs text-zinc-500">
+                    Selected: {backgroundFeatCantripChoices.length} / 2
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="mb-4 text-lg font-semibold text-white">
+                    Magic Initiate Spell
+                  </h3>
+
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="backgroundFeatSpellChoice"
+                      className="text-sm font-medium text-zinc-200"
+                    >
+                      Choose 1 level 1 spell
+                    </label>
+                    <select
+                      id="backgroundFeatSpellChoice"
+                      value={backgroundFeatSpellChoices[0]?.spellId ?? ""}
+                      onChange={(e) =>
+                        setBackgroundFeatSpellChoice(e.target.value)
+                      }
+                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                    >
+                      <option value="">Select a spell</option>
+                      {backgroundMagicInitiateLevelOneSpells.map((spell) => (
+                        <option key={spell.id} value={spell.id}>
+                          {spell.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {isRogue && (
               <>
                 <div className="mt-8">
@@ -1266,6 +1543,51 @@ const NewCharacter = () => {
                   {backgroundGrantedFeatName ?? "None"}
                 </p>
               </div>
+
+              {hasBackgroundMagicInitiate && (
+                <>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                      Magic Initiate Cantrips
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {backgroundFeatCantripChoices.length > 0 ? (
+                        backgroundFeatCantripChoices.map((spellId) => {
+                          const spell = backgroundMagicInitiateCantrips.find(
+                            (entry) => entry.id === spellId,
+                          );
+
+                          return (
+                            <span
+                              key={spellId}
+                              className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                            >
+                              {spell?.name ?? spellId}
+                            </span>
+                          );
+                        })
+                      ) : (
+                        <p className="text-sm text-zinc-400">None selected</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                      Magic Initiate Spell
+                    </p>
+                    <p className="mt-2 text-sm text-zinc-200">
+                      {backgroundFeatSpellChoices[0]
+                        ? (backgroundMagicInitiateLevelOneSpells.find(
+                            (spell) =>
+                              spell.id ===
+                              backgroundFeatSpellChoices[0].spellId,
+                          )?.name ?? backgroundFeatSpellChoices[0].spellId)
+                        : "None selected"}
+                    </p>
+                  </div>
+                </>
+              )}
 
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">

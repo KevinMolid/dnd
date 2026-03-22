@@ -7,11 +7,16 @@ import type {
   SpellSlotTable,
   SpellcastingRules,
 } from "../../types";
-import { spells } from "./spells";
+import { allSpells } from "./allSpells";
 import { spellSlotTables } from "../../spellSlotTables";
 
+export {
+  getAvailableSpells,
+  getSpellsForSpellList,
+} from "../../getAvailableSpells";
+
 export const spellsById: Record<SpellId, Spell> = Object.fromEntries(
-  spells.map((spell) => [spell.id, spell]),
+  allSpells.map((spell) => [spell.id, spell]),
 ) as Record<SpellId, Spell>;
 
 export const getSpellById = (spellId: SpellId): Spell | undefined => {
@@ -19,14 +24,14 @@ export const getSpellById = (spellId: SpellId): Spell | undefined => {
 };
 
 export const getSpellsForList = (spellListId: SpellListId): Spell[] => {
-  return spells.filter((spell) => spell.classes.includes(spellListId));
+  return allSpells.filter((spell) => spell.classes.includes(spellListId));
 };
 
 export const getSpellsForListAndLevel = (
   spellListId: SpellListId,
   level: SpellLevel,
 ): Spell[] => {
-  return spells.filter(
+  return allSpells.filter(
     (spell) => spell.classes.includes(spellListId) && spell.level === level,
   );
 };
