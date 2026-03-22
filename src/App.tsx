@@ -25,6 +25,7 @@ import CampaignJournalPage from "./pages/CampaignJournalPage";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import EditCharacter from "./pages/editCharacter";
 
 function App() {
   const { user, loading } = useAuth();
@@ -54,6 +55,10 @@ function App() {
           <Route path="/quests" element={<Quests />} />
           <Route path="/characters/new" element={<NewCharacter />} />
           <Route path="/characters/:characterId" element={<CharacterSheet />} />
+          <Route
+            path="/characters/:characterId/edit"
+            element={<EditCharacter />}
+          />
           <Route path="/campaigns/new" element={<NewCampaign />} />
           <Route path="/campaigns/:campaignId" element={<CampaignPage />} />
           <Route path="/invite/:inviteToken" element={<InvitePage />} />
