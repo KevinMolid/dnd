@@ -664,9 +664,44 @@ export const spells: Spell[] = [
     "When cast with a higher-level spell slot, the healing increases by 2d4 for each slot level above 1.",
 },
   { id: "heat-metal", name: "Heat Metal", level: 2, school: "Transmutation", concentration: true },
+  {
+  id: "hellish-rebuke",
+  name: "Hellish Rebuke",
+  level: 1,
+  school: "Evocation",
+  castingTime:
+    "Reaction, which you take in response to taking damage from a creature that you can see within 60 feet of yourself",
+  range: "60 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["Warlock"],
+  description:
+    "The creature that damaged you is momentarily surrounded by green flames.",
+  effects:
+    "The target must make a Dexterity saving throw, taking 2d10 Fire damage on a failed save, or half as much damage on a success.",
+  higherLevel:
+    "When cast with a higher-level spell slot, the damage increases by 1d10 for each slot level above 1.",
+},
   { id: "heroes-feast", name: "Heroes' Feast", level: 6, school: "Conjuration" },
   { id: "heroism", name: "Heroism", level: 1, school: "Enchantment", concentration: true },
-  { id: "hold-person", name: "Hold Person", level: 2, school: "Enchantment", concentration: true },
+{
+  id: "hold-person",
+  name: "Hold Person",
+  level: 2,
+  school: "Enchantment",
+  concentration: true,
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S, M (a straight piece of iron)",
+  duration: "Concentration, up to 1 minute",
+  classes: ["Bard", "Cleric", "Druid", "Sorcerer", "Warlock", "Wizard"],
+  description:
+    "Choose a Humanoid you can see within range. The target must succeed on a Wisdom saving throw or have the Paralyzed condition for the duration.",
+  effects:
+    "At the end of each of its turns, the target repeats the saving throw, ending the spell on itself on a success.",
+  higherLevel:
+    "When cast with a higher-level spell slot, you can target one additional Humanoid for each slot level above 2.",
+},
   { id: "holy-aura", name: "Holy Aura", level: 8, school: "Abjuration", concentration: true },
   { id: "ice-knife", name: "Ice Knife", level: 1, school: "Conjuration" },
   { id: "ice-storm", name: "Ice Storm", level: 4, school: "Evocation" },
@@ -855,8 +890,43 @@ export const spells: Spell[] = [
   { id: "silence", name: "Silence", level: 2, school: "Illusion", concentration: true, ritual: true },
   { id: "sleep", name: "Sleep", level: 1, school: "Enchantment" },
   { id: "sleet-storm", name: "Sleet Storm", level: 3, school: "Conjuration", concentration: true },
-  { id: "speak-with-animals", name: "Speak with Animals", level: 1, school: "Divination", ritual: true },
-  { id: "speak-with-dead", name: "Speak with Dead", level: 3, school: "Necromancy" },
+{
+  id: "speak-with-animals",
+  name: "Speak with Animals",
+  level: 1,
+  school: "Divination",
+  ritual: true,
+  castingTime: "Action or Ritual",
+  range: "Self",
+  components: "V, S",
+  duration: "10 minutes",
+  classes: ["Bard", "Druid", "Ranger", "Warlock"],
+  description:
+    "For the duration, you can comprehend and verbally communicate with Beasts, and you can use any of the Influence action’s skill options with them.",
+  details:
+    "Most Beasts have limited knowledge beyond survival and companionship, but they can provide information about nearby locations and creatures, including what they have perceived within the past day.",
+},
+{
+  id: "speak-with-dead",
+  name: "Speak with Dead",
+  level: 3,
+  school: "Necromancy",
+  castingTime: "Action",
+  range: "10 feet",
+  components: "V, S, M (burning incense)",
+  duration: "10 minutes",
+  classes: ["Bard", "Cleric", "Wizard"],
+  description:
+    "You grant a semblance of life to a corpse within range, allowing it to answer questions you pose.",
+  conditions:
+    "The corpse must have a mouth and cannot be Undead. The spell fails if the corpse has been targeted by this spell within the past 10 days.",
+  effects:
+    "Until the spell ends, you can ask the corpse up to five questions. The corpse knows only what it knew in life, including the languages it knew.",
+  behavior:
+    "Answers are usually brief, cryptic, or repetitive. The corpse is under no compulsion to be truthful if you are hostile to it.",
+  limitations:
+    "The spell does not return the creature’s soul, only animates its spirit. The corpse cannot learn new information, doesn’t understand events after its death, and cannot speculate about the future.",
+},
   { id: "speak-with-plants", name: "Speak with Plants", level: 3, school: "Transmutation" },
   { id: "spare-the-dying", name: "Spare the Dying", level: 0, school: "Necromancy" },
   { id: "spider-climb", name: "Spider Climb", level: 2, school: "Transmutation", concentration: true },
@@ -915,7 +985,28 @@ export const spells: Spell[] = [
   { id: "summon-fey", name: "Summon Fey", level: 3, school: "Conjuration", concentration: true },
   { id: "sunbeam", name: "Sunbeam", level: 6, school: "Evocation", concentration: true },
   { id: "sunburst", name: "Sunburst", level: 8, school: "Evocation" },
-  { id: "tashas-hideous-laughter", name: "Tasha's Hideous Laughter", level: 1, school: "Enchantment", concentration: true },
+{
+  id: "tashas-hideous-laughter",
+  name: "Tasha's Hideous Laughter",
+  level: 1,
+  school: "Enchantment",
+  concentration: true,
+  castingTime: "Action",
+  range: "30 feet",
+  components: "V, S, M (a tart and a feather)",
+  duration: "Concentration, up to 1 minute",
+  classes: ["Bard", "Warlock", "Wizard"],
+  description:
+    "One creature of your choice within range must make a Wisdom saving throw.",
+  effects:
+    "On a failed save, the target has the Prone and Incapacitated conditions for the duration, laughing uncontrollably if it is capable of laughter.",
+  behavior:
+    "The target cannot stand up while affected.",
+  savingThrows:
+    "At the end of each of its turns, and each time it takes damage, the target can repeat the saving throw. It has Advantage on the save if it was triggered by damage.",
+  higherLevel:
+    "When cast with a higher-level spell slot, you can target one additional creature for each slot level above 1.",
+},
   { id: "tensers-floating-disk", name: "Tenser's Floating Disk", level: 1, school: "Conjuration", ritual: true },
   { id: "thaumaturgy", name: "Thaumaturgy", level: 0, school: "Transmutation" },
   { id: "thorn-whip", name: "Thorn Whip", level: 0, school: "Transmutation" },

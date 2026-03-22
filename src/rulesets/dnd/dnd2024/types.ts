@@ -489,6 +489,8 @@ export type Spell = {
   higherLevel?: string;
   cantripUpgrade?: string;
 
+  savingThrows?: string;
+
   details?: string;
   effects?: string;
   control?: string;
