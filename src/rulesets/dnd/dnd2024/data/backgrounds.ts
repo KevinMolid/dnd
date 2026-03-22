@@ -454,4 +454,270 @@ export const backgrounds: Background[] = [
       ],
     },
   },
+    {
+    id: "noble",
+    name: "Noble",
+    abilityOptions: ["str", "int", "cha"],
+    skillProficiencies: ["history", "persuasion"],
+    toolProficiencyOptions: {
+      type: "choice",
+      choose: 1,
+      options: gamingSetOptions,
+      optionGroup: "gaming-set",
+    },
+    originFeatId: "skilled",
+    featGrant: {
+      type: "fixed",
+      featId: "skilled",
+    },
+    equipmentGold: 50,
+    equipment: {
+      choose: 1,
+      options: [
+        {
+          id: "noble-equipment-a",
+          label: "Gaming Set, Fine Clothes, Perfume, and 29 GP",
+          grants: [
+            {
+              type: "choice",
+              choose: 1,
+              options: gamingSetOptions.map((toolId) => ({
+                type: "item",
+                id: toolId,
+                quantity: 1,
+              })),
+            },
+            { type: "item", id: "fine-clothes", quantity: 1 },
+            { type: "item", id: "perfume", quantity: 1 },
+            { type: "currency", amount: 29, currency: "gp" },
+          ],
+        },
+        {
+          id: "noble-equipment-b",
+          label: "50 GP",
+          grants: [{ type: "currency", amount: 50, currency: "gp" }],
+        },
+      ],
+    },
+  },
+  {
+    id: "sailor",
+    name: "Sailor",
+    abilityOptions: ["str", "dex", "wis"],
+    skillProficiencies: ["acrobatics", "perception"],
+    toolProficiency: "navigators-tools",
+    toolProficiencyOptions: {
+      type: "fixed",
+      tool: "navigators-tools",
+    },
+    originFeatId: "tavern-brawler",
+    featGrant: {
+      type: "fixed",
+      featId: "tavern-brawler",
+    },
+    equipmentGold: 50,
+    equipment: {
+      choose: 1,
+      options: [
+        {
+          id: "sailor-equipment-a",
+          label:
+            "Dagger, Navigator’s Tools, Rope, Traveler’s Clothes, and 20 GP",
+          grants: [
+            { type: "item", id: "dagger", quantity: 1 },
+            { type: "item", id: "navigators-tools", quantity: 1 },
+            { type: "item", id: "rope", quantity: 1 },
+            { type: "item", id: "travelers-clothes", quantity: 1 },
+            { type: "currency", amount: 20, currency: "gp" },
+          ],
+        },
+        {
+          id: "sailor-equipment-b",
+          label: "50 GP",
+          grants: [{ type: "currency", amount: 50, currency: "gp" }],
+        },
+      ],
+    },
+  },
+  {
+    id: "sage",
+    name: "Sage",
+    abilityOptions: ["con", "int", "wis"],
+    skillProficiencies: ["arcana", "history"],
+    toolProficiency: "calligraphers-supplies",
+    toolProficiencyOptions: {
+      type: "fixed",
+      tool: "calligraphers-supplies",
+    },
+    originFeatId: "magic-initiate",
+    featGrant: {
+      type: "magic-initiate",
+      featId: "magic-initiate",
+      spellListId: "wizard",
+    },
+    equipmentGold: 50,
+    equipment: {
+      choose: 1,
+      options: [
+        {
+          id: "sage-equipment-a",
+          label:
+            "Quarterstaff, Calligrapher’s Supplies, Book, Parchment (8 sheets), Robe, and 8 GP",
+          grants: [
+            { type: "item", id: "quarterstaff", quantity: 1 },
+            { type: "item", id: "calligraphers-supplies", quantity: 1 },
+            { type: "item", id: "book", quantity: 1 },
+            { type: "item", id: "parchment", quantity: 8 },
+            { type: "item", id: "robe", quantity: 1 },
+            { type: "currency", amount: 8, currency: "gp" },
+          ],
+        },
+        {
+          id: "sage-equipment-b",
+          label: "50 GP",
+          grants: [{ type: "currency", amount: 50, currency: "gp" }],
+        },
+      ],
+    },
+  },
+  {
+    id: "scribe",
+    name: "Scribe",
+    abilityOptions: ["dex", "int", "wis"],
+    skillProficiencies: ["investigation", "perception"],
+    toolProficiency: "calligraphers-supplies",
+    toolProficiencyOptions: {
+      type: "fixed",
+      tool: "calligraphers-supplies",
+    },
+    originFeatId: "skilled",
+    featGrant: {
+      type: "fixed",
+      featId: "skilled",
+    },
+    equipmentGold: 50,
+    equipment: {
+      choose: 1,
+      options: [
+        {
+          id: "scribe-equipment-a",
+          label:
+            "Calligrapher’s Supplies, Fine Clothes, Lamp, Oil (3 flasks), Parchment (12 sheets), and 23 GP",
+          grants: [
+            { type: "item", id: "calligraphers-supplies", quantity: 1 },
+            { type: "item", id: "fine-clothes", quantity: 1 },
+            { type: "item", id: "lamp", quantity: 1 },
+            { type: "item", id: "oil", quantity: 3 },
+            { type: "item", id: "parchment", quantity: 12 },
+            { type: "currency", amount: 23, currency: "gp" },
+          ],
+        },
+        {
+          id: "scribe-equipment-b",
+          label: "50 GP",
+          grants: [{ type: "currency", amount: 50, currency: "gp" }],
+        },
+      ],
+    },
+  },
+  {
+    id: "soldier",
+    name: "Soldier",
+    abilityOptions: ["str", "dex", "con"],
+    skillProficiencies: ["athletics", "intimidation"],
+    toolProficiencyOptions: {
+      type: "choice",
+      choose: 1,
+      options: gamingSetOptions,
+      optionGroup: "gaming-set",
+    },
+    originFeatId: "savage-attacker",
+    featGrant: {
+      type: "fixed",
+      featId: "savage-attacker",
+    },
+    equipmentGold: 50,
+    equipment: {
+      choose: 1,
+      options: [
+        {
+          id: "soldier-equipment-a",
+          label:
+            "Spear, Shortbow, 20 Arrows, Gaming Set, Healer’s Kit, Quiver, Traveler’s Clothes, and 14 GP",
+          grants: [
+            { type: "item", id: "spear", quantity: 1 },
+            { type: "item", id: "shortbow", quantity: 1 },
+            { type: "item", id: "arrow", quantity: 20 },
+            {
+              type: "choice",
+              choose: 1,
+              options: gamingSetOptions.map((toolId) => ({
+                type: "item",
+                id: toolId,
+                quantity: 1,
+              })),
+            },
+            { type: "item", id: "healers-kit", quantity: 1 },
+            { type: "item", id: "quiver", quantity: 1 },
+            { type: "item", id: "travelers-clothes", quantity: 1 },
+            { type: "currency", amount: 14, currency: "gp" },
+          ],
+        },
+        {
+          id: "soldier-equipment-b",
+          label: "50 GP",
+          grants: [{ type: "currency", amount: 50, currency: "gp" }],
+        },
+      ],
+    },
+  },
+  {
+    id: "wayfarer",
+    name: "Wayfarer",
+    abilityOptions: ["dex", "wis", "cha"],
+    skillProficiencies: ["insight", "stealth"],
+    toolProficiency: "thieves-tools",
+    toolProficiencyOptions: {
+      type: "fixed",
+      tool: "thieves-tools",
+    },
+    originFeatId: "lucky",
+    featGrant: {
+      type: "fixed",
+      featId: "lucky",
+    },
+    equipmentGold: 50,
+    equipment: {
+      choose: 1,
+      options: [
+        {
+          id: "wayfarer-equipment-a",
+          label:
+            "2 Daggers, Thieves’ Tools, Gaming Set, Bedroll, 2 Pouches, Traveler’s Clothes, and 16 GP",
+          grants: [
+            { type: "item", id: "dagger", quantity: 2 },
+            { type: "item", id: "thieves-tools", quantity: 1 },
+            {
+              type: "choice",
+              choose: 1,
+              options: gamingSetOptions.map((toolId) => ({
+                type: "item",
+                id: toolId,
+                quantity: 1,
+              })),
+            },
+            { type: "item", id: "bedroll", quantity: 1 },
+            { type: "item", id: "pouch", quantity: 2 },
+            { type: "item", id: "travelers-clothes", quantity: 1 },
+            { type: "currency", amount: 16, currency: "gp" },
+          ],
+        },
+        {
+          id: "wayfarer-equipment-b",
+          label: "50 GP",
+          grants: [{ type: "currency", amount: 50, currency: "gp" }],
+        },
+      ],
+    },
+  },
 ];
