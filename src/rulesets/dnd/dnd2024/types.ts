@@ -503,6 +503,7 @@ export type Spell = {
   interaction?: string;
   conditions?: string;
   behavior?: string;
+  penalties?: string;
 
   options?: {
     name: string;

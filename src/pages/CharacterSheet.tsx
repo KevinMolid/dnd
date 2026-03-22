@@ -44,6 +44,8 @@ import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTr
 import { getSpeciesTraits } from "../rulesets/dnd/dnd2024/getSpeciesTraits";
 import { getSpeciesGrantedFeatIds } from "../rulesets/dnd/dnd2024/getSpeciesGrantedFeatIds";
 
+import SpellTooltip from "../components/SpellTooltip";
+
 type CharacterDoc = CharacterSheetData & {
   maxHp?: number;
   currentHp?: number;
@@ -1074,6 +1076,7 @@ const CharacterSheet = () => {
 
         return {
           ...spell,
+          ...spellData,
           level: spellData?.level ?? spell.level,
           school: spellData?.school,
           name: spellData?.name ?? spell.spellId,
@@ -2041,35 +2044,38 @@ const CharacterSheet = () => {
                     </span>
                   </div>
 
-                  <div className="space-y-3">
+                  <div className="flex gap-2">
                     {group.spells.map((spell) => {
                       const usageLabel = formatSpellUsage(spell.usage);
 
                       return (
-                        <div
-                          key={spell.spellId}
-                          className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                        >
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="font-medium text-white">
-                                {spell.name}
-                              </p>
+                        <SpellTooltip spell={spell}>
+                          <div
+                            key={spell.spellId}
+                            className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <div>
+                                <div>
+                                  <p className="font-medium text-white">
+                                    {spell.name}
+                                  </p>
+                                  {spell.school && (
+                                    <p className="mt-1 text-sm text-zinc-500">
+                                      {spell.school}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
 
-                              {spell.school && (
-                                <p className="mt-1 text-sm text-zinc-500">
-                                  {spell.school}
-                                </p>
+                              {usageLabel && (
+                                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                                  {usageLabel}
+                                </span>
                               )}
                             </div>
-
-                            {usageLabel && (
-                              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-                                {usageLabel}
-                              </span>
-                            )}
                           </div>
-                        </div>
+                        </SpellTooltip>
                       );
                     })}
                   </div>
