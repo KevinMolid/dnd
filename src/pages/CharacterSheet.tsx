@@ -59,6 +59,44 @@ type CharacterDoc = CharacterSheetData & {
   money?: Money;
 };
 
+type TraitGroupKey =
+  | "species"
+  | "class"
+  | "subclass"
+  | "background"
+  | "feats"
+  | "other";
+
+type TraitGroup = {
+  key: TraitGroupKey;
+  title: string;
+  subtitle?: string;
+  traits: Trait[];
+};
+
+type CharacterSheetTab =
+  | "overview"
+  | "combat"
+  | "features"
+  | "inventory"
+  | "spells";
+
+const sheetTabs: CharacterSheetTab[] = [
+  "overview",
+  "combat",
+  "features",
+  "inventory",
+  "spells",
+];
+
+const sheetTabLabels: Record<CharacterSheetTab, string> = {
+  overview: "Overview",
+  combat: "Combat",
+  features: "Features",
+  inventory: "Inventory",
+  spells: "Spells",
+};
+
 const abilityLabels: Record<AbilityKey, string> = {
   str: "STR",
   dex: "DEX",
@@ -242,21 +280,6 @@ const SectionCard = ({
       {children}
     </section>
   );
-};
-
-type TraitGroupKey =
-  | "species"
-  | "class"
-  | "subclass"
-  | "background"
-  | "feats"
-  | "other";
-
-type TraitGroup = {
-  key: TraitGroupKey;
-  title: string;
-  subtitle?: string;
-  traits: Trait[];
 };
 
 const dedupeTraits = (traits: Trait[]) => {
@@ -491,6 +514,7 @@ const TraitGroupSection = ({
   return (
     <div className="rounded-2xl border border-white/10 bg-zinc-900/60">
       <button
+        type="button"
         onClick={onToggle}
         className="flex w-full items-center justify-between gap-4 px-4 py-4 text-left transition hover:bg-white/5"
       >
@@ -587,6 +611,7 @@ const CharacterSheet = () => {
   const { characterId } = useParams();
   const { user } = useAuth();
 
+  const [activeTab, setActiveTab] = useState<CharacterSheetTab>("overview");
   const [character, setCharacter] = useState<CharacterDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -624,7 +649,6 @@ const CharacterSheet = () => {
         }
 
         const data = snap.data() as CharacterDoc;
-
         setCharacter(data);
       } catch (err: any) {
         console.error(err);
@@ -1210,6 +1234,788 @@ const CharacterSheet = () => {
     );
   }
 
+  const renderOverviewTab = () => (
+    <div className="space-y-6">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="space-y-6 xl:col-span-2">
+          <SectionCard title="Progression">
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm text-zinc-400">
+                  <span>XP</span>
+                  <span>
+                    {derived.xp} / {derived.xpProgress.nextLevelXp ?? "MAX"}
+                  </span>
+                </div>
+
+                <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-800">
+                  <div
+                    className="h-full bg-white"
+                    style={{
+                      width: `${derived.xpProgress.progressPercent}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="mt-2 flex justify-between text-xs text-zinc-500">
+                  <span>Level {derived.xpProgress.level}</span>
+                  <span>
+                    {derived.xpProgress.nextLevelXp === null
+                      ? "Max level reached"
+                      : `${derived.xpProgress.progressXp}/${derived.xpProgress.neededXp} XP this level`}
+                  </span>
+                </div>
+              </div>
+
+              {character.pendingLevelUp && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
+                  Level up available! ({character.pendingLevelUp.fromLevel} →{" "}
+                  {character.pendingLevelUp.toLevel})
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Notes">
+            {character.notes ? (
+              <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
+                {character.notes}
+              </p>
+            ) : (
+              <p className="text-sm text-zinc-500">No notes yet.</p>
+            )}
+          </SectionCard>
+        </div>
+
+        <div className="space-y-6">
+          <SectionCard title="Character Info">
+            <dl className="space-y-4">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Species
+                </dt>
+                <dd className="mt-1 text-sm text-zinc-200">
+                  {derived.speciesName}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Class
+                </dt>
+                <dd className="mt-1 text-sm text-zinc-200">
+                  {derived.className}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Subclass
+                </dt>
+                <dd className="mt-1 text-sm text-zinc-200">
+                  {derived.subclassName ?? "None"}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Background
+                </dt>
+                <dd className="mt-1 text-sm text-zinc-200">
+                  {derived.backgroundName}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Origin Feat
+                </dt>
+                <dd className="mt-1 text-sm text-zinc-200">
+                  {derived.featName ?? "None"}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Alignment
+                </dt>
+                <dd className="mt-1 text-sm text-zinc-200">
+                  {character.alignment || "—"}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Campaign
+                </dt>
+                <dd className="mt-1 text-sm text-zinc-200">
+                  {character.campaignId || "Not assigned"}
+                </dd>
+              </div>
+            </dl>
+          </SectionCard>
+
+          <SectionCard title="Money">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
+              {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
+                <div
+                  key={currency}
+                  className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    {currency.toUpperCase()}
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {derived.money[currency] ?? 0}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Languages">
+            {derived.languages.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {derived.languages.map((language) => (
+                  <span
+                    key={language}
+                    className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                  >
+                    {formatLabel(language)}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">No languages recorded.</p>
+            )}
+          </SectionCard>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderCombatTab = () => (
+    <div className="grid gap-6 xl:grid-cols-3">
+      <div className="space-y-6 xl:col-span-2">
+        <SectionCard title="Ability Scores">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {(Object.keys(derived.finalAbilityScores) as AbilityKey[]).map(
+              (key) => {
+                const score = derived.finalAbilityScores[key];
+                const mod = getAbilityModifier(score);
+                const baseScore = character.abilityScores[key];
+                const bonus = score - baseScore;
+
+                return (
+                  <div
+                    key={key}
+                    className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                  >
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                      {abilityLabels[key]}
+                    </p>
+                    <div className="mt-3 flex items-end justify-between">
+                      <p className="text-3xl font-bold text-white">{score}</p>
+                      <p className="text-lg font-semibold text-zinc-300">
+                        {formatModifier(mod)}
+                      </p>
+                    </div>
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Base {baseScore}
+                      {bonus > 0 ? ` • +${bonus} background` : ""}
+                    </p>
+                  </div>
+                );
+              },
+            )}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Combat">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-sm font-semibold text-zinc-200">
+                Weapon Attack Bonuses
+              </p>
+              <div className="mt-3 space-y-2 text-sm text-zinc-300">
+                <div className="flex items-center justify-between">
+                  <span>Strength-based weapon</span>
+                  <span className="font-semibold">
+                    {formatModifier(
+                      derived.genericAttackBonuses.strengthWeapon,
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Finesse / ranged weapon</span>
+                  <span className="font-semibold">
+                    {formatModifier(
+                      derived.genericAttackBonuses.finesseOrRanged,
+                    )}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Unarmed strike</span>
+                  <span className="font-semibold">
+                    {formatModifier(derived.genericAttackBonuses.unarmed)}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-zinc-500">
+                These are generic bonuses for proficient attacks. Exact weapon
+                entries will be more precise once weapon data is added.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-sm font-semibold text-zinc-200">
+                Class Combat Features
+              </p>
+              <div className="mt-3 space-y-2 text-sm text-zinc-300">
+                {derived.rogueSneakAttack && (
+                  <div className="flex items-center justify-between">
+                    <span>Sneak Attack</span>
+                    <span className="font-semibold">
+                      {derived.rogueSneakAttack}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between">
+                  <span>Initiative</span>
+                  <span className="font-semibold">
+                    {formatModifier(derived.initiativeBonus)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Armor Class</span>
+                  <span className="font-semibold">{derived.armorClass}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Speed</span>
+                  <span className="font-semibold">{derived.speed} ft</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Skills">
+          <div className="grid gap-2">
+            {derived.skillRows.map((skill) => (
+              <div
+                key={skill.id}
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-white">{skill.name}</p>
+                    <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                      {abilityLabels[skill.ability]}
+                    </span>
+                    {skill.proficient && (
+                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                        Proficient
+                      </span>
+                    )}
+                    {skill.expertise && (
+                      <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
+                        Expertise
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <p className="ml-4 text-sm font-semibold text-zinc-200">
+                  {formatModifier(skill.total)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Saving Throws">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {derived.saveRows.map((save) => (
+              <div
+                key={save.id}
+                className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-white">{save.name}</p>
+                  {save.proficient && (
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                      Proficient
+                    </span>
+                  )}
+                </div>
+
+                <p className="ml-4 text-sm font-semibold text-zinc-200">
+                  {formatModifier(save.total)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      </div>
+
+      <div className="space-y-6">
+        <SectionCard title="Tools">
+          {derived.toolProficiencies.length > 0 ? (
+            <div className="grid gap-3">
+              {derived.toolProficiencies.map((tool) => {
+                const expertiseApplies = derived.expertise.includes(
+                  tool as SkillId | "thieves-tools",
+                );
+
+                return (
+                  <div
+                    key={tool}
+                    className="rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium text-white">
+                          {formatLabel(tool)}
+                        </p>
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                          Proficient
+                        </span>
+                        {expertiseApplies && (
+                          <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
+                            Expertise
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-zinc-300">
+                        +PB
+                        {expertiseApplies
+                          ? ` + doubled proficiency (${formatModifier(
+                              derived.proficiencyBonus * 2,
+                            )})`
+                          : ` (${formatModifier(derived.proficiencyBonus)})`}
+                      </p>
+                    </div>
+
+                    <p className="mt-2 text-xs text-zinc-500">
+                      Tool checks use a relevant ability chosen by the DM or
+                      situation, plus your proficiency bonus if proficient.
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-500">No tool proficiencies yet.</p>
+          )}
+        </SectionCard>
+
+        <SectionCard title="Combat Snapshot">
+          <div className="grid gap-3">
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                HP
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {derived.currentHp} / {derived.maxHp}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Armor Class
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {derived.armorClass}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Passive Perception
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {derived.passivePerception}
+              </p>
+            </div>
+          </div>
+        </SectionCard>
+      </div>
+    </div>
+  );
+
+  const renderFeaturesTab = () => (
+    <div className="space-y-6">
+      {derived.pendingSteps.length > 0 && (
+        <SectionCard title="Level Up">
+          <div className="space-y-3">
+            {derived.pendingSteps.map((step) => (
+              <div
+                key={step.id}
+                className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-medium text-white">{step.title}</p>
+                    <p className="text-xs text-zinc-500">Level {step.level}</p>
+                    {step.description && (
+                      <p className="mt-2 text-sm text-zinc-400">
+                        {step.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {step.type === "subclass-choice" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleApplyDecision(step.level, {
+                            subclassId: "assassin",
+                          })
+                        }
+                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                      >
+                        Choose
+                      </button>
+                    )}
+
+                    {step.type === "feat-choice" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleApplyDecision(step.level, {
+                            featId: "alert",
+                          })
+                        }
+                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                      >
+                        Choose
+                      </button>
+                    )}
+
+                    {step.type === "expertise-choice" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleApplyDecision(step.level, {
+                            expertise: ["stealth", "perception"],
+                          })
+                        }
+                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                      >
+                        Choose
+                      </button>
+                    )}
+
+                    {step.type === "language-choice" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleApplyDecision(step.level, {
+                            language: "elvish" as LanguageId,
+                          })
+                        }
+                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                      >
+                        Choose
+                      </button>
+                    )}
+
+                    {step.type === "weapon-mastery-choice" && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleApplyDecision(step.level, {
+                            weaponMastery: [
+                              "dagger",
+                              "shortsword",
+                            ] as WeaponMasteryChoiceId[],
+                          })
+                        }
+                        className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                      >
+                        Choose
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={handleCompleteLevelUp}
+              className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400"
+            >
+              Complete Level Up
+            </button>
+          </div>
+        </SectionCard>
+      )}
+
+      <SectionCard
+        title="Features & Traits"
+        right={
+          <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400">
+            {derived.traitGroups.reduce(
+              (total, group) => total + group.traits.length,
+              0,
+            )}{" "}
+            total
+          </div>
+        }
+      >
+        {derived.traitGroups.length > 0 ? (
+          <div className="space-y-3">
+            {derived.traitGroups.map((group) => (
+              <TraitGroupSection
+                key={group.key}
+                group={group}
+                isOpen={openTraitGroups[group.key]}
+                onToggle={() => toggleTraitGroup(group.key)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500">No traits found yet.</p>
+        )}
+      </SectionCard>
+    </div>
+  );
+
+  const renderInventoryTab = () => (
+    <div className="grid gap-6 xl:grid-cols-3">
+      <div className="space-y-6 xl:col-span-2">
+        <SectionCard title="Inventory">
+          {character.equipment?.length ? (
+            <div className="space-y-3">
+              {character.equipment.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                >
+                  <div>
+                    <p className="font-medium text-white">{item.name}</p>
+                    {item.equipped && (
+                      <p className="mt-1 text-xs text-zinc-500">Equipped</p>
+                    )}
+                  </div>
+                  <p className="text-sm text-zinc-300">x{item.quantity}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-500">No equipment added yet.</p>
+          )}
+        </SectionCard>
+      </div>
+
+      <div className="space-y-6">
+        <SectionCard title="Money">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
+            {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
+              <div
+                key={currency}
+                className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  {currency.toUpperCase()}
+                </p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {derived.money[currency] ?? 0}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      </div>
+    </div>
+  );
+
+  const renderSpellsTab = () => (
+    <SectionCard title="Spells">
+      {derived.activeSpellcasting ? (
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Spellcasting Ability
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {derived.spellcastingAbility
+                  ? abilityFullLabels[derived.spellcastingAbility]
+                  : "—"}
+              </p>
+              {derived.spellcastingAbilityMod !== null && (
+                <p className="mt-1 text-sm text-zinc-400">
+                  Mod {formatModifier(derived.spellcastingAbilityMod)}
+                </p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Spell Save DC
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {derived.spellSaveDc ?? "—"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Spell Attack Bonus
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {derived.spellAttackBonus !== null
+                  ? formatModifier(derived.spellAttackBonus)
+                  : "—"}
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                Spellcasting Source
+              </p>
+              <p className="mt-2 text-lg font-semibold text-white">
+                {derived.subclassName ?? derived.className}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+            <p className="text-sm font-semibold text-zinc-200">Spell Slots</p>
+
+            {Object.keys(derived.spellSlots).length > 0 ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {Object.entries(derived.spellSlots).map(
+                  ([slotLevel, count]) => (
+                    <div
+                      key={slotLevel}
+                      className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
+                    >
+                      <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                        Level {slotLevel}
+                      </p>
+                      <p className="mt-2 text-xl font-bold text-white">
+                        {count}
+                      </p>
+                      <p className="mt-1 text-xs text-zinc-400">
+                        slot{count === 1 ? "" : "s"}
+                      </p>
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-zinc-500">
+                No spell slots available yet.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+            <div className="flex flex-wrap gap-3 text-sm">
+              <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
+                Cantrips: {derived.selectedCantripCount}
+                {derived.cantripsKnown > 0 ? ` / ${derived.cantripsKnown}` : ""}
+              </span>
+
+              {derived.spellsPrepared > 0 && (
+                <span
+                  className={`rounded-full px-3 py-1 ${
+                    derived.missingSpellListCount > 0
+                      ? "border border-amber-500/20 bg-amber-500/10 text-amber-300"
+                      : "border border-white/10 bg-zinc-800 text-zinc-300"
+                  }`}
+                >
+                  Spell list: {derived.selectedLeveledSpellCount} /{" "}
+                  {derived.spellsPrepared}
+                </span>
+              )}
+
+              {derived.spellsKnown > 0 && (
+                <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
+                  Spells known: {derived.spellsKnown}
+                </span>
+              )}
+            </div>
+
+            {derived.missingSpellListCount > 0 && (
+              <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
+                This character is missing {derived.missingSpellListCount} spell
+                {derived.missingSpellListCount === 1 ? "" : "s"} on its spell
+                list.
+              </div>
+            )}
+          </div>
+
+          {derived.groupedSpells.length > 0 ? (
+            <div className="space-y-4">
+              {derived.groupedSpells.map((group) => (
+                <div
+                  key={group.level}
+                  className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-300">
+                      {group.title}
+                    </h3>
+
+                    <span className="rounded-full border border-white/10 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400">
+                      {group.spells.length} spell
+                      {group.spells.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {group.spells.map((spell) => {
+                      const usageLabel = formatSpellUsage(spell.usage);
+
+                      return (
+                        <div
+                          key={spell.spellId}
+                          className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                        >
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="font-medium text-white">
+                                {spell.name}
+                              </p>
+
+                              {spell.school && (
+                                <p className="mt-1 text-sm text-zinc-500">
+                                  {spell.school}
+                                </p>
+                              )}
+                            </div>
+
+                            {usageLabel && (
+                              <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                                {usageLabel}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-500">No spells known yet.</p>
+          )}
+        </div>
+      ) : (
+        <p className="text-sm text-zinc-500">
+          This character does not currently have spellcasting.
+        </p>
+      )}
+    </SectionCard>
+  );
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -1289,694 +2095,32 @@ const CharacterSheet = () => {
           />
         </div>
 
-        <div className="mb-6 flex flex-col gap-6">
-          <SectionCard title="Progression">
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm text-zinc-400">
-                  <span>XP</span>
-                  <span>
-                    {derived.xp} / {derived.xpProgress.nextLevelXp ?? "MAX"}
-                  </span>
-                </div>
+        <div className="mb-6 flex flex-wrap gap-2">
+          {sheetTabs.map((tab) => {
+            const isActive = tab === activeTab;
 
-                <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-800">
-                  <div
-                    className="h-full bg-white"
-                    style={{
-                      width: `${derived.xpProgress.progressPercent}%`,
-                    }}
-                  />
-                </div>
-
-                <div className="mt-2 flex justify-between text-xs text-zinc-500">
-                  <span>Level {derived.xpProgress.level}</span>
-                  <span>
-                    {derived.xpProgress.nextLevelXp === null
-                      ? "Max level reached"
-                      : `${derived.xpProgress.progressXp}/${derived.xpProgress.neededXp} XP this level`}
-                  </span>
-                </div>
-              </div>
-
-              {character.pendingLevelUp && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
-                  Level up available! ({character.pendingLevelUp.fromLevel} →{" "}
-                  {character.pendingLevelUp.toLevel})
-                </div>
-              )}
-            </div>
-          </SectionCard>
-
-          <SectionCard
-            title="Features & Traits"
-            right={
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-400">
-                {derived.traitGroups.reduce(
-                  (total, group) => total + group.traits.length,
-                  0,
-                )}{" "}
-                total
-              </div>
-            }
-          >
-            {derived.traitGroups.length > 0 ? (
-              <div className="space-y-3">
-                {derived.traitGroups.map((group) => (
-                  <TraitGroupSection
-                    key={group.key}
-                    group={group}
-                    isOpen={openTraitGroups[group.key]}
-                    onToggle={() => toggleTraitGroup(group.key)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-zinc-500">No traits found yet.</p>
-            )}
-          </SectionCard>
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  isActive
+                    ? "bg-white text-zinc-950"
+                    : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                }`}
+              >
+                {sheetTabLabels[tab]}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-3">
-          <div className="space-y-6 xl:col-span-2">
-            {derived.pendingSteps.length > 0 && (
-              <SectionCard title="Level Up">
-                <div className="space-y-3">
-                  {derived.pendingSteps.map((step) => (
-                    <div
-                      key={step.id}
-                      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="font-medium text-white">{step.title}</p>
-                          <p className="text-xs text-zinc-500">
-                            Level {step.level}
-                          </p>
-                          {step.description && (
-                            <p className="mt-2 text-sm text-zinc-400">
-                              {step.description}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          {step.type === "subclass-choice" && (
-                            <button
-                              onClick={() =>
-                                handleApplyDecision(step.level, {
-                                  subclassId: "assassin",
-                                })
-                              }
-                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
-                            >
-                              Choose
-                            </button>
-                          )}
-
-                          {step.type === "feat-choice" && (
-                            <button
-                              onClick={() =>
-                                handleApplyDecision(step.level, {
-                                  featId: "alert",
-                                })
-                              }
-                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
-                            >
-                              Choose
-                            </button>
-                          )}
-
-                          {step.type === "expertise-choice" && (
-                            <button
-                              onClick={() =>
-                                handleApplyDecision(step.level, {
-                                  expertise: ["stealth", "perception"],
-                                })
-                              }
-                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
-                            >
-                              Choose
-                            </button>
-                          )}
-
-                          {step.type === "language-choice" && (
-                            <button
-                              onClick={() =>
-                                handleApplyDecision(step.level, {
-                                  language: "elvish" as LanguageId,
-                                })
-                              }
-                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
-                            >
-                              Choose
-                            </button>
-                          )}
-
-                          {step.type === "weapon-mastery-choice" && (
-                            <button
-                              onClick={() =>
-                                handleApplyDecision(step.level, {
-                                  weaponMastery: [
-                                    "dagger",
-                                    "shortsword",
-                                  ] as WeaponMasteryChoiceId[],
-                                })
-                              }
-                              className="rounded-xl bg-white px-3 py-2 text-xs font-semibold text-black transition hover:bg-zinc-200"
-                            >
-                              Choose
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  <button
-                    onClick={handleCompleteLevelUp}
-                    className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400"
-                  >
-                    Complete Level Up
-                  </button>
-                </div>
-              </SectionCard>
-            )}
-
-            <SectionCard title="Ability Scores">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {(Object.keys(derived.finalAbilityScores) as AbilityKey[]).map(
-                  (key) => {
-                    const score = derived.finalAbilityScores[key];
-                    const mod = getAbilityModifier(score);
-                    const baseScore = character.abilityScores[key];
-                    const bonus = score - baseScore;
-
-                    return (
-                      <div
-                        key={key}
-                        className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                      >
-                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                          {abilityLabels[key]}
-                        </p>
-                        <div className="mt-3 flex items-end justify-between">
-                          <p className="text-3xl font-bold text-white">
-                            {score}
-                          </p>
-                          <p className="text-lg font-semibold text-zinc-300">
-                            {formatModifier(mod)}
-                          </p>
-                        </div>
-                        <p className="mt-1 text-xs text-zinc-500">
-                          Base {baseScore}
-                          {bonus > 0 ? ` • +${bonus} background` : ""}
-                        </p>
-                      </div>
-                    );
-                  },
-                )}
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Combat">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                  <p className="text-sm font-semibold text-zinc-200">
-                    Weapon Attack Bonuses
-                  </p>
-                  <div className="mt-3 space-y-2 text-sm text-zinc-300">
-                    <div className="flex items-center justify-between">
-                      <span>Strength-based weapon</span>
-                      <span className="font-semibold">
-                        {formatModifier(
-                          derived.genericAttackBonuses.strengthWeapon,
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Finesse / ranged weapon</span>
-                      <span className="font-semibold">
-                        {formatModifier(
-                          derived.genericAttackBonuses.finesseOrRanged,
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Unarmed strike</span>
-                      <span className="font-semibold">
-                        {formatModifier(derived.genericAttackBonuses.unarmed)}
-                      </span>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs text-zinc-500">
-                    These are generic bonuses for proficient attacks. Exact
-                    weapon entries will be more precise once weapon data is
-                    added.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                  <p className="text-sm font-semibold text-zinc-200">
-                    Class Combat Features
-                  </p>
-                  <div className="mt-3 space-y-2 text-sm text-zinc-300">
-                    {derived.rogueSneakAttack && (
-                      <div className="flex items-center justify-between">
-                        <span>Sneak Attack</span>
-                        <span className="font-semibold">
-                          {derived.rogueSneakAttack}
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span>Initiative</span>
-                      <span className="font-semibold">
-                        {formatModifier(derived.initiativeBonus)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span>Armor Class</span>
-                      <span className="font-semibold">
-                        {derived.armorClass}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Skills">
-              <div className="grid gap-2">
-                {derived.skillRows.map((skill) => (
-                  <div
-                    key={skill.id}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-medium text-white">{skill.name}</p>
-                        <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
-                          {abilityLabels[skill.ability]}
-                        </span>
-                        {skill.proficient && (
-                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-                            Proficient
-                          </span>
-                        )}
-                        {skill.expertise && (
-                          <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
-                            Expertise
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <p className="ml-4 text-sm font-semibold text-zinc-200">
-                      {formatModifier(skill.total)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Saving Throws">
-              <div className="grid gap-3 sm:grid-cols-2">
-                {derived.saveRows.map((save) => (
-                  <div
-                    key={save.id}
-                    className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-medium text-white">{save.name}</p>
-                      {save.proficient && (
-                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-                          Proficient
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="ml-4 text-sm font-semibold text-zinc-200">
-                      {formatModifier(save.total)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Tools">
-              {derived.toolProficiencies.length > 0 ? (
-                <div className="grid gap-3">
-                  {derived.toolProficiencies.map((tool) => {
-                    const expertiseApplies = derived.expertise.includes(
-                      tool as SkillId | "thieves-tools",
-                    );
-
-                    return (
-                      <div
-                        key={tool}
-                        className="rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium text-white">
-                              {formatLabel(tool)}
-                            </p>
-                            <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-                              Proficient
-                            </span>
-                            {expertiseApplies && (
-                              <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
-                                Expertise
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="text-sm text-zinc-300">
-                            +PB
-                            {expertiseApplies
-                              ? ` + doubled proficiency (${formatModifier(
-                                  derived.proficiencyBonus * 2,
-                                )})`
-                              : ` (${formatModifier(derived.proficiencyBonus)})`}
-                          </p>
-                        </div>
-
-                        <p className="mt-2 text-xs text-zinc-500">
-                          Tool checks use a relevant ability chosen by the DM or
-                          situation, plus your proficiency bonus if proficient.
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  No tool proficiencies yet.
-                </p>
-              )}
-            </SectionCard>
-
-            <SectionCard title="Inventory">
-              {character.equipment?.length ? (
-                <div className="space-y-3">
-                  {character.equipment.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                    >
-                      <div>
-                        <p className="font-medium text-white">{item.name}</p>
-                        {item.equipped && (
-                          <p className="mt-1 text-xs text-zinc-500">Equipped</p>
-                        )}
-                      </div>
-                      <p className="text-sm text-zinc-300">x{item.quantity}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-zinc-500">No equipment added yet.</p>
-              )}
-            </SectionCard>
-
-            <SectionCard title="Spells">
-              {derived.activeSpellcasting ? (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                        Spellcasting Ability
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-white">
-                        {derived.spellcastingAbility
-                          ? abilityFullLabels[derived.spellcastingAbility]
-                          : "—"}
-                      </p>
-                      {derived.spellcastingAbilityMod !== null && (
-                        <p className="mt-1 text-sm text-zinc-400">
-                          Mod {formatModifier(derived.spellcastingAbilityMod)}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                        Spell Save DC
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-white">
-                        {derived.spellSaveDc ?? "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                        Spell Attack Bonus
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-white">
-                        {derived.spellAttackBonus !== null
-                          ? formatModifier(derived.spellAttackBonus)
-                          : "—"}
-                      </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                        Spellcasting Source
-                      </p>
-                      <p className="mt-2 text-lg font-semibold text-white">
-                        {derived.subclassName ?? derived.className}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                    <p className="text-sm font-semibold text-zinc-200">
-                      Spell Slots
-                    </p>
-
-                    {Object.keys(derived.spellSlots).length > 0 ? (
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        {Object.entries(derived.spellSlots).map(
-                          ([slotLevel, count]) => (
-                            <div
-                              key={slotLevel}
-                              className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
-                            >
-                              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
-                                Level {slotLevel}
-                              </p>
-                              <p className="mt-2 text-xl font-bold text-white">
-                                {count}
-                              </p>
-                              <p className="mt-1 text-xs text-zinc-400">
-                                slot{count === 1 ? "" : "s"}
-                              </p>
-                            </div>
-                          ),
-                        )}
-                      </div>
-                    ) : (
-                      <p className="mt-3 text-sm text-zinc-500">
-                        No spell slots available yet.
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                    <div className="flex flex-wrap gap-3 text-sm">
-                      <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
-                        Cantrips: {derived.selectedCantripCount}
-                        {derived.cantripsKnown > 0
-                          ? ` / ${derived.cantripsKnown}`
-                          : ""}
-                      </span>
-
-                      {derived.spellsPrepared > 0 && (
-                        <span
-                          className={`rounded-full px-3 py-1 ${
-                            derived.missingSpellListCount > 0
-                              ? "border border-amber-500/20 bg-amber-500/10 text-amber-300"
-                              : "border border-white/10 bg-zinc-800 text-zinc-300"
-                          }`}
-                        >
-                          Spell list: {derived.selectedLeveledSpellCount} /{" "}
-                          {derived.spellsPrepared}
-                        </span>
-                      )}
-
-                      {derived.spellsKnown > 0 && (
-                        <span className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-zinc-300">
-                          Spells known: {derived.spellsKnown}
-                        </span>
-                      )}
-                    </div>
-
-                    {derived.missingSpellListCount > 0 && (
-                      <div className="mt-4 rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
-                        This character is missing{" "}
-                        {derived.missingSpellListCount} spell
-                        {derived.missingSpellListCount === 1 ? "" : "s"} on its
-                        spell list.
-                      </div>
-                    )}
-                  </div>
-
-                  {derived.groupedSpells.length > 0 ? (
-                    <div className="space-y-4">
-                      {derived.groupedSpells.map((group) => (
-                        <div
-                          key={group.level}
-                          className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4"
-                        >
-                          <div className="mb-3 flex items-center justify-between gap-3">
-                            <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-300">
-                              {group.title}
-                            </h3>
-
-                            <span className="rounded-full border border-white/10 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400">
-                              {group.spells.length} spell
-                              {group.spells.length === 1 ? "" : "s"}
-                            </span>
-                          </div>
-
-                          <div className="space-y-3">
-                            {group.spells.map((spell) => {
-                              const usageLabel = formatSpellUsage(spell.usage);
-
-                              return (
-                                <div
-                                  key={spell.spellId}
-                                  className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                                >
-                                  <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                      <p className="font-medium text-white">
-                                        {spell.name}
-                                      </p>
-
-                                      {spell.school && (
-                                        <p className="mt-1 text-sm text-zinc-500">
-                                          {spell.school}
-                                        </p>
-                                      )}
-                                    </div>
-
-                                    {usageLabel && (
-                                      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-                                        {usageLabel}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-zinc-500">
-                      No spells known yet.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-zinc-500">
-                  This character does not currently have spellcasting.
-                </p>
-              )}
-            </SectionCard>
-          </div>
-
-          <div className="space-y-6">
-            <SectionCard title="Character Info">
-              <dl className="space-y-4">
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Species
-                  </dt>
-                  <dd className="mt-1 text-sm text-zinc-200">
-                    {derived.speciesName}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Class
-                  </dt>
-                  <dd className="mt-1 text-sm text-zinc-200">
-                    {derived.className}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Background
-                  </dt>
-                  <dd className="mt-1 text-sm text-zinc-200">
-                    {derived.backgroundName}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Origin Feat
-                  </dt>
-                  <dd className="mt-1 text-sm text-zinc-200">
-                    {derived.featName ?? "None"}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Alignment
-                  </dt>
-                  <dd className="mt-1 text-sm text-zinc-200">
-                    {character.alignment || "—"}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    Campaign
-                  </dt>
-                  <dd className="mt-1 text-sm text-zinc-200">
-                    {character.campaignId || "Not assigned"}
-                  </dd>
-                </div>
-              </dl>
-            </SectionCard>
-
-            <SectionCard title="Money">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
-                {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
-                  <div
-                    key={currency}
-                    className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                      {currency.toUpperCase()}
-                    </p>
-                    <p className="mt-2 text-lg font-semibold text-white">
-                      {derived.money[currency] ?? 0}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Notes">
-              {character.notes ? (
-                <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
-                  {character.notes}
-                </p>
-              ) : (
-                <p className="text-sm text-zinc-500">No notes yet.</p>
-              )}
-            </SectionCard>
-          </div>
-        </div>
+        {activeTab === "overview" && renderOverviewTab()}
+        {activeTab === "combat" && renderCombatTab()}
+        {activeTab === "features" && renderFeaturesTab()}
+        {activeTab === "inventory" && renderInventoryTab()}
+        {activeTab === "spells" && renderSpellsTab()}
       </div>
     </div>
   );
