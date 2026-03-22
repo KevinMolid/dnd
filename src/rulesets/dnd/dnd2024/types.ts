@@ -471,12 +471,43 @@ export type Feat = RulesOption & {
 };
 
 export type Spell = {
-  id: SpellId;
+  id: string;
   name: string;
-  level: SpellLevel;
+  level: number;
   school: string;
-  ritual?: boolean;
   concentration?: boolean;
+  ritual?: boolean;
+
+  castingTime?: string;
+  range?: string;
+  components?: string;
+  duration?: string;
+  durationRule?: string;
+  classes?: string[];
+
+  description?: string;
+  higherLevel?: string;
+  cantripUpgrade?: string;
+
+  details?: string;
+  effects?: string;
+  control?: string;
+  endConditions?: string;
+  limitations?: string;
+  benefits?: string;
+  detection?: string;
+  special?: string;
+  triggers?: string;
+  interaction?: string;
+  conditions?: string;
+  behavior?: string;
+
+  options?: {
+    name: string;
+    text: string;
+  }[];
+
+  statBlock?: any;
 };
 
 export type SpellId = string;
