@@ -507,7 +507,24 @@ export const spells: Spell[] = [
   description:
     "Until the spell ends, your weapon attacks deal an extra 1d4 Radiant damage on a hit.",
 },
-  { id: "divine-smite", name: "Divine Smite", level: 1, school: "Evocation" },
+{
+  id: "divine-smite",
+  name: "Divine Smite",
+  level: 1,
+  school: "Evocation",
+  castingTime:
+    "Bonus Action, which you take immediately after hitting a target with a Melee weapon or an Unarmed Strike",
+  range: "Self",
+  components: "V",
+  duration: "Instantaneous",
+  classes: ["Paladin"],
+  description:
+    "The target takes an extra 2d8 Radiant damage from the attack.",
+  effects:
+    "The damage increases by 1d8 if the target is a Fiend or an Undead.",
+  higherLevel:
+    "When cast with a higher-level spell slot, the damage increases by 1d8 for each slot level above 1.",
+},
   { id: "divine-word", name: "Divine Word", level: 7, school: "Evocation" },
   { id: "dominate-beast", name: "Dominate Beast", level: 4, school: "Enchantment", concentration: true },
   { id: "dragons-breath", name: "Dragon's Breath", level: 2, school: "Transmutation", concentration: true },

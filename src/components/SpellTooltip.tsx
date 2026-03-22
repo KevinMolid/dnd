@@ -174,7 +174,7 @@ export default function SpellTooltip({
     ? createPortal(
         <div
           ref={tooltipRef}
-          className={`fixed z-[100] w-[360px] max-w-[calc(100vw-24px)] rounded-2xl border border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur transition-opacity ${
+          className={`fixed z-[100] w-[360px] max-w-[calc(100vw-24px)] rounded-2xl border border-white/10 bg-zinc-900/90 p-4 shadow-2xl backdrop-blur transition-opacity ${
             position.ready ? "opacity-100" : "opacity-0"
           }`}
           style={{
@@ -281,14 +281,21 @@ export default function SpellTooltip({
       onFocus={showTooltip}
       onBlur={hideTooltip}
     >
-      <button
-        type="button"
+      <div
         onClick={togglePinned}
         className="inline-flex items-center text-left"
         aria-expanded={open}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            togglePinned();
+          }
+        }}
       >
         {children}
-      </button>
+      </div>
 
       {tooltipContent}
     </div>

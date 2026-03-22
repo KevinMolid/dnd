@@ -19,6 +19,47 @@ import type {
   WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
 
+import SpellTooltip from "../components/SpellTooltip";
+
+const toTooltipSpell = (
+  spell:
+    | ReturnType<typeof getSpellById>
+    | {
+        id?: string;
+        name: string;
+        level?: number;
+        school?: string;
+        castingTime?: string;
+        range?: string;
+        components?: string;
+        duration?: string;
+        classes?: string[];
+        description?: string;
+        effects?: string;
+        details?: string;
+        higherLevel?: string;
+        concentration?: boolean;
+        ritual?: boolean;
+        options?: { name: string; text: string }[];
+      }
+    | undefined,
+  fallback: {
+    id: string;
+    name: string;
+    level?: number;
+    school?: string;
+  },
+) => {
+  return (
+    spell ?? {
+      id: fallback.id,
+      name: fallback.name,
+      level: fallback.level,
+      school: fallback.school,
+    }
+  );
+};
+
 type Props = {
   character: any;
   onClose: () => void;
@@ -112,6 +153,48 @@ const choiceButtonClass = (selected: boolean) =>
   ].join(" ");
 
 const sectionCardClass = "rounded-xl border border-white/10 bg-white/5 p-4";
+
+type TooltipSpellData =
+  | NonNullable<ReturnType<typeof getSpellById>>
+  | {
+      id?: string;
+      name: string;
+      level?: number;
+      school?: string;
+      castingTime?: string;
+      range?: string;
+      components?: string;
+      duration?: string;
+      classes?: string[];
+      description?: string;
+      effects?: string;
+      details?: string;
+      higherLevel?: string;
+      concentration?: boolean;
+      ritual?: boolean;
+      options?: { name: string; text: string }[];
+    };
+
+const SpellChoiceContent = ({
+  spell,
+  subtitle,
+}: {
+  spell: TooltipSpellData;
+  subtitle?: string;
+}) => {
+  return (
+    <SpellTooltip spell={spell}>
+      <div className="block w-full text-left">
+        <span className="block font-medium underline decoration-dotted underline-offset-4">
+          {spell.name}
+        </span>
+        {subtitle && (
+          <span className="mt-1 block text-xs text-zinc-400">{subtitle}</span>
+        )}
+      </div>
+    </SpellTooltip>
+  );
+};
 
 const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
   const [loading, setLoading] = useState(false);
@@ -1038,12 +1121,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                 ),
                               )}
                             >
-                              <span className="block font-medium">
-                                {spell.name}
-                              </span>
-                              <span className="mt-1 block text-xs text-zinc-400">
-                                {spell.school}
-                              </span>
+                              <SpellChoiceContent
+                                spell={spell}
+                                subtitle={spell.school}
+                              />
                             </button>
                           ))}
                         </div>
@@ -1102,12 +1183,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                 ),
                               )}
                             >
-                              <span className="block font-medium">
-                                {spell.name}
-                              </span>
-                              <span className="mt-1 block text-xs text-zinc-400">
-                                Level {spell.level} · {spell.school}
-                              </span>
+                              <SpellChoiceContent
+                                spell={spell}
+                                subtitle={`Level ${spell.level} · ${spell.school}`}
+                              />
                             </button>
                           ))}
                         </div>
@@ -1137,12 +1216,15 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                 }
                                 className={choiceButtonClass(selected)}
                               >
-                                <span className="block font-medium">
-                                  {spellData?.name ?? spellId}
-                                </span>
-                                <span className="mt-1 block text-xs text-zinc-400">
-                                  Known cantrip
-                                </span>
+                                <SpellChoiceContent
+                                  spell={toTooltipSpell(spellData, {
+                                    id: spellId,
+                                    name: spellData?.name ?? spellId,
+                                    level: 0,
+                                    school: spellData?.school,
+                                  })}
+                                  subtitle="Known cantrip"
+                                />
                               </button>
                             );
                           })}
@@ -1168,12 +1250,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                 }
                                 className={choiceButtonClass(selected)}
                               >
-                                <span className="block font-medium">
-                                  {spell.name}
-                                </span>
-                                <span className="mt-1 block text-xs text-zinc-400">
-                                  {spell.school}
-                                </span>
+                                <SpellChoiceContent
+                                  spell={spell}
+                                  subtitle={spell.school}
+                                />
                               </button>
                             );
                           })}
@@ -1206,12 +1286,16 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                 }
                                 className={choiceButtonClass(selected)}
                               >
-                                <span className="block font-medium">
-                                  {spellData?.name ?? knownSpell.spellId}
-                                </span>
-                                <span className="mt-1 block text-xs text-zinc-400">
-                                  Level {spellData?.level ?? knownSpell.level}
-                                </span>
+                                <SpellChoiceContent
+                                  spell={
+                                    spellData ?? {
+                                      id: knownSpell.spellId,
+                                      name: knownSpell.spellId,
+                                      level: knownSpell.level,
+                                    }
+                                  }
+                                  subtitle={`Level ${spellData?.level ?? knownSpell.level}`}
+                                />
                               </button>
                             );
                           })}
@@ -1238,12 +1322,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                 }
                                 className={choiceButtonClass(selected)}
                               >
-                                <span className="block font-medium">
-                                  {spell.name}
-                                </span>
-                                <span className="mt-1 block text-xs text-zinc-400">
-                                  Level {spell.level} · {spell.school}
-                                </span>
+                                <SpellChoiceContent
+                                  spell={spell}
+                                  subtitle={`Level ${spell.level} · ${spell.school}`}
+                                />
                               </button>
                             );
                           })}
