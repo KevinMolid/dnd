@@ -8,14 +8,15 @@ import {
 } from "../rulesets/dnd/dnd2024/data/spells/helpers";
 import type {
   AbilityKey,
+  FightingStyleId,
   LanguageId,
   LevelNumber,
   LevelUpDecision,
   SkillId,
   SpellId,
+  SpellLevel,
   SpellSelection,
   WeaponMasteryChoiceId,
-  SpellLevel,
 } from "../rulesets/dnd/dnd2024/types";
 
 type Props = {
@@ -81,6 +82,21 @@ const FALLBACK_FEATS = [
   { id: "tough", name: "Tough" },
 ];
 
+const FALLBACK_FIGHTING_STYLES: Array<{
+  id: FightingStyleId;
+  name: string;
+}> = [
+  { id: "archery", name: "Archery" },
+  { id: "blind-fighting", name: "Blind Fighting" },
+  { id: "defense", name: "Defense" },
+  { id: "dueling", name: "Dueling" },
+  { id: "great-weapon-fighting", name: "Great Weapon Fighting" },
+  { id: "interception", name: "Interception" },
+  { id: "protection", name: "Protection" },
+  { id: "two-weapon-fighting", name: "Two-Weapon Fighting" },
+  { id: "blessed-warrior", name: "Blessed Warrior" },
+];
+
 const formatLabel = (value: string) =>
   value
     .split("-")
@@ -105,13 +121,12 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
   const classDef = classesById[character.classId];
 
-  const subclassOptions = useMemo(() => {
-    return classDef?.subclasses ?? [];
-  }, [classDef]);
+  const subclassOptions = useMemo(() => classDef?.subclasses ?? [], [classDef]);
 
-  const weaponMasteryOptions = useMemo(() => {
-    return classDef?.weaponMasteryOptions ?? [];
-  }, [classDef]);
+  const weaponMasteryOptions = useMemo(
+    () => classDef?.weaponMasteryOptions ?? [],
+    [classDef],
+  );
 
   const selectedSubclassId =
     decisionsByLevel[3]?.subclassId ??
@@ -119,15 +134,17 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     character.choices?.subclassId ??
     character.subclassId;
 
-  const selectedSubclass = useMemo(() => {
-    return selectedSubclassId ? subclassesById[selectedSubclassId] : undefined;
-  }, [selectedSubclassId]);
+  const selectedSubclass = useMemo(
+    () => (selectedSubclassId ? subclassesById[selectedSubclassId] : undefined),
+    [selectedSubclassId],
+  );
 
   const pendingSteps = useMemo(
     () => getPendingLevelUpSteps(character as any, selectedSubclass),
     [character, selectedSubclass],
   );
 
+  const activeClassSpellcasting = classDef?.spellcasting;
   const activeSubclassSpellcasting = selectedSubclass?.spellcasting;
 
   const getEffectiveDecisionForLevel = (level: number): LevelUpDecision => {
@@ -139,7 +156,6 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       ...local,
     };
   };
-
   const updateDecision = (level: number, patch: Partial<LevelUpDecision>) => {
     setDecisionsByLevel((prev) => ({
       ...prev,
@@ -266,17 +282,59 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     });
   };
 
-  const getAvailableCantripsForStep = (stepLevel: LevelNumber) => {
-    if (!activeSubclassSpellcasting) return [];
-    void stepLevel;
-    return getAvailableCantripsForRules(activeSubclassSpellcasting);
+  const isLikelyFightingStyleStep = (step: any) => {
+    const title = String(step.title ?? "").toLowerCase();
+    const description = String(step.description ?? "").toLowerCase();
+    const id = String(step.id ?? "").toLowerCase();
+
+    return (
+      step.type === "fighting-style-choice" ||
+      title.includes("fighting style") ||
+      description.includes("fighting style") ||
+      id.includes("fighting-style")
+    );
+  };
+
+  const getSpellcastingRulesForStep = (step: any) => {
+    const source = step.choice?.source;
+    const title = String(step.title ?? "").toLowerCase();
+    const description = String(step.description ?? "").toLowerCase();
+    const id = String(step.id ?? "").toLowerCase();
+
+    const explicitlySubclass =
+      source === "subclass-spellcasting" ||
+      source === "subclass" ||
+      title.includes("subclass") ||
+      description.includes("subclass") ||
+      id.includes("subclass");
+
+    if (explicitlySubclass && activeSubclassSpellcasting) {
+      return activeSubclassSpellcasting;
+    }
+
+    if (activeClassSpellcasting) {
+      return activeClassSpellcasting;
+    }
+
+    if (activeSubclassSpellcasting) {
+      return activeSubclassSpellcasting;
+    }
+
+    return undefined;
+  };
+
+  const getAvailableCantripsForStep = (step: any) => {
+    const rules = getSpellcastingRulesForStep(step);
+    if (!rules) return [];
+    return getAvailableCantripsForRules(rules);
   };
 
   const getAvailableLeveledSpellsForStep = (step: any) => {
-    if (!activeSubclassSpellcasting) return [];
+    const rules = getSpellcastingRulesForStep(step);
+    if (!rules) return [];
 
     let spells = getAvailableLeveledSpellsForRules(
-      activeSubclassSpellcasting,
+      rules,
       step.level as LevelNumber,
     );
 
@@ -300,6 +358,38 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
   const getKnownSpellsBeforeLevel = (level: number) => {
     const cantripIds = new Set<SpellId>();
     const spellSelections: SpellSelection[] = [];
+
+    if (Array.isArray(character.choices?.classCantripChoices)) {
+      for (const spellId of character.choices
+        .classCantripChoices as SpellId[]) {
+        cantripIds.add(spellId);
+      }
+    }
+
+    if (Array.isArray(character.choices?.classSpellChoices)) {
+      for (const spell of character.choices
+        .classSpellChoices as SpellSelection[]) {
+        if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
+          spellSelections.push(spell);
+        }
+      }
+    }
+
+    if (Array.isArray(character.choices?.subclassCantripChoices)) {
+      for (const spellId of character.choices
+        .subclassCantripChoices as SpellId[]) {
+        cantripIds.add(spellId);
+      }
+    }
+
+    if (Array.isArray(character.choices?.subclassSpellChoices)) {
+      for (const spell of character.choices
+        .subclassSpellChoices as SpellSelection[]) {
+        if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
+          spellSelections.push(spell);
+        }
+      }
+    }
 
     const savedDecisions = character.choices?.levelUpDecisions ?? {};
     const allLevels = Object.keys(savedDecisions)
@@ -327,9 +417,12 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
       if (Array.isArray(decision.cantripReplacements)) {
         for (const replacement of decision.cantripReplacements as CantripReplacement[]) {
-          if (replacement.removeSpellId)
+          if (replacement.removeSpellId) {
             cantripIds.delete(replacement.removeSpellId);
-          if (replacement.addSpellId) cantripIds.add(replacement.addSpellId);
+          }
+          if (replacement.addSpellId) {
+            cantripIds.add(replacement.addSpellId);
+          }
         }
       }
 
@@ -387,6 +480,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
     if (step.type === "subclass-choice") {
       return !!decision?.subclassId;
+    }
+
+    if (step.type === "fighting-style-choice") {
+      return !!decision?.fightingStyleId;
     }
 
     if (step.type === "feat-choice") {
@@ -506,9 +603,7 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
           ) : (
             pendingSteps.map((step) => {
               const decision = getEffectiveDecisionForLevel(step.level);
-              const stepLevel = step.level as LevelNumber;
-              const availableStepCantrips =
-                getAvailableCantripsForStep(stepLevel);
+              const availableStepCantrips = getAvailableCantripsForStep(step);
               const availableStepLeveledSpells =
                 step.type === "spell-choice" ||
                 step.type === "spell-replacement"
@@ -634,111 +729,99 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                     </div>
                   )}
 
-                  {step.type === "feat-choice" && (
-                    <div className="space-y-4">
-                      <div>
-                        <p className="mb-2 text-sm font-medium text-zinc-200">
-                          Choose a feat
-                        </p>
-                        <div className="grid gap-2 sm:grid-cols-2">
-                          {FALLBACK_FEATS.map((feat) => (
+                  {step.type === "fighting-style-choice" && (
+                    <div>
+                      <p className="mb-2 text-sm text-zinc-400">
+                        Choose one Fighting Style.
+                      </p>
+
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {(
+                          (step.choice?.options as FightingStyleId[]) ??
+                          FALLBACK_FIGHTING_STYLES.map((style) => style.id)
+                        ).map((styleId) => {
+                          const styleName =
+                            FALLBACK_FIGHTING_STYLES.find(
+                              (style) => style.id === styleId,
+                            )?.name ?? formatLabel(styleId);
+
+                          return (
                             <button
-                              key={feat.id}
+                              key={styleId}
                               onClick={() =>
                                 updateDecision(step.level, {
-                                  featId: feat.id,
+                                  fightingStyleId: styleId,
+                                  featId: undefined,
                                   asi: undefined,
                                 })
                               }
                               className={choiceButtonClass(
-                                decision.featId === feat.id,
+                                decision.fightingStyleId === styleId,
                               )}
                             >
-                              {feat.name}
+                              {styleName}
                             </button>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
+                    </div>
+                  )}
 
-                      <div className="border-t border-white/10 pt-4">
-                        <p className="mb-2 text-sm font-medium text-zinc-200">
-                          Or choose an Ability Score Improvement
-                        </p>
-
-                        <div className="grid gap-4 lg:grid-cols-2">
-                          <div className={sectionCardClass}>
-                            <p className="mb-3 text-sm font-medium text-zinc-200">
-                              Option A: +2 to one ability
-                            </p>
-
-                            <select
-                              value={decision.asi?.plus2 ?? ""}
-                              onChange={(e) =>
-                                updateDecision(step.level, {
-                                  featId: undefined,
-                                  asi: e.target.value
-                                    ? {
-                                        plus2: e.target.value as AbilityKey,
-                                      }
-                                    : undefined,
-                                })
-                              }
-                              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none"
-                            >
-                              <option value="">Select ability</option>
-                              {ALL_ABILITIES.map((ability) => (
-                                <option key={ability} value={ability}>
-                                  {ability.toUpperCase()}
-                                </option>
-                              ))}
-                            </select>
+                  {step.type === "feat-choice" &&
+                    !isLikelyFightingStyleStep(step) && (
+                      <div className="space-y-4">
+                        <div>
+                          <p className="mb-2 text-sm font-medium text-zinc-200">
+                            Choose a feat
+                          </p>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {FALLBACK_FEATS.map((feat) => (
+                              <button
+                                key={feat.id}
+                                onClick={() =>
+                                  updateDecision(step.level, {
+                                    featId: feat.id,
+                                    fightingStyleId: undefined,
+                                    asi: undefined,
+                                  })
+                                }
+                                className={choiceButtonClass(
+                                  decision.featId === feat.id,
+                                )}
+                              >
+                                {feat.name}
+                              </button>
+                            ))}
                           </div>
+                        </div>
 
-                          <div className={sectionCardClass}>
-                            <p className="mb-3 text-sm font-medium text-zinc-200">
-                              Option B: +1 to two abilities
-                            </p>
+                        <div className="border-t border-white/10 pt-4">
+                          <p className="mb-2 text-sm font-medium text-zinc-200">
+                            Or choose an Ability Score Improvement
+                          </p>
 
-                            <div className="grid gap-3">
+                          <div className="grid gap-4 lg:grid-cols-2">
+                            <div className={sectionCardClass}>
+                              <p className="mb-3 text-sm font-medium text-zinc-200">
+                                Option A: +2 to one ability
+                              </p>
+
                               <select
-                                value={decision.asi?.plus1a ?? ""}
+                                value={decision.asi?.plus2 ?? ""}
                                 onChange={(e) =>
                                   updateDecision(step.level, {
                                     featId: undefined,
-                                    asi: {
-                                      plus1a: (e.target.value || undefined) as
-                                        | AbilityKey
-                                        | undefined,
-                                      plus1b: decision.asi?.plus1b ?? undefined,
-                                    },
+                                    fightingStyleId: undefined,
+                                    asi: e.target.value
+                                      ? {
+                                          plus2: e.target.value as AbilityKey,
+                                        }
+                                      : undefined,
                                   })
                                 }
                                 className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none"
                               >
-                                <option value="">First ability</option>
-                                {ALL_ABILITIES.map((ability) => (
-                                  <option key={ability} value={ability}>
-                                    {ability.toUpperCase()}
-                                  </option>
-                                ))}
-                              </select>
-
-                              <select
-                                value={decision.asi?.plus1b ?? ""}
-                                onChange={(e) =>
-                                  updateDecision(step.level, {
-                                    featId: undefined,
-                                    asi: {
-                                      plus1a: decision.asi?.plus1a ?? undefined,
-                                      plus1b: (e.target.value || undefined) as
-                                        | AbilityKey
-                                        | undefined,
-                                    },
-                                  })
-                                }
-                                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none"
-                              >
-                                <option value="">Second ability</option>
+                                <option value="">Select ability</option>
                                 {ALL_ABILITIES.map((ability) => (
                                   <option key={ability} value={ability}>
                                     {ability.toUpperCase()}
@@ -746,20 +829,75 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                 ))}
                               </select>
                             </div>
-                          </div>
-                        </div>
 
-                        {decision.asi?.plus1a &&
-                          decision.asi?.plus1b &&
-                          decision.asi.plus1a === decision.asi.plus1b && (
-                            <p className="mt-3 text-xs text-amber-300">
-                              Choose two different abilities for the +1 / +1
-                              option.
-                            </p>
-                          )}
+                            <div className={sectionCardClass}>
+                              <p className="mb-3 text-sm font-medium text-zinc-200">
+                                Option B: +1 to two abilities
+                              </p>
+
+                              <div className="grid gap-3">
+                                <select
+                                  value={decision.asi?.plus1a ?? ""}
+                                  onChange={(e) =>
+                                    updateDecision(step.level, {
+                                      featId: undefined,
+                                      fightingStyleId: undefined,
+                                      asi: {
+                                        plus1a: (e.target.value ||
+                                          undefined) as AbilityKey | undefined,
+                                        plus1b:
+                                          decision.asi?.plus1b ?? undefined,
+                                      },
+                                    })
+                                  }
+                                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none"
+                                >
+                                  <option value="">First ability</option>
+                                  {ALL_ABILITIES.map((ability) => (
+                                    <option key={ability} value={ability}>
+                                      {ability.toUpperCase()}
+                                    </option>
+                                  ))}
+                                </select>
+
+                                <select
+                                  value={decision.asi?.plus1b ?? ""}
+                                  onChange={(e) =>
+                                    updateDecision(step.level, {
+                                      featId: undefined,
+                                      fightingStyleId: undefined,
+                                      asi: {
+                                        plus1a:
+                                          decision.asi?.plus1a ?? undefined,
+                                        plus1b: (e.target.value ||
+                                          undefined) as AbilityKey | undefined,
+                                      },
+                                    })
+                                  }
+                                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none"
+                                >
+                                  <option value="">Second ability</option>
+                                  {ALL_ABILITIES.map((ability) => (
+                                    <option key={ability} value={ability}>
+                                      {ability.toUpperCase()}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+
+                          {decision.asi?.plus1a &&
+                            decision.asi?.plus1b &&
+                            decision.asi.plus1a === decision.asi.plus1b && (
+                              <p className="mt-3 text-xs text-amber-300">
+                                Choose two different abilities for the +1 / +1
+                                option.
+                              </p>
+                            )}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {step.type === "expertise-choice" && (
                     <div>
@@ -878,9 +1016,9 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                         </div>
                       )}
 
-                      {!activeSubclassSpellcasting ? (
+                      {!getSpellcastingRulesForStep(step) ? (
                         <p className="text-sm text-zinc-500">
-                          Select a spellcasting subclass first.
+                          No spellcasting rules found for this choice.
                         </p>
                       ) : (
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -939,9 +1077,9 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                         </div>
                       )}
 
-                      {!activeSubclassSpellcasting ? (
+                      {!getSpellcastingRulesForStep(step) ? (
                         <p className="text-sm text-zinc-500">
-                          Select a spellcasting subclass first.
+                          No spellcasting rules found for this choice.
                         </p>
                       ) : (
                         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

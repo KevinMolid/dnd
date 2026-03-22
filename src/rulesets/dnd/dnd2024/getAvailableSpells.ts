@@ -1,5 +1,5 @@
 import { getBackgroundById, getClassById } from "./helpers";
-import { allSpells } from "./data/spells/allSpells";
+import { getSpellsForList } from "./data/spells/helpers";
 import type {
   CharacterSheetData,
   Spell,
@@ -25,15 +25,9 @@ export const getSpellsForSpellList = (
     excludeSpellIds = [],
   } = options;
 
-  return allSpells.filter((spell) => {
-    if (!spell.classes.includes(spellListId)) return false;
+  return getSpellsForList(spellListId).filter((spell) => {
     if (!includeCantrips && spell.level === 0) return false;
-    if (
-      typeof maxLevel === "number" &&
-      spell.level > maxLevel
-    ) {
-      return false;
-    }
+    if (typeof maxLevel === "number" && spell.level > maxLevel) return false;
     if (excludeSpellIds.includes(spell.id)) return false;
 
     return true;
@@ -86,7 +80,7 @@ export const getAvailableSpells = (
     ? [spellListId]
     : getCharacterSpellLists(character);
 
-  const seen = new Set<string>();
+  const seen = new Set<SpellId>();
   const result: Spell[] = [];
 
   for (const listId of spellLists) {

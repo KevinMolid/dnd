@@ -475,7 +475,6 @@ export type Spell = {
   name: string;
   level: SpellLevel;
   school: string;
-  classes: SpellListId[];
   ritual?: boolean;
   concentration?: boolean;
 };

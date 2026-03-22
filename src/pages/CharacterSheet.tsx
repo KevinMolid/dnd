@@ -548,16 +548,57 @@ const TraitGroupSection = ({
   );
 };
 
-const collectSpellSelectionsFromLevelUp = (
-  levelUpDecisions: Record<number, any> | undefined,
+const collectSpellSelections = (
+  character: CharacterSheetData,
   maxLevel: number,
 ) => {
   const cantripIds: SpellId[] = [];
   const spellSelections: Array<{ spellId: SpellId; level: number }> = [];
 
-  if (!levelUpDecisions) {
-    return { cantripIds, spellSelections };
+  const pushCantrip = (spellId: SpellId | undefined) => {
+    if (!spellId) return;
+    if (!cantripIds.includes(spellId)) {
+      cantripIds.push(spellId);
+    }
+  };
+
+  const pushSpell = (
+    spell:
+      | {
+          spellId?: SpellId;
+          level?: number;
+        }
+      | undefined,
+  ) => {
+    if (!spell?.spellId || typeof spell.level !== "number") return;
+
+    if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
+      spellSelections.push({
+        spellId: spell.spellId,
+        level: spell.level,
+      });
+    }
+  };
+
+  // Character creation choices
+  for (const spellId of character.choices?.classCantripChoices ?? []) {
+    pushCantrip(spellId);
   }
+
+  for (const spell of character.choices?.classSpellChoices ?? []) {
+    pushSpell(spell);
+  }
+
+  for (const spellId of character.choices?.subclassCantripChoices ?? []) {
+    pushCantrip(spellId);
+  }
+
+  for (const spell of character.choices?.subclassSpellChoices ?? []) {
+    pushSpell(spell);
+  }
+
+  // Level-up choices
+  const levelUpDecisions = character.choices?.levelUpDecisions ?? {};
 
   const sortedLevels = Object.keys(levelUpDecisions)
     .map(Number)
@@ -570,20 +611,51 @@ const collectSpellSelectionsFromLevelUp = (
 
     if (Array.isArray(decision.cantripChoices)) {
       for (const spellId of decision.cantripChoices) {
-        if (!cantripIds.includes(spellId)) {
-          cantripIds.push(spellId);
-        }
+        pushCantrip(spellId);
       }
     }
 
     if (Array.isArray(decision.spellChoices)) {
       for (const spell of decision.spellChoices) {
+        pushSpell(spell);
+      }
+    }
+
+    if (Array.isArray(decision.cantripReplacements)) {
+      for (const replacement of decision.cantripReplacements) {
         if (
-          spell &&
-          typeof spell.spellId === "string" &&
-          !spellSelections.some((s) => s.spellId === spell.spellId)
+          replacement?.removeSpellId &&
+          cantripIds.includes(replacement.removeSpellId)
         ) {
-          spellSelections.push(spell);
+          const index = cantripIds.indexOf(replacement.removeSpellId);
+          if (index >= 0) {
+            cantripIds.splice(index, 1);
+          }
+        }
+
+        if (replacement?.addSpellId) {
+          pushCantrip(replacement.addSpellId);
+        }
+      }
+    }
+
+    if (Array.isArray(decision.spellReplacements)) {
+      for (const replacement of decision.spellReplacements) {
+        if (replacement?.removeSpellId) {
+          const removeIndex = spellSelections.findIndex(
+            (s) => s.spellId === replacement.removeSpellId,
+          );
+
+          if (removeIndex >= 0) {
+            spellSelections.splice(removeIndex, 1);
+          }
+        }
+
+        if (replacement?.addSpellId && typeof replacement.level === "number") {
+          pushSpell({
+            spellId: replacement.addSpellId,
+            level: replacement.level,
+          });
         }
       }
     }
@@ -906,8 +978,8 @@ const CharacterSheet = () => {
         ? 1
         : 0;
 
-    const collectedSpellChoices = collectSpellSelectionsFromLevelUp(
-      levelUpDecisions,
+    const collectedSpellChoices = collectSpellSelections(
+      character,
       character.level,
     );
 

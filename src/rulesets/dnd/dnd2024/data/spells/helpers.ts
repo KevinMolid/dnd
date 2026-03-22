@@ -7,8 +7,12 @@ import type {
   SpellSlotTable,
   SpellcastingRules,
 } from "../../types";
-import { allSpells } from "./allSpells";
 import { spellSlotTables } from "../../spellSlotTables";
+import { spells } from "./spells";
+import { paladinSpellList } from "./paladinSpellList";
+import { clericSpellList } from "./clericSpellList";
+import { druidSpellList } from "./druidSpellList";
+import { wizardSpellList } from "./wizardSpellList";
 
 export {
   getAvailableSpells,
@@ -16,24 +20,39 @@ export {
 } from "../../getAvailableSpells";
 
 export const spellsById: Record<SpellId, Spell> = Object.fromEntries(
-  allSpells.map((spell) => [spell.id, spell]),
+  spells.map((spell) => [spell.id, spell]),
 ) as Record<SpellId, Spell>;
+
+export const spellListsById: Record<SpellListId, SpellId[]> = {
+  bard: [],
+  cleric: clericSpellList,
+  druid: druidSpellList,
+  paladin: paladinSpellList,
+  ranger: [],
+  sorcerer: [],
+  warlock: [],
+  wizard: wizardSpellList,
+};
 
 export const getSpellById = (spellId: SpellId): Spell | undefined => {
   return spellsById[spellId];
 };
 
+export const getSpellIdsForList = (spellListId: SpellListId): SpellId[] => {
+  return spellListsById[spellListId] ?? [];
+};
+
 export const getSpellsForList = (spellListId: SpellListId): Spell[] => {
-  return allSpells.filter((spell) => spell.classes.includes(spellListId));
+  return getSpellIdsForList(spellListId)
+    .map((spellId) => getSpellById(spellId))
+    .filter((spell): spell is Spell => Boolean(spell));
 };
 
 export const getSpellsForListAndLevel = (
   spellListId: SpellListId,
   level: SpellLevel,
 ): Spell[] => {
-  return allSpells.filter(
-    (spell) => spell.classes.includes(spellListId) && spell.level === level,
-  );
+  return getSpellsForList(spellListId).filter((spell) => spell.level === level);
 };
 
 export const getCantripsForList = (spellListId: SpellListId): Spell[] => {
@@ -61,6 +80,7 @@ export const getHighestSpellLevelForCharacterLevel = (
   level: LevelNumber,
 ): Exclude<SpellLevel, 0> | null => {
   const slots = getSpellSlotsForLevel(rules, level);
+
   const spellLevels = Object.keys(slots)
     .map(Number)
     .filter((n): n is Exclude<SpellLevel, 0> => n >= 1 && n <= 9)
@@ -90,7 +110,19 @@ export const getPreparedSpellCountForLevel = (
   level: LevelNumber,
 ): number => {
   if (!rules.preparedSpells) return 0;
-  return rules.preparedSpells.preparedByLevel[level] ?? 0;
+
+  const matchingLevels = Object.keys(rules.preparedSpells.preparedByLevel)
+    .map(Number)
+    .filter((definedLevel) => definedLevel <= level)
+    .sort((a, b) => b - a);
+
+  if (matchingLevels.length === 0) return 0;
+
+  return (
+    rules.preparedSpells.preparedByLevel[
+      matchingLevels[0] as LevelNumber
+    ] ?? 0
+  );
 };
 
 export const getKnownSpellCountForLevel = (
@@ -98,11 +130,22 @@ export const getKnownSpellCountForLevel = (
   level: LevelNumber,
 ): number => {
   if (!rules.learnedSpells) return 0;
-  return rules.learnedSpells.knownByLevel[level] ?? 0;
+
+  const matchingLevels = Object.keys(rules.learnedSpells.knownByLevel)
+    .map(Number)
+    .filter((definedLevel) => definedLevel <= level)
+    .sort((a, b) => b - a);
+
+  if (matchingLevels.length === 0) return 0;
+
+  return rules.learnedSpells.knownByLevel[matchingLevels[0] as LevelNumber] ?? 0;
 };
 
 export const getAvailableSpellsForRules = (
-  rules: Pick<SpellcastingRules, "spellListId" | "slotTableId" | "customSlotTable">,
+  rules: Pick<
+    SpellcastingRules,
+    "spellListId" | "slotTableId" | "customSlotTable"
+  >,
   level: LevelNumber,
 ): Spell[] => {
   const highestSpellLevel = getHighestSpellLevelForCharacterLevel(rules, level);
@@ -121,7 +164,10 @@ export const getAvailableCantripsForRules = (
 };
 
 export const getAvailableLeveledSpellsForRules = (
-  rules: Pick<SpellcastingRules, "spellListId" | "slotTableId" | "customSlotTable">,
+  rules: Pick<
+    SpellcastingRules,
+    "spellListId" | "slotTableId" | "customSlotTable"
+  >,
   level: LevelNumber,
 ): Spell[] => {
   const highestSpellLevel = getHighestSpellLevelForCharacterLevel(rules, level);
@@ -137,9 +183,7 @@ export const isSpellOnList = (
   spellId: SpellId,
   spellListId: SpellListId,
 ): boolean => {
-  const spell = getSpellById(spellId);
-  if (!spell) return false;
-  return spell.classes.includes(spellListId);
+  return getSpellIdsForList(spellListId).includes(spellId);
 };
 
 export const isSpellOfLevel = (
@@ -162,13 +206,20 @@ export const getSpellName = (spellId: SpellId): string => {
 export const canPrepareSpells = (
   rules: Pick<SpellcastingRules, "preparationMode"> | null | undefined,
 ): boolean => {
-  return rules?.preparationMode === "prepared";
+  return (
+    rules?.preparationMode === "prepared" ||
+    rules?.preparationMode === "custom"
+  );
 };
 
 export const getPreparedSpellSourceKey = (
-  rules: Pick<SpellcastingRules, "sourceId"> | null | undefined,
+  rules:
+    | Pick<SpellcastingRules, "sourceType" | "sourceId">
+    | null
+    | undefined,
 ): string | null => {
-  return rules?.sourceId ?? null;
+  if (!rules) return null;
+  return `${rules.sourceType}:${rules.sourceId}`;
 };
 
 export const getPreparedSpellIdsForSource = (

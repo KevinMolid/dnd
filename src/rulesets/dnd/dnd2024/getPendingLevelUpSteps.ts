@@ -25,6 +25,7 @@ export type PendingLevelUpStepType =
   | "feature"
   | "subclass-choice"
   | "feat-choice"
+  | "fighting-style-choice"
   | "expertise-choice"
   | "language-choice"
   | "weapon-mastery-choice"
@@ -49,6 +50,10 @@ const ASI_FEATURE_IDS = new Set([
   "ability-score-improvement-3",
   "ability-score-improvement-4",
   "ability-score-improvement-5",
+]);
+
+const FIGHTING_STYLE_FEATURE_IDS = new Set([
+  "fighting-style",
 ]);
 
 const SUBCLASS_FEATURE_IDS = new Set([
@@ -621,7 +626,7 @@ const getPaladinPendingChoiceSteps = (
   if (fightingStyleDefinition && !decisions?.fightingStyleId) {
     steps.push({
       level,
-      type: "feat-choice",
+      type: "fighting-style-choice",
       id: `paladin-fighting-style-${level}`,
       title: "Choose Fighting Style",
       description: fightingStyleDefinition.description,
@@ -743,7 +748,10 @@ export const getPendingLevelUpSteps = (
         continue;
       }
 
-      if (!feature.id.includes("subclass-feature")) {
+      if (
+        !feature.id.includes("subclass-feature") &&
+        !FIGHTING_STYLE_FEATURE_IDS.has(feature.id)
+      ) {
         steps.push({
           level,
           type: "feature",

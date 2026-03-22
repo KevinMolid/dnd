@@ -31,7 +31,6 @@ import type { EquipmentGrant } from "../rulesets/dnd/dnd2024/types";
 
 import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTraits";
 
-// Constants
 type CharacterCreationStep =
   | "details"
   | "class"
@@ -101,6 +100,12 @@ const rogueWeaponMasteryOptions: WeaponMasteryChoiceId[] = [
   "shortsword",
   "sling",
 ];
+
+const formatLabel = (value: string) =>
+  value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 
 const formatTraitEffect = (effect: TraitEffect): string => {
   switch (effect.type) {
@@ -177,16 +182,9 @@ const getTraitSummaryLines = (trait: Trait): string[] => {
   return lines;
 };
 
-const formatLabel = (value: string) =>
-  value
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-
 const NewCharacter = () => {
   const navigate = useNavigate();
 
-  // States
   const [currentStep, setCurrentStep] =
     useState<CharacterCreationStep>("details");
   const [name, setName] = useState("");
@@ -198,6 +196,10 @@ const NewCharacter = () => {
   const [abilityScores, setAbilityScores] = useState(defaultAbilityScores);
 
   const [classSkillChoices, setClassSkillChoices] = useState<SkillId[]>([]);
+  const [classCantripChoices, setClassCantripChoices] = useState<SpellId[]>([]);
+  const [classSpellChoices, setClassSpellChoices] = useState<SpellSelection[]>(
+    [],
+  );
 
   const [speciesTraitChoices, setSpeciesTraitChoices] = useState<
     Record<string, string | string[]>
@@ -238,8 +240,6 @@ const NewCharacter = () => {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Helpers
-
   const currentStepIndex = creationSteps.indexOf(currentStep);
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === creationSteps.length - 1;
@@ -261,6 +261,342 @@ const NewCharacter = () => {
     () => getBackgroundById(backgroundId),
     [backgroundId],
   );
+
+  const classSpellcasting = classDef?.spellcasting;
+
+  const classStartingCantripChoiceCount =
+    classSpellcasting?.cantrips?.chooseAtStart ?? 0;
+
+  const classStartingSpellChoiceConfig =
+    classSpellcasting?.preparedSpells?.chooseAtStart ??
+    classSpellcasting?.learnedSpells?.chooseAtStart;
+
+  const classStartingSpellChoiceCount =
+    classStartingSpellChoiceConfig?.count ?? 0;
+
+  const classStartingSpellLevel =
+    classStartingSpellChoiceConfig?.spellLevel ?? 1;
+
+  const backgroundFeatGrant = backgroundDef?.featGrant;
+  const backgroundFeatSpellListId =
+    backgroundFeatGrant?.type === "magic-initiate"
+      ? backgroundFeatGrant.spellListId
+      : undefined;
+
+  const hasBackgroundMagicInitiate =
+    backgroundFeatGrant?.type === "magic-initiate" &&
+    !!backgroundFeatSpellListId;
+
+  const backgroundToolRules = backgroundDef?.toolProficiencyOptions;
+
+  const backgroundToolOptions =
+    backgroundToolRules?.type === "choice" ? backgroundToolRules.options : [];
+
+  const grantedTool =
+    backgroundToolRules?.type === "fixed"
+      ? backgroundToolRules.tool
+      : backgroundToolChoice || null;
+
+  const speciesChoices = useMemo<TraitChoice[]>(
+    () => getSpeciesChoices(speciesId),
+    [speciesId],
+  );
+
+  const selectedClassEquipmentOption = useMemo(
+    () =>
+      classDef?.startingEquipment?.options.find(
+        (option) => option.id === classEquipmentOptionId,
+      ) ?? null,
+    [classDef, classEquipmentOptionId],
+  );
+
+  const selectedBackgroundEquipmentOption = useMemo(
+    () =>
+      backgroundDef?.equipment?.options.find(
+        (option) => option.id === backgroundEquipmentOptionId,
+      ) ?? null,
+    [backgroundDef, backgroundEquipmentOptionId],
+  );
+
+  const isRogue = classId === "rogue";
+
+  const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
+  const backgroundGrantedFeatName = useMemo(() => {
+    if (!backgroundGrantedFeatId) return null;
+
+    const featName =
+      getFeatById(backgroundGrantedFeatId)?.name ?? backgroundGrantedFeatId;
+
+    if (backgroundFeatGrant?.type === "magic-initiate") {
+      return `${featName} (${formatLabel(backgroundFeatGrant.spellListId)})`;
+    }
+
+    return featName;
+  }, [backgroundFeatGrant, backgroundGrantedFeatId]);
+
+  const availableClassCantrips = useMemo(() => {
+    if (!classSpellcasting) return [];
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId,
+        backgroundId,
+        originFeatId: backgroundGrantedFeatId,
+        abilityScores,
+      } as CharacterSheetData,
+      {
+        spellListId: classSpellcasting.spellListId,
+        maxLevel: 0,
+        includeCantrips: true,
+      },
+    ).filter((spell) => spell.level === 0);
+  }, [
+    abilityScores,
+    backgroundGrantedFeatId,
+    backgroundId,
+    classId,
+    classSpellcasting,
+    speciesId,
+  ]);
+
+  const availableClassStartingSpells = useMemo(() => {
+    if (!classSpellcasting) return [];
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId,
+        backgroundId,
+        originFeatId: backgroundGrantedFeatId,
+        abilityScores,
+      } as CharacterSheetData,
+      {
+        spellListId: classSpellcasting.spellListId,
+        maxLevel: classStartingSpellLevel,
+        includeCantrips: false,
+      },
+    ).filter((spell) => spell.level === classStartingSpellLevel);
+  }, [
+    abilityScores,
+    backgroundGrantedFeatId,
+    backgroundId,
+    classId,
+    classSpellcasting,
+    classStartingSpellLevel,
+    speciesId,
+  ]);
+
+  const backgroundMagicInitiateCantrips = useMemo(() => {
+    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) return [];
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId,
+        backgroundId,
+        originFeatId: backgroundGrantedFeatId,
+        abilityScores,
+      } as CharacterSheetData,
+      {
+        spellListId: backgroundFeatSpellListId,
+        maxLevel: 0,
+        includeCantrips: true,
+      },
+    );
+  }, [
+    abilityScores,
+    backgroundFeatSpellListId,
+    backgroundGrantedFeatId,
+    backgroundId,
+    classId,
+    hasBackgroundMagicInitiate,
+    speciesId,
+  ]);
+
+  const backgroundMagicInitiateLevelOneSpells = useMemo(() => {
+    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) return [];
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId,
+        backgroundId,
+        originFeatId: backgroundGrantedFeatId,
+        abilityScores,
+      } as CharacterSheetData,
+      {
+        spellListId: backgroundFeatSpellListId,
+        maxLevel: 1,
+        includeCantrips: false,
+      },
+    ).filter((spell) => spell.level === 1);
+  }, [
+    abilityScores,
+    backgroundFeatSpellListId,
+    backgroundGrantedFeatId,
+    backgroundId,
+    classId,
+    hasBackgroundMagicInitiate,
+    speciesId,
+  ]);
+
+  const speciesGrantedFeatIds = useMemo(
+    () => getSpeciesGrantedFeatIds(speciesId, { speciesTraitChoices }),
+    [speciesId, speciesTraitChoices],
+  );
+
+  const speciesGrantedFeatNames = useMemo(
+    () =>
+      speciesGrantedFeatIds.map(
+        (featId) => getFeatById(featId)?.name ?? featId,
+      ),
+    [speciesGrantedFeatIds],
+  );
+
+  const activeAllTraits = useMemo(() => {
+    return getAllCharacterTraits({
+      classId,
+      speciesId,
+      backgroundId,
+      originFeatId: backgroundGrantedFeatId,
+      level: 1,
+      choices: {
+        classSkillChoices,
+        ...(classCantripChoices.length > 0 ? { classCantripChoices } : {}),
+        ...(classSpellChoices.length > 0 ? { classSpellChoices } : {}),
+        ...(classSpellChoices.length > 0
+          ? {
+              preparedSpellIdsBySource: {
+                [`class:${classId}`]: classSpellChoices.map(
+                  (spell) => spell.spellId,
+                ),
+              },
+            }
+          : {}),
+        backgroundAbilityBonuses: {
+          plus2: backgroundBonusPlus2,
+          plus1: backgroundBonusPlus1,
+        },
+        ...(backgroundToolChoice ? { backgroundToolChoice } : {}),
+        ...(backgroundFeatSpellListId ? { backgroundFeatSpellListId } : {}),
+        ...(backgroundFeatCantripChoices.length > 0
+          ? { backgroundFeatCantripChoices }
+          : {}),
+        ...(backgroundFeatSpellChoices.length > 0
+          ? { backgroundFeatSpellChoices }
+          : {}),
+        speciesTraitChoices,
+        ...(isRogue
+          ? {
+              rogueExpertiseChoices,
+              rogueBonusLanguage,
+              rogueWeaponMasteryChoices,
+            }
+          : {}),
+      },
+    });
+  }, [
+    backgroundBonusPlus1,
+    backgroundBonusPlus2,
+    backgroundId,
+    backgroundToolChoice,
+    classCantripChoices,
+    classId,
+    classSkillChoices,
+    classSpellChoices,
+    backgroundGrantedFeatId,
+    backgroundFeatCantripChoices,
+    backgroundFeatSpellChoices,
+    backgroundFeatSpellListId,
+    isRogue,
+    rogueBonusLanguage,
+    rogueExpertiseChoices,
+    rogueWeaponMasteryChoices,
+    speciesId,
+    speciesTraitChoices,
+  ]);
+
+  const resolvedStartingEquipment = useMemo(() => {
+    const grants: EquipmentGrant[] = [
+      ...(selectedClassEquipmentOption?.grants ?? []),
+      ...(selectedBackgroundEquipmentOption?.grants ?? []),
+    ];
+
+    return resolveEquipmentGrants(grants, {
+      resolveChoice: (grant) => {
+        const itemOptions = grant.options.filter(
+          (option): option is Extract<EquipmentGrant, { type: "item" }> =>
+            option.type === "item",
+        );
+
+        if (itemOptions.length === 0) {
+          return [];
+        }
+
+        if (
+          backgroundToolRules?.type === "choice" &&
+          backgroundToolChoice &&
+          itemOptions.some((option) => option.id === backgroundToolChoice)
+        ) {
+          return itemOptions.filter(
+            (option) => option.id === backgroundToolChoice,
+          );
+        }
+
+        return itemOptions.slice(0, grant.choose);
+      },
+    });
+  }, [
+    backgroundToolChoice,
+    backgroundToolRules,
+    selectedBackgroundEquipmentOption,
+    selectedClassEquipmentOption,
+  ]);
+
+  const startingMoney = useMemo<Money>(() => {
+    return {
+      cp: resolvedStartingEquipment.currency.cp ?? 0,
+      sp: resolvedStartingEquipment.currency.sp ?? 0,
+      ep: resolvedStartingEquipment.currency.ep ?? 0,
+      gp: resolvedStartingEquipment.currency.gp ?? 0,
+      pp: resolvedStartingEquipment.currency.pp ?? 0,
+    };
+  }, [resolvedStartingEquipment.currency]);
+
+  const grantedSkills = backgroundDef?.skillProficiencies ?? [];
+  const abilityOptions = backgroundDef?.abilityOptions ?? [];
+
+  const classSkillOptions = classDef?.skillChoice.options ?? [];
+  const classSkillChoiceCount = classDef?.skillChoice.choose ?? 0;
+
+  const rogueExpertiseOptions = useMemo(() => {
+    if (!isRogue) return [] as Array<SkillId | "thieves-tools">;
+
+    const all = new Set<SkillId | "thieves-tools">([
+      ...grantedSkills,
+      ...classSkillChoices,
+      "thieves-tools",
+    ]);
+
+    return Array.from(all);
+  }, [classSkillChoices, grantedSkills, isRogue]);
 
   const validateCurrentStep = () => {
     if (!classDef) {
@@ -290,6 +626,56 @@ const NewCharacter = () => {
           !selectedClassEquipmentOption
         ) {
           return "Please choose a class starting equipment option.";
+        }
+
+        if (classStartingCantripChoiceCount > 0) {
+          if (classCantripChoices.length !== classStartingCantripChoiceCount) {
+            return `Please choose ${classStartingCantripChoiceCount} class cantrip${
+              classStartingCantripChoiceCount === 1 ? "" : "s"
+            }.`;
+          }
+
+          const validCantrips = classCantripChoices.every((spellId) =>
+            availableClassCantrips.some((spell) => spell.id === spellId),
+          );
+
+          if (!validCantrips) {
+            return "Please choose valid class cantrips.";
+          }
+
+          if (
+            new Set(classCantripChoices).size !==
+            classStartingCantripChoiceCount
+          ) {
+            return "Class cantrip choices must be different.";
+          }
+        }
+
+        if (classStartingSpellChoiceCount > 0) {
+          if (classSpellChoices.length !== classStartingSpellChoiceCount) {
+            return `Please choose ${classStartingSpellChoiceCount} class spell${
+              classStartingSpellChoiceCount === 1 ? "" : "s"
+            }.`;
+          }
+
+          const validSpells = classSpellChoices.every(
+            (selection) =>
+              selection.level === classStartingSpellLevel &&
+              availableClassStartingSpells.some(
+                (spell) => spell.id === selection.spellId,
+              ),
+          );
+
+          if (!validSpells) {
+            return "Please choose valid class spells.";
+          }
+
+          if (
+            new Set(classSpellChoices.map((spell) => spell.spellId)).size !==
+            classStartingSpellChoiceCount
+          ) {
+            return "Class spell choices must be different.";
+          }
         }
 
         if (isRogue) {
@@ -442,252 +828,6 @@ const NewCharacter = () => {
     goToNextStep();
   };
 
-  const backgroundFeatGrant = backgroundDef?.featGrant;
-  const backgroundFeatSpellListId =
-    backgroundFeatGrant?.type === "magic-initiate"
-      ? backgroundFeatGrant.spellListId
-      : undefined;
-
-  const hasBackgroundMagicInitiate =
-    backgroundFeatGrant?.type === "magic-initiate" &&
-    !!backgroundFeatSpellListId;
-
-  const backgroundToolRules = backgroundDef?.toolProficiencyOptions;
-
-  const backgroundToolOptions =
-    backgroundToolRules?.type === "choice" ? backgroundToolRules.options : [];
-
-  const grantedTool =
-    backgroundToolRules?.type === "fixed"
-      ? backgroundToolRules.tool
-      : backgroundToolChoice || null;
-
-  const speciesChoices = useMemo<TraitChoice[]>(
-    () => getSpeciesChoices(speciesId),
-    [speciesId],
-  );
-
-  const selectedClassEquipmentOption = useMemo(
-    () =>
-      classDef?.startingEquipment?.options.find(
-        (option) => option.id === classEquipmentOptionId,
-      ) ?? null,
-    [classDef, classEquipmentOptionId],
-  );
-
-  const selectedBackgroundEquipmentOption = useMemo(
-    () =>
-      backgroundDef?.equipment?.options.find(
-        (option) => option.id === backgroundEquipmentOptionId,
-      ) ?? null,
-    [backgroundDef, backgroundEquipmentOptionId],
-  );
-
-  const isRogue = classId === "rogue";
-
-  const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
-  const backgroundGrantedFeatName = useMemo(() => {
-    if (!backgroundGrantedFeatId) return null;
-
-    const featName =
-      getFeatById(backgroundGrantedFeatId)?.name ?? backgroundGrantedFeatId;
-
-    if (backgroundFeatGrant?.type === "magic-initiate") {
-      return `${featName} (${formatLabel(backgroundFeatGrant.spellListId)})`;
-    }
-
-    return featName;
-  }, [backgroundFeatGrant, backgroundGrantedFeatId]);
-
-  const backgroundMagicInitiateCantrips = useMemo(() => {
-    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) return [];
-
-    return getAvailableSpells(
-      {
-        ownerUid: "",
-        campaignId: null,
-        name: "",
-        level: 1,
-        classId,
-        speciesId,
-        backgroundId,
-        originFeatId: backgroundGrantedFeatId,
-        abilityScores,
-      } as CharacterSheetData,
-      {
-        spellListId: backgroundFeatSpellListId,
-        maxLevel: 0,
-        includeCantrips: true,
-      },
-    );
-  }, [
-    abilityScores,
-    backgroundFeatSpellListId,
-    backgroundGrantedFeatId,
-    backgroundId,
-    classId,
-    hasBackgroundMagicInitiate,
-    speciesId,
-  ]);
-
-  const backgroundMagicInitiateLevelOneSpells = useMemo(() => {
-    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) return [];
-
-    return getAvailableSpells(
-      {
-        ownerUid: "",
-        campaignId: null,
-        name: "",
-        level: 1,
-        classId,
-        speciesId,
-        backgroundId,
-        originFeatId: backgroundGrantedFeatId,
-        abilityScores,
-      } as CharacterSheetData,
-      {
-        spellListId: backgroundFeatSpellListId,
-        maxLevel: 1,
-        includeCantrips: false,
-      },
-    ).filter((spell) => spell.level === 1);
-  }, [
-    abilityScores,
-    backgroundFeatSpellListId,
-    backgroundGrantedFeatId,
-    backgroundId,
-    classId,
-    hasBackgroundMagicInitiate,
-    speciesId,
-  ]);
-
-  const speciesGrantedFeatIds = useMemo(
-    () => getSpeciesGrantedFeatIds(speciesId, { speciesTraitChoices }),
-    [speciesId, speciesTraitChoices],
-  );
-
-  const speciesGrantedFeatNames = useMemo(
-    () =>
-      speciesGrantedFeatIds.map(
-        (featId) => getFeatById(featId)?.name ?? featId,
-      ),
-    [speciesGrantedFeatIds],
-  );
-
-  const activeAllTraits = useMemo(() => {
-    return getAllCharacterTraits({
-      classId,
-      speciesId,
-      backgroundId,
-      originFeatId: backgroundGrantedFeatId,
-      level: 1,
-      choices: {
-        classSkillChoices,
-        backgroundAbilityBonuses: {
-          plus2: backgroundBonusPlus2,
-          plus1: backgroundBonusPlus1,
-        },
-        ...(backgroundToolChoice ? { backgroundToolChoice } : {}),
-        ...(backgroundFeatSpellListId ? { backgroundFeatSpellListId } : {}),
-        ...(backgroundFeatCantripChoices.length > 0
-          ? { backgroundFeatCantripChoices }
-          : {}),
-        ...(backgroundFeatSpellChoices.length > 0
-          ? { backgroundFeatSpellChoices }
-          : {}),
-        speciesTraitChoices,
-        ...(isRogue
-          ? {
-              rogueExpertiseChoices,
-              rogueBonusLanguage,
-              rogueWeaponMasteryChoices,
-            }
-          : {}),
-      },
-    });
-  }, [
-    backgroundBonusPlus1,
-    backgroundBonusPlus2,
-    backgroundId,
-    backgroundToolChoice,
-    classId,
-    classSkillChoices,
-    backgroundGrantedFeatId,
-    isRogue,
-    rogueBonusLanguage,
-    rogueExpertiseChoices,
-    rogueWeaponMasteryChoices,
-    speciesId,
-    speciesTraitChoices,
-  ]);
-
-  const resolvedStartingEquipment = useMemo(() => {
-    const grants: EquipmentGrant[] = [
-      ...(selectedClassEquipmentOption?.grants ?? []),
-      ...(selectedBackgroundEquipmentOption?.grants ?? []),
-    ];
-
-    return resolveEquipmentGrants(grants, {
-      resolveChoice: (grant) => {
-        const itemOptions = grant.options.filter(
-          (option): option is Extract<EquipmentGrant, { type: "item" }> =>
-            option.type === "item",
-        );
-
-        if (itemOptions.length === 0) {
-          return [];
-        }
-
-        if (
-          backgroundToolRules?.type === "choice" &&
-          backgroundToolChoice &&
-          itemOptions.some((option) => option.id === backgroundToolChoice)
-        ) {
-          return itemOptions.filter(
-            (option) => option.id === backgroundToolChoice,
-          );
-        }
-
-        return itemOptions.slice(0, grant.choose);
-      },
-    });
-  }, [
-    backgroundToolChoice,
-    backgroundToolRules,
-    selectedBackgroundEquipmentOption,
-    selectedClassEquipmentOption,
-  ]);
-
-  const startingMoney = useMemo<Money>(() => {
-    return {
-      cp: resolvedStartingEquipment.currency.cp ?? 0,
-      sp: resolvedStartingEquipment.currency.sp ?? 0,
-      ep: resolvedStartingEquipment.currency.ep ?? 0,
-      gp: resolvedStartingEquipment.currency.gp ?? 0,
-      pp: resolvedStartingEquipment.currency.pp ?? 0,
-    };
-  }, [resolvedStartingEquipment.currency]);
-
-  const grantedSkills = backgroundDef?.skillProficiencies ?? [];
-  const abilityOptions = backgroundDef?.abilityOptions ?? [];
-
-  const classSkillOptions = classDef?.skillChoice.options ?? [];
-  const classSkillChoiceCount = classDef?.skillChoice.choose ?? 0;
-
-  const rogueExpertiseOptions = useMemo(() => {
-    if (!isRogue) return [] as Array<SkillId | "thieves-tools">;
-
-    const all = new Set<SkillId | "thieves-tools">([
-      ...grantedSkills,
-      ...classSkillChoices,
-      "thieves-tools",
-    ]);
-
-    return Array.from(all);
-  }, [classSkillChoices, grantedSkills, isRogue]);
-
-  // Effects
-
   useEffect(() => {
     setClassSkillChoices((prev) =>
       prev
@@ -695,6 +835,34 @@ const NewCharacter = () => {
         .slice(0, classSkillChoiceCount),
     );
   }, [classId, classSkillChoiceCount, classSkillOptions]);
+
+  useEffect(() => {
+    setClassCantripChoices((prev) =>
+      prev
+        .filter((spellId) =>
+          availableClassCantrips.some((spell) => spell.id === spellId),
+        )
+        .slice(0, classStartingCantripChoiceCount),
+    );
+
+    setClassSpellChoices((prev) =>
+      prev
+        .filter((selection) =>
+          availableClassStartingSpells.some(
+            (spell) =>
+              spell.id === selection.spellId &&
+              selection.level === classStartingSpellLevel,
+          ),
+        )
+        .slice(0, classStartingSpellChoiceCount),
+    );
+  }, [
+    availableClassCantrips,
+    availableClassStartingSpells,
+    classStartingCantripChoiceCount,
+    classStartingSpellChoiceCount,
+    classStartingSpellLevel,
+  ]);
 
   useEffect(() => {
     const options = backgroundDef?.abilityOptions ?? [];
@@ -876,6 +1044,42 @@ const NewCharacter = () => {
     });
   };
 
+  const toggleClassCantripChoice = (spellId: SpellId) => {
+    setClassCantripChoices((prev) => {
+      if (prev.includes(spellId)) {
+        return prev.filter((id) => id !== spellId);
+      }
+
+      if (prev.length >= classStartingCantripChoiceCount) {
+        return prev;
+      }
+
+      return [...prev, spellId];
+    });
+  };
+
+  const toggleClassSpellChoice = (spellId: SpellId, level: number) => {
+    setClassSpellChoices((prev) => {
+      const exists = prev.some((spell) => spell.spellId === spellId);
+
+      if (exists) {
+        return prev.filter((spell) => spell.spellId !== spellId);
+      }
+
+      if (prev.length >= classStartingSpellChoiceCount) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          spellId,
+          level: level as SpellSelection["level"],
+        },
+      ];
+    });
+  };
+
   const toggleBackgroundFeatCantrip = (spellId: SpellId) => {
     setBackgroundFeatCantripChoices((prev) => {
       if (prev.includes(spellId)) {
@@ -953,6 +1157,55 @@ const NewCharacter = () => {
       !selectedClassEquipmentOption
     ) {
       return "Please choose a class starting equipment option.";
+    }
+
+    if (classStartingCantripChoiceCount > 0) {
+      if (classCantripChoices.length !== classStartingCantripChoiceCount) {
+        return `Please choose ${classStartingCantripChoiceCount} class cantrip${
+          classStartingCantripChoiceCount === 1 ? "" : "s"
+        }.`;
+      }
+
+      const validCantrips = classCantripChoices.every((spellId) =>
+        availableClassCantrips.some((spell) => spell.id === spellId),
+      );
+
+      if (!validCantrips) {
+        return "Please choose valid class cantrips.";
+      }
+
+      if (
+        new Set(classCantripChoices).size !== classStartingCantripChoiceCount
+      ) {
+        return "Class cantrip choices must be different.";
+      }
+    }
+
+    if (classStartingSpellChoiceCount > 0) {
+      if (classSpellChoices.length !== classStartingSpellChoiceCount) {
+        return `Please choose ${classStartingSpellChoiceCount} class spell${
+          classStartingSpellChoiceCount === 1 ? "" : "s"
+        }.`;
+      }
+
+      const validSpells = classSpellChoices.every(
+        (selection) =>
+          selection.level === classStartingSpellLevel &&
+          availableClassStartingSpells.some(
+            (spell) => spell.id === selection.spellId,
+          ),
+      );
+
+      if (!validSpells) {
+        return "Please choose valid class spells.";
+      }
+
+      if (
+        new Set(classSpellChoices.map((spell) => spell.spellId)).size !==
+        classStartingSpellChoiceCount
+      ) {
+        return "Class spell choices must be different.";
+      }
     }
 
     if (!abilityOptions.includes(backgroundBonusPlus2)) {
@@ -1090,6 +1343,15 @@ const NewCharacter = () => {
     setSubmitting(true);
 
     try {
+      const preparedSpellIdsBySource =
+        classSpellChoices.length > 0
+          ? {
+              [`class:${classId}`]: classSpellChoices.map(
+                (spell) => spell.spellId,
+              ),
+            }
+          : undefined;
+
       const baseCharacter: CharacterSheetData = {
         ownerUid: "",
         campaignId: null,
@@ -1104,6 +1366,9 @@ const NewCharacter = () => {
         notes: notes.trim(),
         choices: {
           classSkillChoices,
+          ...(classCantripChoices.length > 0 ? { classCantripChoices } : {}),
+          ...(classSpellChoices.length > 0 ? { classSpellChoices } : {}),
+          ...(preparedSpellIdsBySource ? { preparedSpellIdsBySource } : {}),
           backgroundAbilityBonuses: {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
@@ -1144,6 +1409,9 @@ const NewCharacter = () => {
         notes: notes.trim(),
         choices: {
           classSkillChoices,
+          ...(classCantripChoices.length > 0 ? { classCantripChoices } : {}),
+          ...(classSpellChoices.length > 0 ? { classSpellChoices } : {}),
+          ...(preparedSpellIdsBySource ? { preparedSpellIdsBySource } : {}),
           backgroundAbilityBonuses: {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
@@ -1420,6 +1688,95 @@ const NewCharacter = () => {
                     </div>
                   </div>
                 ) : null}
+
+                {classStartingCantripChoiceCount > 0 && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Class Cantrips
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      Choose {classStartingCantripChoiceCount} cantrip
+                      {classStartingCantripChoiceCount === 1 ? "" : "s"}.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {availableClassCantrips.map((spell) => {
+                        const isSelected = classCantripChoices.includes(
+                          spell.id,
+                        );
+
+                        return (
+                          <label
+                            key={spell.id}
+                            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                              isSelected
+                                ? "border-white/25 bg-white/10"
+                                : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() =>
+                                toggleClassCantripChoice(spell.id)
+                              }
+                              className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                            />
+                            <span className="text-sm text-white">
+                              {spell.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {classStartingSpellChoiceCount > 0 && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Class Spells
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      Choose {classStartingSpellChoiceCount} level{" "}
+                      {classStartingSpellLevel} spell
+                      {classStartingSpellChoiceCount === 1 ? "" : "s"}.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {availableClassStartingSpells.map((spell) => {
+                        const isSelected = classSpellChoices.some(
+                          (entry) => entry.spellId === spell.id,
+                        );
+
+                        return (
+                          <label
+                            key={spell.id}
+                            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                              isSelected
+                                ? "border-white/25 bg-white/10"
+                                : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() =>
+                                toggleClassSpellChoice(spell.id, spell.level)
+                              }
+                              className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                            />
+                            <span className="text-sm text-white">
+                              {spell.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {isRogue && (
                   <>
