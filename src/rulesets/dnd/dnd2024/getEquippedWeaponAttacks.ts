@@ -33,6 +33,18 @@ const getAttackAbility = (
   return "str";
 };
 
+export type EquippedWeaponAttack = {
+  instanceId: string;
+  itemId: string;
+  name: string;
+  ability: AbilityKey;
+  attackBonus: number;
+  damage: string;
+  range?: WeaponData["range"];
+  properties: WeaponData["properties"];
+  mastery?: WeaponData["mastery"];
+};
+
 export const getEquippedWeaponAttacks = ({
   equipment,
   abilityScores,
@@ -43,32 +55,35 @@ export const getEquippedWeaponAttacks = ({
   abilityScores: Record<AbilityKey, number>;
   proficientWeaponIds?: string[];
   proficiencyBonus: number;
-}) => {
-  return equipment
-    .filter((entry) => (entry.equippedSlots?.length ?? 0) > 0)
-    .map((entry) => {
-      const item = itemsById[entry.itemId];
-      if (!item?.weapon) return null;
+}): EquippedWeaponAttack[] => {
+  const attacks: EquippedWeaponAttack[] = [];
 
-      const ability = getAttackAbility(item.weapon, abilityScores);
-      const abilityMod = getAbilityModifier(abilityScores[ability]);
-      const proficient = proficientWeaponIds?.includes(entry.itemId) ?? true;
+  for (const entry of equipment) {
+    if ((entry.equippedSlots?.length ?? 0) === 0) continue;
 
-      const isTwoHanded =
-        entry.wieldMode === "two-handed" ||
-        (entry.equippedSlots ?? []).length === 2;
+    const item = itemsById[entry.itemId];
+    if (!item?.weapon) continue;
 
-      return {
-        instanceId: entry.instanceId,
-        itemId: entry.itemId,
-        name: item.name,
-        ability,
-        attackBonus: abilityMod + (proficient ? proficiencyBonus : 0),
-        damage: formatDamageDice(item.weapon, isTwoHanded),
-        range: item.weapon.range,
-        properties: item.weapon.properties,
-        mastery: item.weapon.mastery,
-      };
-    })
-    .filter(Boolean);
+    const ability = getAttackAbility(item.weapon, abilityScores);
+    const abilityMod = getAbilityModifier(abilityScores[ability]);
+    const proficient = proficientWeaponIds?.includes(entry.itemId) ?? true;
+
+    const isTwoHanded =
+      entry.wieldMode === "two-handed" ||
+      (entry.equippedSlots?.length ?? 0) >= 2;
+
+    attacks.push({
+      instanceId: entry.instanceId,
+      itemId: entry.itemId,
+      name: item.name,
+      ability,
+      attackBonus: abilityMod + (proficient ? proficiencyBonus : 0),
+      damage: formatDamageDice(item.weapon, isTwoHanded),
+      range: item.weapon.range,
+      properties: item.weapon.properties,
+      mastery: item.weapon.mastery,
+    });
+  }
+
+  return attacks;
 };

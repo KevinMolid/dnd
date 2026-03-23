@@ -48,6 +48,11 @@ import SpellTooltip from "../components/SpellTooltip";
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
 import type { CharacterEquipmentEntry } from "../rulesets/dnd/dnd2024/types";
 
+import { getCharacterArmorClassFromEquipment } from "../rulesets/dnd/dnd2024/getCharacterArmorClassFromEquipment";
+import { getEquippedWeaponAttacks } from "../rulesets/dnd/dnd2024/getEquippedWeaponAttacks";
+
+import { itemsById } from "../rulesets/dnd/dnd2024/data/items";
+
 type CharacterDoc = CharacterSheetData & {
   maxHp?: number;
   currentHp?: number;
@@ -877,6 +882,44 @@ const CharacterSheet = () => {
 
     const hpData = getCharacterHp(character as any);
 
+    const equipment = character.equipment ?? [];
+
+    const equippedArmorClass = getCharacterArmorClassFromEquipment({
+      dexterityScore: finalAbilityScores.dex,
+      equipment,
+    });
+
+    const equippedWeaponAttacks = getEquippedWeaponAttacks({
+      equipment,
+      abilityScores: finalAbilityScores,
+      proficiencyBonus,
+      proficientWeaponIds: equipment
+        .map((entry) => entry.itemId)
+        .filter((itemId) => {
+          const weaponProficiencies =
+            character.derived?.weaponProficiencies ??
+            classDef?.weaponProficiencies ??
+            [];
+
+          const item = itemsById[itemId];
+          if (!item?.weapon) return false;
+
+          const kind = item.weapon.weaponKind;
+
+          if (kind.startsWith("simple")) {
+            return weaponProficiencies.includes("simple-weapons");
+          }
+
+          if (kind.startsWith("martial")) {
+            return weaponProficiencies.includes("martial-weapons");
+          }
+
+          return false;
+        }),
+    }).filter(
+      (attack): attack is NonNullable<typeof attack> => attack !== null,
+    );
+
     const genericAttackBonuses = {
       strengthWeapon: strMod + proficiencyBonus,
       finesseOrRanged: dexMod + proficiencyBonus,
@@ -1252,16 +1295,10 @@ const CharacterSheet = () => {
         : null,
       subclassName: subclassDef?.name ?? null,
       proficiencyBonus,
-      initiativeBonus:
-        character.derived?.stats?.initiativeBonus ??
-        character.initiativeBonus ??
-        dexMod,
+      initiativeBonus: dexMod,
       passivePerception:
         character.derived?.stats?.passivePerception ?? 10 + wisMod,
-      armorClass:
-        character.derived?.stats?.armorClass ??
-        character.armorClass ??
-        10 + dexMod,
+      armorClass: equippedArmorClass,
       speed: character.derived?.stats?.speed ?? character.speed ?? 30,
       currentHp: hpData.currentHp,
       maxHp: hpData.maxHp,
@@ -1280,6 +1317,7 @@ const CharacterSheet = () => {
         speciesById[character.speciesId]?.languages ??
         [],
       expertise,
+      equippedWeaponAttacks,
       genericAttackBonuses,
       rogueSneakAttack,
       xp,
@@ -1539,36 +1577,65 @@ const CharacterSheet = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
               <p className="text-sm font-semibold text-zinc-200">
-                Weapon Attack Bonuses
+                Equipped Attacks
               </p>
-              <div className="mt-3 space-y-2 text-sm text-zinc-300">
-                <div className="flex items-center justify-between">
-                  <span>Strength-based weapon</span>
-                  <span className="font-semibold">
-                    {formatModifier(
-                      derived.genericAttackBonuses.strengthWeapon,
-                    )}
-                  </span>
+
+              {derived.equippedWeaponAttacks.length > 0 ? (
+                <div className="mt-3 space-y-3">
+                  {derived.equippedWeaponAttacks.map((attack) => (
+                    <div
+                      key={attack.instanceId}
+                      className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-medium text-white">
+                            {attack.name}
+                          </p>
+                          <p className="mt-1 text-xs text-zinc-500">
+                            {attack.properties.map(formatLabel).join(" • ")}
+                          </p>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-sm font-semibold text-zinc-200">
+                            {formatModifier(attack.attackBonus)} to hit
+                          </p>
+                          <p className="mt-1 text-xs text-zinc-400">
+                            {attack.damage}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-zinc-400">
+                        <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
+                          Uses {abilityLabels[attack.ability]}
+                        </span>
+
+                        {attack.mastery && (
+                          <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
+                            Mastery: {formatLabel(attack.mastery)}
+                          </span>
+                        )}
+
+                        {attack.range && (
+                          <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
+                            Range {attack.range.normal}
+                            {attack.range.long
+                              ? ` / ${attack.range.long}`
+                              : ""}{" "}
+                            ft
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Finesse / ranged weapon</span>
-                  <span className="font-semibold">
-                    {formatModifier(
-                      derived.genericAttackBonuses.finesseOrRanged,
-                    )}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Unarmed strike</span>
-                  <span className="font-semibold">
-                    {formatModifier(derived.genericAttackBonuses.unarmed)}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-zinc-500">
-                These are generic bonuses for proficient attacks. Exact weapon
-                entries will be more precise once weapon data is added.
-              </p>
+              ) : (
+                <p className="mt-3 text-sm text-zinc-500">
+                  No weapons are currently equipped.
+                </p>
+              )}
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
