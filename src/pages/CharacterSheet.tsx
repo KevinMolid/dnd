@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -45,6 +45,8 @@ import { getSpeciesTraits } from "../rulesets/dnd/dnd2024/getSpeciesTraits";
 import { getSpeciesGrantedFeatIds } from "../rulesets/dnd/dnd2024/getSpeciesGrantedFeatIds";
 
 import SpellTooltip from "../components/SpellTooltip";
+import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
+import type { CharacterEquipmentEntry } from "../rulesets/dnd/dnd2024/types";
 
 type CharacterDoc = CharacterSheetData & {
   maxHp?: number;
@@ -59,6 +61,7 @@ type CharacterDoc = CharacterSheetData & {
   languages?: string[];
   subclassId?: string | null;
   money?: Money;
+  equipment?: CharacterEquipmentEntry[];
 };
 
 type TraitGroupKey =
@@ -740,6 +743,32 @@ const CharacterSheet = () => {
       ...prev,
       [key]: !prev[key],
     }));
+  };
+
+  const handleEquipmentChange = async (
+    nextEquipment: CharacterEquipmentEntry[],
+  ) => {
+    if (!character || !characterId) return;
+
+    const previousEquipment = character.equipment ?? [];
+
+    setCharacter({
+      ...character,
+      equipment: nextEquipment,
+    });
+
+    try {
+      await updateDoc(doc(db, "characters", characterId), {
+        equipment: nextEquipment,
+      });
+    } catch (err) {
+      console.error(err);
+      setCharacter({
+        ...character,
+        equipment: previousEquipment,
+      });
+      setError("Failed to update equipment.");
+    }
   };
 
   const handleApplyDecision = (
@@ -1860,50 +1889,34 @@ const CharacterSheet = () => {
   );
 
   const renderInventoryTab = () => (
-    <div className="grid gap-6 xl:grid-cols-3">
-      <div className="space-y-6 xl:col-span-2">
-        <SectionCard title="Inventory">
-          {character.equipment?.length ? (
-            <div className="space-y-3">
-              {character.equipment.map((item) => (
+    <div className="space-y-6">
+      <CharacterInventoryEquipment
+        equipment={character.equipment ?? []}
+        onChange={handleEquipmentChange}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2" />
+
+        <div className="space-y-6">
+          <SectionCard title="Money">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
+              {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
                 <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                  key={currency}
+                  className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
                 >
-                  <div>
-                    <p className="font-medium text-white">{item.name}</p>
-                    {item.equipped && (
-                      <p className="mt-1 text-xs text-zinc-500">Equipped</p>
-                    )}
-                  </div>
-                  <p className="text-sm text-zinc-300">x{item.quantity}</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    {currency.toUpperCase()}
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {derived.money[currency] ?? 0}
+                  </p>
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-sm text-zinc-500">No equipment added yet.</p>
-          )}
-        </SectionCard>
-      </div>
-
-      <div className="space-y-6">
-        <SectionCard title="Money">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
-            {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
-              <div
-                key={currency}
-                className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-              >
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  {currency.toUpperCase()}
-                </p>
-                <p className="mt-2 text-lg font-semibold text-white">
-                  {derived.money[currency] ?? 0}
-                </p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
+          </SectionCard>
+        </div>
       </div>
     </div>
   );

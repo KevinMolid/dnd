@@ -735,11 +735,107 @@ export type ItemCategory =
   | "holy-symbol"
   | "misc";
 
+export type DamageDie = {
+  count: number;
+  die: 4 | 6 | 8 | 10 | 12;
+};
+
+export type WeaponProperty =
+  | "ammunition"
+  | "finesse"
+  | "heavy"
+  | "light"
+  | "loading"
+  | "range"
+  | "reach"
+  | "thrown"
+  | "two-handed"
+  | "versatile";
+
+export type ArmorCategory = "light" | "medium" | "heavy";
+
+export type WeaponRange = {
+  normal: number;
+  long?: number;
+};
+
+export type WeaponKind =
+  | "simple-melee"
+  | "simple-ranged"
+  | "martial-melee"
+  | "martial-ranged";
+
+export type WeaponData = {
+  weaponKind: WeaponKind;
+  damage: {
+    dice: DamageDie;
+    damageType: DamageType;
+  };
+  versatileDamage?: {
+    dice: DamageDie;
+    damageType: DamageType;
+  };
+  properties: WeaponProperty[];
+  range?: WeaponRange;
+  mastery?: string;
+};
+
+export type ArmorData = {
+  armorCategory: ArmorCategory;
+  baseAc: number;
+  dexCap?: number | null;
+  stealthDisadvantage?: boolean;
+  strengthRequirement?: number;
+};
+
+export type ShieldData = {
+  acBonus: number;
+};
+
+export type EquippableConfig = {
+  slots: EquipmentSlotId[];
+  allowedWieldModes?: WieldMode[];
+};
+
 export type Item = {
   id: string;
   name: string;
   category: ItemCategory;
   stackable?: boolean;
+
+  weight?: number;
+  cost?: Partial<Record<Currency, number>>;
+
+  equippable?: EquippableConfig;
+
+  weapon?: WeaponData;
+  armor?: ArmorData;
+  shield?: ShieldData;
+};
+
+export type EquipmentSlotId =
+  | "head"
+  | "neck"
+  | "body"
+  | "cloak"
+  | "hands"
+  | "waist"
+  | "feet"
+  | "ring-left"
+  | "ring-right"
+  | "main-hand"
+  | "off-hand";
+
+export type WieldMode = "main-hand" | "off-hand" | "two-handed";
+
+export type CharacterEquipmentEntry = {
+  instanceId: string;
+  itemId: string;
+  name: string;
+  quantity: number;
+  equipped?: boolean;
+  equippedSlots?: EquipmentSlotId[];
+  wieldMode?: WieldMode;
 };
 
 export type EquipmentItemGrant = {
@@ -1008,12 +1104,7 @@ export type CharacterSheetData = {
   pendingLevelUp?: PendingLevelUp | null;
   levelUpHistory?: LevelUpHistoryEntry[];
 
-  equipment?: {
-    id: string;
-    name: string;
-    quantity: number;
-    equipped?: boolean;
-  }[];
+  equipment?: CharacterEquipmentEntry[];
 
   money?: Money;
 

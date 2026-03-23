@@ -1,0 +1,279 @@
+import { useMemo } from "react";
+import { itemsById } from "../rulesets/dnd/dnd2024/data/items";
+import {
+  equipmentSlotLabels,
+  equipmentSlotOrder,
+} from "../rulesets/dnd/dnd2024/data/equipmentMetadata";
+import {
+  getEquipActionsForItem,
+  getOccupiedSlotsForEquip,
+  isItemEquippable,
+} from "../rulesets/dnd/dnd2024/getEquipmentRules";
+import type {
+  CharacterEquipmentEntry,
+  EquipmentSlotId,
+  WieldMode,
+} from "../rulesets/dnd/dnd2024/types";
+
+type Props = {
+  equipment: CharacterEquipmentEntry[];
+  onChange: (nextEquipment: CharacterEquipmentEntry[]) => void;
+};
+
+const formatLabel = (value: string) =>
+  value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const normalizeEntry = (
+  entry: CharacterEquipmentEntry,
+): CharacterEquipmentEntry => {
+  const equippedSlots = entry.equippedSlots ?? [];
+
+  if (equippedSlots.length === 0) {
+    const { wieldMode, ...rest } = entry;
+    return {
+      ...rest,
+      equipped: false,
+      equippedSlots: [],
+    };
+  }
+
+  return {
+    ...entry,
+    equipped: true,
+    equippedSlots,
+  };
+};
+
+const unequipEntry = (
+  entry: CharacterEquipmentEntry,
+): CharacterEquipmentEntry => {
+  const { wieldMode, ...rest } = entry;
+
+  return {
+    ...rest,
+    equipped: false,
+    equippedSlots: [],
+  };
+};
+
+const CharacterInventoryEquipment = ({ equipment, onChange }: Props) => {
+  const normalizedEquipment = useMemo(
+    () => equipment.map(normalizeEntry),
+    [equipment],
+  );
+
+  const equippedBySlot = useMemo(() => {
+    const slotMap: Partial<Record<EquipmentSlotId, CharacterEquipmentEntry>> =
+      {};
+
+    for (const entry of normalizedEquipment) {
+      for (const slot of entry.equippedSlots ?? []) {
+        slotMap[slot] = entry;
+      }
+    }
+
+    return slotMap;
+  }, [normalizedEquipment]);
+
+  const handleUnequip = (instanceId: string) => {
+    const next = normalizedEquipment.map((entry) =>
+      entry.instanceId === instanceId ? unequipEntry(entry) : entry,
+    );
+
+    onChange(next);
+  };
+
+  const handleEquip = (
+    instanceId: string,
+    itemId: string,
+    mode?: WieldMode,
+  ) => {
+    const slotsToOccupy = getOccupiedSlotsForEquip(itemId, mode);
+    if (slotsToOccupy.length === 0) return;
+
+    const next = normalizedEquipment.map((entry) => ({ ...entry }));
+
+    for (let i = 0; i < next.length; i += 1) {
+      const entry = next[i];
+      const occupied = entry.equippedSlots ?? [];
+      const conflicts = occupied.some((slot) => slotsToOccupy.includes(slot));
+
+      if (conflicts) {
+        next[i] = unequipEntry(entry);
+      }
+    }
+
+    const targetIndex = next.findIndex(
+      (entry) => entry.instanceId === instanceId,
+    );
+    if (targetIndex < 0) return;
+
+    next[targetIndex] = {
+      ...next[targetIndex],
+      equipped: true,
+      equippedSlots: slotsToOccupy,
+      ...(mode ? { wieldMode: mode } : {}),
+    };
+
+    onChange(next);
+  };
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-3">
+      <div className="space-y-6 xl:col-span-2">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
+          <h2 className="mb-5 text-xl font-semibold text-white sm:text-2xl">
+            Inventory
+          </h2>
+
+          {normalizedEquipment.length > 0 ? (
+            <div className="space-y-3">
+              {normalizedEquipment.map((item) => {
+                const isEquippable = isItemEquippable(item.itemId);
+                const actions = getEquipActionsForItem(item.itemId);
+                const itemDef = itemsById[item.itemId];
+                const itemName =
+                  itemDef?.name ?? item.name ?? formatLabel(item.itemId);
+                const equippedSlots = item.equippedSlots ?? [];
+                const isEquipped = equippedSlots.length > 0;
+
+                return (
+                  <div
+                    key={item.instanceId}
+                    className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                  >
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-white">{itemName}</p>
+
+                          <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                            x{item.quantity}
+                          </span>
+
+                          {itemDef?.category && (
+                            <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                              {formatLabel(itemDef.category)}
+                            </span>
+                          )}
+
+                          {isEquipped && (
+                            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                              Equipped
+                            </span>
+                          )}
+                        </div>
+
+                        {isEquipped && (
+                          <p className="mt-2 text-sm text-zinc-400">
+                            {equippedSlots
+                              .map((slot) => equipmentSlotLabels[slot])
+                              .join(" • ")}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2">
+                        {isEquippable ? (
+                          <>
+                            {actions.map((action) => {
+                              const selectedSlots = getOccupiedSlotsForEquip(
+                                item.itemId,
+                                action.mode,
+                              );
+
+                              const isSelected =
+                                selectedSlots.length > 0 &&
+                                selectedSlots.length === equippedSlots.length &&
+                                selectedSlots.every((slot) =>
+                                  equippedSlots.includes(slot),
+                                );
+
+                              return (
+                                <button
+                                  key={`${item.instanceId}-${action.label}`}
+                                  type="button"
+                                  onClick={() =>
+                                    handleEquip(
+                                      item.instanceId,
+                                      item.itemId,
+                                      action.mode,
+                                    )
+                                  }
+                                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+                                    isSelected
+                                      ? "bg-emerald-500 text-black"
+                                      : "border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                                  }`}
+                                >
+                                  {action.label}
+                                </button>
+                              );
+                            })}
+
+                            {isEquipped && (
+                              <button
+                                type="button"
+                                onClick={() => handleUnequip(item.instanceId)}
+                                className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+                              >
+                                Unequip
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="rounded-xl py-2 text-xs text-zinc-500">
+                            Not equippable
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-500">No equipment added yet.</p>
+          )}
+        </section>
+      </div>
+
+      <div className="space-y-6">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
+          <h2 className="mb-5 text-xl font-semibold text-white sm:text-2xl">
+            Equipped Slots
+          </h2>
+
+          <div className="grid gap-3">
+            {equipmentSlotOrder.map((slot) => {
+              const equippedItem = equippedBySlot[slot];
+
+              return (
+                <div
+                  key={slot}
+                  className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                >
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    {equipmentSlotLabels[slot]}
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-white">
+                    {equippedItem
+                      ? (itemsById[equippedItem.itemId]?.name ??
+                        equippedItem.name ??
+                        formatLabel(equippedItem.itemId))
+                      : "Empty"}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+export default CharacterInventoryEquipment;

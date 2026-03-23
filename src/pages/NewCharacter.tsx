@@ -27,6 +27,7 @@ import type {
 } from "../rulesets/dnd/dnd2024/types";
 
 import { resolveEquipmentGrants } from "../rulesets/dnd/dnd2024/resolveEquipmentGrant";
+import { splitResolvedEquipmentIntoEntries } from "../rulesets/dnd/splitEquipmentIntoEntries";
 import type { EquipmentGrant } from "../rulesets/dnd/dnd2024/types";
 
 import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTraits";
@@ -577,6 +578,11 @@ const NewCharacter = () => {
     selectedBackgroundEquipmentOption,
     selectedClassEquipmentOption,
   ]);
+
+  const normalizedStartingEquipment = useMemo(
+    () => splitResolvedEquipmentIntoEntries(resolvedStartingEquipment.items),
+    [resolvedStartingEquipment.items],
+  );
 
   const startingMoney = useMemo<Money>(() => {
     return {
@@ -1402,7 +1408,7 @@ const NewCharacter = () => {
               }
             : {}),
         },
-        equipment: resolvedStartingEquipment.items,
+        equipment: normalizedStartingEquipment,
         money: startingMoney,
       };
 
@@ -1446,7 +1452,7 @@ const NewCharacter = () => {
             : {}),
         },
         derived,
-        equipment: resolvedStartingEquipment.items,
+        equipment: normalizedStartingEquipment,
         money: startingMoney,
       });
 
@@ -2608,10 +2614,10 @@ const NewCharacter = () => {
                 </p>
 
                 <div className="mt-2 space-y-2">
-                  {resolvedStartingEquipment.items.length > 0 ? (
-                    resolvedStartingEquipment.items.map((item) => (
+                  {normalizedStartingEquipment.length > 0 ? (
+                    normalizedStartingEquipment.map((item) => (
                       <div
-                        key={item.id}
+                        key={item.instanceId}
                         className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 px-3 py-2"
                       >
                         <span className="text-sm text-zinc-200">
