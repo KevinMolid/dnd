@@ -370,8 +370,23 @@ export const spells: Spell[] = [
     { id: "befuddlement", name: "Befuddlement", level: 8, school: "Enchantment" },
   { id: "bestow-curse", name: "Bestow Curse", level: 3, school: "Necromancy", concentration: true },
   { id: "blade-barrier", name: "Blade Barrier", level: 6, school: "Evocation", concentration: true },
-  { id: "blade-ward", name: "Blade Ward", level: 0, school: "Abjuration" },
-{
+  {
+    id: "blade-ward",
+    name: "Blade Ward",
+    level: 0,
+    school: "Abjuration",
+    concentration: true,
+    castingTime: "Action",
+    range: "Self",
+    components: "V, S",
+    duration: "Concentration, up to 1 minute",
+    classes: ["bard", "sorcerer", "warlock", "wizard"],
+    description:
+      "Whenever a creature makes an attack roll against you before the spell ends, the attacker subtracts 1d4 from the attack roll.",
+    penalties:
+      "Attack rolls against you are reduced by 1d4 for the duration.",
+  },
+  {
   id: "bless",
   name: "Bless",
   level: 1,
@@ -457,8 +472,23 @@ export const spells: Spell[] = [
   { id: "circle-of-power", name: "Circle of Power", level: 5, school: "Abjuration", concentration: true },
   { id: "clairvoyance", name: "Clairvoyance", level: 3, school: "Divination", concentration: true },
   { id: "cloud-of-daggers", name: "Cloud of Daggers", level: 2, school: "Conjuration", concentration: true },
-  { id: "color-spray", name: "Color Spray", level: 1, school: "Illusion" },
 {
+    id: "color-spray",
+    name: "Color Spray",
+    level: 1,
+    school: "Illusion",
+    castingTime: "Action",
+    range: "Self",
+    components: "V, S, M (a pinch of colorful sand)",
+    duration: "Instantaneous",
+    classes: ["bard", "sorcerer", "wizard"],
+    description:
+      "You launch a dazzling array of flashing, colorful light. Each creature in a 15-foot Cone originating from you must succeed on a Constitution saving throw.",
+    savingThrows: "Constitution",
+    conditions:
+      "On a failed save, the creature has the Blinded condition until the end of your next turn.",
+  },
+  {
   id: "command",
   name: "Command",
   level: 1,
@@ -867,7 +897,24 @@ export const spells: Spell[] = [
     "Attack rolls against an affected creature or object have Advantage if the attacker can see it.",
 },
   { id: "false-life", name: "False Life", level: 1, school: "Necromancy" },
-  { id: "feather-fall", name: "Feather Fall", level: 1, school: "Transmutation" },
+{
+    id: "feather-fall",
+    name: "Feather Fall",
+    level: 1,
+    school: "Transmutation",
+    castingTime:
+      "Reaction (when you or a creature within 60 feet of you falls)",
+    range: "60 feet",
+    components: "V, M (a small feather or piece of down)",
+    duration: "1 minute",
+    classes: ["bard", "sorcerer", "wizard"],
+    description:
+      "Choose up to five falling creatures within range.",
+    effects:
+      "A falling creature's rate of descent slows to 60 feet per round until the spell ends.",
+    endConditions:
+      "If a creature lands before the spell ends, it takes no damage from the fall, and the spell ends for that creature.",
+  },
   { id: "feign-death", name: "Feign Death", level: 3, school: "Necromancy", ritual: true },
   { id: "find-familiar", name: "Find Familiar", level: 1, school: "Conjuration", ritual: true },
   { id: "find-steed", name: "Find Steed", level: 2, school: "Conjuration" },
@@ -949,7 +996,29 @@ export const spells: Spell[] = [
   { id: "forbiddance", name: "Forbiddance", level: 6, school: "Abjuration", ritual: true },
   { id: "fount-of-moonlight", name: "Fount of Moonlight", level: 4, school: "Evocation", concentration: true },
   { id: "freedom-of-movement", name: "Freedom of Movement", level: 4, school: "Abjuration" },
-  { id: "friends", name: "Friends", level: 0, school: "Enchantment" },
+{
+    id: "friends",
+    name: "Friends",
+    level: 0,
+    school: "Enchantment",
+    concentration: true,
+    castingTime: "Action",
+    range: "10 feet",
+    components: "S, M (some makeup)",
+    duration: "Concentration, up to 1 minute",
+    classes: ["bard", "sorcerer", "warlock", "wizard"],
+    description:
+      "You magically emanate a sense of friendship toward one creature you can see within range.",
+    savingThrows: "Wisdom",
+    conditions:
+      "The target must succeed on a Wisdom saving throw or have the Charmed condition for the duration.",
+    limitations:
+      "The target automatically succeeds if it isn't a Humanoid, if you're fighting it, or if you have cast this spell on it within the past 24 hours.",
+    endConditions:
+      "The spell ends early if the target takes damage or if you make an attack roll, deal damage, or force anyone to make a saving throw.",
+    special:
+      "When the spell ends, the target knows it was Charmed by you.",
+  },
   { id: "gate", name: "Gate", level: 9, school: "Conjuration", concentration: true },
   { id: "geas", name: "Geas", level: 5, school: "Enchantment" },
   { id: "gentle-repose", name: "Gentle Repose", level: 2, school: "Necromancy", ritual: true },
@@ -1155,9 +1224,49 @@ export const spells: Spell[] = [
       "The Cold damage increases by 1d6 for each spell slot level above 1.",
   },
     { id: "ice-storm", name: "Ice Storm", level: 4, school: "Evocation" },
-  { id: "identify", name: "Identify", level: 1, school: "Divination", ritual: true },
-  { id: "illusory-script", name: "Illusory Script", level: 1, school: "Illusion", ritual: true },
-  { id: "incendiary-cloud", name: "Incendiary Cloud", level: 8, school: "Conjuration", concentration: true },
+{
+    id: "identify",
+    name: "Identify",
+    level: 1,
+    school: "Divination",
+    ritual: true,
+    castingTime: "1 minute or Ritual",
+    range: "Touch",
+    components: "V, S, M (a pearl worth 100+ GP)",
+    duration: "Instantaneous",
+    classes: ["bard", "wizard"],
+    description:
+      "You touch an object throughout the spell's casting.",
+    effects:
+      "If the object is a magic item or some other magical object, you learn its properties and how to use them, whether it requires Attunement, and how many charges it has, if any.",
+    benefits:
+      "You also learn whether any ongoing spells are affecting the item and what they are. If the item was created by a spell, you learn that spell's name.",
+    special:
+      "If you instead touch a creature throughout the casting, you learn which ongoing spells, if any, are currently affecting it.",
+  },
+{
+    id: "illusory-script",
+    name: "Illusory Script",
+    level: 1,
+    school: "Illusion",
+    ritual: true,
+    castingTime: "1 minute or Ritual",
+    range: "Touch",
+    components: "V, S, M (ink worth 10+ GP, which the spell consumes)",
+    duration: "10 days",
+    classes: ["bard", "warlock", "wizard"],
+    description:
+      "You write on parchment, paper, or another suitable material and imbue it with an illusion that lasts for the duration.",
+    effects:
+      "To you and any creatures you designate when you cast the spell, the writing appears normal and conveys whatever meaning you intended.",
+    special:
+      "To all others, the writing appears as unintelligible or in an unknown or magical script. Alternatively, you can alter the message's meaning, handwriting, and language (must be a language you know).",
+    endConditions:
+      "If the spell is dispelled, the original script and the illusion both disappear.",
+    detection:
+      "A creature with Truesight can read the hidden message.",
+  },
+    { id: "incendiary-cloud", name: "Incendiary Cloud", level: 8, school: "Conjuration", concentration: true },
   { id: "inflict-wounds", name: "Inflict Wounds", level: 1, school: "Necromancy" },
   { id: "insect-plague", name: "Insect Plague", level: 5, school: "Conjuration", concentration: true },
 {
@@ -1231,8 +1340,28 @@ export const spells: Spell[] = [
     "The condition can be Blinded, Deafened, Paralyzed, or Poisoned.",
 },
   { id: "levitate", name: "Levitate", level: 2, school: "Transmutation", concentration: true },
-  { id: "light", name: "Light", level: 0, school: "Evocation" },
-{
+  {
+    id: "light",
+    name: "Light",
+    level: 0,
+    school: "Evocation",
+    castingTime: "Action",
+    range: "Touch",
+    components: "V, M (a firefly or phosphorescent moss)",
+    duration: "1 hour",
+    classes: ["bard", "cleric", "sorcerer", "wizard"],
+    description:
+      "You touch one Large or smaller object that isn't being worn or carried by someone else.",
+    effects:
+      "The object sheds Bright Light in a 20-foot radius and Dim Light for an additional 20 feet.",
+    control:
+      "The light can be colored as you like.",
+    limitations:
+      "Covering the object with something opaque blocks the light.",
+    endConditions:
+      "The spell ends if you cast it again.",
+  },
+  {
     id: "locate-animals-or-plants",
     name: "Locate Animals or Plants",
     level: 2,
@@ -1320,9 +1449,45 @@ export const spells: Spell[] = [
   { id: "mass-healing-word", name: "Mass Healing Word", level: 3, school: "Abjuration" },
   { id: "meld-into-stone", name: "Meld into Stone", level: 3, school: "Transmutation", ritual: true },
   { id: "melfs-acid-arrow", name: "Melf's Acid Arrow", level: 2, school: "Evocation" },
-  { id: "mending", name: "Mending", level: 0, school: "Transmutation" },
-  { id: "message", name: "Message", level: 0, school: "Transmutation" },
-  { id: "mind-sliver", name: "Mind Sliver", level: 0, school: "Enchantment" },
+  {
+    id: "mending",
+    name: "Mending",
+    level: 0,
+    school: "Transmutation",
+    castingTime: "1 minute",
+    range: "Touch",
+    components: "V, S, M (two lodestones)",
+    duration: "Instantaneous",
+    classes: ["bard", "cleric", "druid", "sorcerer", "wizard"],
+    description:
+      "This spell repairs a single break or tear in an object you touch.",
+    effects:
+      "You can mend a broken chain link, two halves of a broken key, a torn cloak, or a leaking wineskin.",
+    limitations:
+      "The break or tear must be no larger than 1 foot in any dimension.",
+    special:
+      "This spell can physically repair a magic item, but it can't restore magic to such an object.",
+  },
+  {
+    id: "message",
+    name: "Message",
+    level: 0,
+    school: "Transmutation",
+    castingTime: "Action",
+    range: "120 feet",
+    components: "S, M (a copper wire)",
+    duration: "1 round",
+    classes: ["bard", "druid", "sorcerer", "wizard"],
+    description:
+      "You point toward a creature within range and whisper a message.",
+    effects:
+      "The target (and only the target) hears the message and can reply in a whisper that only you can hear.",
+    control:
+      "You can cast this spell through solid objects if you are familiar with the target and know it is beyond the barrier.",
+    limitations:
+      "Magical silence; 1 foot of stone, metal, or wood; or a thin sheet of lead blocks the spell.",
+  },
+    { id: "mind-sliver", name: "Mind Sliver", level: 0, school: "Enchantment" },
   { id: "mind-spike", name: "Mind Spike", level: 2, school: "Divination", concentration: true },
 {
     id: "minor-illusion",
@@ -1406,8 +1571,48 @@ export const spells: Spell[] = [
   { id: "power-word-fortify", name: "Power Word Fortify", level: 7, school: "Enchantment" },
   { id: "power-word-heal", name: "Power Word Heal", level: 9, school: "Enchantment" },
   { id: "prayer-of-healing", name: "Prayer of Healing", level: 2, school: "Abjuration" },
-  { id: "prestidigitation", name: "Prestidigitation", level: 0, school: "Transmutation" },
-  { id: "produce-flame", name: "Produce Flame", level: 0, school: "Conjuration" },
+{
+    id: "prestidigitation",
+    name: "Prestidigitation",
+    level: 0,
+    school: "Transmutation",
+    castingTime: "Action",
+    range: "10 feet",
+    components: "V, S",
+    duration: "Up to 1 hour",
+    classes: ["bard", "sorcerer", "warlock", "wizard"],
+    description:
+      "You create a magical effect within range. Choose the effect from the options below.",
+    options: [
+      {
+        name: "Sensory Effect",
+        text: "You create an instantaneous harmless sensory effect, such as a shower of sparks, a puff of wind, faint musical notes, or an odd odor.",
+      },
+      {
+        name: "Fire Play",
+        text: "You instantaneously light or snuff out a candle, a torch, or a small campfire.",
+      },
+      {
+        name: "Clean or Soil",
+        text: "You instantaneously clean or soil an object no larger than 1 cubic foot.",
+      },
+      {
+        name: "Minor Sensation",
+        text: "You chill, warm, or flavor up to 1 cubic foot of nonliving material for 1 hour.",
+      },
+      {
+        name: "Magic Mark",
+        text: "You make a color, a small mark, or a symbol appear on an object or a surface for 1 hour.",
+      },
+      {
+        name: "Minor Creation",
+        text: "You create a nonmagical trinket or an illusory image that can fit in your hand. It lasts until the end of your next turn.",
+      },
+    ],
+    limitations:
+      "If you cast this spell multiple times, you can have up to three of its non-instantaneous effects active at a time.",
+  },
+    { id: "produce-flame", name: "Produce Flame", level: 0, school: "Conjuration" },
   { id: "protection-from-energy", name: "Protection from Energy", level: 3, school: "Abjuration", concentration: true },
 {
   id: "protection-from-evil-and-good",
@@ -1664,8 +1869,26 @@ export const spells: Spell[] = [
   { id: "spirit-guardians", name: "Spirit Guardians", level: 3, school: "Conjuration", concentration: true },
   { id: "spiritual-weapon", name: "Spiritual Weapon", level: 2, school: "Evocation", concentration: true },
   { id: "staggering-smite", name: "Staggering Smite", level: 4, school: "Enchantment", concentration: true },
-  { id: "starry-wisp", name: "Starry Wisp", level: 0, school: "Evocation" },
-  { id: "stone-shape", name: "Stone Shape", level: 4, school: "Transmutation" },
+{
+    id: "starry-wisp",
+    name: "Starry Wisp",
+    level: 0,
+    school: "Evocation",
+    castingTime: "Action",
+    range: "60 feet",
+    components: "V, S",
+    duration: "Instantaneous",
+    classes: ["bard", "druid"],
+    description:
+      "You launch a mote of light at one creature or object within range. Make a ranged spell attack against the target.",
+    effects:
+      "On a hit, the target takes 1d8 Radiant damage.",
+    benefits:
+      "Until the end of your next turn, the target emits Dim Light in a 10-foot radius and can't benefit from the Invisible condition.",
+    cantripUpgrade:
+      "The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8).",
+  },
+    { id: "stone-shape", name: "Stone Shape", level: 4, school: "Transmutation" },
   { id: "stoneskin", name: "Stoneskin", level: 4, school: "Transmutation", concentration: true },
   { id: "storm-of-vengeance", name: "Storm of Vengeance", level: 9, school: "Conjuration", concentration: true },
 {
@@ -1803,8 +2026,25 @@ export const spells: Spell[] = [
     cantripUpgrade:
       "The damage increases by 1d6 when you reach levels 5 (2d6), 11 (3d6), and 17 (4d6).",
   },
-    { id: "thunderclap", name: "Thunderclap", level: 0, school: "Evocation" },
 {
+    id: "thunderclap",
+    name: "Thunderclap",
+    level: 0,
+    school: "Evocation",
+    castingTime: "Action",
+    range: "Self",
+    components: "S",
+    duration: "Instantaneous",
+    classes: ["bard", "druid", "sorcerer", "warlock", "wizard"],
+    description:
+      "Each creature in a 5-foot emanation originating from you must succeed on a Constitution saving throw or take 1d6 Thunder damage.",
+    savingThrows: "Constitution",
+    control:
+      "The spell's thunderous sound can be heard up to 100 feet away.",
+    cantripUpgrade:
+      "The damage increases by 1d6 when you reach levels 5 (2d6), 11 (3d6), and 17 (4d6).",
+  },
+  {
   id: "thunderous-smite",
   name: "Thunderous Smite",
   level: 1,
@@ -1883,8 +2123,31 @@ export const spells: Spell[] = [
       "Whether you deal Radiant damage or the weapon's normal damage type, the attack deals extra Radiant damage when you reach levels 5 (1d6), 11 (2d6), and 17 (3d6).",
   },
     { id: "tsunami", name: "Tsunami", level: 8, school: "Conjuration", concentration: true },
-  { id: "unseen-servant", name: "Unseen Servant", level: 1, school: "Conjuration", ritual: true },
-  {
+{
+    id: "unseen-servant",
+    name: "Unseen Servant",
+    level: 1,
+    school: "Conjuration",
+    ritual: true,
+    castingTime: "Action or Ritual",
+    range: "60 feet",
+    components: "V, S, M (a bit of string and of wood)",
+    duration: "1 hour",
+    classes: ["bard", "warlock", "wizard"],
+    description:
+      "This spell creates an Invisible, mindless, shapeless Medium force that performs simple tasks at your command until the spell ends.",
+    effects:
+      "The servant appears in an unoccupied space on the ground within range. It has AC 10, 1 Hit Point, Strength 2, and it can't attack.",
+    control:
+      "On each of your turns as a Bonus Action, you can mentally command the servant to move up to 15 feet and interact with an object.",
+    behavior:
+      "The servant can perform simple tasks such as fetching things, cleaning, mending, folding clothes, lighting fires, serving food, and pouring drinks. It completes tasks to the best of its ability and then waits for your next command.",
+    limitations:
+      "If commanded to perform a task that would move it more than 60 feet away from you, the spell ends.",
+    endConditions:
+      "The spell ends if the servant drops to 0 Hit Points.",
+  },
+    {
     id: "vicious-mockery",
     name: "Vicious Mockery",
     level: 0,
