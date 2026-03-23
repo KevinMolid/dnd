@@ -19,46 +19,9 @@ import type {
   WeaponMasteryChoiceId,
 } from "../rulesets/dnd/dnd2024/types";
 
-import SpellTooltip from "../components/SpellTooltip";
-
-const toTooltipSpell = (
-  spell:
-    | ReturnType<typeof getSpellById>
-    | {
-        id?: string;
-        name: string;
-        level?: number;
-        school?: string;
-        castingTime?: string;
-        range?: string;
-        components?: string;
-        duration?: string;
-        classes?: string[];
-        description?: string;
-        effects?: string;
-        details?: string;
-        higherLevel?: string;
-        concentration?: boolean;
-        ritual?: boolean;
-        options?: { name: string; text: string }[];
-      }
-    | undefined,
-  fallback: {
-    id: string;
-    name: string;
-    level?: number;
-    school?: string;
-  },
-) => {
-  return (
-    spell ?? {
-      id: fallback.id,
-      name: fallback.name,
-      level: fallback.level,
-      school: fallback.school,
-    }
-  );
-};
+import SpellPreviewCard, {
+  type SpellPreviewData,
+} from "../components/SpellPreviewCard";
 
 type Props = {
   character: any;
@@ -154,7 +117,7 @@ const choiceButtonClass = (selected: boolean) =>
 
 const sectionCardClass = "rounded-xl border border-white/10 bg-white/5 p-4";
 
-type TooltipSpellData =
+type PreviewableSpell =
   | NonNullable<ReturnType<typeof getSpellById>>
   | {
       id?: string;
@@ -175,29 +138,77 @@ type TooltipSpellData =
       options?: { name: string; text: string }[];
     };
 
-const SpellChoiceContent = ({
+const toPreviewSpell = (
+  spell:
+    | ReturnType<typeof getSpellById>
+    | {
+        id?: string;
+        name: string;
+        level?: number;
+        school?: string;
+        castingTime?: string;
+        range?: string;
+        components?: string;
+        duration?: string;
+        classes?: string[];
+        description?: string;
+        effects?: string;
+        details?: string;
+        higherLevel?: string;
+        concentration?: boolean;
+        ritual?: boolean;
+        options?: { name: string; text: string }[];
+      }
+    | undefined,
+  fallback: {
+    id: string;
+    name: string;
+    level?: number;
+    school?: string;
+  },
+): SpellPreviewData => {
+  return {
+    id: spell?.id ?? fallback.id,
+    name: spell?.name ?? fallback.name,
+    level: spell?.level ?? fallback.level ?? 0,
+    school: spell?.school,
+    castingTime: spell?.castingTime,
+    range: spell?.range,
+    components: spell?.components,
+    duration: spell?.duration,
+    classes: spell?.classes,
+    description: spell?.description,
+    effects: spell?.effects,
+    details: spell?.details,
+    higherLevel: spell?.higherLevel,
+    concentration: spell?.concentration,
+    ritual: spell?.ritual,
+    options: spell?.options,
+  };
+};
+
+const SpellChoiceLabel = ({
   spell,
   subtitle,
 }: {
-  spell: TooltipSpellData;
+  spell: PreviewableSpell;
   subtitle?: string;
 }) => {
   return (
-    <SpellTooltip spell={spell}>
-      <div className="block w-full text-left">
-        <span className="block font-medium underline decoration-dotted underline-offset-4">
-          {spell.name}
-        </span>
-        {subtitle && (
-          <span className="mt-1 block text-xs text-zinc-400">{subtitle}</span>
-        )}
-      </div>
-    </SpellTooltip>
+    <div className="block w-full text-left">
+      <span className="block font-medium">{spell.name}</span>
+      {subtitle && (
+        <span className="mt-1 block text-xs text-zinc-400">{subtitle}</span>
+      )}
+    </div>
   );
 };
 
 const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
   const [loading, setLoading] = useState(false);
+  const [previewSpell, setPreviewSpell] = useState<SpellPreviewData | null>(
+    null,
+  );
   const [decisionsByLevel, setDecisionsByLevel] = useState<
     Record<number, LevelUpDecision>
   >({});
@@ -238,6 +249,7 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       ...local,
     };
   };
+
   const updateDecision = (level: number, patch: Partial<LevelUpDecision>) => {
     setDecisionsByLevel((prev) => ({
       ...prev,
@@ -246,6 +258,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
         ...patch,
       },
     }));
+  };
+
+  const handlePreviewSpell = (spell: SpellPreviewData) => {
+    setPreviewSpell(spell);
   };
 
   const toggleExpertise = (
@@ -651,7 +667,7 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl sm:p-8">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-900 p-6 shadow-2xl sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-white sm:text-2xl">
@@ -1103,30 +1119,49 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                           No spellcasting rules found for this choice.
                         </p>
                       ) : (
-                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                          {filteredAvailableStepCantrips.map((spell) => (
-                            <button
-                              key={spell.id}
-                              onClick={() =>
-                                toggleCantripChoice(
-                                  step.level,
-                                  spell.id,
-                                  step.choice?.choose ?? 1,
-                                )
-                              }
-                              className={choiceButtonClass(
-                                (decision.cantripChoices ?? []).includes(
-                                  spell.id,
-                                ),
-                              )}
-                            >
-                              <SpellChoiceContent
-                                spell={spell}
-                                subtitle={spell.school}
-                              />
-                            </button>
-                          ))}
-                        </div>
+                        <>
+                          <div className="mb-4">
+                            <SpellPreviewCard spell={previewSpell} />
+                          </div>
+
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {filteredAvailableStepCantrips.map((spell) => (
+                              <button
+                                key={spell.id}
+                                onMouseEnter={() =>
+                                  handlePreviewSpell(
+                                    toPreviewSpell(spell, spell),
+                                  )
+                                }
+                                onFocus={() =>
+                                  handlePreviewSpell(
+                                    toPreviewSpell(spell, spell),
+                                  )
+                                }
+                                onClick={() => {
+                                  handlePreviewSpell(
+                                    toPreviewSpell(spell, spell),
+                                  );
+                                  toggleCantripChoice(
+                                    step.level,
+                                    spell.id,
+                                    step.choice?.choose ?? 1,
+                                  );
+                                }}
+                                className={choiceButtonClass(
+                                  (decision.cantripChoices ?? []).includes(
+                                    spell.id,
+                                  ),
+                                )}
+                              >
+                                <SpellChoiceLabel
+                                  spell={spell}
+                                  subtitle={spell.school}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -1162,39 +1197,62 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                           No spellcasting rules found for this choice.
                         </p>
                       ) : (
-                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                          {filteredAvailableStepLeveledSpells.map((spell) => (
-                            <button
-                              key={spell.id}
-                              onClick={() =>
-                                toggleSpellChoice(
-                                  step.level,
-                                  {
-                                    spellId: spell.id,
-                                    level: spell.level as SpellLevel,
-                                  },
-                                  step.choice?.choose ?? 1,
-                                )
-                              }
-                              className={choiceButtonClass(
-                                (decision.spellChoices ?? []).some(
-                                  (selected) => selected.spellId === spell.id,
-                                ),
-                              )}
-                            >
-                              <SpellChoiceContent
-                                spell={spell}
-                                subtitle={`Level ${spell.level} · ${spell.school}`}
-                              />
-                            </button>
-                          ))}
-                        </div>
+                        <>
+                          <div className="mb-4">
+                            <SpellPreviewCard spell={previewSpell} />
+                          </div>
+
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {filteredAvailableStepLeveledSpells.map((spell) => (
+                              <button
+                                key={spell.id}
+                                onMouseEnter={() =>
+                                  handlePreviewSpell(
+                                    toPreviewSpell(spell, spell),
+                                  )
+                                }
+                                onFocus={() =>
+                                  handlePreviewSpell(
+                                    toPreviewSpell(spell, spell),
+                                  )
+                                }
+                                onClick={() => {
+                                  handlePreviewSpell(
+                                    toPreviewSpell(spell, spell),
+                                  );
+                                  toggleSpellChoice(
+                                    step.level,
+                                    {
+                                      spellId: spell.id,
+                                      level: spell.level as SpellLevel,
+                                    },
+                                    step.choice?.choose ?? 1,
+                                  );
+                                }}
+                                className={choiceButtonClass(
+                                  (decision.spellChoices ?? []).some(
+                                    (selected) => selected.spellId === spell.id,
+                                  ),
+                                )}
+                              >
+                                <SpellChoiceLabel
+                                  spell={spell}
+                                  subtitle={`Level ${spell.level} · ${spell.school}`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
 
                   {step.type === "cantrip-replacement" && (
                     <div className="space-y-4">
+                      <div className="mb-4">
+                        <SpellPreviewCard spell={previewSpell} />
+                      </div>
+
                       <div className={sectionCardClass}>
                         <p className="mb-2 text-sm font-medium text-zinc-200">
                           Replace one known cantrip
@@ -1205,23 +1263,30 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                             const selected =
                               cantripReplacement.removeSpellId === spellId;
 
+                            const previewData = toPreviewSpell(spellData, {
+                              id: spellId,
+                              name: spellData?.name ?? spellId,
+                              level: 0,
+                              school: spellData?.school,
+                            });
+
                             return (
                               <button
                                 key={spellId}
-                                onClick={() =>
+                                onMouseEnter={() =>
+                                  handlePreviewSpell(previewData)
+                                }
+                                onFocus={() => handlePreviewSpell(previewData)}
+                                onClick={() => {
+                                  handlePreviewSpell(previewData);
                                   setCantripReplacement(step.level, {
                                     removeSpellId: spellId,
-                                  })
-                                }
+                                  });
+                                }}
                                 className={choiceButtonClass(selected)}
                               >
-                                <SpellChoiceContent
-                                  spell={toTooltipSpell(spellData, {
-                                    id: spellId,
-                                    name: spellData?.name ?? spellId,
-                                    level: 0,
-                                    school: spellData?.school,
-                                  })}
+                                <SpellChoiceLabel
+                                  spell={previewData}
                                   subtitle="Known cantrip"
                                 />
                               </button>
@@ -1238,18 +1303,24 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                           {filteredAvailableStepCantrips.map((spell) => {
                             const selected =
                               cantripReplacement.addSpellId === spell.id;
+                            const previewData = toPreviewSpell(spell, spell);
 
                             return (
                               <button
                                 key={spell.id}
-                                onClick={() =>
+                                onMouseEnter={() =>
+                                  handlePreviewSpell(previewData)
+                                }
+                                onFocus={() => handlePreviewSpell(previewData)}
+                                onClick={() => {
+                                  handlePreviewSpell(previewData);
                                   setCantripReplacement(step.level, {
                                     addSpellId: spell.id,
-                                  })
-                                }
+                                  });
+                                }}
                                 className={choiceButtonClass(selected)}
                               >
-                                <SpellChoiceContent
+                                <SpellChoiceLabel
                                   spell={spell}
                                   subtitle={spell.school}
                                 />
@@ -1263,6 +1334,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
                   {step.type === "spell-replacement" && (
                     <div className="space-y-4">
+                      <div className="mb-4">
+                        <SpellPreviewCard spell={previewSpell} />
+                      </div>
+
                       <div className={sectionCardClass}>
                         <p className="mb-2 text-sm font-medium text-zinc-200">
                           Replace one known spell
@@ -1274,25 +1349,31 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                               spellReplacement.removeSpellId ===
                               knownSpell.spellId;
 
+                            const previewData = toPreviewSpell(spellData, {
+                              id: knownSpell.spellId,
+                              name: spellData?.name ?? knownSpell.spellId,
+                              level: knownSpell.level,
+                              school: spellData?.school,
+                            });
+
                             return (
                               <button
                                 key={knownSpell.spellId}
-                                onClick={() =>
+                                onMouseEnter={() =>
+                                  handlePreviewSpell(previewData)
+                                }
+                                onFocus={() => handlePreviewSpell(previewData)}
+                                onClick={() => {
+                                  handlePreviewSpell(previewData);
                                   setSpellReplacement(step.level, {
                                     removeSpellId: knownSpell.spellId,
                                     level: knownSpell.level,
-                                  })
-                                }
+                                  });
+                                }}
                                 className={choiceButtonClass(selected)}
                               >
-                                <SpellChoiceContent
-                                  spell={
-                                    spellData ?? {
-                                      id: knownSpell.spellId,
-                                      name: knownSpell.spellId,
-                                      level: knownSpell.level,
-                                    }
-                                  }
+                                <SpellChoiceLabel
+                                  spell={previewData}
                                   subtitle={`Level ${spellData?.level ?? knownSpell.level}`}
                                 />
                               </button>
@@ -1309,19 +1390,25 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                           {filteredAvailableStepLeveledSpells.map((spell) => {
                             const selected =
                               spellReplacement.addSpellId === spell.id;
+                            const previewData = toPreviewSpell(spell, spell);
 
                             return (
                               <button
                                 key={spell.id}
-                                onClick={() =>
+                                onMouseEnter={() =>
+                                  handlePreviewSpell(previewData)
+                                }
+                                onFocus={() => handlePreviewSpell(previewData)}
+                                onClick={() => {
+                                  handlePreviewSpell(previewData);
                                   setSpellReplacement(step.level, {
                                     addSpellId: spell.id,
                                     level: spell.level,
-                                  })
-                                }
+                                  });
+                                }}
                                 className={choiceButtonClass(selected)}
                               >
-                                <SpellChoiceContent
+                                <SpellChoiceLabel
                                   spell={spell}
                                   subtitle={`Level ${spell.level} · ${spell.school}`}
                                 />
