@@ -16,6 +16,7 @@ import {
 
 import type {
   AbilityKey,
+  CharacterEquipmentEntry,
   CharacterSheetData,
   EquipmentGrant,
   LanguageId,
@@ -31,6 +32,8 @@ import type {
 } from "../rulesets/dnd/dnd2024/types";
 
 import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTraits";
+
+import { splitResolvedEquipmentIntoEntries } from "../rulesets/dnd/splitEquipmentIntoEntries";
 
 const abilityLabels: Record<AbilityKey, string> = {
   str: "Strength",
@@ -389,6 +392,27 @@ const EditCharacter = () => {
     selectedClassEquipmentOption,
   ]);
 
+  const normalizedStartingEquipment = useMemo(
+    () => splitResolvedEquipmentIntoEntries(resolvedStartingEquipment.items),
+    [resolvedStartingEquipment.items],
+  );
+
+  const currentEquipment = useMemo<CharacterEquipmentEntry[]>(
+    () => (originalCharacter?.equipment ?? []) as CharacterEquipmentEntry[],
+    [originalCharacter],
+  );
+
+  const currentMoney = useMemo<Money>(
+    () => ({
+      cp: originalCharacter?.money?.cp ?? 0,
+      sp: originalCharacter?.money?.sp ?? 0,
+      ep: originalCharacter?.money?.ep ?? 0,
+      gp: originalCharacter?.money?.gp ?? 0,
+      pp: originalCharacter?.money?.pp ?? 0,
+    }),
+    [originalCharacter],
+  );
+
   const startingMoney = useMemo<Money>(
     () => ({
       cp: resolvedStartingEquipment.currency.cp ?? 0,
@@ -511,13 +535,14 @@ const EditCharacter = () => {
           data.choices?.rogueWeaponMasteryChoices ?? [],
         );
 
+        const loadedClassDef = getClassById(data.classId);
+        const loadedBackgroundDef = getBackgroundById(data.backgroundId);
+
         setClassEquipmentOptionId(
-          data.choices?.levelUpDecisions
-            ? ""
-            : (classDef?.startingEquipment?.options[0]?.id ?? ""),
+          loadedClassDef?.startingEquipment?.options[0]?.id ?? "",
         );
         setBackgroundEquipmentOptionId(
-          backgroundDef?.equipment?.options[0]?.id ?? "",
+          loadedBackgroundDef?.equipment?.options[0]?.id ?? "",
         );
       } catch (err: any) {
         setError(err?.message || "Failed to load character.");
@@ -937,8 +962,8 @@ const EditCharacter = () => {
                 rogueWeaponMasteryChoices: [],
               }),
         },
-        equipment: resolvedStartingEquipment.items,
-        money: startingMoney,
+        equipment: currentEquipment,
+        money: currentMoney,
       };
 
       const derived = buildDerivedCharacterData(updatedCharacter);
@@ -1848,10 +1873,10 @@ const EditCharacter = () => {
                 </p>
 
                 <div className="mt-2 space-y-2">
-                  {resolvedStartingEquipment.items.length > 0 ? (
-                    resolvedStartingEquipment.items.map((item) => (
+                  {normalizedStartingEquipment.length > 0 ? (
+                    normalizedStartingEquipment.map((item) => (
                       <div
-                        key={item.id}
+                        key={item.instanceId}
                         className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 px-3 py-2"
                       >
                         <span className="text-sm text-zinc-200">
