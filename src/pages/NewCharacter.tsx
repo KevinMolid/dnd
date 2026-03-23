@@ -31,6 +31,10 @@ import type { EquipmentGrant } from "../rulesets/dnd/dnd2024/types";
 
 import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTraits";
 
+import SpellPreviewCard, {
+  type SpellPreviewData,
+} from "../components/SpellPreviewCard";
+
 type CharacterCreationStep =
   | "details"
   | "class"
@@ -199,6 +203,10 @@ const NewCharacter = () => {
   const [classCantripChoices, setClassCantripChoices] = useState<SpellId[]>([]);
   const [classSpellChoices, setClassSpellChoices] = useState<SpellSelection[]>(
     [],
+  );
+
+  const [previewSpell, setPreviewSpell] = useState<SpellPreviewData | null>(
+    null,
   );
 
   const [speciesTraitChoices, setSpeciesTraitChoices] = useState<
@@ -1021,6 +1029,10 @@ const NewCharacter = () => {
     });
   }, [speciesChoices]);
 
+  const handlePreviewSpell = (spell: SpellPreviewData) => {
+    setPreviewSpell(spell);
+  };
+
   const handleAbilityChange = (key: AbilityKey, value: string) => {
     const parsed = Number(value);
 
@@ -1700,6 +1712,10 @@ const NewCharacter = () => {
                       {classStartingCantripChoiceCount === 1 ? "" : "s"}.
                     </p>
 
+                    <div className="mb-4">
+                      <SpellPreviewCard spell={previewSpell} />
+                    </div>
+
                     <div className="grid gap-3 sm:grid-cols-2">
                       {availableClassCantrips.map((spell) => {
                         const isSelected = classCantripChoices.includes(
@@ -1709,6 +1725,9 @@ const NewCharacter = () => {
                         return (
                           <label
                             key={spell.id}
+                            onMouseEnter={() => handlePreviewSpell(spell)}
+                            onFocus={() => handlePreviewSpell(spell)}
+                            onClick={() => handlePreviewSpell(spell)}
                             className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
                               isSelected
                                 ? "border-white/25 bg-white/10"
@@ -1745,6 +1764,10 @@ const NewCharacter = () => {
                       {classStartingSpellChoiceCount === 1 ? "" : "s"}.
                     </p>
 
+                    <div className="mb-4">
+                      <SpellPreviewCard spell={previewSpell} />
+                    </div>
+
                     <div className="grid gap-3 sm:grid-cols-2">
                       {availableClassStartingSpells.map((spell) => {
                         const isSelected = classSpellChoices.some(
@@ -1754,6 +1777,9 @@ const NewCharacter = () => {
                         return (
                           <label
                             key={spell.id}
+                            onMouseEnter={() => handlePreviewSpell(spell)}
+                            onFocus={() => handlePreviewSpell(spell)}
+                            onClick={() => handlePreviewSpell(spell)}
                             className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
                               isSelected
                                 ? "border-white/25 bg-white/10"
@@ -2147,6 +2173,10 @@ const NewCharacter = () => {
                         Magic Initiate Cantrips
                       </h3>
 
+                      <div className="mb-4">
+                        <SpellPreviewCard spell={previewSpell} />
+                      </div>
+
                       <div className="grid gap-3 sm:grid-cols-2">
                         {backgroundMagicInitiateCantrips.map((spell) => {
                           const isSelected =
@@ -2155,6 +2185,9 @@ const NewCharacter = () => {
                           return (
                             <label
                               key={spell.id}
+                              onMouseEnter={() => handlePreviewSpell(spell)}
+                              onFocus={() => handlePreviewSpell(spell)}
+                              onClick={() => handlePreviewSpell(spell)}
                               className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
                                 isSelected
                                   ? "border-white/25 bg-white/10"
@@ -2185,6 +2218,11 @@ const NewCharacter = () => {
                       >
                         Choose 1 level 1 spell
                       </label>
+
+                      <div className="mb-4">
+                        <SpellPreviewCard spell={previewSpell} />
+                      </div>
+
                       <select
                         id="backgroundFeatSpellChoice"
                         value={backgroundFeatSpellChoices[0]?.spellId ?? ""}

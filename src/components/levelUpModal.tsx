@@ -213,9 +213,8 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
   const selectedSubclassId =
     decisionsByLevel[3]?.subclassId ??
-    character.choices?.levelUpDecisions?.[3]?.subclassId ??
     character.choices?.subclassId ??
-    character.subclassId;
+    character.choices?.levelUpDecisions?.[3]?.subclassId;
 
   const selectedSubclass = useMemo(
     () => (selectedSubclassId ? subclassesById[selectedSubclassId] : undefined),

@@ -9,16 +9,21 @@ export const applyLevelUpDecision = (
   const existingLevelUpDecisions = existingChoices.levelUpDecisions ?? {};
   const existingLevelDecision = existingLevelUpDecisions[level] ?? {};
 
+  const mergedLevelDecision: LevelUpDecision = {
+    ...existingLevelDecision,
+    ...decision,
+  };
+
   return {
     ...character,
     choices: {
       ...existingChoices,
+      ...(mergedLevelDecision.subclassId
+        ? { subclassId: mergedLevelDecision.subclassId }
+        : {}),
       levelUpDecisions: {
         ...existingLevelUpDecisions,
-        [level]: {
-          ...existingLevelDecision,
-          ...decision,
-        },
+        [level]: mergedLevelDecision,
       },
     },
   };

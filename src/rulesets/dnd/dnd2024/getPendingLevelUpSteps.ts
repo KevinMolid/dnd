@@ -17,7 +17,6 @@ import {
 import {
   paladinBlessedWarriorCantripChoice,
   paladinFightingStyleChoicesByLevel,
-  paladinSubclassChoicesByLevel,
   paladinWeaponMasteryChoices,
 } from "./data/classes/paladin";
 
@@ -631,18 +630,6 @@ const getPaladinPendingChoiceSteps = (
       title: "Choose Fighting Style",
       description: fightingStyleDefinition.description,
       choice: fightingStyleDefinition as ChoiceDefinition<string>,
-    });
-  }
-
-  const subclassDefinition = paladinSubclassChoicesByLevel[level]?.[0];
-  if (subclassDefinition && !decisions?.subclassId) {
-    steps.push({
-      level,
-      type: "subclass-choice",
-      id: `paladin-subclass-choice-${level}`,
-      title: "Choose Subclass",
-      description: subclassDefinition.description,
-      choice: subclassDefinition as ChoiceDefinition<string>,
     });
   }
 
