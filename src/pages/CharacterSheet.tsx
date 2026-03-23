@@ -2129,12 +2129,9 @@ const CharacterSheet = () => {
                       const usageLabel = formatSpellUsage(spell.usage);
 
                       return (
-                        <SpellTooltip spell={spell}>
-                          <div
-                            key={spell.spellId}
-                            className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                          >
-                            <div className="flex items-center justify-between gap-4">
+                        <div key={spell.spellId} className="">
+                          <SpellTooltip spell={spell}>
+                            <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
                               <div>
                                 <div>
                                   <p className="font-medium text-white">
@@ -2154,8 +2151,8 @@ const CharacterSheet = () => {
                                 </span>
                               )}
                             </div>
-                          </div>
-                        </SpellTooltip>
+                          </SpellTooltip>
+                        </div>
                       );
                     })}
                   </div>
