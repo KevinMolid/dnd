@@ -520,7 +520,24 @@ export const spells: Spell[] = [
   endConditions:
     "The spell ends if you make an attack roll against a creature other than the target, if you cast a spell on an enemy other than the target, if an ally damages the target, or if you end your turn more than 30 feet away from the target.",
 },
-  { id: "comprehend-languages", name: "Comprehend Languages", level: 1, school: "Divination", ritual: true },
+{
+    id: "comprehend-languages",
+    name: "Comprehend Languages",
+    level: 1,
+    school: "Divination",
+    ritual: true,
+    castingTime: "Action or Ritual",
+    range: "Self",
+    components: "V, S, M (a pinch of soot and salt)",
+    duration: "1 hour",
+    classes: ["bard", "sorcerer", "warlock", "wizard"],
+    description:
+      "For the duration, you understand the literal meaning of any language that you hear or see signed.",
+    benefits:
+      "You also understand any written language that you see, but you must be touching the surface on which the words are written.",
+    limitations:
+      "It takes about 1 minute to read one page of text. This spell doesn't decode symbols or secret messages.",
+  },
   { id: "confusion", name: "Confusion", level: 4, school: "Enchantment", concentration: true },
   { id: "conjure-animals", name: "Conjure Animals", level: 3, school: "Conjuration", concentration: true },
   { id: "conjure-beings", name: "Conjure Beings", level: 4, school: "Conjuration", concentration: true },
@@ -531,7 +548,25 @@ export const spells: Spell[] = [
   { id: "conjure-woodland-beings", name: "Conjure Woodland Beings", level: 4, school: "Conjuration", concentration: true },
   { id: "cone-of-cold", name: "Cone of Cold", level: 5, school: "Evocation" },
   { id: "contagion", name: "Contagion", level: 5, school: "Necromancy" },
-  { id: "continual-flame", name: "Continual Flame", level: 2, school: "Evocation" },
+{
+    id: "continual-flame",
+    name: "Continual Flame",
+    level: 2,
+    school: "Evocation",
+    castingTime: "Action",
+    range: "Touch",
+    components: "V, S, M (ruby dust worth 50+ GP, which the spell consumes)",
+    duration: "Until dispelled",
+    classes: ["cleric", "druid", "wizard"],
+    description:
+      "A flame springs from an object that you touch.",
+    effects:
+      "The flame creates Bright Light in a 20-foot radius and Dim Light for an additional 20 feet.",
+    special:
+      "The flame looks like a regular flame, but it creates no heat and consumes no fuel.",
+    limitations:
+      "The flame can be covered or hidden but not smothered or quenched.",
+  },
   { id: "control-water", name: "Control Water", level: 4, school: "Transmutation", concentration: true },
   { id: "control-weather", name: "Control Weather", level: 8, school: "Transmutation", concentration: true },
   { id: "create-food-and-water", name: "Create Food and Water", level: 3, school: "Conjuration" },
@@ -596,7 +631,21 @@ export const spells: Spell[] = [
     "As a Bonus Action, you can move the lights up to 60 feet to a space within range. A light must remain within 20 feet of another light created by this spell, and a light vanishes if it exceeds the spell’s range.",
 },
   { id: "darkness", name: "Darkness", level: 2, school: "Evocation", concentration: true },
-  { id: "darkvision", name: "Darkvision", level: 2, school: "Transmutation" },
+{
+    id: "darkvision",
+    name: "Darkvision",
+    level: 2,
+    school: "Transmutation",
+    castingTime: "Action",
+    range: "Touch",
+    components: "V, S, M (a dried carrot)",
+    duration: "8 hours",
+    classes: ["druid", "ranger", "sorcerer", "wizard"],
+    description:
+      "For the duration, a willing creature you touch has Darkvision with a range of 150 feet.",
+    benefits:
+      "The target can see in darkness as if it were dim light, up to 150 feet.",
+  },
   { id: "daylight", name: "Daylight", level: 3, school: "Evocation" },
   { id: "death-ward", name: "Death Ward", level: 4, school: "Abjuration" },
   { id: "destructive-wave", name: "Destructive Wave", level: 5, school: "Evocation" },
@@ -750,8 +799,36 @@ export const spells: Spell[] = [
   higherLevel:
     "When cast with a higher-level spell slot, you can target one additional creature for each slot level above 2. You can choose a different ability for each target.",
 },
-  { id: "enlarge-reduce", name: "Enlarge/Reduce", level: 2, school: "Transmutation", concentration: true },
 {
+    id: "enlarge-reduce",
+    name: "Enlarge/Reduce",
+    level: 2,
+    school: "Transmutation",
+    concentration: true,
+    castingTime: "Action",
+    range: "30 feet",
+    components: "V, S, M (a pinch of powdered iron)",
+    duration: "Concentration, up to 1 minute",
+    classes: ["bard", "druid", "sorcerer", "wizard"],
+    description:
+      "For the duration, the spell enlarges or reduces a creature or an object you can see within range.",
+    savingThrows: "Constitution",
+    options: [
+      {
+        name: "Enlarge",
+        text: "The target's size increases by one category. The target has Advantage on Strength checks and Strength saving throws. The target's attacks with its enlarged weapons or Unarmed Strikes deal an extra 1d4 damage on a hit.",
+      },
+      {
+        name: "Reduce",
+        text: "The target's size decreases by one category. The target has Disadvantage on Strength checks and Strength saving throws. The target's attacks with its reduced weapons or Unarmed Strikes deal 1d4 less damage on a hit (minimum 1 damage).",
+      },
+    ],
+    effects:
+      "Everything a targeted creature is wearing and carrying changes size with it. Any item dropped returns to normal size at once. A thrown weapon or piece of ammunition returns to normal size immediately after it hits or misses a target.",
+    limitations:
+      "A targeted object must not be worn or carried. If the target is an unwilling creature, it can make a Constitution saving throw. On a successful save, the spell has no effect.",
+  },
+  {
   id: "entangle",
   name: "Entangle",
   level: 1,
@@ -795,11 +872,52 @@ export const spells: Spell[] = [
   { id: "find-familiar", name: "Find Familiar", level: 1, school: "Conjuration", ritual: true },
   { id: "find-steed", name: "Find Steed", level: 2, school: "Conjuration" },
   { id: "find-the-path", name: "Find the Path", level: 6, school: "Divination", concentration: true },
-  { id: "find-traps", name: "Find Traps", level: 2, school: "Divination" },
-  { id: "fire-bolt", name: "Fire Bolt", level: 0, school: "Evocation" },
+{
+    id: "find-traps",
+    name: "Find Traps",
+    level: 2,
+    school: "Divination",
+    castingTime: "Action",
+    range: "120 feet",
+    components: "V, S",
+    duration: "Instantaneous",
+    classes: ["cleric", "druid", "ranger"],
+    description:
+      "You sense any trap within range that is within line of sight.",
+    effects:
+      "A trap includes any object or mechanism that was created to cause damage or other danger. This spell would sense Alarm or Glyph of Warding spells or a mechanical pit trap, but it wouldn't reveal a natural weakness in the floor, unstable ceiling, or a hidden sinkhole.",
+    limitations:
+      "This spell reveals that a trap is present but not its location.",
+    special:
+      "You do learn the general nature of the danger posed by a trap you sense.",
+  },
+    { id: "fire-bolt", name: "Fire Bolt", level: 0, school: "Evocation" },
   { id: "fire-shield", name: "Fire Shield", level: 4, school: "Evocation" },
   { id: "fire-storm", name: "Fire Storm", level: 7, school: "Evocation" },
-  { id: "flame-blade", name: "Flame Blade", level: 2, school: "Evocation", concentration: true },
+{
+    id: "flame-blade",
+    name: "Flame Blade",
+    level: 2,
+    school: "Evocation",
+    concentration: true,
+    castingTime: "Bonus Action",
+    range: "Self",
+    components: "V, S, M (a sumac leaf)",
+    duration: "Concentration, up to 10 minutes",
+    classes: ["druid", "sorcerer"],
+    description:
+      "You evoke a fiery blade in your free hand. The blade is similar in size and shape to a scimitar and lasts for the duration.",
+    control:
+      "As a Magic action, you can make a melee spell attack with the fiery blade.",
+    effects:
+      "On a hit, the target takes Fire damage equal to 3d6 plus your spellcasting ability modifier.",
+    benefits:
+      "The flaming blade sheds Bright Light in a 10-foot radius and Dim Light for an additional 10 feet.",
+    special:
+      "If you let go of the blade, it disappears, but you can evoke it again as a Bonus Action.",
+    higherLevel:
+      "The damage increases by 1d6 for each spell slot level above 2.",
+  },
   { id: "flame-strike", name: "Flame Strike", level: 5, school: "Evocation" },
 {
   id: "flaming-sphere",
@@ -857,10 +975,67 @@ export const spells: Spell[] = [
   { id: "grasping-vine", name: "Grasping Vine", level: 4, school: "Conjuration", concentration: true },
   { id: "grease", name: "Grease", level: 1, school: "Conjuration" },
   { id: "greater-restoration", name: "Greater Restoration", level: 5, school: "Abjuration" },
-  { id: "guidance", name: "Guidance", level: 0, school: "Divination", concentration: true },
-  { id: "guiding-bolt", name: "Guiding Bolt", level: 1, school: "Evocation" },
+{
+    id: "guidance",
+    name: "Guidance",
+    level: 0,
+    school: "Divination",
+    concentration: true,
+    castingTime: "Action",
+    range: "Touch",
+    components: "V, S",
+    duration: "Concentration, up to 1 minute",
+    classes: ["cleric", "druid"],
+    description:
+      "You touch a willing creature and choose a skill.",
+    benefits:
+      "Until the spell ends, the creature adds 1d4 to any ability check using the chosen skill.",
+  },
+  {
+    id: "guiding-bolt",
+    name: "Guiding Bolt",
+    level: 1,
+    school: "Evocation",
+    castingTime: "Action",
+    range: "120 feet",
+    components: "V, S",
+    duration: "1 round",
+    classes: ["cleric"],
+    description:
+      "You hurl a bolt of light toward a creature within range. Make a ranged spell attack against the target.",
+    effects:
+      "On a hit, the target takes 4d6 Radiant damage.",
+    benefits:
+      "The next attack roll made against the target before the end of your next turn has Advantage.",
+    higherLevel:
+      "The damage increases by 1d6 for each spell slot level above 1.",
+  },
   { id: "guardian-of-faith", name: "Guardian of Faith", level: 4, school: "Conjuration" },
-  { id: "gust-of-wind", name: "Gust of Wind", level: 2, school: "Evocation", concentration: true },
+{
+    id: "gust-of-wind",
+    name: "Gust of Wind",
+    level: 2,
+    school: "Evocation",
+    concentration: true,
+    castingTime: "Action",
+    range: "Self",
+    components: "V, S, M (a legume seed)",
+    duration: "Concentration, up to 1 minute",
+    classes: ["druid", "ranger", "sorcerer", "wizard"],
+    description:
+      "A line of strong wind 60 feet long and 10 feet wide blasts from you in a direction you choose for the duration.",
+    savingThrows: "Strength",
+    effects:
+      "Each creature in the line must succeed on a Strength saving throw or be pushed 15 feet away from you in a direction following the line.",
+    conditions:
+      "A creature that ends its turn in the line must make the same save.",
+    limitations:
+      "Any creature in the line must spend 2 feet of movement for every 1 foot it moves when moving closer to you.",
+    control:
+      "The gust disperses gas or vapor, extinguishes candles and similar unprotected flames, and causes protected flames to dance wildly with a 50% chance to extinguish.",
+    special:
+      "As a Bonus Action on your later turns, you can change the direction in which the line blasts from you.",
+  },
   { id: "hallow", name: "Hallow", level: 5, school: "Abjuration" },
   { id: "hallucinatory-terrain", name: "Hallucinatory Terrain", level: 4, school: "Illusion" },
   { id: "harm", name: "Harm", level: 6, school: "Necromancy" },
@@ -880,7 +1055,29 @@ export const spells: Spell[] = [
   higherLevel:
     "When cast with a higher-level spell slot, the healing increases by 2d4 for each slot level above 1.",
 },
-  { id: "heat-metal", name: "Heat Metal", level: 2, school: "Transmutation", concentration: true },
+{
+    id: "heat-metal",
+    name: "Heat Metal",
+    level: 2,
+    school: "Transmutation",
+    concentration: true,
+    castingTime: "Action",
+    range: "60 feet",
+    components: "V, S, M (a piece of iron and a flame)",
+    duration: "Concentration, up to 1 minute",
+    classes: ["bard", "druid"],
+    description:
+      "Choose a manufactured metal object, such as a metal weapon or a suit of Heavy or Medium metal armor, that you can see within range. You cause the object to glow red-hot.",
+    effects:
+      "Any creature in physical contact with the object takes 2d8 Fire damage when you cast the spell.",
+    control:
+      "Until the spell ends, you can take a Bonus Action on each of your later turns to deal this damage again if the object is within range.",
+    savingThrows: "Constitution",
+    conditions:
+      "If a creature is holding or wearing the object and takes damage from it, it must succeed on a Constitution saving throw or drop the object if it can. If it doesn't drop the object, it has Disadvantage on attack rolls and ability checks until the start of your next turn.",
+    higherLevel:
+      "The damage increases by 1d8 for each spell slot level above 2.",
+  },
   {
   id: "hellish-rebuke",
   name: "Hellish Rebuke",
@@ -1035,10 +1232,52 @@ export const spells: Spell[] = [
 },
   { id: "levitate", name: "Levitate", level: 2, school: "Transmutation", concentration: true },
   { id: "light", name: "Light", level: 0, school: "Evocation" },
-  { id: "locate-animals-or-plants", name: "Locate Animals or Plants", level: 2, school: "Divination", ritual: true },
-  { id: "locate-creature", name: "Locate Creature", level: 4, school: "Divination", concentration: true },
-  { id: "locate-object", name: "Locate Object", level: 2, school: "Divination", concentration: true },
-  {
+{
+    id: "locate-animals-or-plants",
+    name: "Locate Animals or Plants",
+    level: 2,
+    school: "Divination",
+    ritual: true,
+    castingTime: "Action or Ritual",
+    range: "Self",
+    components: "V, S, M (fur from a bloodhound)",
+    duration: "Instantaneous",
+    classes: ["bard", "druid", "ranger"],
+    description:
+      "Describe or name a specific kind of Beast, Plant creature, or nonmagical plant.",
+    effects:
+      "You learn the direction and distance to the closest creature or plant of that kind within 5 miles, if any are present.",
+  },
+    { id: "locate-creature", name: "Locate Creature", level: 4, school: "Divination", concentration: true },
+{
+    id: "locate-object",
+    name: "Locate Object",
+    level: 2,
+    school: "Divination",
+    concentration: true,
+    castingTime: "Action",
+    range: "Self",
+    components: "V, S, M (a forked twig)",
+    duration: "Concentration, up to 10 minutes",
+    classes: ["bard", "cleric", "druid", "paladin", "ranger", "wizard"],
+    description:
+      "Describe or name an object that is familiar to you.",
+    effects:
+      "You sense the direction to the object's location if that object is within 1,000 feet of you. If the object is in motion, you know the direction of its movement.",
+    options: [
+      {
+        name: "Specific Object",
+        text: "You can locate a specific object known to you if you have seen it up close—within 30 feet—at least once.",
+      },
+      {
+        name: "Object Type",
+        text: "Alternatively, you can locate the nearest object of a particular kind, such as a certain kind of apparel, jewelry, furniture, tool, or weapon.",
+      },
+    ],
+    limitations:
+      "This spell can't locate an object if any thickness of lead blocks a direct path between you and the object.",
+  },
+    {
     id: "longstrider",
     name: "Longstrider",
     level: 1,
@@ -1190,8 +1429,22 @@ export const spells: Spell[] = [
   details:
     "If the target is already possessed, Charmed, or Frightened by such a creature, it has Advantage on any new saving throw against the relevant effect.",
 },
-  { id: "protection-from-poison", name: "Protection from Poison", level: 2, school: "Abjuration" },
 {
+    id: "protection-from-poison",
+    name: "Protection from Poison",
+    level: 2,
+    school: "Abjuration",
+    castingTime: "Action",
+    range: "Touch",
+    components: "V, S",
+    duration: "1 hour",
+    classes: ["cleric", "druid", "paladin", "ranger"],
+    description:
+      "You touch a creature and end the Poisoned condition on it.",
+    benefits:
+      "For the duration, the target has Advantage on saving throws to avoid or end the Poisoned condition and has Resistance to Poison damage.",
+  },
+  {
     id: "purify-food-and-drink",
     name: "Purify Food and Drink",
     level: 1,
@@ -1244,8 +1497,29 @@ export const spells: Spell[] = [
   { id: "see-invisibility", name: "See Invisibility", level: 2, school: "Divination" },
   { id: "sending", name: "Sending", level: 3, school: "Divination" },
   { id: "shapechange", name: "Shapechange", level: 9, school: "Transmutation", concentration: true },
-  { id: "shatter", name: "Shatter", level: 2, school: "Evocation" },
-  { id: "shield", name: "Shield", level: 1, school: "Abjuration" },
+{
+    id: "shatter",
+    name: "Shatter",
+    level: 2,
+    school: "Evocation",
+    castingTime: "Action",
+    range: "60 feet",
+    components: "V, S, M (a chip of mica)",
+    duration: "Instantaneous",
+    classes: ["bard", "sorcerer", "wizard"],
+    description:
+      "A loud noise erupts from a point of your choice within range. Each creature in a 10-foot-radius Sphere centered there makes a Constitution saving throw.",
+    savingThrows: "Constitution",
+    effects:
+      "A creature takes 3d8 Thunder damage on a failed save or half as much damage on a successful one.",
+    conditions:
+      "A Construct has Disadvantage on the saving throw.",
+    control:
+      "A nonmagical object that isn't being worn or carried also takes the damage if it's in the spell's area.",
+    higherLevel:
+      "The damage increases by 1d8 for each spell slot level above 2.",
+  },
+    { id: "shield", name: "Shield", level: 1, school: "Abjuration" },
 {
   id: "shield-of-faith",
   name: "Shield of Faith",
@@ -1416,7 +1690,34 @@ export const spells: Spell[] = [
   durationRule:
     "If the suggested activity can be completed in a shorter time than the spell’s duration, the spell ends once the task is completed.",
 },
-  { id: "summon-beast", name: "Summon Beast", level: 2, school: "Conjuration", concentration: true },
+{
+    id: "summon-beast",
+    name: "Summon Beast",
+    level: 2,
+    school: "Conjuration",
+    concentration: true,
+    castingTime: "Action",
+    range: "90 feet",
+    components:
+      "V, S, M (a feather, tuft of fur, and fish tail inside a gilded acorn worth 200+ GP)",
+    duration: "Concentration, up to 1 hour",
+    classes: ["druid", "ranger"],
+    description:
+      "You call forth a bestial spirit. It manifests in an unoccupied space that you can see within range and uses the Bestial Spirit stat block.",
+    options: [
+      {
+        name: "Environment",
+        text: "When you cast the spell, choose Air, Land, or Water. The creature resembles an animal native to that environment, which determines certain details in its stat block.",
+      },
+    ],
+    control:
+      "The creature is an ally to you and your allies. In combat, it shares your Initiative count, takes its turn immediately after yours, and obeys your verbal commands (no action required). If you don't issue any, it takes the Dodge action and uses its movement to avoid danger.",
+    endConditions:
+      "The creature disappears when it drops to 0 Hit Points or when the spell ends.",
+    higherLevel:
+      "Use the spell slot's level for the spell's level in the stat block.",
+    statBlock: "Bestial Spirit",
+  },
   { id: "summon-celestial", name: "Summon Celestial", level: 5, school: "Conjuration", concentration: true },
   { id: "summon-elemental", name: "Summon Elemental", level: 4, school: "Conjuration", concentration: true },
   { id: "summon-fey", name: "Summon Fey", level: 3, school: "Conjuration", concentration: true },
