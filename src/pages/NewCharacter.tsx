@@ -112,6 +112,41 @@ const formatLabel = (value: string) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 
+const arraysEqual = <T,>(a: T[], b: T[]) =>
+  a.length === b.length && a.every((value, index) => value === b[index]);
+
+const spellSelectionsEqual = (a: SpellSelection[], b: SpellSelection[]) =>
+  a.length === b.length &&
+  a.every(
+    (value, index) =>
+      value.spellId === b[index]?.spellId && value.level === b[index]?.level,
+  );
+
+const speciesTraitChoicesEqual = (
+  a: Record<string, string | string[]>,
+  b: Record<string, string | string[]>,
+) => {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+
+  if (aKeys.length !== bKeys.length) return false;
+
+  return bKeys.every((key) => {
+    const aValue = a[key];
+    const bValue = b[key];
+
+    if (typeof aValue === "string" || typeof bValue === "string") {
+      return aValue === bValue;
+    }
+
+    if (Array.isArray(aValue) && Array.isArray(bValue)) {
+      return arraysEqual(aValue, bValue);
+    }
+
+    return false;
+  });
+};
+
 const formatTraitEffect = (effect: TraitEffect): string => {
   switch (effect.type) {
     case "sense":
@@ -193,9 +228,9 @@ const NewCharacter = () => {
   const [currentStep, setCurrentStep] =
     useState<CharacterCreationStep>("details");
   const [name, setName] = useState("");
-  const [classId, setClassId] = useState(classes[0]?.id ?? "");
-  const [speciesId, setSpeciesId] = useState(species[0]?.id ?? "");
-  const [backgroundId, setBackgroundId] = useState(backgrounds[0]?.id ?? "");
+  const [classId, setClassId] = useState("");
+  const [speciesId, setSpeciesId] = useState("");
+  const [backgroundId, setBackgroundId] = useState("");
   const [alignment, setAlignment] = useState("");
   const [notes, setNotes] = useState("");
   const [abilityScores, setAbilityScores] = useState(defaultAbilityScores);
@@ -214,14 +249,10 @@ const NewCharacter = () => {
     Record<string, string | string[]>
   >({});
 
-  const [backgroundBonusPlus2, setBackgroundBonusPlus2] = useState<AbilityKey>(
-    backgrounds[0]?.abilityOptions[0] ?? "str",
-  );
-  const [backgroundBonusPlus1, setBackgroundBonusPlus1] = useState<AbilityKey>(
-    backgrounds[0]?.abilityOptions[1] ??
-      backgrounds[0]?.abilityOptions[0] ??
-      "dex",
-  );
+  const [backgroundBonusPlus2, setBackgroundBonusPlus2] =
+    useState<AbilityKey>("str");
+  const [backgroundBonusPlus1, setBackgroundBonusPlus1] =
+    useState<AbilityKey>("dex");
 
   const [backgroundToolChoice, setBackgroundToolChoice] = useState<ToolId | "">(
     "",
@@ -306,10 +337,10 @@ const NewCharacter = () => {
       ? backgroundToolRules.tool
       : backgroundToolChoice || null;
 
-  const speciesChoices = useMemo<TraitChoice[]>(
-    () => getSpeciesChoices(speciesId),
-    [speciesId],
-  );
+  const speciesChoices = useMemo<TraitChoice[]>(() => {
+    if (!speciesId) return [];
+    return getSpeciesChoices(speciesId);
+  }, [speciesId]);
 
   const selectedClassEquipmentOption = useMemo(
     () =>
@@ -330,6 +361,7 @@ const NewCharacter = () => {
   const isRogue = classId === "rogue";
 
   const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
+
   const backgroundGrantedFeatName = useMemo(() => {
     if (!backgroundGrantedFeatId) return null;
 
@@ -344,7 +376,8 @@ const NewCharacter = () => {
   }, [backgroundFeatGrant, backgroundGrantedFeatId]);
 
   const availableClassCantrips = useMemo(() => {
-    if (!classSpellcasting) return [];
+    if (!classSpellcasting || !classId || !speciesId || !backgroundId)
+      return [];
 
     return getAvailableSpells(
       {
@@ -374,7 +407,8 @@ const NewCharacter = () => {
   ]);
 
   const availableClassStartingSpells = useMemo(() => {
-    if (!classSpellcasting) return [];
+    if (!classSpellcasting || !classId || !speciesId || !backgroundId)
+      return [];
 
     return getAvailableSpells(
       {
@@ -405,7 +439,15 @@ const NewCharacter = () => {
   ]);
 
   const backgroundMagicInitiateCantrips = useMemo(() => {
-    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) return [];
+    if (
+      !hasBackgroundMagicInitiate ||
+      !backgroundFeatSpellListId ||
+      !classId ||
+      !speciesId ||
+      !backgroundId
+    ) {
+      return [];
+    }
 
     return getAvailableSpells(
       {
@@ -436,7 +478,15 @@ const NewCharacter = () => {
   ]);
 
   const backgroundMagicInitiateLevelOneSpells = useMemo(() => {
-    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) return [];
+    if (
+      !hasBackgroundMagicInitiate ||
+      !backgroundFeatSpellListId ||
+      !classId ||
+      !speciesId ||
+      !backgroundId
+    ) {
+      return [];
+    }
 
     return getAvailableSpells(
       {
@@ -466,10 +516,10 @@ const NewCharacter = () => {
     speciesId,
   ]);
 
-  const speciesGrantedFeatIds = useMemo(
-    () => getSpeciesGrantedFeatIds(speciesId, { speciesTraitChoices }),
-    [speciesId, speciesTraitChoices],
-  );
+  const speciesGrantedFeatIds = useMemo(() => {
+    if (!speciesId) return [];
+    return getSpeciesGrantedFeatIds(speciesId, { speciesTraitChoices });
+  }, [speciesId, speciesTraitChoices]);
 
   const speciesGrantedFeatNames = useMemo(
     () =>
@@ -480,6 +530,8 @@ const NewCharacter = () => {
   );
 
   const activeAllTraits = useMemo(() => {
+    if (!classId || !speciesId || !backgroundId) return [];
+
     return getAllCharacterTraits({
       classId,
       speciesId,
@@ -613,14 +665,6 @@ const NewCharacter = () => {
   }, [classSkillChoices, grantedSkills, isRogue]);
 
   const validateCurrentStep = () => {
-    if (!classDef) {
-      return "Please choose a valid class.";
-    }
-
-    if (!backgroundDef) {
-      return "Please choose a valid background.";
-    }
-
     switch (currentStep) {
       case "details":
         if (!name.trim()) {
@@ -629,6 +673,14 @@ const NewCharacter = () => {
         return "";
 
       case "class":
+        if (!classId) {
+          return "Please choose a class.";
+        }
+
+        if (!classDef) {
+          return "Please choose a valid class.";
+        }
+
         if (classSkillChoices.length !== classSkillChoiceCount) {
           return `Please choose ${classSkillChoiceCount} class skill${
             classSkillChoiceCount === 1 ? "" : "s"
@@ -636,7 +688,7 @@ const NewCharacter = () => {
         }
 
         if (
-          classDef?.startingEquipment?.options?.length &&
+          classDef.startingEquipment?.options?.length &&
           !selectedClassEquipmentOption
         ) {
           return "Please choose a class starting equipment option.";
@@ -721,6 +773,10 @@ const NewCharacter = () => {
         return "";
 
       case "species":
+        if (!speciesId) {
+          return "Please choose a species.";
+        }
+
         for (const choice of speciesChoices) {
           const value = speciesTraitChoices[choice.id];
 
@@ -756,6 +812,14 @@ const NewCharacter = () => {
         return "";
 
       case "background":
+        if (!backgroundId) {
+          return "Please choose a background.";
+        }
+
+        if (!backgroundDef) {
+          return "Please choose a valid background.";
+        }
+
         if (!abilityOptions.includes(backgroundBonusPlus2)) {
           return "Please choose a valid +2 background ability bonus.";
         }
@@ -769,7 +833,7 @@ const NewCharacter = () => {
         }
 
         if (
-          backgroundDef?.equipment?.options?.length &&
+          backgroundDef.equipment?.options?.length &&
           !selectedBackgroundEquipmentOption
         ) {
           return "Please choose a background equipment option.";
@@ -824,6 +888,18 @@ const NewCharacter = () => {
         return "";
 
       case "review":
+        if (!classId) {
+          return "Please choose a class.";
+        }
+
+        if (!speciesId) {
+          return "Please choose a species.";
+        }
+
+        if (!backgroundId) {
+          return "Please choose a background.";
+        }
+
         return "";
 
       default:
@@ -843,24 +919,30 @@ const NewCharacter = () => {
   };
 
   useEffect(() => {
-    setClassSkillChoices((prev) =>
-      prev
-        .filter((skill) => classSkillOptions.includes(skill))
-        .slice(0, classSkillChoiceCount),
-    );
-  }, [classId, classSkillChoiceCount, classSkillOptions]);
+    const options = classDef?.skillChoice.options ?? [];
+
+    setClassSkillChoices((prev) => {
+      const next = prev
+        .filter((skill) => options.includes(skill))
+        .slice(0, classSkillChoiceCount);
+
+      return arraysEqual(prev, next) ? prev : next;
+    });
+  }, [classDef, classSkillChoiceCount]);
 
   useEffect(() => {
-    setClassCantripChoices((prev) =>
-      prev
+    setClassCantripChoices((prev) => {
+      const next = prev
         .filter((spellId) =>
           availableClassCantrips.some((spell) => spell.id === spellId),
         )
-        .slice(0, classStartingCantripChoiceCount),
-    );
+        .slice(0, classStartingCantripChoiceCount);
 
-    setClassSpellChoices((prev) =>
-      prev
+      return arraysEqual(prev, next) ? prev : next;
+    });
+
+    setClassSpellChoices((prev) => {
+      const next = prev
         .filter((selection) =>
           availableClassStartingSpells.some(
             (spell) =>
@@ -868,8 +950,10 @@ const NewCharacter = () => {
               selection.level === classStartingSpellLevel,
           ),
         )
-        .slice(0, classStartingSpellChoiceCount),
-    );
+        .slice(0, classStartingSpellChoiceCount);
+
+      return spellSelectionsEqual(prev, next) ? prev : next;
+    });
   }, [
     availableClassCantrips,
     availableClassStartingSpells,
@@ -880,7 +964,16 @@ const NewCharacter = () => {
 
   useEffect(() => {
     const options = backgroundDef?.abilityOptions ?? [];
-    if (options.length === 0) return;
+
+    if (!backgroundDef || options.length === 0) {
+      if (backgroundBonusPlus2 !== "str") {
+        setBackgroundBonusPlus2("str");
+      }
+      if (backgroundBonusPlus1 !== "dex") {
+        setBackgroundBonusPlus1("dex");
+      }
+      return;
+    }
 
     const nextPlus2 = options.includes(backgroundBonusPlus2)
       ? backgroundBonusPlus2
@@ -899,16 +992,11 @@ const NewCharacter = () => {
     if (nextPlus1 !== backgroundBonusPlus1) {
       setBackgroundBonusPlus1(nextPlus1);
     }
-  }, [backgroundBonusPlus1, backgroundBonusPlus2, backgroundDef]);
+  }, [backgroundDef, backgroundBonusPlus1, backgroundBonusPlus2]);
 
   useEffect(() => {
-    if (!backgroundToolRules) {
-      setBackgroundToolChoice("");
-      return;
-    }
-
-    if (backgroundToolRules.type === "fixed") {
-      setBackgroundToolChoice("");
+    if (!backgroundToolRules || backgroundToolRules.type === "fixed") {
+      setBackgroundToolChoice((prev) => (prev === "" ? prev : ""));
       return;
     }
 
@@ -917,58 +1005,75 @@ const NewCharacter = () => {
         return prev;
       }
 
-      return backgroundToolRules.options[0] ?? "";
+      const next = backgroundToolRules.options[0] ?? "";
+      return prev === next ? prev : next;
     });
   }, [backgroundToolRules]);
 
   useEffect(() => {
     const options = classDef?.startingEquipment?.options ?? [];
+
     if (options.length === 0) {
-      setClassEquipmentOptionId("");
+      setClassEquipmentOptionId((prev) => (prev === "" ? prev : ""));
       return;
     }
 
-    setClassEquipmentOptionId((prev) =>
-      options.some((option) => option.id === prev) ? prev : options[0].id,
-    );
+    setClassEquipmentOptionId((prev) => {
+      const next = options.some((option) => option.id === prev)
+        ? prev
+        : options[0].id;
+
+      return prev === next ? prev : next;
+    });
   }, [classDef]);
 
   useEffect(() => {
     const options = backgroundDef?.equipment?.options ?? [];
+
     if (options.length === 0) {
-      setBackgroundEquipmentOptionId("");
+      setBackgroundEquipmentOptionId((prev) => (prev === "" ? prev : ""));
       return;
     }
 
-    setBackgroundEquipmentOptionId((prev) =>
-      options.some((option) => option.id === prev) ? prev : options[0].id,
-    );
+    setBackgroundEquipmentOptionId((prev) => {
+      const next = options.some((option) => option.id === prev)
+        ? prev
+        : options[0].id;
+
+      return prev === next ? prev : next;
+    });
   }, [backgroundDef]);
 
   useEffect(() => {
     if (!hasBackgroundMagicInitiate) {
-      setBackgroundFeatCantripChoices([]);
-      setBackgroundFeatSpellChoices([]);
+      setBackgroundFeatCantripChoices((prev) =>
+        prev.length === 0 ? prev : [],
+      );
+      setBackgroundFeatSpellChoices((prev) => (prev.length === 0 ? prev : []));
       return;
     }
 
-    setBackgroundFeatCantripChoices((prev) =>
-      prev
+    setBackgroundFeatCantripChoices((prev) => {
+      const next = prev
         .filter((spellId) =>
           backgroundMagicInitiateCantrips.some((spell) => spell.id === spellId),
         )
-        .slice(0, 2),
-    );
+        .slice(0, 2);
 
-    setBackgroundFeatSpellChoices((prev) =>
-      prev
+      return arraysEqual(prev, next) ? prev : next;
+    });
+
+    setBackgroundFeatSpellChoices((prev) => {
+      const next = prev
         .filter((selection) =>
           backgroundMagicInitiateLevelOneSpells.some(
             (spell) => spell.id === selection.spellId && selection.level === 1,
           ),
         )
-        .slice(0, 1),
-    );
+        .slice(0, 1);
+
+      return spellSelectionsEqual(prev, next) ? prev : next;
+    });
   }, [
     backgroundMagicInitiateCantrips,
     backgroundMagicInitiateLevelOneSpells,
@@ -977,22 +1082,26 @@ const NewCharacter = () => {
 
   useEffect(() => {
     if (!isRogue) {
-      setRogueExpertiseChoices([]);
-      setRogueWeaponMasteryChoices([]);
+      setRogueExpertiseChoices((prev) => (prev.length === 0 ? prev : []));
+      setRogueWeaponMasteryChoices((prev) => (prev.length === 0 ? prev : []));
       return;
     }
 
-    setRogueExpertiseChoices((prev) =>
-      prev
+    setRogueExpertiseChoices((prev) => {
+      const next = prev
         .filter((choice) => rogueExpertiseOptions.includes(choice))
-        .slice(0, 2),
-    );
+        .slice(0, 2);
 
-    setRogueWeaponMasteryChoices((prev) =>
-      prev
+      return arraysEqual(prev, next) ? prev : next;
+    });
+
+    setRogueWeaponMasteryChoices((prev) => {
+      const next = prev
         .filter((choice) => rogueWeaponMasteryOptions.includes(choice))
-        .slice(0, 2),
-    );
+        .slice(0, 2);
+
+      return arraysEqual(prev, next) ? prev : next;
+    });
   }, [isRogue, rogueExpertiseOptions]);
 
   useEffect(() => {
@@ -1031,7 +1140,7 @@ const NewCharacter = () => {
         }
       }
 
-      return next;
+      return speciesTraitChoicesEqual(prev, next) ? prev : next;
     });
   }, [speciesChoices]);
 
@@ -1156,6 +1265,18 @@ const NewCharacter = () => {
       return "Character name is required.";
     }
 
+    if (!classId) {
+      return "Please choose a class.";
+    }
+
+    if (!speciesId) {
+      return "Please choose a species.";
+    }
+
+    if (!backgroundId) {
+      return "Please choose a background.";
+    }
+
     if (!classDef) {
       return "Please choose a valid class.";
     }
@@ -1171,7 +1292,7 @@ const NewCharacter = () => {
     }
 
     if (
-      classDef?.startingEquipment?.options?.length &&
+      classDef.startingEquipment?.options?.length &&
       !selectedClassEquipmentOption
     ) {
       return "Please choose a class starting equipment option.";
@@ -1239,7 +1360,7 @@ const NewCharacter = () => {
     }
 
     if (
-      backgroundDef?.equipment?.options?.length &&
+      backgroundDef.equipment?.options?.length &&
       !selectedBackgroundEquipmentOption
     ) {
       return "Please choose a background equipment option.";
@@ -1616,6 +1737,7 @@ const NewCharacter = () => {
                     onChange={(e) => setClassId(e.target.value)}
                     className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
                   >
+                    <option value="">Select class</option>
                     {classes.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
@@ -1936,6 +2058,7 @@ const NewCharacter = () => {
                     onChange={(e) => setSpeciesId(e.target.value)}
                     className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
                   >
+                    <option value="">Select species</option>
                     {species.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
@@ -2075,6 +2198,7 @@ const NewCharacter = () => {
                     onChange={(e) => setBackgroundId(e.target.value)}
                     className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
                   >
+                    <option value="">Select background</option>
                     {backgrounds.map((item) => (
                       <option key={item.id} value={item.id}>
                         {item.name}
@@ -2313,7 +2437,7 @@ const NewCharacter = () => {
                       </p>
                       <p>
                         <span className="text-zinc-500">Species:</span>{" "}
-                        {formatLabel(speciesId)}
+                        {speciesId ? formatLabel(speciesId) : "—"}
                       </p>
                       <p>
                         <span className="text-zinc-500">Background:</span>{" "}
@@ -2433,7 +2557,7 @@ const NewCharacter = () => {
               </div>
             </div>
 
-            <div className="space-y-5 mt-8">
+            <div className="mt-8 space-y-5">
               {speciesChoices.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
@@ -2475,7 +2599,9 @@ const NewCharacter = () => {
                   Background feat
                 </p>
                 <p className="mt-2 text-sm text-zinc-200">
-                  {backgroundGrantedFeatName ?? "None"}
+                  {backgroundId
+                    ? (backgroundGrantedFeatName ?? "None")
+                    : "No background selected"}
                 </p>
               </div>
 
@@ -2529,7 +2655,11 @@ const NewCharacter = () => {
                   Species feat
                 </p>
 
-                {speciesGrantedFeatNames.length > 0 ? (
+                {!speciesId ? (
+                  <p className="mt-2 text-sm text-zinc-400">
+                    No species selected
+                  </p>
+                ) : speciesGrantedFeatNames.length > 0 ? (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {speciesGrantedFeatNames.map((featName) => (
                       <span
@@ -2550,7 +2680,11 @@ const NewCharacter = () => {
                   Background skills
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {grantedSkills.length > 0 ? (
+                  {!backgroundId ? (
+                    <p className="text-sm text-zinc-400">
+                      No background selected
+                    </p>
+                  ) : grantedSkills.length > 0 ? (
                     grantedSkills.map((skill) => (
                       <span
                         key={skill}
@@ -2570,7 +2704,9 @@ const NewCharacter = () => {
                   Class skills
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {classSkillChoices.length > 0 ? (
+                  {!classId ? (
+                    <p className="text-sm text-zinc-400">No class selected</p>
+                  ) : classSkillChoices.length > 0 ? (
                     classSkillChoices.map((skill) => (
                       <span
                         key={skill}
@@ -2590,7 +2726,11 @@ const NewCharacter = () => {
                   Tool proficiency
                 </p>
                 <p className="mt-2 text-sm text-zinc-200">
-                  {grantedTool ? formatLabel(grantedTool) : "None"}
+                  {!backgroundId
+                    ? "No background selected"
+                    : grantedTool
+                      ? formatLabel(grantedTool)
+                      : "None"}
                 </p>
               </div>
 
@@ -2598,14 +2738,20 @@ const NewCharacter = () => {
                 <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
                   Background ability bonuses
                 </p>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
-                    +2 {abilityLabels[backgroundBonusPlus2]}
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
-                    +1 {abilityLabels[backgroundBonusPlus1]}
-                  </span>
-                </div>
+                {backgroundId ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
+                      +2 {abilityLabels[backgroundBonusPlus2]}
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
+                      +1 {abilityLabels[backgroundBonusPlus1]}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-zinc-400">
+                    No background selected
+                  </p>
+                )}
               </div>
 
               <div>
@@ -2630,7 +2776,9 @@ const NewCharacter = () => {
                     ))
                   ) : (
                     <p className="text-sm text-zinc-400">
-                      No equipment selected
+                      {!classId && !backgroundId
+                        ? "Select class and background to see equipment"
+                        : "No equipment selected"}
                     </p>
                   )}
                 </div>
