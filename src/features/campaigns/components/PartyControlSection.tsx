@@ -58,7 +58,7 @@ const PartyControlSection = ({
         <div className="w-full">
           <div className="flex w-full justify-between">
             <h2 className="text-xl font-semibold text-white sm:text-2xl">
-              Party control
+              Active party
             </h2>
 
             {isGm && (
