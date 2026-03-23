@@ -53,6 +53,8 @@ import { getEquippedWeaponAttacks } from "../rulesets/dnd/dnd2024/getEquippedWea
 
 import { itemsById } from "../rulesets/dnd/dnd2024/data/items";
 
+import { dragonbornAncestries } from "../rulesets/dnd/dnd2024/data/species/dragonbornAncestries";
+
 type CharacterDoc = CharacterSheetData & {
   maxHp?: number;
   currentHp?: number;
@@ -244,10 +246,19 @@ const formatModifier = (mod: number) => (mod >= 0 ? `+${mod}` : `${mod}`);
 
 const unique = <T,>(values: T[]) => [...new Set(values)];
 
+// Classes
 const getSneakAttackDice = (level: number) => {
   if (level < 1) return null;
   const dice = Math.ceil(level / 2);
   return `${dice}d6`;
+};
+
+// Species
+const getDragonbornBreathWeaponDice = (level: number) => {
+  if (level >= 17) return "4d10";
+  if (level >= 11) return "3d10";
+  if (level >= 5) return "2d10";
+  return "1d10";
 };
 
 const StatCard = ({
@@ -818,6 +829,28 @@ const CharacterSheet = () => {
     const strMod = getAbilityModifier(finalAbilityScores.str);
     const dexMod = getAbilityModifier(finalAbilityScores.dex);
     const wisMod = getAbilityModifier(finalAbilityScores.wis);
+    const conMod = getAbilityModifier(finalAbilityScores.con);
+
+    const dragonbornAncestryId =
+      character.speciesId === "dragonborn" &&
+      typeof character.choices?.speciesTraitChoices?.["draconic-ancestry"] ===
+        "string"
+        ? character.choices.speciesTraitChoices["draconic-ancestry"]
+        : null;
+
+    const dragonbornAncestry = dragonbornAncestryId
+      ? dragonbornAncestries[
+          dragonbornAncestryId as keyof typeof dragonbornAncestries
+        ]
+      : null;
+
+    const dragonbornBreathWeaponDc = dragonbornAncestry
+      ? 8 + proficiencyBonus + conMod
+      : null;
+
+    const dragonbornBreathWeaponDamage = dragonbornAncestry
+      ? getDragonbornBreathWeaponDice(character.level)
+      : null;
 
     const fallbackSkillProficiencies = unique<SkillId>([
       ...(background?.skillProficiencies ?? []),
@@ -1345,6 +1378,12 @@ const CharacterSheet = () => {
         gp: character.money?.gp ?? 0,
         pp: character.money?.pp ?? 0,
       },
+
+      dragonbornAncestryId,
+      dragonbornAncestryName: dragonbornAncestry?.name ?? null,
+      dragonbornDamageType: dragonbornAncestry?.damageType ?? null,
+      dragonbornBreathWeaponDc,
+      dragonbornBreathWeaponDamage,
     };
   }, [character]);
 
@@ -1496,6 +1535,51 @@ const CharacterSheet = () => {
               </div>
             </dl>
           </SectionCard>
+
+          {derived.dragonbornAncestryName && derived.dragonbornDamageType && (
+            <SectionCard title="Dragonborn Traits">
+              <dl className="space-y-4">
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Draconic Ancestry
+                  </dt>
+                  <dd className="mt-1 text-sm text-zinc-200">
+                    {derived.dragonbornAncestryName}
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Damage Resistance
+                  </dt>
+                  <dd className="mt-1 text-sm text-zinc-200">
+                    {formatLabel(derived.dragonbornDamageType)} damage
+                  </dd>
+                </div>
+
+                <div>
+                  <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Breath Weapon
+                  </dt>
+                  <dd className="mt-1 space-y-1 text-sm text-zinc-200">
+                    <p>
+                      {derived.dragonbornBreathWeaponDamage}{" "}
+                      {formatLabel(derived.dragonbornDamageType)} damage
+                    </p>
+                    <p className="text-zinc-400">
+                      Save DC {derived.dragonbornBreathWeaponDc} Dexterity
+                    </p>
+                    <p className="text-zinc-400">
+                      15-foot Cone or 30-foot Line (5 feet wide)
+                    </p>
+                    <p className="text-zinc-400">
+                      Uses: {derived.proficiencyBonus} per Long Rest
+                    </p>
+                  </dd>
+                </div>
+              </dl>
+            </SectionCard>
+          )}
 
           <SectionCard title="Money">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
@@ -1667,6 +1751,43 @@ const CharacterSheet = () => {
                 </div>
               </div>
             </div>
+
+            {derived.dragonbornAncestryName && derived.dragonbornDamageType && (
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-sm font-semibold text-zinc-200">
+                  Breath Weapon
+                </p>
+
+                <div className="mt-3 space-y-2 text-sm text-zinc-300">
+                  <div className="flex items-center justify-between">
+                    <span>Damage</span>
+                    <span className="font-semibold">
+                      {derived.dragonbornBreathWeaponDamage}{" "}
+                      {formatLabel(derived.dragonbornDamageType)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span>Save DC</span>
+                    <span className="font-semibold">
+                      {derived.dragonbornBreathWeaponDc}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span>Area</span>
+                    <span className="font-semibold">Cone or Line</span>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <span>Uses</span>
+                    <span className="font-semibold">
+                      {derived.proficiencyBonus} / Long Rest
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </SectionCard>
 
