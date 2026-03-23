@@ -5,7 +5,6 @@ import InvitePlayersModal from "../components/InvitePlayersModal";
 import LevelUpModal from "../components/levelUpModal";
 import XpDistributionModal from "../components/XpDistributionModal";
 
-import CampaignCharactersSection from "../features/campaigns/components/CampaignCharactersSection";
 import CampaignHeader from "../features/campaigns/components/CampaignHeader";
 import CampaignMembersSection from "../features/campaigns/components/CampaignMembersSection";
 import CampaignQuickActions from "../features/campaigns/components/CampaignQuickActions";
@@ -27,7 +26,6 @@ const CampaignPage = () => {
     isGm,
     systemLabel,
     campaignCharacters,
-    campaignCharactersLoading,
     members,
     membersLoading,
     latestJournalEntry,
@@ -160,12 +158,6 @@ const CampaignPage = () => {
               onUpdateCharacter={updateCharacter}
               onUpdateCharacterXp={updateCharacterXp}
               onToggleCondition={toggleCondition}
-            />
-
-            <CampaignCharactersSection
-              campaignId={campaign.id}
-              characters={campaignCharacters}
-              loading={campaignCharactersLoading}
             />
           </div>
 
