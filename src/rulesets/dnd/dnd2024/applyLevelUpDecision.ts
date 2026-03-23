@@ -12,6 +12,12 @@ export const applyLevelUpDecision = (
   const mergedLevelDecision: LevelUpDecision = {
     ...existingLevelDecision,
     ...decision,
+    asi: decision.asi
+      ? {
+          ...(existingLevelDecision.asi ?? {}),
+          ...decision.asi,
+        }
+      : existingLevelDecision.asi,
   };
 
   return {

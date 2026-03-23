@@ -19,6 +19,7 @@ import {
   paladinFightingStyleChoicesByLevel,
   paladinWeaponMasteryChoices,
 } from "./data/classes/paladin";
+import { barbarianWeaponMasteryChoicesByLevel } from "./data/classes/barbarian";
 
 export type PendingLevelUpStepType =
   | "feature"
@@ -31,7 +32,9 @@ export type PendingLevelUpStepType =
   | "cantrip-choice"
   | "spell-choice"
   | "cantrip-replacement"
-  | "spell-replacement";
+  | "spell-replacement"
+  | "class-feature-choice"
+  | "skill-choice";
 
 export type PendingLevelUpStep = {
   level: number;
@@ -51,9 +54,7 @@ const ASI_FEATURE_IDS = new Set([
   "ability-score-improvement-5",
 ]);
 
-const FIGHTING_STYLE_FEATURE_IDS = new Set([
-  "fighting-style",
-]);
+const FIGHTING_STYLE_FEATURE_IDS = new Set(["fighting-style"]);
 
 const SUBCLASS_FEATURE_IDS = new Set([
   "rogue-subclass",
@@ -88,11 +89,7 @@ const getPendingLevelRange = (character: CharacterSheetData): LevelNumber[] => {
   if (!pending) return [];
 
   const levels: LevelNumber[] = [];
-  for (
-    let level = pending.fromLevel + 1;
-    level <= pending.toLevel;
-    level += 1
-  ) {
+  for (let level = pending.fromLevel + 1; level <= pending.toLevel; level += 1) {
     levels.push(level as LevelNumber);
   }
 
@@ -205,27 +202,6 @@ const collectPriorSpellChoices = (
   return result;
 };
 
-const canReplaceCantripAtLevel = (
-  rules: SpellcastingRules,
-  level: LevelNumber,
-): boolean => {
-  if (!rules.cantrips?.replacementRules?.length) return false;
-  return level > 3;
-};
-
-const canReplaceSpellAtLevel = (
-  rules: SpellcastingRules,
-  level: LevelNumber,
-): boolean => {
-  const hasReplacementRules =
-    !!rules.learnedSpells?.replacementRules?.length ||
-    !!rules.preparedSpells?.replacementRules?.length;
-
-  if (!hasReplacementRules) return false;
-
-  return level > 3;
-};
-
 const toFeatureRef = (
   feature: { id: string; name: string; level?: number; minLevel?: number },
   sourceId: string,
@@ -311,6 +287,53 @@ const getPreparedSpellChoiceCountGrantedAtLevel = (
   }
 
   return granted;
+};
+
+const hasLevelUpReplacementRule = (rulesText?: string[]): boolean => {
+  if (!rulesText?.length) return false;
+
+  return rulesText.some((rule) => {
+    const text = rule.toLowerCase();
+    return text.includes("whenever you gain") || text.includes("when you gain");
+  });
+};
+
+const canReplaceCantripAtLevel = (
+  rules: SpellcastingRules,
+  level: LevelNumber,
+): boolean => {
+  if (!rules.cantrips) return false;
+  if (!hasLevelUpReplacementRule(rules.cantrips.replacementRules)) return false;
+
+  const definedLevels = Object.keys(rules.cantrips.knownByLevel)
+    .map(Number)
+    .sort((a, b) => a - b);
+
+  const firstCantripLevel = definedLevels[0];
+  return typeof firstCantripLevel === "number" && level > firstCantripLevel;
+};
+
+const canReplaceSpellAtLevel = (
+  rules: SpellcastingRules,
+  level: LevelNumber,
+): boolean => {
+  const learnedRules = rules.learnedSpells?.replacementRules;
+  const preparedRules = rules.preparedSpells?.replacementRules;
+
+  const hasLearnedReplacement = hasLevelUpReplacementRule(learnedRules);
+  const hasPreparedReplacement = hasLevelUpReplacementRule(preparedRules);
+
+  if (!hasLearnedReplacement && !hasPreparedReplacement) return false;
+
+  const baseLevel =
+    Math.min(
+      ...[
+        ...Object.keys(rules.learnedSpells?.knownByLevel ?? {}).map(Number),
+        ...Object.keys(rules.preparedSpells?.preparedByLevel ?? {}).map(Number),
+      ].filter((n) => !Number.isNaN(n)),
+    ) || 1;
+
+  return level > baseLevel;
 };
 
 const getClassSpellcastingChoiceSteps = (
@@ -453,12 +476,10 @@ const getSubclassSpellcastingChoiceSteps = (
       type: "cantrip-choice",
       id: `${subclass.id}-cantrips-${level}`,
       title:
-        level === 3
-          ? `${subclass.name} Cantrips`
-          : "Choose Additional Cantrip",
+        level === 3 ? `${subclass.name} Cantrips` : "Choose Additional Cantrip",
       description:
         level === 3
-          ? `Choose ${cantripChoicesRequired} cantrips for ${subclass.name}.`
+          ? `Choose ${cantripChoicesRequired} cantrip${cantripChoicesRequired > 1 ? "s" : ""} for ${subclass.name}.`
           : `Choose ${cantripChoicesRequired} additional cantrip${cantripChoicesRequired > 1 ? "s" : ""}.`,
       choice: {
         id: `${subclass.id}-cantrip-choice-${level}`,
@@ -483,8 +504,7 @@ const getSubclassSpellcastingChoiceSteps = (
       level,
       type: "spell-choice",
       id: `${subclass.id}-spells-${level}`,
-      title:
-        level === 3 ? `${subclass.name} Spells` : "Choose Additional Spell",
+      title: level === 3 ? `${subclass.name} Spells` : "Choose Additional Spell",
       description:
         level === 3
           ? `Choose ${spellChoicesRequired} level ${spellLevel} spell${spellChoicesRequired > 1 ? "s" : ""} for ${subclass.name}.`
@@ -563,7 +583,7 @@ const getRoguePendingChoiceSteps = (
   const decisions = character.choices?.levelUpDecisions?.[level];
 
   const expertiseDefinition = rogueExpertiseChoicesByLevel[level]?.[0];
-  if (expertiseDefinition && !decisions?.expertise) {
+  if (expertiseDefinition && !decisions?.expertise?.length) {
     steps.push({
       level,
       type: "expertise-choice",
@@ -586,7 +606,7 @@ const getRoguePendingChoiceSteps = (
   }
 
   const weaponMasteryDefinition = rogueWeaponMasteryChoices[level]?.[0];
-  if (weaponMasteryDefinition && !decisions?.weaponMastery) {
+  if (weaponMasteryDefinition && !decisions?.weaponMastery?.length) {
     steps.push({
       level,
       type: "weapon-mastery-choice",
@@ -610,7 +630,7 @@ const getPaladinPendingChoiceSteps = (
   const decisions = character.choices?.levelUpDecisions?.[level];
 
   const weaponMasteryDefinition = paladinWeaponMasteryChoices[level]?.[0];
-  if (weaponMasteryDefinition && !decisions?.weaponMastery) {
+  if (weaponMasteryDefinition && !decisions?.weaponMastery?.length) {
     steps.push({
       level,
       type: "weapon-mastery-choice",
@@ -655,6 +675,171 @@ const getPaladinPendingChoiceSteps = (
   return steps;
 };
 
+const getBardPendingChoiceSteps = (
+  character: CharacterSheetData,
+  level: LevelNumber,
+): PendingLevelUpStep[] => {
+  if (character.classId !== "bard") return [];
+
+  if (level !== 2 && level !== 9) return [];
+
+  const decisions = character.choices?.levelUpDecisions?.[level];
+  const requiredCount = 2;
+
+  if ((decisions?.expertise?.length ?? 0) >= requiredCount) return [];
+
+  const skillOptions =
+    character.derived?.skillProficiencies?.length
+      ? character.derived.skillProficiencies
+      : getClassById("bard")?.skillChoice.options ?? [];
+
+  return [
+    {
+      level,
+      type: "expertise-choice",
+      id: `bard-expertise-${level}`,
+      title: "Choose Expertise",
+      description:
+        level === 2
+          ? "Choose two of your skill proficiencies to gain Expertise."
+          : "Choose two more of your skill proficiencies to gain Expertise.",
+      choice: {
+        id: `bard-expertise-choice-${level}`,
+        level,
+        name: "Bard Expertise",
+        choose: requiredCount,
+        source: "expertise",
+        options: skillOptions,
+      },
+    },
+  ];
+};
+
+const getDruidPendingChoiceSteps = (
+  character: CharacterSheetData,
+  level: LevelNumber,
+  subclass?: CharacterSubclass | null,
+): PendingLevelUpStep[] => {
+  if (character.classId !== "druid") return [];
+
+  const steps: PendingLevelUpStep[] = [];
+  const decisions = character.choices?.levelUpDecisions?.[level] as any;
+
+  if (level === 1 && !decisions?.primalOrder) {
+    steps.push({
+      level,
+      type: "class-feature-choice",
+      id: "druid-primal-order",
+      title: "Choose Primal Order",
+      description: "Choose your Primal Order: Magician or Warden.",
+      choice: {
+        id: "druid-primal-order-choice",
+        level,
+        name: "Primal Order",
+        choose: 1,
+        source: "class-feature",
+        options: ["magician", "warden"],
+      },
+    });
+  }
+
+  if (level === 7 && !decisions?.elementalFuryOption) {
+    steps.push({
+      level,
+      type: "class-feature-choice",
+      id: "druid-elemental-fury",
+      title: "Choose Elemental Fury",
+      description:
+        "Choose Potent Spellcasting or Primal Strike for your Elemental Fury.",
+      choice: {
+        id: "druid-elemental-fury-choice",
+        level,
+        name: "Elemental Fury",
+        choose: 1,
+        source: "class-feature",
+        options: ["potent-spellcasting", "primal-strike"],
+      },
+    });
+  }
+
+  const chosenSubclassId =
+    decisions?.subclassId ??
+    subclass?.id ??
+    character.choices?.subclassId ??
+    character.choices?.levelUpDecisions?.[3]?.subclassId;
+
+  if (
+    level === 3 &&
+    chosenSubclassId === "circle-of-the-land" &&
+    !decisions?.circleOfTheLandType
+  ) {
+    steps.push({
+      level,
+      type: "class-feature-choice",
+      id: "circle-of-the-land-type",
+      title: "Choose Circle of the Land Type",
+      description:
+        "If you choose Circle of the Land, choose your current land type.",
+      choice: {
+        id: "circle-of-the-land-type-choice",
+        level,
+        name: "Circle of the Land Type",
+        choose: 1,
+        source: "other",
+        options: ["arid", "polar", "temperate", "tropical"],
+      },
+    });
+  }
+
+  return steps;
+};
+
+const getBarbarianPendingChoiceSteps = (
+  character: CharacterSheetData,
+  level: LevelNumber,
+): PendingLevelUpStep[] => {
+  if (character.classId !== "barbarian") return [];
+
+  const steps: PendingLevelUpStep[] = [];
+  const decisions = character.choices?.levelUpDecisions?.[level] as any;
+
+  const weaponMasteryDefinition = barbarianWeaponMasteryChoicesByLevel[level]?.[0];
+  if (weaponMasteryDefinition && !decisions?.weaponMastery?.length) {
+    steps.push({
+      level,
+      type: "weapon-mastery-choice",
+      id: `barbarian-weapon-mastery-${level}`,
+      title: "Choose Weapon Masteries",
+      description: weaponMasteryDefinition.description,
+      choice: weaponMasteryDefinition as ChoiceDefinition<string>,
+    });
+  }
+
+  if (level === 3 && !decisions?.primalKnowledgeSkill) {
+    const barbarianSkillOptions =
+      getClassById("barbarian")?.skillChoice.options ?? [];
+
+    steps.push({
+      level,
+      type: "skill-choice",
+      id: "barbarian-primal-knowledge",
+      title: "Choose Primal Knowledge Skill",
+      description:
+        "Choose one additional Barbarian skill proficiency for Primal Knowledge.",
+      choice: {
+        id: "barbarian-primal-knowledge-choice",
+        level,
+        name: "Primal Knowledge",
+        choose: 1,
+        source: "skill-proficiencies",
+        options: barbarianSkillOptions,
+      },
+    });
+  }
+
+  return steps;
+};
+
 export const getPendingLevelUpSteps = (
   character: CharacterSheetData,
   subclass?: CharacterSubclass | null,
@@ -672,7 +857,6 @@ export const getPendingLevelUpSteps = (
 
     for (const feature of classFeatures) {
       const featureRef = toFeatureRef(feature, classDef.id, level);
-
       const decisions = character.choices?.levelUpDecisions?.[level];
 
       if (
@@ -762,11 +946,16 @@ export const getPendingLevelUpSteps = (
     }
 
     if (subclass) {
-      steps.push(...getSubclassSpellcastingChoiceSteps(character, subclass, level));
+      steps.push(
+        ...getSubclassSpellcastingChoiceSteps(character, subclass, level),
+      );
     }
 
     steps.push(...getRoguePendingChoiceSteps(character, level));
     steps.push(...getPaladinPendingChoiceSteps(character, level));
+    steps.push(...getBardPendingChoiceSteps(character, level));
+    steps.push(...getDruidPendingChoiceSteps(character, level, subclass));
+    steps.push(...getBarbarianPendingChoiceSteps(character, level));
   }
 
   return uniqueById(steps).sort((a, b) => {

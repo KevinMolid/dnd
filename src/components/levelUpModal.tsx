@@ -573,6 +573,32 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     return false;
   };
 
+  const isClassFeatureChoiceComplete = (
+    step: any,
+    decision: LevelUpDecision | undefined,
+  ) => {
+    const choiceId = String(step.choice?.id ?? step.id ?? "");
+
+    if (choiceId.includes("primal-order")) {
+      return !!decision?.primalOrder;
+    }
+
+    if (choiceId.includes("elemental-fury")) {
+      return !!decision?.elementalFuryOption;
+    }
+
+    if (choiceId.includes("circle-of-the-land-type")) {
+      return !!decision?.circleOfTheLandType;
+    }
+
+    const requiredCount =
+      typeof step.choice?.choose === "number" ? step.choice.choose : 1;
+
+    return Array.isArray((decision as any)?.classFeatureChoices)
+      ? (decision as any).classFeatureChoices.length >= requiredCount
+      : false;
+  };
+
   const isStepComplete = (step: any) => {
     const decision = getEffectiveDecisionForLevel(step.level);
 
@@ -610,6 +636,14 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
         Array.isArray(decision?.weaponMastery) &&
         decision.weaponMastery.length >= requiredCount
       );
+    }
+
+    if (step.type === "skill-choice") {
+      return !!decision?.primalKnowledgeSkill;
+    }
+
+    if (step.type === "class-feature-choice") {
+      return isClassFeatureChoiceComplete(step, decision);
     }
 
     if (step.type === "cantrip-choice") {
@@ -1085,6 +1119,99 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                             {formatLabel(option)}
                           </button>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {step.type === "skill-choice" && (
+                    <div>
+                      <p className="mb-2 text-sm text-zinc-400">
+                        Choose {step.choice?.choose ?? 1} skill.
+                      </p>
+
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {(
+                          (step.choice?.options as Array<string>) ??
+                          FALLBACK_SKILLS
+                        ).map((skill) => (
+                          <button
+                            key={skill}
+                            onClick={() =>
+                              updateDecision(step.level, {
+                                primalKnowledgeSkill: skill as SkillId,
+                              })
+                            }
+                            className={choiceButtonClass(
+                              decision.primalKnowledgeSkill === skill,
+                            )}
+                          >
+                            {formatLabel(skill)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {step.type === "class-feature-choice" && (
+                    <div>
+                      <p className="mb-2 text-sm text-zinc-400">
+                        Choose {step.choice?.choose ?? 1} option.
+                      </p>
+
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {((step.choice?.options as Array<string>) ?? []).map(
+                          (option) => {
+                            const choiceId = String(step.choice?.id ?? step.id);
+
+                            const isSelected = choiceId.includes("primal-order")
+                              ? decision.primalOrder === option
+                              : choiceId.includes("elemental-fury")
+                                ? decision.elementalFuryOption === option
+                                : choiceId.includes("circle-of-the-land-type")
+                                  ? decision.circleOfTheLandType === option
+                                  : false;
+
+                            return (
+                              <button
+                                key={option}
+                                onClick={() => {
+                                  if (choiceId.includes("primal-order")) {
+                                    updateDecision(step.level, {
+                                      primalOrder: option as
+                                        | "magician"
+                                        | "warden",
+                                    });
+                                    return;
+                                  }
+
+                                  if (choiceId.includes("elemental-fury")) {
+                                    updateDecision(step.level, {
+                                      elementalFuryOption: option as
+                                        | "potent-spellcasting"
+                                        | "primal-strike",
+                                    });
+                                    return;
+                                  }
+
+                                  if (
+                                    choiceId.includes("circle-of-the-land-type")
+                                  ) {
+                                    updateDecision(step.level, {
+                                      circleOfTheLandType: option as
+                                        | "arid"
+                                        | "polar"
+                                        | "temperate"
+                                        | "tropical",
+                                    });
+                                  }
+                                }}
+                                className={choiceButtonClass(isSelected)}
+                              >
+                                {formatLabel(option)}
+                              </button>
+                            );
+                          },
+                        )}
                       </div>
                     </div>
                   )}

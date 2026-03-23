@@ -1020,6 +1020,9 @@ export type LevelUpDecision = {
   cantripReplacements?: CantripReplacement[];
   spellReplacements?: SpellReplacement[];
 
+  // Barbarian
+  primalKnowledgeSkill?: SkillId;
+
   // Druid
   circleOfTheLandType?: "arid" | "polar" | "temperate" | "tropical";
   primalOrder?: "magician" | "warden";

@@ -57,6 +57,40 @@ export const druid: CharacterClass = {
     preparationMode: "custom",
     ritualCasting: true,
     slotTableId: "full-caster",
+
+    cantrips: {
+    knownByLevel: {
+      1: 2,
+      2: 2,
+      3: 2,
+      4: 3,
+      5: 3,
+      6: 3,
+      7: 3,
+      8: 3,
+      9: 3,
+      10: 4,
+      11: 4,
+      12: 4,
+      13: 4,
+      14: 4,
+      15: 4,
+      16: 4,
+      17: 4,
+      18: 4,
+      19: 4,
+      20: 4,
+    },
+    chooseAtStart: 2,
+    additionalChoicesByLevel: {
+      4: 1,
+      10: 1,
+    },
+    replacementRules: [
+      "Whenever you gain a Druid level, you can replace one of your cantrips with another Druid cantrip.",
+    ],
+  },
+  
     preparedSpells: {
       preparedByLevel: {
         1: 4,
