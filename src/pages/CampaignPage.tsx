@@ -521,14 +521,20 @@ const CampaignPage = () => {
   };
 
   const handleApplyXp = async (updates: { id: string; xp: number }[]) => {
-    await Promise.all(
-      updates.map(async (u) => {
-        const character = campaignCharacters.find((c) => c.id === u.id);
-        if (!character) return;
+    try {
+      await Promise.all(
+        updates.map(async (u) => {
+          const character = campaignCharacters.find((c) => c.id === u.id);
+          if (!character) return;
 
-        await updateCharacterXp(character, u.xp);
-      }),
-    );
+          await updateCharacterXp(character, u.xp);
+        }),
+      );
+
+      setXpModalOpen(false);
+    } catch (error) {
+      console.error("Failed to award XP:", error);
+    }
   };
 
   if (pageState === "loading") {
