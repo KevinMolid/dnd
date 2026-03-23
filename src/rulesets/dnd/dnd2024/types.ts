@@ -75,6 +75,11 @@ export type ScalingValue =
 
 export type Usage =
   | { type: "at-will" }
+  | { 
+      type: "per-rest";
+      rest: "short" | "long";
+      uses: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+    }
   | {
       type: "limited";
       uses: ScalingValue;
@@ -230,6 +235,20 @@ export type Trait = {
   choices?: TraitChoice[];
   notes?: string[];
 };
+
+// Species
+
+export type DragonbornAncestryId =
+  | "black"
+  | "blue"
+  | "brass"
+  | "bronze"
+  | "copper"
+  | "gold"
+  | "green"
+  | "red"
+  | "silver"
+  | "white";
 
 export type ElfLineageId = "drow" | "high-elf" | "wood-elf";
 
@@ -473,12 +492,24 @@ export type RulesOption = {
   name: string;
 };
 
+export type SpeciesChoiceOption = RulesOption & {
+  description?: string;
+};
+
+export type SpeciesChoice = {
+  id: string;
+  name: string;
+  choose: 1;
+  options: SpeciesChoiceOption[];
+};
+
 export type Species = RulesOption & {
   size?: "Small" | "Medium";
   sizeOptions?: Array<"Small" | "Medium">;
   speed: number;
   languages: LanguageId[];
   traits: Trait[];
+  choices?: SpeciesChoice[];
 };
 
 export type Feat = RulesOption & {
@@ -1039,29 +1070,34 @@ export type SpellSelection = {
 export type SpellSelectionsBySource = Record<string, SpellSelection[]>;
 
 export type CharacterChoices = {
-  classSkillChoices?: SkillId[];
   toolChoices?: ToolId[];
   languageChoices?: LanguageId[];
-  backgroundAbilityBonuses?: BackgroundAbilityBonuses;
 
+  // Species
+  speciesTraitChoices?: Record<string, string | string[]>;
+
+  dragonbornAncestry?: DragonbornAncestryId;
+
+  // Background
+  backgroundAbilityBonuses?: BackgroundAbilityBonuses;
   backgroundToolChoice?: ToolId;
   backgroundFeatSpellListId?: Extract<SpellListId, "cleric" | "druid" | "wizard">;
   backgroundFeatCantripChoices?: SpellId[];
   backgroundFeatSpellChoices?: SpellSelection[];
 
+  // Class
+  classSkillChoices?: SkillId[];
+  classCantripChoices?: SpellId[];
+  classSpellChoices?: SpellSelection[];
+
   subclassId?: string;
+  subclassCantripChoices?: SpellId[];
+  subclassSpellChoices?: SpellSelection[];
 
   rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
   rogueBonusLanguage?: LanguageId;
   rogueWeaponMasteryChoices?: WeaponMasteryChoiceId[];
   barbarianWeaponMasteryChoices?: WeaponMasteryChoiceId[];
-
-  speciesTraitChoices?: Record<string, string | string[]>;
-
-  classCantripChoices?: SpellId[];
-  classSpellChoices?: SpellSelection[];
-  subclassCantripChoices?: SpellId[];
-  subclassSpellChoices?: SpellSelection[];
 
   preparedSpellIdsBySource?: Record<string, SpellId[]>;
 

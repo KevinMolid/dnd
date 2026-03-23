@@ -8,5 +8,8 @@ export function getSpeciesChoices(speciesId: string): TraitChoice[] {
     return [];
   }
 
-  return selectedSpecies.traits.flatMap((trait) => trait.choices ?? []);
+  return [
+    ...(selectedSpecies.choices ?? []),
+    ...selectedSpecies.traits.flatMap((trait) => trait.choices ?? []),
+  ];
 }

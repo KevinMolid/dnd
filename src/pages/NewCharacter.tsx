@@ -36,6 +36,8 @@ import SpellPreviewCard, {
   type SpellPreviewData,
 } from "../components/SpellPreviewCard";
 
+import { dragonbornAncestries } from "../rulesets/dnd/dnd2024/data/species/dragonbornAncestries";
+
 type CharacterCreationStep =
   | "details"
   | "class"
@@ -259,6 +261,7 @@ const NewCharacter = () => {
     null,
   );
 
+  // Species state
   const [speciesTraitChoices, setSpeciesTraitChoices] = useState<
     Record<string, string | string[]>
   >({});
@@ -389,6 +392,18 @@ const NewCharacter = () => {
 
   const isBarbarian = classId === "barbarian";
   const isRogue = classId === "rogue";
+
+  const selectedDragonbornAncestryId =
+    speciesId === "dragonborn" &&
+    typeof speciesTraitChoices["draconic-ancestry"] === "string"
+      ? speciesTraitChoices["draconic-ancestry"]
+      : null;
+
+  const selectedDragonbornAncestry = selectedDragonbornAncestryId
+    ? dragonbornAncestries[
+        selectedDragonbornAncestryId as keyof typeof dragonbornAncestries
+      ]
+    : null;
 
   const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
 
@@ -2925,6 +2940,22 @@ const NewCharacter = () => {
                       );
                     })}
                   </div>
+
+                  {speciesId === "dragonborn" && selectedDragonbornAncestry && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-xs text-zinc-500">
+                        Breath Weapon Damage Type
+                      </p>
+                      <p className="text-sm text-zinc-200">
+                        {formatLabel(selectedDragonbornAncestry.damageType)}
+                      </p>
+
+                      <p className="text-xs text-zinc-500">Damage Resistance</p>
+                      <p className="text-sm text-zinc-200">
+                        {formatLabel(selectedDragonbornAncestry.damageType)}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
