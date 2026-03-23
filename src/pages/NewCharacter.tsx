@@ -277,6 +277,9 @@ const NewCharacter = () => {
     useState("");
 
   // Class specific states
+  const [barbarianWeaponMasteryChoices, setBarbarianWeaponMasteryChoices] =
+    useState<WeaponMasteryChoiceId[]>([]);
+
   const [bardStartingInstrument, setBardStartingInstrument] = useState<
     ToolId | ""
   >("");
@@ -384,6 +387,7 @@ const NewCharacter = () => {
     [backgroundDef, backgroundEquipmentOptionId],
   );
 
+  const isBarbarian = classId === "barbarian";
   const isRogue = classId === "rogue";
 
   const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
@@ -690,6 +694,9 @@ const NewCharacter = () => {
   const classSkillOptions = classDef?.skillChoice.options ?? [];
   const classSkillChoiceCount = classDef?.skillChoice.choose ?? 0;
 
+  const classWeaponMasteryOptions = classDef?.weaponMasteryOptions ?? [];
+  const barbarianWeaponMasteryChoiceCount = isBarbarian ? 2 : 0;
+
   const rogueExpertiseOptions = useMemo(() => {
     if (!isRogue) return [] as Array<SkillId | "thieves-tools">;
 
@@ -809,6 +816,30 @@ const NewCharacter = () => {
             classStartingSpellChoiceCount
           ) {
             return "Class spell choices must be different.";
+          }
+        }
+
+        if (isBarbarian) {
+          if (
+            barbarianWeaponMasteryChoices.length !==
+            barbarianWeaponMasteryChoiceCount
+          ) {
+            return `Barbarian must choose ${barbarianWeaponMasteryChoiceCount} weapon mastery options.`;
+          }
+
+          if (
+            new Set(barbarianWeaponMasteryChoices).size !==
+            barbarianWeaponMasteryChoiceCount
+          ) {
+            return "Barbarian weapon mastery choices must be different.";
+          }
+
+          if (
+            barbarianWeaponMasteryChoices.some(
+              (choice) => !classWeaponMasteryOptions.includes(choice),
+            )
+          ) {
+            return "One or more Barbarian weapon mastery choices are invalid.";
           }
         }
 
@@ -1162,6 +1193,27 @@ const NewCharacter = () => {
   ]);
 
   useEffect(() => {
+    if (!isBarbarian) {
+      setBarbarianWeaponMasteryChoices((prev) =>
+        prev.length === 0 ? prev : [],
+      );
+      return;
+    }
+
+    setBarbarianWeaponMasteryChoices((prev) => {
+      const next = prev
+        .filter((choice) => classWeaponMasteryOptions.includes(choice))
+        .slice(0, barbarianWeaponMasteryChoiceCount);
+
+      return arraysEqual(prev, next) ? prev : next;
+    });
+  }, [
+    isBarbarian,
+    classWeaponMasteryOptions,
+    barbarianWeaponMasteryChoiceCount,
+  ]);
+
+  useEffect(() => {
     if (!isRogue) {
       setRogueExpertiseChoices((prev) => (prev.length === 0 ? prev : []));
       setRogueWeaponMasteryChoices((prev) => (prev.length === 0 ? prev : []));
@@ -1313,6 +1365,20 @@ const NewCharacter = () => {
       }
 
       if (prev.length >= 2) {
+        return prev;
+      }
+
+      return [...prev, choice];
+    });
+  };
+
+  const toggleBarbarianWeaponMastery = (choice: WeaponMasteryChoiceId) => {
+    setBarbarianWeaponMasteryChoices((prev) => {
+      if (prev.includes(choice)) {
+        return prev.filter((item) => item !== choice);
+      }
+
+      if (prev.length >= barbarianWeaponMasteryChoiceCount) {
         return prev;
       }
 
@@ -1548,6 +1614,30 @@ const NewCharacter = () => {
 
       if (!validSpell) {
         return "Please choose a valid Magic Initiate level 1 spell.";
+      }
+    }
+
+    if (isBarbarian) {
+      if (
+        barbarianWeaponMasteryChoices.length !==
+        barbarianWeaponMasteryChoiceCount
+      ) {
+        return `Barbarian must choose ${barbarianWeaponMasteryChoiceCount} weapon mastery options.`;
+      }
+
+      if (
+        new Set(barbarianWeaponMasteryChoices).size !==
+        barbarianWeaponMasteryChoiceCount
+      ) {
+        return "Barbarian weapon mastery choices must be different.";
+      }
+
+      if (
+        barbarianWeaponMasteryChoices.some(
+          (choice) => !classWeaponMasteryOptions.includes(choice),
+        )
+      ) {
+        return "One or more Barbarian weapon mastery choices are invalid.";
       }
     }
 
@@ -2125,6 +2215,49 @@ const NewCharacter = () => {
                             />
                             <span className="text-sm text-white">
                               {spell.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {isBarbarian && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Barbarian Weapon Mastery
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      Choose {barbarianWeaponMasteryChoiceCount} weapons for
+                      Weapon Mastery.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {classWeaponMasteryOptions.map((choice) => {
+                        const isSelected =
+                          barbarianWeaponMasteryChoices.includes(choice);
+
+                        return (
+                          <label
+                            key={choice}
+                            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                              isSelected
+                                ? "border-white/25 bg-white/10"
+                                : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() =>
+                                toggleBarbarianWeaponMastery(choice)
+                              }
+                              className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                            />
+                            <span className="text-sm text-white">
+                              {formatLabel(choice)}
                             </span>
                           </label>
                         );

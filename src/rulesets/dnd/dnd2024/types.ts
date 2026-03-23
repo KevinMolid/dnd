@@ -1051,6 +1051,7 @@ export type CharacterChoices = {
   rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
   rogueBonusLanguage?: LanguageId;
   rogueWeaponMasteryChoices?: WeaponMasteryChoiceId[];
+  barbarianWeaponMasteryChoices?: WeaponMasteryChoiceId[];
 
   speciesTraitChoices?: Record<string, string | string[]>;
 
