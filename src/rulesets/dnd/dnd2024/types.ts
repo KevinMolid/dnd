@@ -701,6 +701,7 @@ export type ChoiceSource =
   | "feat"
   | "equipment"
   | "subclass"
+  | "class-feature"
   | "other";
 
 export type ChoiceDefinition<TOption extends string = string> = {
@@ -997,6 +998,11 @@ export type LevelUpDecision = {
 
   cantripReplacements?: CantripReplacement[];
   spellReplacements?: SpellReplacement[];
+
+  // Druid
+  circleOfTheLandType?: "arid" | "polar" | "temperate" | "tropical";
+  primalOrder?: "magician" | "warden";
+  elementalFuryOption?: "potent-spellcasting" | "primal-strike";
 };
 
 export type LevelUpDecisionsByLevel = Record<number, LevelUpDecision>;

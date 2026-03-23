@@ -376,8 +376,7 @@ const NewCharacter = () => {
   }, [backgroundFeatGrant, backgroundGrantedFeatId]);
 
   const availableClassCantrips = useMemo(() => {
-    if (!classSpellcasting || !classId || !speciesId || !backgroundId)
-      return [];
+    if (!classSpellcasting || !classId) return [];
 
     return getAvailableSpells(
       {
@@ -386,8 +385,8 @@ const NewCharacter = () => {
         name: "",
         level: 1,
         classId,
-        speciesId,
-        backgroundId,
+        speciesId: speciesId || "human",
+        backgroundId: backgroundId || "acolyte",
         originFeatId: backgroundGrantedFeatId,
         abilityScores,
       } as CharacterSheetData,
@@ -407,8 +406,7 @@ const NewCharacter = () => {
   ]);
 
   const availableClassStartingSpells = useMemo(() => {
-    if (!classSpellcasting || !classId || !speciesId || !backgroundId)
-      return [];
+    if (!classSpellcasting || !classId) return [];
 
     return getAvailableSpells(
       {
@@ -417,8 +415,8 @@ const NewCharacter = () => {
         name: "",
         level: 1,
         classId,
-        speciesId,
-        backgroundId,
+        speciesId: speciesId || "human",
+        backgroundId: backgroundId || "acolyte",
         originFeatId: backgroundGrantedFeatId,
         abilityScores,
       } as CharacterSheetData,

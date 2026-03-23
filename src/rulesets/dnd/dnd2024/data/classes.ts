@@ -1,13 +1,15 @@
 import type { CharacterClass } from "../types";
 
-import { rogue } from "./classes/rogue";
+import { druid } from "./classes/druid";
 import { fighter } from "./classes/fighter";
 import { paladin } from "./classes/paladin";
+import { rogue } from "./classes/rogue";
 
-// add more as you go
+// add more
 
 export const classes: CharacterClass[] = [
-  rogue,
+  druid,
   fighter,
   paladin,
+  rogue,
 ];
