@@ -695,6 +695,80 @@ export type CharacterClassId =
   | "warlock"
   | "wizard";
 
+  export type CharacterSubclassId =
+  // Barbarian
+  | "berserker"
+  | "wild-heart"
+  | "world-tree"
+  | "zealot"
+
+  // Bard
+  | "college-of-dance"
+  | "college-of-glamour"
+  | "college-of-lore"
+  | "college-of-valor"
+
+  // Cleric
+  | "life-domain"
+  | "light-domain"
+  | "trickery-domain"
+  | "war-domain"
+
+  // Druid
+  | "circle-of-the-land"
+  | "circle-of-the-moon"
+  | "circle-of-the-sea"
+  | "circle-of-the-stars"
+
+  // Fighter
+  | "battle-master"
+  | "champion"
+  | "eldritch-knight"
+  | "psi-warrior"
+
+  // Monk
+  | "warrior-of-mercy"
+  | "warrior-of-shadow"
+  | "warrior-of-the-elements"
+  | "warrior-of-the-open-hand"
+
+  // Paladin
+  | "oath-of-devotion"
+  | "oath-of-glory"
+  | "oath-of-the-ancients"
+  | "oath-of-vengeance"
+
+  // Ranger
+  | "beast-master"
+  | "fey-wanderer"
+  | "gloom-stalker"
+  | "hunter"
+
+  // Rogue
+  | "arcane-trickster"
+  | "assassin"
+  | "soulknife"
+  | "thief"
+
+  // Sorcerer
+  | "aberrant-sorcery"
+  | "clockwork-sorcery"
+  | "draconic-sorcery"
+  | "wild-magic-sorcery"
+
+  // Warlock
+  | "archfey-patron"
+  | "celestial-patron"
+  | "fiend-patron"
+  | "great-old-one-patron"
+
+  // Wizard
+  | "abjurer"
+  | "diviner"
+  | "evoker"
+  | "illusionist";
+
+
 export type FightingStyleId =
   | "archery"
   | "blind-fighting"
@@ -1156,6 +1230,7 @@ export type CharacterSheetData = {
   level: number;
 
   classId: CharacterClassId | string;
+  subclassId: CharacterSubclass;
   speciesId: string;
   backgroundId: string;
   originFeatId: OriginFeatId | null;
