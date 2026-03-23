@@ -106,6 +106,19 @@ const rogueWeaponMasteryOptions: WeaponMasteryChoiceId[] = [
   "sling",
 ];
 
+const bardInstrumentOptions: ToolId[] = [
+  "bagpipes",
+  "drum",
+  "dulcimer",
+  "flute",
+  "horn",
+  "lute",
+  "lyre",
+  "pan-flute",
+  "shawm",
+  "viol",
+];
+
 const formatLabel = (value: string) =>
   value
     .split("-")
@@ -236,6 +249,7 @@ const NewCharacter = () => {
   const [abilityScores, setAbilityScores] = useState(defaultAbilityScores);
 
   const [classSkillChoices, setClassSkillChoices] = useState<SkillId[]>([]);
+  const [classToolChoices, setClassToolChoices] = useState<ToolId[]>([]);
   const [classCantripChoices, setClassCantripChoices] = useState<SpellId[]>([]);
   const [classSpellChoices, setClassSpellChoices] = useState<SpellSelection[]>(
     [],
@@ -262,6 +276,11 @@ const NewCharacter = () => {
   const [backgroundEquipmentOptionId, setBackgroundEquipmentOptionId] =
     useState("");
 
+  // Class specific states
+  const [bardStartingInstrument, setBardStartingInstrument] = useState<
+    ToolId | ""
+  >("");
+
   const [rogueExpertiseChoices, setRogueExpertiseChoices] = useState<
     Array<SkillId | "thieves-tools">
   >([]);
@@ -284,6 +303,10 @@ const NewCharacter = () => {
   const isFirstStep = currentStepIndex === 0;
   const isLastStep = currentStepIndex === creationSteps.length - 1;
 
+  const needsBardStartingInstrument =
+    classId === "bard" &&
+    classEquipmentOptionId === "bard-starting-equipment-a";
+
   const goToNextStep = () => {
     setError("");
     const nextStep = creationSteps[currentStepIndex + 1];
@@ -301,6 +324,9 @@ const NewCharacter = () => {
     () => getBackgroundById(backgroundId),
     [backgroundId],
   );
+
+  const classToolOptions = classDef?.toolProficiencyChoice?.options ?? [];
+  const classToolChoiceCount = classDef?.toolProficiencyChoice?.choose ?? 0;
 
   const classSpellcasting = classDef?.spellcasting;
 
@@ -538,6 +564,7 @@ const NewCharacter = () => {
       level: 1,
       choices: {
         classSkillChoices,
+        ...(classToolChoices.length > 0 ? { classToolChoices } : {}),
         ...(classCantripChoices.length > 0 ? { classCantripChoices } : {}),
         ...(classSpellChoices.length > 0 ? { classSpellChoices } : {}),
         ...(classSpellChoices.length > 0
@@ -580,6 +607,7 @@ const NewCharacter = () => {
     classId,
     classSkillChoices,
     classSpellChoices,
+    classToolChoices,
     backgroundGrantedFeatId,
     backgroundFeatCantripChoices,
     backgroundFeatSpellChoices,
@@ -619,6 +647,16 @@ const NewCharacter = () => {
           );
         }
 
+        if (
+          needsBardStartingInstrument &&
+          bardStartingInstrument &&
+          itemOptions.some((option) => option.id === bardStartingInstrument)
+        ) {
+          return itemOptions.filter(
+            (option) => option.id === bardStartingInstrument,
+          );
+        }
+
         return itemOptions.slice(0, grant.choose);
       },
     });
@@ -627,6 +665,8 @@ const NewCharacter = () => {
     backgroundToolRules,
     selectedBackgroundEquipmentOption,
     selectedClassEquipmentOption,
+    needsBardStartingInstrument,
+    bardStartingInstrument,
   ]);
 
   const normalizedStartingEquipment = useMemo(
@@ -690,6 +730,36 @@ const NewCharacter = () => {
           !selectedClassEquipmentOption
         ) {
           return "Please choose a class starting equipment option.";
+        }
+
+        if (classToolChoiceCount > 0) {
+          if (classToolChoices.length !== classToolChoiceCount) {
+            return `Please choose ${classToolChoiceCount} tool proficiency${
+              classToolChoiceCount === 1 ? "" : "ies"
+            }.`;
+          }
+
+          if (needsBardStartingInstrument) {
+            if (!bardStartingInstrument) {
+              return "Please choose a starting musical instrument.";
+            }
+
+            if (!bardInstrumentOptions.includes(bardStartingInstrument)) {
+              return "Please choose a valid starting musical instrument.";
+            }
+          }
+
+          const validTools = classToolChoices.every((tool) =>
+            classToolOptions.includes(tool),
+          );
+
+          if (!validTools) {
+            return "Please choose valid tool proficiencies.";
+          }
+
+          if (new Set(classToolChoices).size !== classToolChoiceCount) {
+            return "Tool choices must be different.";
+          }
         }
 
         if (classStartingCantripChoiceCount > 0) {
@@ -927,6 +997,19 @@ const NewCharacter = () => {
       return arraysEqual(prev, next) ? prev : next;
     });
   }, [classDef, classSkillChoiceCount]);
+
+  useEffect(() => {
+    if (!needsBardStartingInstrument) {
+      setBardStartingInstrument((prev) => (prev === "" ? prev : ""));
+      return;
+    }
+
+    setBardStartingInstrument((prev) =>
+      prev && bardInstrumentOptions.includes(prev)
+        ? prev
+        : bardInstrumentOptions[0],
+    );
+  }, [needsBardStartingInstrument]);
 
   useEffect(() => {
     setClassCantripChoices((prev) => {
@@ -1289,11 +1372,41 @@ const NewCharacter = () => {
       }.`;
     }
 
+    if (classToolChoiceCount > 0) {
+      if (classToolChoices.length !== classToolChoiceCount) {
+        return `Please choose ${classToolChoiceCount} tool proficiency${
+          classToolChoiceCount === 1 ? "" : "ies"
+        }.`;
+      }
+
+      const validTools = classToolChoices.every((tool) =>
+        classToolOptions.includes(tool),
+      );
+
+      if (!validTools) {
+        return "Please choose valid tool proficiencies.";
+      }
+
+      if (new Set(classToolChoices).size !== classToolChoiceCount) {
+        return "Tool choices must be different.";
+      }
+    }
+
     if (
       classDef.startingEquipment?.options?.length &&
       !selectedClassEquipmentOption
     ) {
       return "Please choose a class starting equipment option.";
+    }
+
+    if (needsBardStartingInstrument) {
+      if (!bardStartingInstrument) {
+        return "Please choose a starting musical instrument.";
+      }
+
+      if (!bardInstrumentOptions.includes(bardStartingInstrument)) {
+        return "Please choose a valid starting musical instrument.";
+      }
     }
 
     if (classStartingCantripChoiceCount > 0) {
@@ -1503,6 +1616,7 @@ const NewCharacter = () => {
         notes: notes.trim(),
         choices: {
           classSkillChoices,
+          ...(classToolChoices.length > 0 ? { classToolChoices } : {}),
           ...(classCantripChoices.length > 0 ? { classCantripChoices } : {}),
           ...(classSpellChoices.length > 0 ? { classSpellChoices } : {}),
           ...(preparedSpellIdsBySource ? { preparedSpellIdsBySource } : {}),
@@ -1546,6 +1660,7 @@ const NewCharacter = () => {
         notes: notes.trim(),
         choices: {
           classSkillChoices,
+          ...(classToolChoices.length > 0 ? { classToolChoices } : {}),
           ...(classCantripChoices.length > 0 ? { classCantripChoices } : {}),
           ...(classSpellChoices.length > 0 ? { classSpellChoices } : {}),
           ...(preparedSpellIdsBySource ? { preparedSpellIdsBySource } : {}),
@@ -1826,6 +1941,94 @@ const NewCharacter = () => {
                     </div>
                   </div>
                 ) : null}
+
+                {needsBardStartingInstrument && (
+                  <div className="mt-6">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Starting Musical Instrument
+                    </h3>
+
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="bardStartingInstrument"
+                        className="text-sm font-medium text-zinc-200"
+                      >
+                        Choose instrument
+                      </label>
+                      <select
+                        id="bardStartingInstrument"
+                        value={bardStartingInstrument}
+                        onChange={(e) =>
+                          setBardStartingInstrument(e.target.value as ToolId)
+                        }
+                        className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                      >
+                        {bardInstrumentOptions.map((tool) => (
+                          <option key={tool} value={tool}>
+                            {formatLabel(tool)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {classToolChoiceCount > 0 && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Tool Proficiencies
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      Choose {classToolChoiceCount} musical instrument
+                      {classToolChoiceCount === 1 ? "" : "s"}.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {classToolOptions.map((tool) => {
+                        const isSelected = classToolChoices.includes(tool);
+
+                        return (
+                          <label
+                            key={tool}
+                            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                              isSelected
+                                ? "border-white/25 bg-white/10"
+                                : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {
+                                setClassToolChoices((prev) => {
+                                  if (prev.includes(tool)) {
+                                    return prev.filter((t) => t !== tool);
+                                  }
+
+                                  if (prev.length >= classToolChoiceCount) {
+                                    return prev;
+                                  }
+
+                                  return [...prev, tool];
+                                });
+                              }}
+                              className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                            />
+                            <span className="text-sm text-white">
+                              {formatLabel(tool)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <p className="mt-3 text-xs text-zinc-500">
+                      Selected: {classToolChoices.length} /{" "}
+                      {classToolChoiceCount}
+                    </p>
+                  </div>
+                )}
 
                 {classStartingCantripChoiceCount > 0 && (
                   <div className="mt-8">

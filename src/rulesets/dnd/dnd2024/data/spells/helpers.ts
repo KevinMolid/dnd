@@ -9,9 +9,13 @@ import type {
 } from "../../types";
 import { spellSlotTables } from "../../spellSlotTables";
 import { spells } from "./spells";
-import { paladinSpellList } from "./paladinSpellList";
+import { bardSpellList } from "./bardSpellList";
 import { clericSpellList } from "./clericSpellList";
 import { druidSpellList } from "./druidSpellList";
+import { paladinSpellList } from "./paladinSpellList";
+import { rangerSpellList } from "./rangerSpellList";
+import { sorcererSpellList } from "./sorcererSpellList";
+import { warlockSpellList } from "./warlockSpellList";
 import { wizardSpellList } from "./wizardSpellList";
 
 export {
@@ -24,13 +28,13 @@ export const spellsById: Record<SpellId, Spell> = Object.fromEntries(
 ) as Record<SpellId, Spell>;
 
 export const spellListsById: Record<SpellListId, SpellId[]> = {
-  bard: [],
+  bard: bardSpellList,
   cleric: clericSpellList,
   druid: druidSpellList,
   paladin: paladinSpellList,
-  ranger: [],
-  sorcerer: [],
-  warlock: [],
+  ranger: rangerSpellList,
+  sorcerer: sorcererSpellList,
+  warlock: warlockSpellList,
   wizard: wizardSpellList,
 };
 

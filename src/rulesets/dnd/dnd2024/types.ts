@@ -292,33 +292,49 @@ export type SkillId =
   | "stealth"
   | "survival";
 
-export type ToolId =
+export type MusicalInstrumentToolId =
+  | "bagpipes"
+  | "drum"
+  | "dulcimer"
+  | "flute"
+  | "horn"
+  | "lute"
+  | "lyre"
+  | "pan-flute"
+  | "shawm"
+  | "viol";
+
+export type ArtisanToolId =
   | "alchemists-supplies"
   | "brewers-supplies"
   | "calligraphers-supplies"
   | "carpenters-tools"
   | "cartographers-tools"
+  | "cobblers-tools"
   | "cooks-utensils"
-  | "disguise-kit"
-  | "forgery-kit"
-  | "gamers-set"
-  | "herbalism-kit"
+  | "glassblowers-tools"
+  | "jewelers-tools"
   | "leatherworkers-tools"
   | "masons-tools"
-  | "musical-instrument"
-  | "navigators-tools"
   | "painters-supplies"
-  | "poisoners-kit"
   | "potters-tools"
   | "smiths-tools"
-  | "thieves-tools"
   | "tinkers-tools"
   | "weavers-tools"
-  | "woodcarvers-tools"
+  | "woodcarvers-tools";
+
+export type OtherToolId =
+  | "disguise-kit"
+  | "forgery-kit"
+  | "herbalism-kit"
+  | "navigator-tools"
+  | "poisoners-kit"
+  | "thieves-tools"
+  | "gaming-set"
   | "vehicles-land"
-  | "vehicles-water"
-  | "glassblowers-tools"
-  | "jewelers-tools";
+  | "vehicles-water";
+
+export type ToolId = MusicalInstrumentToolId | ArtisanToolId | OtherToolId;
 
 export type ToolChoiceGroup =
   | "artisan-tools"
@@ -711,6 +727,7 @@ export type ChoiceDefinition<TOption extends string = string> = {
   choose: number;
   source: ChoiceSource;
   options?: TOption[];
+  optionGroup?: ToolChoiceGroup;
   description?: string;
   restrictions?: string[];
 };
@@ -893,6 +910,10 @@ export type CharacterClass = RulesOption & {
   armorTraining: ArmorTrainingId[];
   weaponProficiencies: WeaponProficiencyId[];
   toolProficiencies?: ToolId[];
+  toolProficiencyChoice: {
+    choose: number;
+    options: ToolId[];
+  };
   skillChoice: {
     choose: number;
     options: SkillId[];
