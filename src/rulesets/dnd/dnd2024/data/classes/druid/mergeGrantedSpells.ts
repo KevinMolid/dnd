@@ -39,6 +39,6 @@ export const mergeGrantedPreparedSpells = (
   }
 
   return Array.from(byId.values()).sort(
-    (a, b) => a.spellLevel - b.spellLevel || a.spellId.localeCompare(b.spellId),
+    (a, b) => a.level - b.level || a.spellId.localeCompare(b.spellId),
   );
 };
