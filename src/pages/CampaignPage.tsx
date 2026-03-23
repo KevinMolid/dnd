@@ -6,11 +6,11 @@ import LevelUpModal from "../components/levelUpModal";
 import XpDistributionModal from "../components/XpDistributionModal";
 
 import CampaignCharactersSection from "../features/campaigns/components/CampaignCharactersSection";
-import CampaignComingNextSection from "../features/campaigns/components/CampaignComingNextSection";
 import CampaignHeader from "../features/campaigns/components/CampaignHeader";
 import CampaignMembersSection from "../features/campaigns/components/CampaignMembersSection";
 import CampaignQuickActions from "../features/campaigns/components/CampaignQuickActions";
 import PartyControlSection from "../features/campaigns/components/PartyControlSection";
+import CampaignRecentActivitySection from "../features/campaigns/components/CampaignRecentActivitySection";
 import useCampaignPageData, {
   type CampaignCharacter,
 } from "../features/campaigns/hooks/useCampaignPageData";
@@ -30,6 +30,8 @@ const CampaignPage = () => {
     campaignCharactersLoading,
     members,
     membersLoading,
+    latestJournalEntry,
+    latestJournalEntryLoading,
     updateCharacter,
     updateCharacterXp,
     toggleCondition,
@@ -175,7 +177,11 @@ const CampaignPage = () => {
               onInvitePlayers={() => setInviteModalOpen(true)}
             />
 
-            <CampaignComingNextSection />
+            <CampaignRecentActivitySection
+              campaignId={campaign.id}
+              loading={latestJournalEntryLoading}
+              latestJournalEntry={latestJournalEntry}
+            />
           </aside>
         </div>
       </div>

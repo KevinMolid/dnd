@@ -19,6 +19,15 @@ import {
 } from "../../../rulesets/dnd/dnd2024/getCharacterHp";
 import { getLevelFromXp } from "../../../rulesets/dnd/dnd2024/xpProgression";
 
+import {
+  subscribeToJournalEntries,
+} from "../../journal/journalService";
+
+import {
+  canReadJournalEntry,
+  type JournalEntry,
+} from "../../journal/types";
+
 import type {
   CampaignDoc,
   CampaignMemberDoc,
@@ -31,6 +40,19 @@ import type {
   LevelUpDecisionsByLevel,
   LevelUpDecision,
 } from "../../../rulesets/dnd/dnd2024/types";
+
+export type CampaignJournalPreview = {
+  id: string;
+  title: string;
+  content: string;
+  createdByName?: string;
+  updatedAt: number;
+  sessionNumber?: number | null;
+  sessionDate?: string | null;
+  type: JournalEntry["type"];
+  pinned: boolean;
+  published: boolean;
+};
 
 export type CampaignPageState =
   | "loading"
@@ -183,6 +205,11 @@ const buildPendingLevelUp = (
 
 export const useCampaignPageData = (campaignId?: string) => {
   const { user } = useAuth();
+
+  const [latestJournalEntry, setLatestJournalEntry] =
+    useState<CampaignJournalPreview | null>(null);
+  const [latestJournalEntryLoading, setLatestJournalEntryLoading] =
+    useState(true);
 
   const [pageState, setPageState] = useState<CampaignPageState>("loading");
   const [campaign, setCampaign] = useState<
@@ -397,6 +424,54 @@ export const useCampaignPageData = (campaignId?: string) => {
 
   const isGm = membership?.role === "gm" || membership?.role === "co-gm";
 
+    useEffect(() => {
+    if (pageState !== "ready" || !campaignId) {
+      setLatestJournalEntry(null);
+      setLatestJournalEntryLoading(false);
+      return;
+    }
+
+    setLatestJournalEntryLoading(true);
+
+    const currentPlayerId: string | null = null;
+
+    const unsubscribe = subscribeToJournalEntries(campaignId, (entries) => {
+      const visibleEntries = entries.filter((entry) =>
+        canReadJournalEntry({
+          entry,
+          isDm: isGm,
+          currentPlayerId,
+        }),
+      );
+
+      if (visibleEntries.length === 0) {
+        setLatestJournalEntry(null);
+        setLatestJournalEntryLoading(false);
+        return;
+      }
+
+      const sorted = [...visibleEntries].sort((a, b) => b.updatedAt - a.updatedAt);
+      const latest = sorted[0];
+
+      setLatestJournalEntry({
+        id: latest.id,
+        title: latest.title,
+        content: latest.content,
+        createdByName: latest.createdByName,
+        updatedAt: latest.updatedAt,
+        sessionNumber: latest.sessionNumber ?? null,
+        sessionDate: latest.sessionDate ?? null,
+        type: latest.type,
+        pinned: latest.pinned,
+        published: latest.published,
+      });
+
+      setLatestJournalEntryLoading(false);
+    });
+
+    return unsubscribe;
+  }, [campaignId, pageState, isGm]);
+
   const systemLabel = useMemo(() => {
     if (!campaign) return "Tabletop RPG";
     return campaign.systemLabel ?? campaign.system ?? "Tabletop RPG";
@@ -551,6 +626,9 @@ const handleLevelUp = useCallback(
     toggleCondition,
     handleLevelUp,
     handleApplyXp,
+
+    latestJournalEntry,
+    latestJournalEntryLoading,
   };
 };
 
