@@ -6,6 +6,7 @@ const artisanToolOptions: ToolId[] = [
   "calligraphers-supplies",
   "carpenters-tools",
   "cartographers-tools",
+  "cobblers-tools",
   "cooks-utensils",
   "glassblowers-tools",
   "jewelers-tools",
@@ -19,9 +20,20 @@ const artisanToolOptions: ToolId[] = [
   "woodcarvers-tools",
 ];
 
-const gamingSetOptions: ToolId[] = ["gamers-set"];
+const gamingSetOptions: ToolId[] = ["gaming-set"];
 
-const musicalInstrumentOptions: ToolId[] = ["musical-instrument"];
+const musicalInstrumentOptions: ToolId[] = [
+  "bagpipes",
+  "drum",
+  "dulcimer",
+  "flute",
+  "horn",
+  "lute",
+  "lyre",
+  "pan-flute",
+  "shawm",
+  "viol",
+];
 
 export const backgrounds: Background[] = [
   {
@@ -421,10 +433,10 @@ export const backgrounds: Background[] = [
     name: "Merchant",
     abilityOptions: ["con", "int", "cha"],
     skillProficiencies: ["animal-handling", "persuasion"],
-    toolProficiency: "navigators-tools",
+    toolProficiency: "navigator-tools",
     toolProficiencyOptions: {
       type: "fixed",
-      tool: "navigators-tools",
+      tool: "navigator-tools",
     },
     originFeatId: "lucky",
     featGrant: {
@@ -440,7 +452,7 @@ export const backgrounds: Background[] = [
           label:
             "Navigator’s Tools, 2 Pouches, Traveler’s Clothes, and 22 GP",
           grants: [
-            { type: "item", id: "navigators-tools", quantity: 1 },
+            { type: "item", id: "navigator-tools", quantity: 1 },
             { type: "item", id: "pouch", quantity: 2 },
             { type: "item", id: "travelers-clothes", quantity: 1 },
             { type: "currency", amount: 22, currency: "gp" },
@@ -505,10 +517,10 @@ export const backgrounds: Background[] = [
     name: "Sailor",
     abilityOptions: ["str", "dex", "wis"],
     skillProficiencies: ["acrobatics", "perception"],
-    toolProficiency: "navigators-tools",
+    toolProficiency: "navigator-tools",
     toolProficiencyOptions: {
       type: "fixed",
-      tool: "navigators-tools",
+      tool: "navigator-tools",
     },
     originFeatId: "tavern-brawler",
     featGrant: {

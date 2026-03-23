@@ -910,7 +910,7 @@ export type CharacterClass = RulesOption & {
   armorTraining: ArmorTrainingId[];
   weaponProficiencies: WeaponProficiencyId[];
   toolProficiencies?: ToolId[];
-  toolProficiencyChoice: {
+  toolProficiencyChoice?: {
     choose: number;
     options: ToolId[];
   };
