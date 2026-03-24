@@ -105,6 +105,7 @@ export type AppUserDoc = {
 
 export type CampaignCharacter = {
   id: string;
+  imageUrl?: string;
   ownerUid: string;
   ownerName?: string;
   ownerEmail?: string;
@@ -344,6 +345,7 @@ export const useCampaignPageData = (campaignId?: string) => {
                 campaignId: data.campaignId,
 
                 name: data.name,
+                imageUrl: data.imageUrl,
                 classId: data.classId,
                 speciesId: data.speciesId,
 

@@ -44,8 +44,6 @@ import { getAllCharacterTraits } from "../rulesets/dnd/dnd2024/getAllCharacterTr
 import { getSpeciesTraits } from "../rulesets/dnd/dnd2024/getSpeciesTraits";
 import { getSpeciesGrantedFeatIds } from "../rulesets/dnd/dnd2024/getSpeciesGrantedFeatIds";
 
-import SpellTooltip from "../components/SpellTooltip";
-import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
 import type { CharacterEquipmentEntry } from "../rulesets/dnd/dnd2024/types";
 
 import { getCharacterArmorClassFromEquipment } from "../rulesets/dnd/dnd2024/getCharacterArmorClassFromEquipment";
@@ -54,6 +52,11 @@ import { getEquippedWeaponAttacks } from "../rulesets/dnd/dnd2024/getEquippedWea
 import { itemsById } from "../rulesets/dnd/dnd2024/data/items";
 
 import { dragonbornAncestries } from "../rulesets/dnd/dnd2024/data/species/dragonbornAncestries";
+
+// Components
+import Avatar from "../components/Avatar";
+import SpellTooltip from "../components/SpellTooltip";
+import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
 
 type CharacterDoc = CharacterSheetData & {
   maxHp?: number;
@@ -719,8 +722,6 @@ const CharacterSheet = () => {
     feats: true,
     other: false,
   });
-
-  const avatarSrc = character?.imageUrl?.trim() || "";
 
   useEffect(() => {
     const loadCharacter = async () => {
@@ -2301,19 +2302,11 @@ const CharacterSheet = () => {
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex items-center gap-4">
               <div className="flex gap-6 items-center">
-                <div className="h-36 w-36 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-                  {avatarSrc ? (
-                    <img
-                      src={avatarSrc}
-                      alt={`${character.name} avatar`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-3xl font-semibold text-zinc-500">
-                      {character.name?.trim().charAt(0).toUpperCase() || "?"}
-                    </div>
-                  )}
-                </div>
+                <Avatar
+                  name={character.name}
+                  src={character.imageUrl}
+                  size="xl"
+                />
                 <div>
                   <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
                     Character Sheet

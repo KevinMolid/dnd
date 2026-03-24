@@ -19,6 +19,7 @@ export type CampaignDoc = {
 export type CampaignMemberDoc = {
   uid: string;
   displayName?: string;
+  imageUrl: string;
   email?: string;
   role: CampaignRole;
   joinedAt: unknown;

@@ -22,6 +22,7 @@ import CampaignCharactersPage from "./pages/CampaignCharactersPage";
 import CampaignSettingsPage from "./pages/CampaignSettingsPage";
 import CampaignMapsPage from "./pages/CampaignMapsPage";
 import CampaignJournalPage from "./pages/CampaignJournalPage";
+import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -45,6 +46,7 @@ function App() {
       <main>
         <Routes>
           <Route index element={<Home />} />
+          <Route path="/profile" element={<ProfileSettingsPage />} />
           <Route path="tips" element={<Tips />} />
           <Route path="reglene" element={<Reglene />} />
           <Route path="karakterer" element={<Karakterer />} />

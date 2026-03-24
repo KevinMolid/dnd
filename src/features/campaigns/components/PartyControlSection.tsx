@@ -95,10 +95,9 @@ const PartyControlSection = ({
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0 flex items-center gap-3">
                   <Avatar
-                    uid={character.ownerUid}
-                    name={character.ownerName}
-                    email={character.ownerEmail}
-                    size="md"
+                    name={character.name}
+                    src={character.imageUrl}
+                    size="lg"
                   />
 
                   <div className="min-w-0">

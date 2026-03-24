@@ -20,6 +20,8 @@ import type {
 } from "../types/campaign";
 import type { CampaignInviteDoc } from "../types/invite";
 
+import Avatar from "../components/Avatar";
+
 type CampaignMember = CampaignMemberDoc & {
   id: string;
 };
@@ -468,40 +470,52 @@ const CampaignMembersPage = () => {
                       className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
                     >
                       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-base font-semibold text-white sm:text-lg">
-                              {member.displayName || member.email || member.uid}
-                            </h3>
+                        <div className="min-w-0 flex items-center gap-3">
+                          <Avatar
+                            name={
+                              member.displayName || member.email || member.uid
+                            }
+                            src={member.imageUrl || ""}
+                            size="lg"
+                          />
 
-                            <span
-                              className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
-                                member.role,
-                              )}`}
-                            >
-                              {formatRoleLabel(member.role)}
-                            </span>
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-semibold text-white sm:text-lg">
+                                {member.displayName ||
+                                  member.email ||
+                                  member.uid}
+                              </h3>
 
-                            {isOwner && (
-                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                                Owner
+                              <span
+                                className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
+                                  member.role,
+                                )}`}
+                              >
+                                {formatRoleLabel(member.role)}
                               </span>
-                            )}
 
-                            {isSelf && (
-                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                                You
-                              </span>
-                            )}
+                              {isOwner && (
+                                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
+                                  Owner
+                                </span>
+                              )}
+
+                              {isSelf && (
+                                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
+                                  You
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-2 text-sm text-zinc-400">
+                              {member.email || member.uid}
+                            </p>
+
+                            <p className="mt-1 text-xs text-zinc-500">
+                              Joined {formatDateTime(member.joinedAt)}
+                            </p>
                           </div>
-
-                          <p className="mt-2 text-sm text-zinc-400">
-                            {member.email || member.uid}
-                          </p>
-
-                          <p className="mt-1 text-xs text-zinc-500">
-                            Joined {formatDateTime(member.joinedAt)}
-                          </p>
                         </div>
 
                         {isGm && (

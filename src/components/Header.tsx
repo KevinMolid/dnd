@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Container from "./Container";
 import logo from "/images/logo3.png";
 
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+
+import Avatar from "./Avatar";
 
 function Header() {
   const { appUser, user, loading, logout } = useAuth();
@@ -29,19 +31,7 @@ function Header() {
 
   const email = user?.email || "";
 
-  const profileImage =
-    appUser?.photoURL?.trim() || user?.photoURL?.trim() || "";
-
-  const initials = useMemo(() => {
-    const source = displayName?.trim() || "U";
-    const parts = source.split(/\s+/).filter(Boolean);
-
-    if (parts.length === 1) {
-      return parts[0].slice(0, 2).toUpperCase();
-    }
-
-    return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
-  }, [displayName]);
+  const profileImage = appUser?.imageUrl?.trim() || "";
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -98,17 +88,12 @@ function Header() {
               aria-expanded={menuOpen}
               aria-label="Open profile menu"
             >
-              <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-800 text-sm font-bold text-white">
-                {profileImage ? (
-                  <img
-                    src={profileImage}
-                    alt={displayName}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span>{loading ? "..." : initials}</span>
-                )}
-              </div>
+              <Avatar
+                name={displayName}
+                src={profileImage}
+                size="md"
+                shape="circle"
+              />
 
               <div className="text-left">
                 <p className="max-w-[180px] truncate text-sm font-semibold text-white">
@@ -136,25 +121,20 @@ function Header() {
             </button>
 
             <div
-  className={`absolute right-0 top-full z-50 mt-3 w-[min(92vw,20rem)] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl ring-1 ring-black/40 transition-all duration-200 ${
-    menuOpen
-      ? "pointer-events-auto translate-y-0 opacity-100"
-      : "pointer-events-none -translate-y-2 opacity-0"
-  }`}
->
+              className={`absolute right-0 top-full z-50 mt-3 w-[min(92vw,20rem)] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl ring-1 ring-black/40 transition-all duration-200 ${
+                menuOpen
+                  ? "pointer-events-auto translate-y-0 opacity-100"
+                  : "pointer-events-none -translate-y-2 opacity-0"
+              }`}
+            >
               <div className="border-b border-white/10 bg-white/5 p-2">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-full border border-white/10 bg-zinc-800 text-base font-bold text-white">
-                    {profileImage ? (
-                      <img
-                        src={profileImage}
-                        alt={displayName}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span>{loading ? "..." : initials}</span>
-                    )}
-                  </div>
+                  <Avatar
+                    name={displayName}
+                    src={profileImage}
+                    size="md"
+                    shape="circle"
+                  />
 
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">

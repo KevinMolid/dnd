@@ -15,7 +15,7 @@ type AppUser = {
   email: string | null;
   displayName: string;
   createdAt?: Timestamp;
-  photoURL?: string;
+  imageUrl?: string;
 };
 
 type AuthContextType = {
@@ -54,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email: data.email ?? null,
       displayName: data.displayName ?? "",
       createdAt: data.createdAt,
+      imageUrl: data.imageUrl,
     });
   }, []);
 

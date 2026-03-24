@@ -1,3 +1,4 @@
+import Avatar from "../../../components/Avatar";
 import type { CampaignMemberDoc } from "../../../types/campaign";
 import {
   formatRoleLabel,
@@ -42,17 +43,25 @@ const CampaignMembersSection = ({
               className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
             >
               <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-white">
-                    {member.displayName || member.email || member.uid}
-                  </p>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    {member.email || "No email available"}
-                  </p>
+                <div className="min-w-0 flex items-center gap-3">
+                  <Avatar
+                    name={member.displayName || member.email || member.uid}
+                    src={member.imageUrl || ""}
+                    size="md"
+                  />
+
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-white">
+                      {member.displayName || member.email || member.uid}
+                    </p>
+                    <p className="mt-1 truncate text-sm text-zinc-400">
+                      {member.email || "No email available"}
+                    </p>
+                  </div>
                 </div>
 
                 <span
-                  className={`rounded-full px-3 py-1 text-xs font-semibold ${getRoleBadgeClass(
+                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${getRoleBadgeClass(
                     member.role,
                   )}`}
                 >
