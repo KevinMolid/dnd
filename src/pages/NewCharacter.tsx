@@ -1757,7 +1757,7 @@ const NewCharacter = () => {
       await createCharacter({
         campaignId: null,
         name: name.trim(),
-        imageUrl: imageUrl.trim() || undefined,
+        ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
         level: 1,
         classId,
         speciesId,
