@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import {
   collection,
   collectionGroup,
+  deleteDoc,
   getDoc,
+  doc,
   onSnapshot,
   query,
   where,
@@ -16,6 +18,8 @@ import type {
   CampaignMemberDoc,
   CampaignRole,
 } from "../types/campaign";
+
+import Avatar from "../components/Avatar";
 
 type Campaign = {
   id: string;
@@ -44,6 +48,7 @@ type CharacterDoc = {
   speciesId: string;
   backgroundId: string;
   originFeatId: string | null;
+  imageUrl?: string;
   abilityScores: {
     str: number;
     dex: number;
@@ -82,6 +87,10 @@ const Home = () => {
 
   const [characters, setCharacters] = useState<Character[]>([]);
   const [charactersLoading, setCharactersLoading] = useState(true);
+
+  const [deletingCharacterId, setDeletingCharacterId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!user) {
@@ -176,6 +185,7 @@ const Home = () => {
             className: classesById[data.classId]?.name ?? data.classId,
             level: data.level,
             campaignName: undefined,
+            imageUrl: data.imageUrl,
           };
         });
 
@@ -193,6 +203,24 @@ const Home = () => {
 
     return () => unsub();
   }, [user]);
+
+  async function handleDeleteCharacter(character: Character) {
+    const confirmed = window.confirm(
+      `Delete "${character.name}"? This cannot be undone.`,
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingCharacterId(character.id);
+      await deleteDoc(doc(db, "characters", character.id));
+    } catch (error) {
+      console.error("Failed to delete character:", error);
+      window.alert("Failed to delete character.");
+    } finally {
+      setDeletingCharacterId(null);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -348,26 +376,36 @@ const Home = () => {
                     className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <h3 className="text-base font-semibold text-white sm:text-lg">
-                          {character.name}
-                        </h3>
+                      <div className="flex min-w-0 items-center gap-4">
+                        <Avatar
+                          src={character.imageUrl}
+                          name={character.name}
+                          className="h-14 w-14 shrink-0 rounded-xl"
+                        />
 
-                        <p className="mt-2 text-sm text-zinc-400">
-                          {[character.race, character.className]
-                            .filter(Boolean)
-                            .join(" • ")}
-                          {character.level ? ` • Level ${character.level}` : ""}
-                        </p>
+                        <div className="min-w-0">
+                          <h3 className="text-base font-semibold text-white sm:text-lg">
+                            {character.name}
+                          </h3>
 
-                        {character.campaignName && (
-                          <p className="mt-1 text-sm text-zinc-500">
-                            Campaign: {character.campaignName}
+                          <p className="mt-2 text-sm text-zinc-400">
+                            {[character.race, character.className]
+                              .filter(Boolean)
+                              .join(" • ")}
+                            {character.level
+                              ? ` • Level ${character.level}`
+                              : ""}
                           </p>
-                        )}
+
+                          {character.campaignName && (
+                            <p className="mt-1 text-sm text-zinc-500">
+                              Campaign: {character.campaignName}
+                            </p>
+                          )}
+                        </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Link
                           to={`/characters/${character.id}`}
                           className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
@@ -381,6 +419,17 @@ const Home = () => {
                         >
                           Edit
                         </Link>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCharacter(character)}
+                          disabled={deletingCharacterId === character.id}
+                          className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {deletingCharacterId === character.id
+                            ? "Deleting..."
+                            : "Delete"}
+                        </button>
                       </div>
                     </div>
                   </div>
