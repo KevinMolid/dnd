@@ -375,9 +375,12 @@ const Home = () => {
                           Open
                         </Link>
 
-                        <button className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10">
+                        <Link
+                          to={`/characters/${character.id}/edit`}
+                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                        >
                           Edit
-                        </button>
+                        </Link>
                       </div>
                     </div>
                   </div>
