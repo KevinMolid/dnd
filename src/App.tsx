@@ -22,6 +22,7 @@ import CampaignCharactersPage from "./pages/CampaignCharactersPage";
 import CampaignSettingsPage from "./pages/CampaignSettingsPage";
 import CampaignMapsPage from "./pages/CampaignMapsPage";
 import CampaignJournalPage from "./pages/CampaignJournalPage";
+import HandoutsPage from "./pages/HandoutsPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
@@ -54,6 +55,10 @@ function App() {
           <Route path="/kamp" element={<Encounter />} />
           <Route path="/spillere" element={<Players />} />
           <Route path="/handouts" element={<Handouts />} />
+          <Route
+            path="/campaigns/:campaignId/handouts"
+            element={<HandoutsPage />}
+          />
           <Route path="/quests" element={<Quests />} />
           <Route path="/characters/new" element={<NewCharacter />} />
           <Route path="/characters/:characterId" element={<CharacterSheet />} />

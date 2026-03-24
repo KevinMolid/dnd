@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import InvitePlayersModal from "../components/InvitePlayersModal";
+import CreateHandoutModal from "../components/CreateHandoutModal";
 import LevelUpModal from "../components/levelUpModal";
 import XpDistributionModal from "../components/XpDistributionModal";
 
@@ -38,6 +39,7 @@ const CampaignPage = () => {
   } = useCampaignPageData(campaignId);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [createHandoutOpen, setCreateHandoutOpen] = useState(false);
   const [xpModalOpen, setXpModalOpen] = useState(false);
   const [levelUpCharacter, setLevelUpCharacter] =
     useState<CampaignCharacter | null>(null);
@@ -147,7 +149,11 @@ const CampaignPage = () => {
 
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="space-y-6">
-            <CampaignQuickActions campaignId={campaign.id} isGm={isGm} />
+            <CampaignQuickActions
+              campaignId={campaign.id}
+              isGm={isGm}
+              onCreateHandout={() => setCreateHandoutOpen(true)}
+            />
 
             <PartyControlSection
               characters={campaignCharacters}
@@ -207,6 +213,14 @@ const CampaignPage = () => {
           setXpModalOpen(false);
         }}
       />
+
+      {campaignId ? (
+        <CreateHandoutModal
+          campaignId={campaignId}
+          open={createHandoutOpen}
+          onClose={() => setCreateHandoutOpen(false)}
+        />
+      ) : null}
     </div>
   );
 };

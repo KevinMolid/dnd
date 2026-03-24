@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 type CampaignQuickActionsProps = {
   campaignId: string;
   isGm: boolean;
+  onCreateHandout: () => void;
 };
 
 const CampaignQuickActions = ({
   campaignId,
   isGm,
+  onCreateHandout,
 }: CampaignQuickActionsProps) => {
   return (
     <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
@@ -59,9 +61,10 @@ const CampaignQuickActions = ({
               </p>
             </Link>
 
-            <Link
-              to={`/campaigns/${campaignId}/handouts/new`}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+            <button
+              type="button"
+              onClick={onCreateHandout}
+              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 text-left transition hover:border-white/20 hover:bg-zinc-900"
             >
               <h3 className="text-base font-semibold text-white">
                 Create handout
@@ -69,7 +72,7 @@ const CampaignQuickActions = ({
               <p className="mt-2 text-sm text-zinc-400">
                 Add lore, clues, notes, or revealable documents.
               </p>
-            </Link>
+            </button>
           </>
         ) : (
           <>

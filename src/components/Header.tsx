@@ -65,7 +65,7 @@ function Header() {
               <img
                 src={logo}
                 alt="rphub logo"
-                className="h-12 w-12 shrink-0 rounded-xl object-cover sm:h-14 sm:w-14"
+                className="h-12 shrink-0 rounded-xl object-cover sm:h-16"
               />
 
               <div className="min-w-0 hidden sm:block">
