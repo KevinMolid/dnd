@@ -130,13 +130,17 @@ const CampaignJournalPage = () => {
 
     setJournalLoading(true);
 
-    const unsubscribe = subscribeToJournalEntries(campaignId, (nextEntries) => {
-      setEntries(nextEntries);
-      setJournalLoading(false);
-    });
+    const unsubscribe = subscribeToJournalEntries(
+      campaignId,
+      { isGm },
+      (nextEntries) => {
+        setEntries(nextEntries);
+        setJournalLoading(false);
+      },
+    );
 
     return unsubscribe;
-  }, [campaignId, pageState]);
+  }, [campaignId, pageState, isGm]);
 
   const visibleEntries = useMemo(() => {
     return entries.filter((entry) =>

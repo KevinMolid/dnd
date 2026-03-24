@@ -439,39 +439,43 @@ export const useCampaignPageData = (campaignId?: string) => {
 
     const currentPlayerId: string | null = null;
 
-    const unsubscribe = subscribeToJournalEntries(campaignId, (entries) => {
-      const visibleEntries = entries.filter((entry) =>
-        canReadJournalEntry({
-          entry,
-          isDm: isGm,
-          currentPlayerId,
-        }),
-      );
+    const unsubscribe = subscribeToJournalEntries(
+  campaignId,
+  { isGm },
+  (entries) => {
+    const visibleEntries = entries.filter((entry) =>
+      canReadJournalEntry({
+        entry,
+        isDm: isGm,
+        currentPlayerId,
+      }),
+    );
 
-      if (visibleEntries.length === 0) {
-        setLatestJournalEntry(null);
-        setLatestJournalEntryLoading(false);
-        return;
-      }
-
-      const sorted = [...visibleEntries].sort((a, b) => b.updatedAt - a.updatedAt);
-      const latest = sorted[0];
-
-      setLatestJournalEntry({
-        id: latest.id,
-        title: latest.title,
-        content: latest.content,
-        createdByName: latest.createdByName,
-        updatedAt: latest.updatedAt,
-        sessionNumber: latest.sessionNumber ?? null,
-        sessionDate: latest.sessionDate ?? null,
-        type: latest.type,
-        pinned: latest.pinned,
-        published: latest.published,
-      });
-
+    if (visibleEntries.length === 0) {
+      setLatestJournalEntry(null);
       setLatestJournalEntryLoading(false);
+      return;
+    }
+
+    const sorted = [...visibleEntries].sort((a, b) => b.updatedAt - a.updatedAt);
+    const latest = sorted[0];
+
+    setLatestJournalEntry({
+      id: latest.id,
+      title: latest.title,
+      content: latest.content,
+      createdByName: latest.createdByName,
+      updatedAt: latest.updatedAt,
+      sessionNumber: latest.sessionNumber ?? null,
+      sessionDate: latest.sessionDate ?? null,
+      type: latest.type,
+      pinned: latest.pinned,
+      published: latest.published,
     });
+
+    setLatestJournalEntryLoading(false);
+  },
+);
 
     return unsubscribe;
   }, [campaignId, pageState, isGm]);

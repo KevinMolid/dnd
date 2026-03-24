@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { loginUser, registerUser } from "../auth";
 
-import logo from "/images/logo.png";
+import logo from "/images/logo3.png";
 
 const Login = () => {
   const [isRegister, setIsRegister] = useState(false);

@@ -136,6 +136,14 @@ const CampaignPage = () => {
     );
   }
 
+  const playerOptions = members
+    .filter((member) => member.role === "player")
+    .map((member) => ({
+      uid: member.uid,
+      displayName:
+        member.displayName?.trim() || member.email?.trim() || "Unnamed player",
+    }));
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">
@@ -219,6 +227,7 @@ const CampaignPage = () => {
           campaignId={campaignId}
           open={createHandoutOpen}
           onClose={() => setCreateHandoutOpen(false)}
+          players={playerOptions}
         />
       ) : null}
     </div>
