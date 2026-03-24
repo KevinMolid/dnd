@@ -151,6 +151,8 @@ const EditCharacter = () => {
   const [saving, setSaving] = useState(false);
 
   const [name, setName] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [showImageUrlInput, setShowImageUrlInput] = useState(false);
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
   const [speciesId, setSpeciesId] = useState(species[0]?.id ?? "");
   const [backgroundId, setBackgroundId] = useState(backgrounds[0]?.id ?? "");
@@ -499,6 +501,8 @@ const EditCharacter = () => {
         setOriginalCharacter(data);
 
         setName(data.name ?? "");
+        setImageUrl(data.imageUrl ?? "");
+        setShowImageUrlInput(!!data.imageUrl?.trim());
         setClassId(data.classId ?? classes[0]?.id ?? "");
         setSpeciesId(data.speciesId ?? species[0]?.id ?? "");
         setBackgroundId(data.backgroundId ?? backgrounds[0]?.id ?? "");
@@ -970,6 +974,7 @@ const EditCharacter = () => {
 
       await updateDoc(doc(db, "characters", characterId), {
         name: updatedCharacter.name,
+        imageUrl: imageUrl.trim() || "",
         classId: updatedCharacter.classId,
         speciesId: updatedCharacter.speciesId,
         backgroundId: updatedCharacter.backgroundId,
@@ -1041,24 +1046,80 @@ const EditCharacter = () => {
               Character Details
             </h2>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2 sm:col-span-2">
-                <label
-                  htmlFor="name"
-                  className="text-sm font-medium text-zinc-200"
+            <div className="mb-6 rounded-3xl border border-white/10 bg-zinc-900/40 p-4 sm:p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <button
+                  type="button"
+                  onClick={() => setShowImageUrlInput((prev) => !prev)}
+                  className="group h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:border-white/20 hover:bg-white/10"
+                  aria-label="Toggle character image URL input"
+                  title="Change portrait"
                 >
-                  Character name
-                </label>
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                  required
-                />
+                  {imageUrl.trim() ? (
+                    <img
+                      src={imageUrl.trim()}
+                      alt="Character avatar preview"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-zinc-500 transition group-hover:text-zinc-300">
+                      {name.trim().charAt(0).toUpperCase() || "?"}
+                    </div>
+                  )}
+                </button>
+
+                <div className="min-w-0 flex-1">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="name"
+                      className="text-sm font-medium text-zinc-200"
+                    >
+                      Character name
+                    </label>
+                    <input
+                      id="name"
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                      required
+                    />
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-3">
+                    {imageUrl.trim() && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageUrl("");
+                          setShowImageUrlInput(false);
+                        }}
+                        className="text-xs font-medium text-zinc-500 transition hover:text-red-300"
+                      >
+                        Remove image
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
 
+              {showImageUrlInput && (
+                <div className="mt-4 border-t border-white/10 pt-4">
+                  <label className="text-sm font-medium text-zinc-200">
+                    Character image URL
+                  </label>
+                  <input
+                    type="url"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://example.com/character.jpg"
+                    className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <label
                   htmlFor="classId"

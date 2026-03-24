@@ -1226,11 +1226,12 @@ export type CharacterSheetData = {
   campaignId: string | null;
 
   name: string;
+  imageUrl?: string;
   xp?: number;
   level: number;
 
   classId: CharacterClassId | string;
-  subclassId: CharacterSubclass;
+  subclassId?: CharacterSubclass;
   speciesId: string;
   backgroundId: string;
   originFeatId: OriginFeatId | null;

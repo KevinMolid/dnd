@@ -66,6 +66,7 @@ export type CharacterDoc = {
   campaignId: string | null;
 
   name: string;
+  imageUrl?: string;
   level: number;
   xp?: number;
 
