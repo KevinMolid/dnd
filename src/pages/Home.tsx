@@ -32,6 +32,7 @@ type Character = {
   className?: string;
   level?: number;
   campaignName?: string;
+  imageUrl?: string;
 };
 
 type CharacterDoc = {
@@ -198,7 +199,6 @@ const Home = () => {
       <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">
         <section className="mb-8 rounded-3xl border border-green-200/15 bg-gradient-to-br from-green-600/15 to-white/3 p-6 shadow-2xl sm:mb-10 sm:p-8">
           <div className="max-w-3xl">
-
             <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
               Welcome{appUser?.displayName ? `, ${appUser.displayName}` : ""}
             </h1>

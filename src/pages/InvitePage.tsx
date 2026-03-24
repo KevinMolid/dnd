@@ -157,6 +157,7 @@ const InvitePage = () => {
       batch.set(memberRef, {
         uid: user.uid,
         displayName: appUser?.displayName ?? user.displayName ?? "",
+        imageUrl: appUser?.imageUrl ?? "",
         email: user.email ?? "",
         role: invite.role,
         joinedAt: serverTimestamp(),

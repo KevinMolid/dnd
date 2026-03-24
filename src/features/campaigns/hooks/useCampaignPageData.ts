@@ -7,6 +7,7 @@ import {
   query,
   updateDoc,
   where,
+  UpdateData,
 } from "firebase/firestore";
 
 import { useAuth } from "../../../context/AuthContext";
@@ -483,7 +484,10 @@ export const useCampaignPageData = (campaignId?: string) => {
   const updateCharacter = useCallback(
     async (id: string, updates: Record<string, unknown>) => {
       try {
-        await updateDoc(doc(db, "characters", id), updates);
+        await updateDoc(
+          doc(db, "characters", id),
+          updates as UpdateData<CharacterDoc>
+        );
       } catch (error) {
         console.error("Failed to update character:", error);
       }
