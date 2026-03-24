@@ -91,6 +91,8 @@ const Home = () => {
   const [deletingCharacterId, setDeletingCharacterId] = useState<string | null>(
     null,
   );
+  const [deleteBlockedCharacter, setDeleteBlockedCharacter] =
+    useState<Character | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -174,25 +176,53 @@ const Home = () => {
 
     const unsub = onSnapshot(
       q,
-      (snapshot) => {
-        const nextCharacters: Character[] = snapshot.docs.map((doc) => {
-          const data = doc.data() as CharacterDoc;
+      async (snapshot) => {
+        try {
+          const nextCharacters: Character[] = await Promise.all(
+            snapshot.docs.map(async (docSnap) => {
+              const data = docSnap.data() as CharacterDoc;
 
-          return {
-            id: doc.id,
-            name: data.name,
-            race: speciesById[data.speciesId]?.name ?? data.speciesId,
-            className: classesById[data.classId]?.name ?? data.classId,
-            level: data.level,
-            campaignName: undefined,
-            imageUrl: data.imageUrl,
-          };
-        });
+              let campaignName: string | undefined = undefined;
 
-        nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
+              if (data.campaignId) {
+                try {
+                  const campaignSnap = await getDoc(
+                    doc(db, "campaigns", data.campaignId),
+                  );
 
-        setCharacters(nextCharacters);
-        setCharactersLoading(false);
+                  if (campaignSnap.exists()) {
+                    const campaignData = campaignSnap.data() as CampaignDoc;
+                    campaignName = campaignData.name;
+                  }
+                } catch (error) {
+                  console.error(
+                    `Failed to load campaign for character ${docSnap.id}:`,
+                    error,
+                  );
+                }
+              }
+
+              return {
+                id: docSnap.id,
+                name: data.name,
+                race: speciesById[data.speciesId]?.name ?? data.speciesId,
+                className: classesById[data.classId]?.name ?? data.classId,
+                level: data.level,
+                campaignName,
+                imageUrl: data.imageUrl,
+              };
+            }),
+          );
+
+          nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
+
+          setCharacters(nextCharacters);
+          setCharactersLoading(false);
+        } catch (error) {
+          console.error("Failed to load characters:", error);
+          setCharacters([]);
+          setCharactersLoading(false);
+        }
       },
       (error) => {
         console.error("Failed to load characters:", error);
@@ -205,6 +235,11 @@ const Home = () => {
   }, [user]);
 
   async function handleDeleteCharacter(character: Character) {
+    if (character.campaignName) {
+      setDeleteBlockedCharacter(character);
+      return;
+    }
+
     const confirmed = window.confirm(
       `Delete "${character.name}"? This cannot be undone.`,
     );
@@ -397,11 +432,9 @@ const Home = () => {
                               : ""}
                           </p>
 
-                          {character.campaignName && (
-                            <p className="mt-1 text-sm text-zinc-500">
-                              Campaign: {character.campaignName}
-                            </p>
-                          )}
+                          <p className="mt-1 text-sm text-zinc-500">
+                            Campaign: {character.campaignName ?? "Not assigned"}
+                          </p>
                         </div>
                       </div>
 
@@ -439,6 +472,47 @@ const Home = () => {
           </section>
         </div>
       </div>
+
+      {deleteBlockedCharacter ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setDeleteBlockedCharacter(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-950 p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-white">
+                Character is assigned to a campaign
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">
+                <span className="font-medium text-zinc-200">
+                  {deleteBlockedCharacter.name}
+                </span>{" "}
+                is currently assigned to{" "}
+                <span className="font-medium text-zinc-200">
+                  {deleteBlockedCharacter.campaignName}
+                </span>
+                .
+              </p>
+              <p className="mt-3 text-sm leading-6 text-zinc-400">
+                Unassign the character from the campaign before deleting it.
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDeleteBlockedCharacter(null)}
+                className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };
