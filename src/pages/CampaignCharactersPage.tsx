@@ -14,6 +14,8 @@ import { useAuth } from "../context/AuthContext";
 import { classesById, speciesById } from "../rulesets/dnd/dnd2024/helpers";
 import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
 
+import Avatar from "../components/Avatar";
+
 type PageState = "loading" | "ready" | "not-found" | "forbidden" | "error";
 
 type CharacterDoc = {
@@ -25,6 +27,7 @@ type CharacterDoc = {
   speciesId: string;
   backgroundId: string;
   originFeatId: string | null;
+  imageUrl?: string;
   abilityScores: {
     str: number;
     dex: number;
@@ -52,6 +55,7 @@ type CampaignCharacter = {
   race?: string;
   className?: string;
   level?: number;
+  imageUrl?: string;
 };
 
 const CampaignCharactersPage = () => {
@@ -169,6 +173,7 @@ const CampaignCharactersPage = () => {
                 race: speciesById[data.speciesId]?.name ?? data.speciesId,
                 className: classesById[data.classId]?.name ?? data.classId,
                 level: data.level,
+                imageUrl: data.imageUrl,
               } satisfies CampaignCharacter;
             }),
           );
@@ -219,6 +224,7 @@ const CampaignCharactersPage = () => {
               race: speciesById[data.speciesId]?.name ?? data.speciesId,
               className: classesById[data.classId]?.name ?? data.classId,
               level: data.level,
+              imageUrl: data.imageUrl,
             };
           },
         );
@@ -437,34 +443,42 @@ const CampaignCharactersPage = () => {
                       className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
                     >
                       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-base font-semibold text-white sm:text-lg">
-                              {character.name}
-                            </h3>
+                        <div className="flex min-w-0 items-center gap-4">
+                          <Avatar
+                            src={character.imageUrl}
+                            name={character.name}
+                            className="h-14 w-14 shrink-0 rounded-xl"
+                          />
 
-                            {isOwnCharacter && (
-                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                                Yours
-                              </span>
-                            )}
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-semibold text-white sm:text-lg">
+                                {character.name}
+                              </h3>
+
+                              {isOwnCharacter && (
+                                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
+                                  Yours
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="mt-2 text-sm text-zinc-400">
+                              {[character.race, character.className]
+                                .filter(Boolean)
+                                .join(" • ")}
+                              {character.level
+                                ? ` • Level ${character.level}`
+                                : ""}
+                            </p>
+
+                            <p className="mt-1 text-sm text-zinc-500">
+                              Player:{" "}
+                              {character.ownerName ||
+                                character.ownerEmail ||
+                                character.ownerUid}
+                            </p>
                           </div>
-
-                          <p className="mt-2 text-sm text-zinc-400">
-                            {[character.race, character.className]
-                              .filter(Boolean)
-                              .join(" • ")}
-                            {character.level
-                              ? ` • Level ${character.level}`
-                              : ""}
-                          </p>
-
-                          <p className="mt-1 text-sm text-zinc-500">
-                            Player:{" "}
-                            {character.ownerName ||
-                              character.ownerEmail ||
-                              character.ownerUid}
-                          </p>
                         </div>
 
                         <div className="flex gap-2">
@@ -538,24 +552,34 @@ const CampaignCharactersPage = () => {
                           key={character.id}
                           className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
                         >
-                          <h3 className="text-base font-semibold text-white">
-                            {character.name}
-                          </h3>
+                          <div className="flex items-center gap-4">
+                            <Avatar
+                              src={character.imageUrl}
+                              name={character.name}
+                              className="h-12 w-12 shrink-0 rounded-xl"
+                            />
 
-                          <p className="mt-2 text-sm text-zinc-400">
-                            {[character.race, character.className]
-                              .filter(Boolean)
-                              .join(" • ")}
-                            {character.level
-                              ? ` • Level ${character.level}`
-                              : ""}
-                          </p>
+                            <div className="min-w-0">
+                              <h3 className="text-base font-semibold text-white">
+                                {character.name}
+                              </h3>
 
-                          {character.campaignId && (
-                            <p className="mt-1 text-xs text-zinc-500">
-                              Already attached to another campaign
-                            </p>
-                          )}
+                              <p className="mt-2 text-sm text-zinc-400">
+                                {[character.race, character.className]
+                                  .filter(Boolean)
+                                  .join(" • ")}
+                                {character.level
+                                  ? ` • Level ${character.level}`
+                                  : ""}
+                              </p>
+
+                              {character.campaignId && (
+                                <p className="mt-1 text-xs text-zinc-500">
+                                  Already attached to another campaign
+                                </p>
+                              )}
+                            </div>
+                          </div>
 
                           <div className="mt-4 flex gap-2">
                             <button
@@ -595,18 +619,28 @@ const CampaignCharactersPage = () => {
                             key={character.id}
                             className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
                           >
-                            <h4 className="text-base font-semibold text-white">
-                              {character.name}
-                            </h4>
+                            <div className="flex items-center gap-4">
+                              <Avatar
+                                src={character.imageUrl}
+                                name={character.name}
+                                className="h-12 w-12 shrink-0 rounded-xl"
+                              />
 
-                            <p className="mt-2 text-sm text-zinc-400">
-                              {[character.race, character.className]
-                                .filter(Boolean)
-                                .join(" • ")}
-                              {character.level
-                                ? ` • Level ${character.level}`
-                                : ""}
-                            </p>
+                              <div className="min-w-0">
+                                <h4 className="text-base font-semibold text-white">
+                                  {character.name}
+                                </h4>
+
+                                <p className="mt-2 text-sm text-zinc-400">
+                                  {[character.race, character.className]
+                                    .filter(Boolean)
+                                    .join(" • ")}
+                                  {character.level
+                                    ? ` • Level ${character.level}`
+                                    : ""}
+                                </p>
+                              </div>
+                            </div>
 
                             <div className="mt-4 flex gap-2">
                               <Link
