@@ -108,6 +108,7 @@ const NewCampaign = () => {
         displayName: appUser?.displayName ?? user.displayName ?? "",
         email: user.email ?? "",
         role: "gm",
+        inviteToken: null,
         joinedAt: serverTimestamp(),
       });
 
