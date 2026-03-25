@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import InvitePlayersModal from "../components/InvitePlayersModal";
 import CreateHandoutModal from "../components/CreateHandoutModal";
 import LevelUpModal from "../components/levelUpModal";
-import XpDistributionModal from "../components/XpDistributionModal";
+import AwardXpModal from "../components/awardXpModal";
 
 import CampaignHeader from "../features/campaigns/components/CampaignHeader";
 import CampaignMembersSection from "../features/campaigns/components/CampaignMembersSection";
@@ -35,7 +35,6 @@ const CampaignPage = () => {
     updateCharacterXp,
     toggleCondition,
     handleLevelUp,
-    handleApplyXp,
   } = useCampaignPageData(campaignId);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -144,6 +143,12 @@ const CampaignPage = () => {
         member.displayName?.trim() || member.email?.trim() || "Unnamed player",
     }));
 
+  const awardXpCharacters = campaignCharacters.map((character) => ({
+    id: character.id,
+    name: character.name,
+    level: character.level ?? 1,
+  }));
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">
@@ -212,15 +217,13 @@ const CampaignPage = () => {
         />
       )}
 
-      <XpDistributionModal
-        characters={campaignCharacters}
-        isOpen={xpModalOpen}
-        onClose={() => setXpModalOpen(false)}
-        onApply={async (updates) => {
-          await handleApplyXp(updates);
-          setXpModalOpen(false);
-        }}
-      />
+      {isGm && (
+        <AwardXpModal
+          isOpen={xpModalOpen}
+          onClose={() => setXpModalOpen(false)}
+          characters={awardXpCharacters}
+        />
+      )}
 
       {campaignId ? (
         <CreateHandoutModal
