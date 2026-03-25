@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Container from "../components/Container";
 import H1 from "../components/H1";
-import StatBlock from "../components/StatBlock";
+import StatBlock, { type MonsterStatBlockProps } from "../components/StatBlock";
 import { monsters, monsterTypes } from "../data/monsters";
 import { useEncounter } from "../context/EncounterContext";
 
@@ -66,7 +66,7 @@ const Stats = () => {
     const hasTypeFilter = selectedTypes.size > 0;
     const hasAnyFilter = hasSearch || hasTypeFilter;
 
-    return [...monsters]
+    return [...(monsters as MonsterStatBlockProps[])]
       .sort((a, b) => a.name.localeCompare(b.name))
       .filter((monster) => {
         const isLocked = lockedNames.has(monster.name);

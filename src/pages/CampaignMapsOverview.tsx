@@ -4,6 +4,7 @@ import type { PlayerCharacter, Money } from "../data/players";
 import type { CampaignMap } from "../features/maps/types";
 
 type Props = {
+  campaignId: string;
   maps: CampaignMap[];
   loading?: boolean;
   players: PlayerCharacter[];
@@ -14,6 +15,7 @@ type Props = {
 };
 
 const CampaignMapsOverview = ({
+  campaignId,
   maps,
   loading = false,
   players,
@@ -105,6 +107,7 @@ const CampaignMapsOverview = ({
 
       {selectedMap && (
         <MapViewer
+          campaignId={campaignId}
           map={selectedMap}
           onClose={() => setSelectedMapId(null)}
           players={players}

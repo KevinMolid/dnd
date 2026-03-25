@@ -8,6 +8,14 @@ import React, {
 import type { StatBlockProps } from "../components/StatBlock";
 import { monsters } from "../data/monsters";
 
+type MonsterEncounterSource = Extract<StatBlockProps, { HP: number }>;
+
+const isMonsterStatBlock = (
+  value: StatBlockProps,
+): value is MonsterEncounterSource => {
+  return "HP" in value && "stats" in value;
+};
+
 const STORAGE_KEY = "lmop-encounter";
 
 export type EncounterEntityKind = "monster" | "player";
@@ -80,11 +88,11 @@ type EncounterContextType = {
   currentRound: number;
   savedEncounters: SavedEncounter[];
   activeEncounterId: string | null;
-  addMonsterToEncounter: (monster: StatBlockProps) => void;
+  addMonsterToEncounter: (monster: MonsterEncounterSource) => void;
   addPlayerToEncounter: (player: EncounterPlayerInput) => void;
   addEntityToEncounter: (
     entityKind: EncounterEntityKind,
-    entity: StatBlockProps | EncounterPlayerInput,
+    entity: MonsterEncounterSource | EncounterPlayerInput,
   ) => void;
   removeEntityFromEncounter: (id: string) => void;
   updateEntityHp: (id: string, hp: number) => void;
@@ -100,7 +108,7 @@ type EncounterContextType = {
   getEntityByName: (
     entityKind: EncounterEntityKind,
     name: string,
-  ) => StatBlockProps | undefined;
+  ) => MonsterEncounterSource | undefined;
   nextTurn: () => void;
   previousTurn: () => void;
   resetTurns: () => void;
@@ -287,13 +295,13 @@ const getNextInstanceNumber = (
   return Math.max(...sameEntries.map((entry) => entry.instanceNumber)) + 1;
 };
 
-const getMonsterInitiativeBonus = (monster: StatBlockProps) => {
+const getMonsterInitiativeBonus = (monster: MonsterEncounterSource) => {
   return Math.floor((monster.stats.Dex - 10) / 2);
 };
 
 const buildMonsterEncounterEntry = (
   previousEncounter: EncounterEntry[],
-  monster: StatBlockProps,
+  monster: MonsterEncounterSource,
 ): EncounterEntry => {
   const instanceNumber = getNextInstanceNumber(
     previousEncounter,
@@ -430,9 +438,11 @@ export const EncounterProvider = ({
   const getEntityByName = (
     entityKind: EncounterEntityKind,
     name: string,
-  ): StatBlockProps | undefined => {
+  ): MonsterEncounterSource | undefined => {
     if (entityKind !== "monster") return undefined;
-    return monsters.find((monster) => monster.name === name);
+
+    const monster = monsters.find((monster) => monster.name === name);
+    return monster && isMonsterStatBlock(monster) ? monster : undefined;
   };
 
   const rollInitiative = () => {
@@ -515,13 +525,13 @@ export const EncounterProvider = ({
 
   const addEntityToEncounter = (
     entityKind: EncounterEntityKind,
-    entity: StatBlockProps | EncounterPlayerInput,
+    entity: MonsterEncounterSource | EncounterPlayerInput,
   ) => {
     setEncounter((prev) => {
       if (entityKind === "monster") {
         return [
           ...prev,
-          buildMonsterEncounterEntry(prev, entity as StatBlockProps),
+          buildMonsterEncounterEntry(prev, entity as MonsterEncounterSource),
         ];
       }
 
@@ -532,7 +542,7 @@ export const EncounterProvider = ({
     });
   };
 
-  const addMonsterToEncounter = (monster: StatBlockProps) => {
+  const addMonsterToEncounter = (monster: MonsterEncounterSource) => {
     addEntityToEncounter("monster", monster);
   };
 

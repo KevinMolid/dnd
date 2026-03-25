@@ -8,7 +8,6 @@ import Reglene from "./pages/Reglene";
 import Karakterer from "./pages/Karakterer";
 import Stats from "./pages/Stats";
 import Encounter from "./pages/Encounter";
-import Players from "./pages/Players";
 import Quests from "./pages/Quests";
 import Login from "./pages/Login";
 import NewCharacter from "./pages/NewCharacter";
@@ -51,7 +50,6 @@ function App() {
           <Route path="reglene" element={<Reglene />} />
           <Route path="karakterer" element={<Karakterer />} />
           <Route path="stats" element={<Stats />} />
-          <Route path="/spillere" element={<Players />} />
           <Route path="/quests" element={<Quests />} />
           <Route path="/characters/new" element={<NewCharacter />} />
           <Route path="/characters/:characterId" element={<CharacterSheet />} />

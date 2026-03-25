@@ -6,7 +6,7 @@ import AwardXpModal from "../components/awardXpModal";
 import Container from "../components/Container";
 import H1 from "../components/H1";
 import H3 from "../components/H3";
-import StatBlock, { StatBlockProps } from "../components/StatBlock";
+import StatBlock from "../components/StatBlock";
 import { useEncounter } from "../context/EncounterContext";
 import useCampaignPageData, {
   ALL_CONDITIONS,
@@ -325,10 +325,10 @@ const Encounter = () => {
     ).values(),
   );
 
-  const monsterStatBlocks: StatBlockProps[] = uniqueEncounterEntities
+  const monsterStatBlocks = uniqueEncounterEntities
     .filter((entry) => entry.entityKind !== "player")
     .map((entry) => getEntityByName(entry.entityKind, entry.entityName))
-    .filter((entity): entity is StatBlockProps => entity !== undefined);
+    .filter((entity) => entity !== undefined);
 
   const encounterPlayers = sortedEncounter
     .filter((entry) => entry.entityKind === "player")

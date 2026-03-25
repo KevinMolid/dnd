@@ -76,7 +76,7 @@ type SharedStatBlockProps = {
   onAddToEncounter?: () => void;
 };
 
-type MonsterStatBlockProps = SharedStatBlockProps & {
+export type MonsterStatBlockProps = SharedStatBlockProps & {
   variant?: "monster";
   type: MonsterType;
   description?: string;
@@ -96,7 +96,7 @@ type MonsterStatBlockProps = SharedStatBlockProps & {
   reactions?: React.ReactNode;
 };
 
-type PlayerStatBlockProps = SharedStatBlockProps & {
+export type PlayerStatBlockProps = SharedStatBlockProps & {
   variant: "player";
   quickView: PlayerQuickView;
 };
