@@ -1,4 +1,4 @@
-import { getClassById } from "./helpers";
+import { getClassById, getSubclassById } from "./helpers";
 import type {
   CharacterSheetData,
   CharacterFeature,
@@ -214,6 +214,36 @@ const toFeatureRef = (
     sourceId,
     level: feature.level ?? feature.minLevel ?? level,
   };
+};
+
+const resolveActiveSubclass = (
+  character: CharacterSheetData,
+  currentLevel: number,
+  providedSubclass?: CharacterSubclass | null,
+): CharacterSubclass | null => {
+  if (providedSubclass) return providedSubclass;
+
+  const levelUpDecisions = character.choices?.levelUpDecisions ?? {};
+
+  const subclassDecisionLevels = Object.keys(levelUpDecisions)
+    .map(Number)
+    .filter((level) => level <= currentLevel)
+    .sort((a, b) => b - a);
+
+  for (const level of subclassDecisionLevels) {
+    const subclassId = levelUpDecisions[level]?.subclassId;
+    if (!subclassId) continue;
+
+    const resolved = getSubclassById(subclassId);
+    if (resolved) return resolved;
+  }
+
+  if (character.choices?.subclassId) {
+    const resolved = getSubclassById(character.choices.subclassId);
+    if (resolved) return resolved;
+  }
+
+  return null;
 };
 
 const getCantripChoiceCountGrantedAtLevel = (
@@ -723,7 +753,8 @@ const getDruidPendingChoiceSteps = (
   if (character.classId !== "druid") return [];
 
   const steps: PendingLevelUpStep[] = [];
-  const decisions = character.choices?.levelUpDecisions?.[level] as any;
+  const levelUpDecisions = character.choices?.levelUpDecisions;
+  const decisions = levelUpDecisions?.[level];
 
   if (level === 1 && !decisions?.primalOrder) {
     steps.push({
@@ -762,15 +793,15 @@ const getDruidPendingChoiceSteps = (
     });
   }
 
-  const chosenSubclassId =
+  const activeSubclassId =
     decisions?.subclassId ??
     subclass?.id ??
     character.choices?.subclassId ??
-    character.choices?.levelUpDecisions?.[3]?.subclassId;
+    levelUpDecisions?.[3]?.subclassId;
 
   if (
     level === 3 &&
-    chosenSubclassId === "circle-of-the-land" &&
+    activeSubclassId === "circle-of-the-land" &&
     !decisions?.circleOfTheLandType
   ) {
     steps.push({
@@ -853,6 +884,7 @@ export const getPendingLevelUpSteps = (
   const steps: PendingLevelUpStep[] = [];
 
   for (const level of pendingLevels) {
+    const activeSubclass = resolveActiveSubclass(character, level, subclass);
     const classFeatures = classDef.featuresByLevel[level] ?? [];
 
     for (const feature of classFeatures) {
@@ -876,12 +908,10 @@ export const getPendingLevelUpSteps = (
       }
 
       if (SUBCLASS_FEATURE_IDS.has(feature.id)) {
-        const activeSubclassId = decisions?.subclassId ?? subclass?.id;
-        const activeSubclass = activeSubclassId
-          ? subclass && subclass.id === activeSubclassId
-            ? subclass
-            : null
-          : null;
+        const activeSubclassId =
+          decisions?.subclassId ??
+          activeSubclass?.id ??
+          character.choices?.subclassId;
 
         if (!activeSubclassId) {
           steps.push({
@@ -945,16 +975,16 @@ export const getPendingLevelUpSteps = (
       );
     }
 
-    if (subclass) {
+    if (activeSubclass) {
       steps.push(
-        ...getSubclassSpellcastingChoiceSteps(character, subclass, level),
+        ...getSubclassSpellcastingChoiceSteps(character, activeSubclass, level),
       );
     }
 
     steps.push(...getRoguePendingChoiceSteps(character, level));
     steps.push(...getPaladinPendingChoiceSteps(character, level));
     steps.push(...getBardPendingChoiceSteps(character, level));
-    steps.push(...getDruidPendingChoiceSteps(character, level, subclass));
+    steps.push(...getDruidPendingChoiceSteps(character, level, activeSubclass));
     steps.push(...getBarbarianPendingChoiceSteps(character, level));
   }
 
