@@ -2215,4 +2215,19 @@ export const spells: Spell[] = [
     "When cast with a higher-level spell slot, the damage increases by 1d6 for each slot level above 1.",
 },
   { id: "zone-of-truth", name: "Zone of Truth", level: 2, school: "Enchantment" },
+  {
+  id: "yolandes-regal-presence",
+  name: "Yolande's Regal Presence",
+  level: 5,
+  school: "enchantment",
+  castingTime: "action",
+  range: "self",
+  components: "V, S, M (a miniature tiara)",
+  duration: "concentration, up to 1 minute",
+  concentration: true,
+  ritual: false,
+  description:
+    "You surround yourself with unearthly majesty in a 10-foot Emanation. Whenever the Emanation enters the space of a creature you can see and whenever a creature you can see enters the Emanation or ends its turn there, you can force that creature to make a Wisdom saving throw. On a failed save, the target takes 4d6 Psychic damage and has the Prone condition, and you can push it up to 10 feet away. On a successful save, the target takes half as much damage only. A creature makes this save only once per turn.",
+  classes: ["bard", "wizard"],
+}
 ];
