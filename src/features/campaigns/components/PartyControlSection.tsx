@@ -133,9 +133,17 @@ const PartyControlSection = ({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 lg:items-end">
+                <div className="flex flex-col gap-2 lg:items-end">
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-emerald-300">
+                    <span
+                      className={`rounded-full border px-2.5 py-1 ${
+                        hpPercent <= 25
+                          ? "border-red-500/20 bg-red-500/10 text-red-300"
+                          : hpPercent <= 50
+                            ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
+                            : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                      }`}
+                    >
                       HP {hp}/{maxHp}
                     </span>
 
@@ -154,18 +162,31 @@ const PartyControlSection = ({
                     )}
                   </div>
 
-                  <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/5">
+                  {/* HP BAR */}
+                  <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
                     <div
                       className={`h-full rounded-full transition-all ${
                         hpPercent <= 25
                           ? "bg-red-400"
-                          : hpPercent <= 60
+                          : hpPercent <= 50
                             ? "bg-amber-400"
                             : "bg-emerald-400"
                       }`}
                       style={{ width: `${hpPercent}%` }}
                     />
                   </div>
+
+                  {/* XP BAR */}
+                  {xpData.nextLevelXp !== null && (
+                    <div className="h-0.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-blue-400 transition-all"
+                        style={{
+                          width: `${Math.max(0, Math.min(100, xpData.progressPercent ?? 0))}%`,
+                        }}
+                      />
+                    </div>
+                  )}
 
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     {(character.conditions ?? []).length > 0 ? (

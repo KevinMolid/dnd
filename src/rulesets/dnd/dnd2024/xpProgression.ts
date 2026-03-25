@@ -80,10 +80,14 @@ export const getXpProgressWithinLevel = (
     };
   }
 
+  const xpSpanThisLevel = nextLevelXp - currentLevelXp;
   const progressXp = safeXp - currentLevelXp;
-  const neededXp = nextLevelXp - currentLevelXp;
+  const neededXp = nextLevelXp - safeXp;
+
   const progressPercent =
-    neededXp > 0 ? Math.max(0, Math.min(100, (progressXp / neededXp) * 100)) : 0;
+    xpSpanThisLevel > 0
+      ? Math.max(0, Math.min(100, (progressXp / xpSpanThisLevel) * 100))
+      : 0;
 
   return {
     level,
@@ -143,10 +147,7 @@ export const awardXpToCharacter = (
       ...character,
       xp: result.newXp,
       level: result.newLevel,
-      pendingLevelUp:
-        pendingLevelUp ??
-        character.pendingLevelUp ??
-        null,
+      pendingLevelUp: pendingLevelUp ?? character.pendingLevelUp ?? null,
     },
   };
 };
@@ -176,9 +177,6 @@ export const completePendingLevelUp = (
   return {
     ...character,
     pendingLevelUp: null,
-    levelUpHistory: [
-      ...(character.levelUpHistory ?? []),
-      ...completedLevels,
-    ],
+    levelUpHistory: [...(character.levelUpHistory ?? []), ...completedLevels],
   };
 };
