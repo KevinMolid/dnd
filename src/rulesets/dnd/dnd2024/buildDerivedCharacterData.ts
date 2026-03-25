@@ -21,6 +21,8 @@ import type {
   SkillId,
   ToolId,
   Trait,
+  FightingStyleId,
+  WeaponMasteryChoiceId,
 } from "./types";
 
 import { mergeCircleOfTheLandDerivedSpells } from "./data/classes/druid/mergeCircleOfTheLandDerivedSpells";
@@ -262,6 +264,29 @@ const getBackgroundToolProficiencies = (
   return [];
 };
 
+const fighterFightingStyleFeatureNames: Partial<Record<FightingStyleId, string>> = {  archery: "Archery",
+  "blind-fighting": "Blind Fighting",
+  defense: "Defense",
+  dueling: "Dueling",
+  "great-weapon-fighting": "Great Weapon Fighting",
+  interception: "Interception",
+  protection: "Protection",
+  "superior-technique": "Superior Technique",
+  "thrown-weapon-fighting": "Thrown Weapon Fighting",
+  "two-weapon-fighting": "Two-Weapon Fighting",
+  "unarmed-fighting": "Unarmed Fighting",
+};
+
+const getFighterFightingStyleFeature = (
+  styleId: FightingStyleId,
+): CharacterFeature => ({
+  id: `fighting-style:${styleId}`,
+  name: fighterFightingStyleFeatureNames[styleId] ?? styleId,
+  level: 1,
+  sourceType: "class",
+  sourceId: "fighter",
+});
+
 export const buildDerivedCharacterData = (
   character: CharacterSheetData,
 ): DerivedCharacterData => {
@@ -313,6 +338,9 @@ export const buildDerivedCharacterData = (
   const extraToolChoices = character.choices?.toolChoices ?? [];
   const backgroundToolProficiencies = getBackgroundToolProficiencies(character);
   const extraLanguageChoices = character.choices?.languageChoices ?? [];
+  const fighterFightingStyle = character.choices?.fighterFightingStyle;
+  const fighterWeaponMasteryChoices =
+    character.choices?.fighterWeaponMasteryChoices ?? [];
 
   const skillProficiencies = unique<SkillId>([
     ...(backgroundDef?.skillProficiencies ?? []),
@@ -332,6 +360,19 @@ export const buildDerivedCharacterData = (
 
   const armorTraining = [...(classDef?.armorTraining ?? [])];
   const weaponProficiencies = [...(classDef?.weaponProficiencies ?? [])];
+
+  if (
+    classDef?.id === "cleric" &&
+    character.choices?.clericDivineOrder === "protector"
+  ) {
+    if (!armorTraining.includes("heavy-armor")) {
+      armorTraining.push("heavy-armor");
+    }
+
+    if (!weaponProficiencies.includes("martial-weapons")) {
+      weaponProficiencies.push("martial-weapons");
+    }
+  }
 
   const languages = unique([
     ...(speciesDef?.languages ?? []),
@@ -381,13 +422,16 @@ export const buildDerivedCharacterData = (
     ),
   ];
 
-  const features = uniqueById<CharacterFeature>([
-    ...classFeatures,
-    ...subclassFeatures,
-    ...speciesFeatures,
-    ...backgroundFeatures,
-    ...featFeatures,
-  ]);
+const features = uniqueById<CharacterFeature>([
+  ...classFeatures,
+  ...subclassFeatures,
+  ...speciesFeatures,
+  ...backgroundFeatures,
+  ...featFeatures,
+  ...(classDef?.id === "fighter" && fighterFightingStyle
+    ? [getFighterFightingStyleFeature(fighterFightingStyle)]
+    : []),
+]);
 
   const speciesMaxHpBonus = getSpeciesMaxHpBonus(speciesTraits, scalingContext);
   const passiveWalkSpeedBonus = getPassiveWalkSpeedBonus(
@@ -432,7 +476,10 @@ export const buildDerivedCharacterData = (
       ),
     ),
     expertise: [],
-    weaponMasteries: [],
+    weaponMasteries:
+      classDef?.id === "fighter"
+        ? unique<WeaponMasteryChoiceId>(fighterWeaponMasteryChoices)
+        : [],
   };
 
   const derivedWithSubclassEffects = subclassDef

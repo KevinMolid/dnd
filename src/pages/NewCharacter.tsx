@@ -293,6 +293,24 @@ const NewCharacter = () => {
     "protector" | "thaumaturge" | ""
   >("");
 
+  const [fighterFightingStyle, setFighterFightingStyle] = useState<
+    | "archery"
+    | "blind-fighting"
+    | "defense"
+    | "dueling"
+    | "great-weapon-fighting"
+    | "interception"
+    | "protection"
+    | "superior-technique"
+    | "thrown-weapon-fighting"
+    | "two-weapon-fighting"
+    | "unarmed-fighting"
+    | ""
+  >("");
+
+  const [fighterWeaponMasteryChoices, setFighterWeaponMasteryChoices] =
+    useState<WeaponMasteryChoiceId[]>([]);
+
   const [rogueExpertiseChoices, setRogueExpertiseChoices] = useState<
     Array<SkillId | "thieves-tools">
   >([]);
@@ -403,6 +421,7 @@ const NewCharacter = () => {
 
   const isBarbarian = classId === "barbarian";
   const isCleric = classId === "cleric";
+  const isFighter = classId === "fighter";
   const isRogue = classId === "rogue";
 
   const selectedDragonbornAncestryId =
@@ -628,6 +647,10 @@ const NewCharacter = () => {
             }
           : {}),
         ...(isCleric && clericDivineOrder ? { clericDivineOrder } : {}),
+        ...(isFighter && fighterFightingStyle ? { fighterFightingStyle } : {}),
+        ...(isFighter && fighterWeaponMasteryChoices.length > 0
+          ? { fighterWeaponMasteryChoices }
+          : {}),
       },
     });
   }, [
@@ -724,6 +747,20 @@ const NewCharacter = () => {
 
   const classWeaponMasteryOptions = classDef?.weaponMasteryOptions ?? [];
   const barbarianWeaponMasteryChoiceCount = isBarbarian ? 2 : 0;
+  const fighterWeaponMasteryChoiceCount = isFighter ? 3 : 0;
+  const fighterFightingStyleOptions = [
+    "archery",
+    "blind-fighting",
+    "defense",
+    "dueling",
+    "great-weapon-fighting",
+    "interception",
+    "protection",
+    "superior-technique",
+    "thrown-weapon-fighting",
+    "two-weapon-fighting",
+    "unarmed-fighting",
+  ] as const;
 
   const rogueExpertiseOptions = useMemo(() => {
     if (!isRogue) return [] as Array<SkillId | "thieves-tools">;
@@ -782,10 +819,6 @@ const NewCharacter = () => {
             if (!bardInstrumentOptions.includes(bardStartingInstrument)) {
               return "Please choose a valid starting musical instrument.";
             }
-          }
-
-          if (isCleric && !clericDivineOrder) {
-            return "Please choose a Divine Order.";
           }
 
           const validTools = classToolChoices.every((tool) =>
@@ -875,6 +908,46 @@ const NewCharacter = () => {
             )
           ) {
             return "One or more Barbarian weapon mastery choices are invalid.";
+          }
+        }
+
+        if (isCleric && !clericDivineOrder) {
+          return "Please choose a Divine Order.";
+        }
+
+        if (isFighter) {
+          if (!fighterFightingStyle) {
+            return "Please choose a Fighting Style.";
+          }
+
+          if (
+            !fighterFightingStyleOptions.includes(
+              fighterFightingStyle as (typeof fighterFightingStyleOptions)[number],
+            )
+          ) {
+            return "Please choose a valid Fighting Style.";
+          }
+
+          if (
+            fighterWeaponMasteryChoices.length !==
+            fighterWeaponMasteryChoiceCount
+          ) {
+            return `Fighter must choose ${fighterWeaponMasteryChoiceCount} weapon mastery options.`;
+          }
+
+          if (
+            new Set(fighterWeaponMasteryChoices).size !==
+            fighterWeaponMasteryChoiceCount
+          ) {
+            return "Fighter weapon mastery choices must be different.";
+          }
+
+          if (
+            fighterWeaponMasteryChoices.some(
+              (choice) => !classWeaponMasteryOptions.includes(choice),
+            )
+          ) {
+            return "One or more Fighter weapon mastery choices are invalid.";
           }
         }
 
@@ -1087,6 +1160,30 @@ const NewCharacter = () => {
       prev === "protector" || prev === "thaumaturge" ? prev : "protector",
     );
   }, [isCleric]);
+
+  useEffect(() => {
+    if (!isFighter) {
+      setFighterFightingStyle((prev) => (prev === "" ? prev : ""));
+      setFighterWeaponMasteryChoices((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+
+    setFighterFightingStyle((prev) =>
+      fighterFightingStyleOptions.includes(
+        prev as (typeof fighterFightingStyleOptions)[number],
+      )
+        ? prev
+        : "defense",
+    );
+
+    setFighterWeaponMasteryChoices((prev) => {
+      const next = prev
+        .filter((choice) => classWeaponMasteryOptions.includes(choice))
+        .slice(0, fighterWeaponMasteryChoiceCount);
+
+      return arraysEqual(prev, next) ? prev : next;
+    });
+  }, [isFighter, classWeaponMasteryOptions, fighterWeaponMasteryChoiceCount]);
 
   useEffect(() => {
     setClassCantripChoices((prev) => {
@@ -1432,6 +1529,20 @@ const NewCharacter = () => {
     });
   };
 
+  const toggleFighterWeaponMastery = (choice: WeaponMasteryChoiceId) => {
+    setFighterWeaponMasteryChoices((prev) => {
+      if (prev.includes(choice)) {
+        return prev.filter((item) => item !== choice);
+      }
+
+      if (prev.length >= fighterWeaponMasteryChoiceCount) {
+        return prev;
+      }
+
+      return [...prev, choice];
+    });
+  };
+
   const toggleRogueWeaponMastery = (choice: WeaponMasteryChoiceId) => {
     setRogueWeaponMasteryChoices((prev) => {
       if (prev.includes(choice)) {
@@ -1523,6 +1634,41 @@ const NewCharacter = () => {
 
     if (isCleric && !clericDivineOrder) {
       return "Please choose a Divine Order.";
+    }
+
+    if (isFighter) {
+      if (!fighterFightingStyle) {
+        return "Please choose a Fighting Style.";
+      }
+
+      if (
+        !fighterFightingStyleOptions.includes(
+          fighterFightingStyle as (typeof fighterFightingStyleOptions)[number],
+        )
+      ) {
+        return "Please choose a valid Fighting Style.";
+      }
+
+      if (
+        fighterWeaponMasteryChoices.length !== fighterWeaponMasteryChoiceCount
+      ) {
+        return `Fighter must choose ${fighterWeaponMasteryChoiceCount} weapon mastery options.`;
+      }
+
+      if (
+        new Set(fighterWeaponMasteryChoices).size !==
+        fighterWeaponMasteryChoiceCount
+      ) {
+        return "Fighter weapon mastery choices must be different.";
+      }
+
+      if (
+        fighterWeaponMasteryChoices.some(
+          (choice) => !classWeaponMasteryOptions.includes(choice),
+        )
+      ) {
+        return "One or more Fighter weapon mastery choices are invalid.";
+      }
     }
 
     if (effectiveClassStartingCantripChoiceCount > 0) {
@@ -1830,6 +1976,12 @@ const NewCharacter = () => {
               }
             : {}),
           ...(isCleric && clericDivineOrder ? { clericDivineOrder } : {}),
+          ...(isFighter && fighterFightingStyle
+            ? { fighterFightingStyle }
+            : {}),
+          ...(isFighter && fighterWeaponMasteryChoices.length > 0
+            ? { fighterWeaponMasteryChoices }
+            : {}),
         },
         derived,
         equipment: normalizedStartingEquipment,
@@ -2168,6 +2320,94 @@ const NewCharacter = () => {
                         </div>
                       </label>
                     </div>
+                  </div>
+                )}
+
+                {isFighter && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Fighting Style
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      Choose 1 Fighting Style.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {fighterFightingStyleOptions.map((style) => {
+                        const isSelected = fighterFightingStyle === style;
+
+                        return (
+                          <label
+                            key={style}
+                            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                              isSelected
+                                ? "border-white/25 bg-white/10"
+                                : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="fighter-fighting-style"
+                              checked={isSelected}
+                              onChange={() => setFighterFightingStyle(style)}
+                              className="h-4 w-4 border-white/20 bg-zinc-900"
+                            />
+                            <span className="text-sm text-white">
+                              {formatLabel(style)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {isFighter && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Fighter Weapon Mastery
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      Choose {fighterWeaponMasteryChoiceCount} weapons for
+                      Weapon Mastery.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {classWeaponMasteryOptions.map((choice) => {
+                        const isSelected =
+                          fighterWeaponMasteryChoices.includes(choice);
+
+                        return (
+                          <label
+                            key={choice}
+                            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                              isSelected
+                                ? "border-white/25 bg-white/10"
+                                : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() =>
+                                toggleFighterWeaponMastery(choice)
+                              }
+                              className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                            />
+                            <span className="text-sm text-white">
+                              {formatLabel(choice)}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <p className="mt-3 text-xs text-zinc-500">
+                      Selected: {fighterWeaponMasteryChoices.length} /{" "}
+                      {fighterWeaponMasteryChoiceCount}
+                    </p>
                   </div>
                 )}
 
@@ -3022,6 +3262,7 @@ const NewCharacter = () => {
             </div>
           </section>
 
+          {/* Character summary sidebar */}
           <aside className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
             <h2 className="mb-5 text-xl font-semibold text-white">
               Character Summary
@@ -3072,6 +3313,41 @@ const NewCharacter = () => {
                 )}
               </div>
             </div>
+
+            {isFighter && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Fighting Style
+                </p>
+                <p className="mt-2 text-sm text-zinc-200">
+                  {fighterFightingStyle
+                    ? formatLabel(fighterFightingStyle)
+                    : "None selected"}
+                </p>
+              </div>
+            )}
+
+            {isFighter && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Fighter Weapon Mastery
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {fighterWeaponMasteryChoices.length > 0 ? (
+                    fighterWeaponMasteryChoices.map((choice) => (
+                      <span
+                        key={choice}
+                        className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                      >
+                        {formatLabel(choice)}
+                      </span>
+                    ))
+                  ) : (
+                    <p className="text-sm text-zinc-400">None selected</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="mt-8 space-y-5">
               {speciesChoices.length > 0 && (

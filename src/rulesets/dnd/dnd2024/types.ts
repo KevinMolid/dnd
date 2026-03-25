@@ -1171,11 +1171,13 @@ export type CharacterChoices = {
   subclassCantripChoices?: SpellId[];
   subclassSpellChoices?: SpellSelection[];
 
+  barbarianWeaponMasteryChoices?: WeaponMasteryChoiceId[];
+  clericDivineOrder?: "protector" | "thaumaturge";
+  fighterFightingStyle?: FightingStyleId;
+  fighterWeaponMasteryChoices?: WeaponMasteryChoiceId[];
   rogueExpertiseChoices?: Array<SkillId | "thieves-tools">;
   rogueBonusLanguage?: LanguageId;
   rogueWeaponMasteryChoices?: WeaponMasteryChoiceId[];
-  barbarianWeaponMasteryChoices?: WeaponMasteryChoiceId[];
-  clericDivineOrder?: "protector" | "thaumaturge";
 
   preparedSpellIdsBySource?: Record<string, SpellId[]>;
 
