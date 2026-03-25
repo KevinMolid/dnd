@@ -526,9 +526,20 @@ export type Species = RulesOption & {
   choices?: SpeciesChoice[];
 };
 
+export type FeatGrant =
+  | {
+      type: "magic-initiate";
+      spellListOptions: Extract<SpellListId, "cleric" | "druid" | "wizard">[];
+    }
+  | {
+      type: "skilled";
+      chooseSkills: number;
+    };
+
 export type Feat = RulesOption & {
   category: "origin" | "general" | "epic";
   traits: Trait[];
+  grant?: FeatGrant;
 };
 
 export type Spell = {
@@ -1169,6 +1180,11 @@ export type CharacterChoices = {
   speciesTraitChoices?: Record<string, string | string[]>;
 
   dragonbornAncestry?: DragonbornAncestryId;
+
+  humanFeatSpellListId?: Extract<SpellListId, "cleric" | "druid" | "wizard">;
+  humanFeatCantripChoices?: SpellId[];
+  humanFeatSpellChoices?: SpellSelection[];
+  humanFeatSkillChoices?: SkillId[];
 
   // Background
   backgroundAbilityBonuses?: BackgroundAbilityBonuses;

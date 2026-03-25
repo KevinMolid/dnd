@@ -49,6 +49,25 @@ const getBackgroundSpellLists = (character: CharacterSheetData): SpellListId[] =
   return [];
 };
 
+const getHumanSpellLists = (character: CharacterSheetData): SpellListId[] => {
+  const humanFeatChoice =
+    typeof character.choices?.speciesTraitChoices?.["human-origin-feat-choice"] ===
+    "string"
+      ? character.choices.speciesTraitChoices["human-origin-feat-choice"]
+      : null;
+
+  if (humanFeatChoice !== "magic-initiate") {
+    return [];
+  }
+
+  const chosenList = character.choices?.humanFeatSpellListId;
+  if (!chosenList) {
+    return [];
+  }
+
+  return [chosenList];
+};
+
 const getCharacterSpellLists = (character: CharacterSheetData): SpellListId[] => {
   const spellLists = new Set<SpellListId>();
 
@@ -59,6 +78,11 @@ const getCharacterSpellLists = (character: CharacterSheetData): SpellListId[] =>
 
   const backgroundSpellLists = getBackgroundSpellLists(character);
   for (const spellListId of backgroundSpellLists) {
+    spellLists.add(spellListId);
+  }
+
+  const humanSpellLists = getHumanSpellLists(character);
+  for (const spellListId of humanSpellLists) {
     spellLists.add(spellListId);
   }
 

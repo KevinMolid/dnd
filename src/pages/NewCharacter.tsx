@@ -24,6 +24,8 @@ import type {
   TraitChoice,
   TraitEffect,
   WeaponMasteryChoiceId,
+  SpellListId,
+  OriginFeatId,
 } from "../rulesets/dnd/dnd2024/types";
 
 import { resolveEquipmentGrants } from "../rulesets/dnd/dnd2024/resolveEquipmentGrant";
@@ -252,7 +254,6 @@ const NewCharacter = () => {
   const [imageUrl, setImageUrl] = useState("");
   const [showImageUrlInput, setShowImageUrlInput] = useState(false);
   const [classId, setClassId] = useState("");
-  const [speciesId, setSpeciesId] = useState("");
   const [backgroundId, setBackgroundId] = useState("");
   const [alignment, setAlignment] = useState("");
   const [notes, setNotes] = useState("");
@@ -265,15 +266,58 @@ const NewCharacter = () => {
     [],
   );
 
-  const [previewSpell, setPreviewSpell] = useState<SpellPreviewData | null>(
-    null,
-  );
+  const [classCantripPreviewSpell, setClassCantripPreviewSpell] =
+    useState<SpellPreviewData | null>(null);
+
+  const [classSpellPreviewSpell, setClassSpellPreviewSpell] =
+    useState<SpellPreviewData | null>(null);
+
+  const [
+    humanMagicInitiateCantripPreviewSpell,
+    setHumanMagicInitiateCantripPreviewSpell,
+  ] = useState<SpellPreviewData | null>(null);
+
+  const [
+    humanMagicInitiateSpellPreviewSpell,
+    setHumanMagicInitiateSpellPreviewSpell,
+  ] = useState<SpellPreviewData | null>(null);
+
+  const [
+    backgroundMagicInitiateCantripPreviewSpell,
+    setBackgroundMagicInitiateCantripPreviewSpell,
+  ] = useState<SpellPreviewData | null>(null);
+
+  const [
+    backgroundMagicInitiateSpellPreviewSpell,
+    setBackgroundMagicInitiateSpellPreviewSpell,
+  ] = useState<SpellPreviewData | null>(null);
 
   // Species state
+  const [speciesId, setSpeciesId] = useState("");
+  const [speciesSizeChoice, setSpeciesSizeChoice] = useState<
+    "Small" | "Medium" | ""
+  >("");
   const [speciesTraitChoices, setSpeciesTraitChoices] = useState<
     Record<string, string | string[]>
   >({});
 
+  const [humanFeatCantripChoices, setHumanFeatCantripChoices] = useState<
+    SpellId[]
+  >([]);
+
+  const [humanFeatSpellChoices, setHumanFeatSpellChoices] = useState<
+    SpellSelection[]
+  >([]);
+
+  const [humanFeatSkillChoices, setHumanFeatSkillChoices] = useState<SkillId[]>(
+    [],
+  );
+
+  const [humanFeatSpellListId, setHumanFeatSpellListId] = useState<
+    Extract<SpellListId, "cleric" | "druid" | "wizard"> | ""
+  >("");
+
+  // Background state
   const [backgroundBonusPlus2, setBackgroundBonusPlus2] =
     useState<AbilityKey>("str");
   const [backgroundBonusPlus1, setBackgroundBonusPlus1] =
@@ -354,6 +398,12 @@ const NewCharacter = () => {
     const previousStep = creationSteps[currentStepIndex - 1];
     if (previousStep) setCurrentStep(previousStep);
   };
+
+  const speciesDef = useMemo(
+    () => species.find((s) => s.id === speciesId),
+    [speciesId],
+  );
+  const speciesSizeOptions = speciesDef?.sizeOptions ?? [];
 
   const classDef = useMemo(() => getClassById(classId), [classId]);
   const backgroundDef = useMemo(
@@ -444,6 +494,27 @@ const NewCharacter = () => {
 
   const backgroundGrantedFeatId = backgroundDef?.originFeatId ?? null;
 
+  const humanOriginFeatId: OriginFeatId | null =
+    speciesId === "human" &&
+    typeof speciesTraitChoices["human-origin-feat-choice"] === "string"
+      ? (speciesTraitChoices["human-origin-feat-choice"] as OriginFeatId)
+      : null;
+
+  const effectiveOriginFeatId = humanOriginFeatId ?? backgroundGrantedFeatId;
+
+  const humanOriginFeatDef = useMemo(
+    () => (humanOriginFeatId ? getFeatById(humanOriginFeatId) : null),
+    [humanOriginFeatId],
+  );
+
+  const humanFeatGrant = humanOriginFeatDef?.grant;
+
+  const hasHumanMagicInitiate =
+    humanFeatGrant?.type === "magic-initiate" && !!humanFeatSpellListId;
+
+  const humanSkilledChoiceCount =
+    humanFeatGrant?.type === "skilled" ? humanFeatGrant.chooseSkills : 0;
+
   const backgroundGrantedFeatName = useMemo(() => {
     if (!backgroundGrantedFeatId) return null;
 
@@ -469,7 +540,7 @@ const NewCharacter = () => {
         classId,
         speciesId: speciesId || "human",
         backgroundId: backgroundId || "acolyte",
-        originFeatId: backgroundGrantedFeatId,
+        originFeatId: effectiveOriginFeatId,
         abilityScores,
       } as CharacterSheetData,
       {
@@ -480,7 +551,7 @@ const NewCharacter = () => {
     ).filter((spell) => spell.level === 0);
   }, [
     abilityScores,
-    backgroundGrantedFeatId,
+    effectiveOriginFeatId,
     backgroundId,
     classId,
     classSpellcasting,
@@ -499,7 +570,7 @@ const NewCharacter = () => {
         classId,
         speciesId: speciesId || "human",
         backgroundId: backgroundId || "acolyte",
-        originFeatId: backgroundGrantedFeatId,
+        originFeatId: effectiveOriginFeatId,
         abilityScores,
       } as CharacterSheetData,
       {
@@ -510,7 +581,7 @@ const NewCharacter = () => {
     ).filter((spell) => spell.level === classStartingSpellLevel);
   }, [
     abilityScores,
-    backgroundGrantedFeatId,
+    effectiveOriginFeatId,
     backgroundId,
     classId,
     classSpellcasting,
@@ -519,13 +590,7 @@ const NewCharacter = () => {
   ]);
 
   const backgroundMagicInitiateCantrips = useMemo(() => {
-    if (
-      !hasBackgroundMagicInitiate ||
-      !backgroundFeatSpellListId ||
-      !classId ||
-      !speciesId ||
-      !backgroundId
-    ) {
+    if (!hasBackgroundMagicInitiate || !backgroundFeatSpellListId) {
       return [];
     }
 
@@ -538,7 +603,7 @@ const NewCharacter = () => {
         classId,
         speciesId,
         backgroundId,
-        originFeatId: backgroundGrantedFeatId,
+        originFeatId: effectiveOriginFeatId,
         abilityScores,
       } as CharacterSheetData,
       {
@@ -550,7 +615,7 @@ const NewCharacter = () => {
   }, [
     abilityScores,
     backgroundFeatSpellListId,
-    backgroundGrantedFeatId,
+    effectiveOriginFeatId,
     backgroundId,
     classId,
     hasBackgroundMagicInitiate,
@@ -561,8 +626,6 @@ const NewCharacter = () => {
     if (
       !hasBackgroundMagicInitiate ||
       !backgroundFeatSpellListId ||
-      !classId ||
-      !speciesId ||
       !backgroundId
     ) {
       return [];
@@ -577,7 +640,7 @@ const NewCharacter = () => {
         classId,
         speciesId,
         backgroundId,
-        originFeatId: backgroundGrantedFeatId,
+        originFeatId: effectiveOriginFeatId,
         abilityScores,
       } as CharacterSheetData,
       {
@@ -589,11 +652,95 @@ const NewCharacter = () => {
   }, [
     abilityScores,
     backgroundFeatSpellListId,
-    backgroundGrantedFeatId,
+    effectiveOriginFeatId,
     backgroundId,
     classId,
     hasBackgroundMagicInitiate,
     speciesId,
+  ]);
+
+  const humanMagicInitiateCantrips = useMemo(() => {
+    if (
+      !hasHumanMagicInitiate ||
+      !humanFeatSpellListId ||
+      speciesId !== "human"
+    ) {
+      return [];
+    }
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId,
+        backgroundId,
+        originFeatId: effectiveOriginFeatId,
+        abilityScores,
+        choices: {
+          speciesTraitChoices,
+          ...(humanFeatSpellListId ? { humanFeatSpellListId } : {}),
+        },
+      } as CharacterSheetData,
+      {
+        spellListId: humanFeatSpellListId,
+        maxLevel: 0,
+        includeCantrips: true,
+      },
+    ).filter((spell) => spell.level === 0);
+  }, [
+    abilityScores,
+    backgroundId,
+    classId,
+    effectiveOriginFeatId,
+    hasHumanMagicInitiate,
+    humanFeatSpellListId,
+    speciesId,
+    speciesTraitChoices,
+  ]);
+
+  const humanMagicInitiateLevelOneSpells = useMemo(() => {
+    if (
+      !hasHumanMagicInitiate ||
+      !humanFeatSpellListId ||
+      speciesId !== "human"
+    ) {
+      return [];
+    }
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId,
+        backgroundId,
+        originFeatId: effectiveOriginFeatId,
+        abilityScores,
+        choices: {
+          speciesTraitChoices,
+          ...(humanFeatSpellListId ? { humanFeatSpellListId } : {}),
+        },
+      } as CharacterSheetData,
+      {
+        spellListId: humanFeatSpellListId,
+        maxLevel: 1,
+        includeCantrips: false,
+      },
+    ).filter((spell) => spell.level === 1);
+  }, [
+    abilityScores,
+    backgroundId,
+    classId,
+    effectiveOriginFeatId,
+    hasHumanMagicInitiate,
+    humanFeatSpellListId,
+    speciesId,
+    speciesTraitChoices,
   ]);
 
   const speciesGrantedFeatIds = useMemo(() => {
@@ -616,7 +763,7 @@ const NewCharacter = () => {
       classId,
       speciesId,
       backgroundId,
-      originFeatId: backgroundGrantedFeatId,
+      originFeatId: effectiveOriginFeatId,
       level: 1,
       choices: {
         classSkillChoices,
@@ -644,6 +791,7 @@ const NewCharacter = () => {
         ...(backgroundFeatSpellChoices.length > 0
           ? { backgroundFeatSpellChoices }
           : {}),
+        ...(speciesSizeChoice ? { speciesSizeChoice } : {}),
         speciesTraitChoices,
         ...(isRogue
           ? {
@@ -669,7 +817,7 @@ const NewCharacter = () => {
     classSkillChoices,
     classSpellChoices,
     classToolChoices,
-    backgroundGrantedFeatId,
+    effectiveOriginFeatId,
     backgroundFeatCantripChoices,
     backgroundFeatSpellChoices,
     backgroundFeatSpellListId,
@@ -990,6 +1138,14 @@ const NewCharacter = () => {
           return "Please choose a species.";
         }
 
+        if (
+          speciesSizeOptions.length > 0 &&
+          (speciesSizeChoice === "" ||
+            !speciesSizeOptions.includes(speciesSizeChoice))
+        ) {
+          return "Please choose a valid species size.";
+        }
+
         for (const choice of speciesChoices) {
           const value = speciesTraitChoices[choice.id];
 
@@ -1019,6 +1175,54 @@ const NewCharacter = () => {
             if (!allValid) {
               return `Please choose valid options for ${choice.name}.`;
             }
+          }
+        }
+
+        if (humanFeatGrant?.type === "magic-initiate") {
+          if (!humanFeatSpellListId) {
+            return "Please choose a spell list for Human Magic Initiate.";
+          }
+
+          if (humanFeatCantripChoices.length !== 2) {
+            return "Please choose 2 cantrips for Human Magic Initiate.";
+          }
+
+          const validCantrips = humanFeatCantripChoices.every((spellId) =>
+            humanMagicInitiateCantrips.some((spell) => spell.id === spellId),
+          );
+
+          if (!validCantrips) {
+            return "Please choose valid Human Magic Initiate cantrips.";
+          }
+
+          if (new Set(humanFeatCantripChoices).size !== 2) {
+            return "Human Magic Initiate cantrip choices must be different.";
+          }
+
+          if (humanFeatSpellChoices.length !== 1) {
+            return "Please choose 1 level 1 spell for Human Magic Initiate.";
+          }
+
+          const chosenSpell = humanFeatSpellChoices[0];
+
+          const validSpell =
+            chosenSpell?.level === 1 &&
+            humanMagicInitiateLevelOneSpells.some(
+              (spell) => spell.id === chosenSpell.spellId,
+            );
+
+          if (!validSpell) {
+            return "Please choose a valid Human Magic Initiate level 1 spell.";
+          }
+        }
+
+        if (humanFeatGrant?.type === "skilled") {
+          if (humanFeatSkillChoices.length !== humanSkilledChoiceCount) {
+            return `Please choose ${humanSkilledChoiceCount} skills for Skilled.`;
+          }
+
+          if (new Set(humanFeatSkillChoices).size !== humanSkilledChoiceCount) {
+            return "Skilled choices must be different.";
           }
         }
 
@@ -1130,6 +1334,78 @@ const NewCharacter = () => {
     setError("");
     goToNextStep();
   };
+
+  useEffect(() => {
+    if (speciesSizeOptions.length === 0) {
+      setSpeciesSizeChoice("");
+      return;
+    }
+
+    setSpeciesSizeChoice((prev) =>
+      prev !== "" && speciesSizeOptions.includes(prev)
+        ? prev
+        : speciesSizeOptions[0],
+    );
+  }, [speciesSizeOptions]);
+
+  useEffect(() => {
+    if (humanFeatGrant?.type !== "magic-initiate") {
+      setHumanFeatSpellListId((prev) => (prev === "" ? prev : ""));
+      setHumanFeatCantripChoices((prev) => (prev.length === 0 ? prev : []));
+      setHumanFeatSpellChoices((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+
+    setHumanFeatSpellListId((prev) => {
+      if (prev && humanFeatGrant.spellListOptions.includes(prev)) {
+        return prev;
+      }
+      return humanFeatGrant.spellListOptions[0] ?? "";
+    });
+  }, [humanFeatGrant]);
+
+  useEffect(() => {
+    if (!hasHumanMagicInitiate) {
+      setHumanFeatCantripChoices((prev) => (prev.length === 0 ? prev : []));
+      setHumanFeatSpellChoices((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+
+    setHumanFeatCantripChoices((prev) => {
+      const next = prev
+        .filter((spellId) =>
+          humanMagicInitiateCantrips.some((spell) => spell.id === spellId),
+        )
+        .slice(0, 2);
+
+      return arraysEqual(prev, next) ? prev : next;
+    });
+
+    setHumanFeatSpellChoices((prev) => {
+      const next = prev
+        .filter((selection) =>
+          humanMagicInitiateLevelOneSpells.some(
+            (spell) => spell.id === selection.spellId && selection.level === 1,
+          ),
+        )
+        .slice(0, 1);
+
+      return spellSelectionsEqual(prev, next) ? prev : next;
+    });
+  }, [
+    hasHumanMagicInitiate,
+    humanMagicInitiateCantrips,
+    humanMagicInitiateLevelOneSpells,
+  ]);
+
+  useEffect(() => {
+    if (humanFeatGrant?.type !== "skilled") {
+      setHumanFeatSkillChoices((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+
+    setHumanFeatSkillChoices((prev) => prev.slice(0, humanSkilledChoiceCount));
+  }, [humanFeatGrant, humanSkilledChoiceCount]);
 
   useEffect(() => {
     const options = classDef?.skillChoice.options ?? [];
@@ -1426,10 +1702,6 @@ const NewCharacter = () => {
     });
   }, [speciesChoices]);
 
-  const handlePreviewSpell = (spell: SpellPreviewData) => {
-    setPreviewSpell(spell);
-  };
-
   const handleAbilityChange = (key: AbilityKey, value: string) => {
     const parsed = Number(value);
 
@@ -1446,6 +1718,46 @@ const NewCharacter = () => {
       }
 
       if (prev.length >= classSkillChoiceCount) {
+        return prev;
+      }
+
+      return [...prev, skill];
+    });
+  };
+
+  const toggleHumanFeatCantrip = (spellId: SpellId) => {
+    setHumanFeatCantripChoices((prev) => {
+      if (prev.includes(spellId)) {
+        return prev.filter((id) => id !== spellId);
+      }
+
+      if (prev.length >= 2) {
+        return prev;
+      }
+
+      return [...prev, spellId];
+    });
+  };
+
+  const toggleHumanFeatSpellChoice = (spellId: SpellId) => {
+    setHumanFeatSpellChoices((prev) => {
+      const isSelected = prev.some((spell) => spell.spellId === spellId);
+
+      if (isSelected) {
+        return [];
+      }
+
+      return [{ spellId, level: 1 }];
+    });
+  };
+
+  const toggleHumanFeatSkillChoice = (skill: SkillId) => {
+    setHumanFeatSkillChoices((prev) => {
+      if (prev.includes(skill)) {
+        return prev.filter((id) => id !== skill);
+      }
+
+      if (prev.length >= humanSkilledChoiceCount) {
         return prev;
       }
 
@@ -1503,8 +1815,16 @@ const NewCharacter = () => {
     });
   };
 
-  const setBackgroundFeatSpellChoice = (spellId: SpellId) => {
-    setBackgroundFeatSpellChoices([{ spellId, level: 1 }]);
+  const toggleBackgroundFeatSpellChoice = (spellId: SpellId) => {
+    setBackgroundFeatSpellChoices((prev) => {
+      const isSelected = prev.some((spell) => spell.spellId === spellId);
+
+      if (isSelected) {
+        return [];
+      }
+
+      return [{ spellId, level: 1 }];
+    });
   };
 
   const toggleRogueExpertise = (choice: SkillId | "thieves-tools") => {
@@ -1581,6 +1901,14 @@ const NewCharacter = () => {
 
     if (!speciesId) {
       return "Please choose a species.";
+    }
+
+    if (
+      speciesSizeOptions.length > 0 &&
+      (speciesSizeChoice === "" ||
+        !speciesSizeOptions.includes(speciesSizeChoice))
+    ) {
+      return "Please choose a valid species size.";
     }
 
     if (!backgroundId) {
@@ -1905,7 +2233,7 @@ const NewCharacter = () => {
         classId,
         speciesId,
         backgroundId,
-        originFeatId: backgroundGrantedFeatId,
+        originFeatId: effectiveOriginFeatId,
         abilityScores,
         alignment: alignment.trim(),
         notes: notes.trim(),
@@ -1927,7 +2255,18 @@ const NewCharacter = () => {
           ...(backgroundFeatSpellChoices.length > 0
             ? { backgroundFeatSpellChoices }
             : {}),
+          ...(speciesSizeChoice ? { speciesSizeChoice } : {}),
           speciesTraitChoices,
+          ...(humanFeatSpellListId ? { humanFeatSpellListId } : {}),
+          ...(humanFeatCantripChoices.length > 0
+            ? { humanFeatCantripChoices }
+            : {}),
+          ...(humanFeatSpellChoices.length > 0
+            ? { humanFeatSpellChoices }
+            : {}),
+          ...(humanFeatSkillChoices.length > 0
+            ? { humanFeatSkillChoices }
+            : {}),
           ...(isRogue
             ? {
                 rogueExpertiseChoices,
@@ -1951,7 +2290,7 @@ const NewCharacter = () => {
         classId,
         speciesId,
         backgroundId,
-        originFeatId: backgroundGrantedFeatId,
+        originFeatId: effectiveOriginFeatId,
         abilityScores,
         alignment: alignment.trim(),
         notes: notes.trim(),
@@ -1974,6 +2313,17 @@ const NewCharacter = () => {
             ? { backgroundFeatSpellChoices }
             : {}),
           speciesTraitChoices,
+          ...(humanFeatSpellListId ? { humanFeatSpellListId } : {}),
+          ...(humanFeatCantripChoices.length > 0
+            ? { humanFeatCantripChoices }
+            : {}),
+          ...(humanFeatSpellChoices.length > 0
+            ? { humanFeatSpellChoices }
+            : {}),
+          ...(humanFeatSkillChoices.length > 0
+            ? { humanFeatSkillChoices }
+            : {}),
+          ...(speciesSizeChoice ? { speciesSizeChoice } : {}),
           ...(isRogue
             ? {
                 rogueExpertiseChoices,
@@ -2560,7 +2910,7 @@ const NewCharacter = () => {
                     </p>
 
                     <div className="mb-4">
-                      <SpellPreviewCard spell={previewSpell} />
+                      <SpellPreviewCard spell={classCantripPreviewSpell} />
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -2572,9 +2922,11 @@ const NewCharacter = () => {
                         return (
                           <label
                             key={spell.id}
-                            onMouseEnter={() => handlePreviewSpell(spell)}
-                            onFocus={() => handlePreviewSpell(spell)}
-                            onClick={() => handlePreviewSpell(spell)}
+                            onMouseEnter={() =>
+                              setClassCantripPreviewSpell(spell)
+                            }
+                            onFocus={() => setClassCantripPreviewSpell(spell)}
+                            onClick={() => setClassCantripPreviewSpell(spell)}
                             className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
                               isSelected
                                 ? "border-white/25 bg-white/10"
@@ -2612,7 +2964,7 @@ const NewCharacter = () => {
                     </p>
 
                     <div className="mb-4">
-                      <SpellPreviewCard spell={previewSpell} />
+                      <SpellPreviewCard spell={classSpellPreviewSpell} />
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -2624,9 +2976,11 @@ const NewCharacter = () => {
                         return (
                           <label
                             key={spell.id}
-                            onMouseEnter={() => handlePreviewSpell(spell)}
-                            onFocus={() => handlePreviewSpell(spell)}
-                            onClick={() => handlePreviewSpell(spell)}
+                            onMouseEnter={() =>
+                              setClassSpellPreviewSpell(spell)
+                            }
+                            onFocus={() => setClassSpellPreviewSpell(spell)}
+                            onClick={() => setClassSpellPreviewSpell(spell)}
                             className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
                               isSelected
                                 ? "border-white/25 bg-white/10"
@@ -2829,6 +3183,33 @@ const NewCharacter = () => {
                   </select>
                 </div>
 
+                {speciesSizeOptions.length > 0 && (
+                  <div className="mt-8 space-y-2">
+                    <label
+                      htmlFor="speciesSizeChoice"
+                      className="text-sm font-medium text-zinc-200"
+                    >
+                      Species Size
+                    </label>
+                    <select
+                      id="speciesSizeChoice"
+                      value={speciesSizeChoice}
+                      onChange={(e) =>
+                        setSpeciesSizeChoice(
+                          e.target.value as "Small" | "Medium",
+                        )
+                      }
+                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                    >
+                      {speciesSizeOptions.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {speciesChoices.length > 0 && (
                   <div className="mt-8 rounded-2xl border border-white/10 bg-zinc-900/50 p-4">
                     <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.16em] text-zinc-300">
@@ -2933,6 +3314,208 @@ const NewCharacter = () => {
                               </div>
                             )}
                           </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {humanFeatGrant?.type === "magic-initiate" && (
+                  <div className="mt-8 space-y-6">
+                    <div className="space-y-2">
+                      <label
+                        htmlFor="humanFeatSpellListId"
+                        className="text-sm font-medium text-zinc-200"
+                      >
+                        Human Magic Initiate Spell List
+                      </label>
+                      <select
+                        id="humanFeatSpellListId"
+                        value={humanFeatSpellListId}
+                        onChange={(e) =>
+                          setHumanFeatSpellListId(
+                            e.target.value as Extract<
+                              SpellListId,
+                              "cleric" | "druid" | "wizard"
+                            >,
+                          )
+                        }
+                        className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                      >
+                        {humanFeatGrant.spellListOptions.map((listId) => (
+                          <option key={listId} value={listId}>
+                            {formatLabel(listId)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <h3 className="mb-4 text-lg font-semibold text-white">
+                        Human Magic Initiate Cantrips
+                      </h3>
+
+                      <div className="mb-4">
+                        <SpellPreviewCard
+                          spell={humanMagicInitiateCantripPreviewSpell}
+                        />
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {humanMagicInitiateCantrips.map((spell) => {
+                          const isSelected = humanFeatCantripChoices.includes(
+                            spell.id,
+                          );
+
+                          return (
+                            <label
+                              key={spell.id}
+                              onMouseEnter={() =>
+                                setHumanMagicInitiateCantripPreviewSpell(spell)
+                              }
+                              onFocus={() =>
+                                setHumanMagicInitiateCantripPreviewSpell(spell)
+                              }
+                              onClick={() =>
+                                setHumanMagicInitiateCantripPreviewSpell(spell)
+                              }
+                              className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                                isSelected
+                                  ? "border-white/25 bg-white/10"
+                                  : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() =>
+                                  toggleHumanFeatCantrip(spell.id)
+                                }
+                                className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                              />
+                              <span className="text-sm text-white">
+                                {spell.name}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="mb-4 text-lg font-semibold text-white">
+                        Human Magic Initiate Level 1 Spell
+                      </h3>
+
+                      <p className="mb-4 text-sm text-zinc-400">
+                        Choose 1 level 1 spell.
+                      </p>
+
+                      <div className="mb-4">
+                        <SpellPreviewCard
+                          spell={humanMagicInitiateSpellPreviewSpell}
+                        />
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {humanMagicInitiateLevelOneSpells.map((spell) => {
+                          const isSelected = humanFeatSpellChoices.some(
+                            (entry) => entry.spellId === spell.id,
+                          );
+
+                          return (
+                            <label
+                              key={spell.id}
+                              onMouseEnter={() =>
+                                setHumanMagicInitiateSpellPreviewSpell(spell)
+                              }
+                              onFocus={() =>
+                                setHumanMagicInitiateSpellPreviewSpell(spell)
+                              }
+                              onClick={() =>
+                                setHumanMagicInitiateSpellPreviewSpell(spell)
+                              }
+                              className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                                isSelected
+                                  ? "border-white/25 bg-white/10"
+                                  : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() =>
+                                  toggleHumanFeatSpellChoice(spell.id)
+                                }
+                                className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                              />
+                              <span className="text-sm text-white">
+                                {spell.name}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {humanFeatGrant?.type === "skilled" && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Skilled
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      Choose {humanSkilledChoiceCount} skills.
+                    </p>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {[
+                        "acrobatics",
+                        "animal-handling",
+                        "arcana",
+                        "athletics",
+                        "deception",
+                        "history",
+                        "insight",
+                        "intimidation",
+                        "investigation",
+                        "medicine",
+                        "nature",
+                        "perception",
+                        "performance",
+                        "persuasion",
+                        "religion",
+                        "sleight-of-hand",
+                        "stealth",
+                        "survival",
+                      ].map((skill) => {
+                        const typedSkill = skill as SkillId;
+                        const isSelected =
+                          humanFeatSkillChoices.includes(typedSkill);
+
+                        return (
+                          <label
+                            key={skill}
+                            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                              isSelected
+                                ? "border-white/25 bg-white/10"
+                                : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() =>
+                                toggleHumanFeatSkillChoice(typedSkill)
+                              }
+                              className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                            />
+                            <span className="text-sm text-white">
+                              {formatLabel(skill)}
+                            </span>
+                          </label>
                         );
                       })}
                     </div>
@@ -3066,7 +3649,9 @@ const NewCharacter = () => {
                       </h3>
 
                       <div className="mb-4">
-                        <SpellPreviewCard spell={previewSpell} />
+                        <SpellPreviewCard
+                          spell={backgroundMagicInitiateCantripPreviewSpell}
+                        />
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -3077,9 +3662,21 @@ const NewCharacter = () => {
                           return (
                             <label
                               key={spell.id}
-                              onMouseEnter={() => handlePreviewSpell(spell)}
-                              onFocus={() => handlePreviewSpell(spell)}
-                              onClick={() => handlePreviewSpell(spell)}
+                              onMouseEnter={() =>
+                                setBackgroundMagicInitiateCantripPreviewSpell(
+                                  spell,
+                                )
+                              }
+                              onFocus={() =>
+                                setBackgroundMagicInitiateCantripPreviewSpell(
+                                  spell,
+                                )
+                              }
+                              onClick={() =>
+                                setBackgroundMagicInitiateCantripPreviewSpell(
+                                  spell,
+                                )
+                              }
                               className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
                                 isSelected
                                   ? "border-white/25 bg-white/10"
@@ -3103,33 +3700,66 @@ const NewCharacter = () => {
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <label
-                        htmlFor="backgroundFeatSpellChoice"
-                        className="text-sm font-medium text-zinc-200"
-                      >
-                        Choose 1 level 1 spell
-                      </label>
+                    <div>
+                      <h3 className="mb-4 text-lg font-semibold text-white">
+                        Magic Initiate Level 1 Spell
+                      </h3>
+
+                      <p className="mb-4 text-sm text-zinc-400">
+                        Choose 1 level 1 spell.
+                      </p>
 
                       <div className="mb-4">
-                        <SpellPreviewCard spell={previewSpell} />
+                        <SpellPreviewCard
+                          spell={backgroundMagicInitiateSpellPreviewSpell}
+                        />
                       </div>
 
-                      <select
-                        id="backgroundFeatSpellChoice"
-                        value={backgroundFeatSpellChoices[0]?.spellId ?? ""}
-                        onChange={(e) =>
-                          setBackgroundFeatSpellChoice(e.target.value)
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                      >
-                        <option value="">Select a spell</option>
-                        {backgroundMagicInitiateLevelOneSpells.map((spell) => (
-                          <option key={spell.id} value={spell.id}>
-                            {spell.name}
-                          </option>
-                        ))}
-                      </select>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {backgroundMagicInitiateLevelOneSpells.map((spell) => {
+                          const isSelected = backgroundFeatSpellChoices.some(
+                            (entry) => entry.spellId === spell.id,
+                          );
+
+                          return (
+                            <label
+                              key={spell.id}
+                              onMouseEnter={() =>
+                                setBackgroundMagicInitiateSpellPreviewSpell(
+                                  spell,
+                                )
+                              }
+                              onFocus={() =>
+                                setBackgroundMagicInitiateSpellPreviewSpell(
+                                  spell,
+                                )
+                              }
+                              onClick={() =>
+                                setBackgroundMagicInitiateSpellPreviewSpell(
+                                  spell,
+                                )
+                              }
+                              className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                                isSelected
+                                  ? "border-white/25 bg-white/10"
+                                  : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() =>
+                                  toggleBackgroundFeatSpellChoice(spell.id)
+                                }
+                                className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                              />
+                              <span className="text-sm text-white">
+                                {spell.name}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -3268,7 +3898,7 @@ const NewCharacter = () => {
             </div>
           </section>
 
-          {/* Character summary sidebar */}
+          {/* Character summary left panel */}
           <aside className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
             <h2 className="mb-5 text-xl font-semibold text-white">
               Character Summary
@@ -3356,7 +3986,7 @@ const NewCharacter = () => {
             )}
 
             <div className="mt-8 space-y-5">
-              {speciesChoices.length > 0 && (
+              {(speciesSizeOptions.length > 0 || speciesChoices.length > 0) && (
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
                     Species choices
@@ -3462,6 +4092,13 @@ const NewCharacter = () => {
                     </p>
                   </div>
                 </>
+              )}
+
+              {speciesSizeChoice && (
+                <p>
+                  <span className="text-zinc-500">Size:</span>{" "}
+                  {speciesSizeChoice}
+                </p>
               )}
 
               <div>
