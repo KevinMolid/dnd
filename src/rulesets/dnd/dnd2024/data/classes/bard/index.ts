@@ -20,9 +20,5 @@ export {
 } from "./bardChoices";
 
 export {
-  bardSubclasses,
-  collegeOfDance,
-  collegeOfGlamour,
-  collegeOfLore,
-  collegeOfValor,
+  bardSubclasses
 } from "./subclasses";

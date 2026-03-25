@@ -1,0 +1,72 @@
+import type { CharacterSubclass } from "../../../types";
+
+export const collegeOfDance: CharacterSubclass = {
+  id: "college-of-dance",
+  name: "College of Dance",
+  classId: "bard",
+  description:
+    "Bards of the College of Dance move in harmony with the cosmos, channeling grace, speed, and celestial rhythm through performance and motion.",
+
+  featuresByLevel: {
+    3: [
+      {
+        id: "dazzling-footwork",
+        name: "Dazzling Footwork",
+        level: 3,
+        description:
+          "While lightly equipped, your dancing grants you charm, agility, and a unique unarmed combat style fueled by Bardic Inspiration.",
+        notes: [
+          "While you aren't wearing armor or wielding a Shield, you gain the following benefits.",
+          "Dance Virtuoso. You have Advantage on any Charisma (Performance) check you make that involves you dancing.",
+          "Unarmored Defense. Your base Armor Class equals 10 plus your Dexterity and Charisma modifiers.",
+          "Agile Strikes. When you expend a use of your Bardic Inspiration as part of an action, a Bonus Action, or a Reaction, you can make one Unarmed Strike as part of that action, Bonus Action, or Reaction.",
+          "You can use Dexterity instead of Strength for the attack rolls of your Unarmed Strikes.",
+          "When you deal damage with an Unarmed Strike, you can deal Bludgeoning damage equal to a roll of your Bardic Inspiration die plus your Dexterity modifier, instead of the strike's normal damage.",
+          "This roll doesn't expend the die.",
+        ],
+      },
+    ],
+
+    6: [
+      {
+        id: "inspiring-movement",
+        name: "Inspiring Movement",
+        level: 6,
+        description:
+          "Your movement inspires others to flow across the battlefield alongside you.",
+        notes: [
+          "When an enemy you can see ends its turn within 5 feet of you, you can take a Reaction and expend one use of your Bardic Inspiration to move up to half your Speed.",
+          "Then one ally of your choice within 30 feet of you can also move up to half their Speed using their Reaction.",
+          "None of this feature's movement provokes Opportunity Attacks.",
+        ],
+      },
+      {
+        id: "tandem-footwork",
+        name: "Tandem Footwork",
+        level: 6,
+        description:
+          "Your dance can sweep allies into action at the very start of battle.",
+        notes: [
+          "When you roll Initiative, you can expend one use of your Bardic Inspiration if you don't have the Incapacitated condition.",
+          "When you do so, roll your Bardic Inspiration die.",
+          "You and each ally within 30 feet of you who can see or hear you gains a bonus to Initiative equal to the number rolled.",
+        ],
+      },
+    ],
+
+    14: [
+      {
+        id: "leading-evasion",
+        name: "Leading Evasion",
+        level: 14,
+        description:
+          "You can guide yourself and nearby allies through danger with perfect timing and motion.",
+        notes: [
+          "When you are subjected to an effect that allows you to make a Dexterity saving throw to take only half damage, you instead take no damage if you succeed on the saving throw and only half damage if you fail.",
+          "If any creatures within 5 feet of you are making the same Dexterity saving throw, you can share this benefit with them for that save.",
+          "You can't use this feature if you have the Incapacitated condition.",
+        ],
+      },
+    ],
+  },
+};

@@ -18,9 +18,5 @@ export {
 } from "./barbarianChoices";
 
 export {
-  barbarianSubclasses,
-  pathOfTheBerserker,
-  pathOfTheWildHeart,
-  pathOfTheWorldTree,
-  pathOfTheZealot,
+  barbarianSubclasses
 } from "./subclasses";

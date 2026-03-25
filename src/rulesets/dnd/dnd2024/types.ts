@@ -48,7 +48,7 @@ export type SenseType =
   | "blindsight"
   | "truesight";
 
-export type RestType = "short-rest" | "long-rest";
+export type RestType = "short-rest" | "long-rest" | "short-or-long-rest";
 
 export type ActionType =
   | "action"
@@ -221,6 +221,14 @@ export type TraitEffect =
   | {
       type: "skill-proficiency";
       skill: SkillId;
+    }
+    | {
+      type: "armor-training";
+      armor: ArmorTrainingId;
+    }
+  | {
+      type: "weapon-proficiency";
+      weapon: WeaponProficiencyId;
     };
 
 export type TraitOption = {
