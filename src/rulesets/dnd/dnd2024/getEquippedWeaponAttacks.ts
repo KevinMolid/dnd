@@ -7,30 +7,107 @@ import type {
 
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
 
-const formatDamageDice = (weapon: WeaponData, twoHanded: boolean) => {
-  const damage =
-    twoHanded && weapon.versatileDamage ? weapon.versatileDamage : weapon.damage;
-
-  return `${damage.dice.count}d${damage.dice.die} ${damage.damageType}`;
+const formatSignedModifier = (value: number) => {
+  if (value === 0) return "";
+  return value > 0 ? ` + ${value}` : ` - ${Math.abs(value)}`;
 };
 
-const getAttackAbility = (
-  weapon: WeaponData,
-  abilityScores: Record<AbilityKey, number>,
-): AbilityKey => {
-  const isRanged =
-    weapon.weaponKind === "simple-ranged" ||
-    weapon.weaponKind === "martial-ranged";
+const getSelectedDamageData = (weapon: WeaponData, twoHanded: boolean) => {
+  return twoHanded && weapon.versatileDamage ? weapon.versatileDamage : weapon.damage;
+};
 
-  if (isRanged) {
+const formatDamageString = ({
+  weapon,
+  twoHanded,
+  damageModifier,
+}: {
+  weapon: WeaponData;
+  twoHanded: boolean;
+  damageModifier: number;
+}) => {
+  const damage = getSelectedDamageData(weapon, twoHanded);
+
+  return `${damage.dice.count}d${damage.dice.die}${formatSignedModifier(
+    damageModifier,
+  )} ${damage.damageType}`;
+};
+
+const isRangedWeapon = (weapon: WeaponData) =>
+  weapon.weaponKind === "simple-ranged" ||
+  weapon.weaponKind === "martial-ranged";
+
+const hasProperty = (weapon: WeaponData, property: string) =>
+  weapon.properties.includes(property as (typeof weapon.properties)[number]);
+
+const getAttackAbility = ({
+  weapon,
+  abilityScores,
+}: {
+  weapon: WeaponData;
+  abilityScores: Record<AbilityKey, number>;
+}): AbilityKey => {
+  const ranged = isRangedWeapon(weapon);
+
+  if (ranged) {
     return "dex";
   }
 
-  if (weapon.properties.includes("finesse")) {
+  if (hasProperty(weapon, "finesse")) {
+    return abilityScores.dex > abilityScores.str ? "dex" : "str";
+  }
+
+  // Thrown melee weapons still use STR by default.
+  return "str";
+};
+
+const getThrownAttackAbility = ({
+  weapon,
+  abilityScores,
+}: {
+  weapon: WeaponData;
+  abilityScores: Record<AbilityKey, number>;
+}): AbilityKey => {
+  // Thrown uses the same ability as the melee attack unless a special rule says otherwise.
+  if (hasProperty(weapon, "finesse")) {
     return abilityScores.dex > abilityScores.str ? "dex" : "str";
   }
 
   return "str";
+};
+
+const getAttackModes = ({
+  entry,
+  weapon,
+}: {
+  entry: CharacterEquipmentEntry;
+  weapon: WeaponData;
+}) => {
+  const isTwoHandedEquipped =
+    entry.wieldMode === "two-handed" ||
+    (entry.equippedSlots?.length ?? 0) >= 2;
+
+  const modes: Array<{
+    key: "melee" | "thrown";
+    labelSuffix?: string;
+    twoHanded: boolean;
+  }> = [
+    {
+      key: "melee",
+      labelSuffix:
+        weapon.versatileDamage && isTwoHandedEquipped ? "(Two-Handed)" : undefined,
+      twoHanded: isTwoHandedEquipped,
+    },
+  ];
+
+  if (hasProperty(weapon, "thrown") && weapon.range) {
+    modes.push({
+      key: "thrown",
+      labelSuffix: "(Thrown)",
+      twoHanded: false,
+    });
+  }
+
+  return modes;
 };
 
 export type EquippedWeaponAttack = {
@@ -43,6 +120,9 @@ export type EquippedWeaponAttack = {
   range?: WeaponData["range"];
   properties: WeaponData["properties"];
   mastery?: WeaponData["mastery"];
+  isOffHand?: boolean;
+  isThrown?: boolean;
+  isTwoHanded?: boolean;
 };
 
 export const getEquippedWeaponAttacks = ({
@@ -64,25 +144,60 @@ export const getEquippedWeaponAttacks = ({
     const item = itemsById[entry.itemId];
     if (!item?.weapon) continue;
 
-    const ability = getAttackAbility(item.weapon, abilityScores);
-    const abilityMod = getAbilityModifier(abilityScores[ability]);
+    const weapon = item.weapon;
     const proficient = proficientWeaponIds?.includes(entry.itemId) ?? true;
 
-    const isTwoHanded =
-      entry.wieldMode === "two-handed" ||
-      (entry.equippedSlots?.length ?? 0) >= 2;
+    const isOffHand =
+      entry.wieldMode === "off-hand" && hasProperty(weapon, "light");
 
-    attacks.push({
-      instanceId: entry.instanceId,
-      itemId: entry.itemId,
-      name: item.name,
-      ability,
-      attackBonus: abilityMod + (proficient ? proficiencyBonus : 0),
-      damage: formatDamageDice(item.weapon, isTwoHanded),
-      range: item.weapon.range,
-      properties: item.weapon.properties,
-      mastery: item.weapon.mastery,
-    });
+    // Assumed per-item magic / custom bonuses stored on the equipment entry.
+    const magicAttackBonus = entry.attackBonus ?? 0;
+    const magicDamageBonus = entry.damageBonus ?? 0;
+
+    const modes = getAttackModes({ entry, weapon });
+
+    for (const mode of modes) {
+      const ability =
+        mode.key === "thrown"
+          ? getThrownAttackAbility({ weapon, abilityScores })
+          : getAttackAbility({ weapon, abilityScores });
+
+      const abilityMod = getAbilityModifier(abilityScores[ability]);
+
+      const attackBonus =
+        abilityMod +
+        (proficient ? proficiencyBonus : 0) +
+        magicAttackBonus;
+
+      // Off-hand bonus attacks do not add ability mod to damage by default.
+      // If you later add a flag like entry.addAbilityModToOffHandDamage, you can plug it in here.
+      const includeAbilityModInDamage = !isOffHand;
+
+      const damageModifier =
+        (includeAbilityModInDamage ? abilityMod : 0) + magicDamageBonus;
+
+      attacks.push({
+        instanceId:
+          mode.key === "thrown"
+            ? `${entry.instanceId}-thrown`
+            : `${entry.instanceId}-melee`,
+        itemId: entry.itemId,
+        name: item.name,
+        ability,
+        attackBonus,
+        damage: formatDamageString({
+          weapon,
+          twoHanded: mode.twoHanded,
+          damageModifier,
+        }),
+        range: mode.key === "thrown" ? weapon.range : undefined,
+        properties: weapon.properties,
+        mastery: weapon.mastery,
+        isOffHand,
+        isThrown: mode.key === "thrown",
+        isTwoHanded: mode.twoHanded,
+      });
+    }
   }
 
   return attacks;

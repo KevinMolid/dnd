@@ -936,6 +936,21 @@ export type WeaponData = {
   mastery?: string;
 };
 
+export type EquippedWeaponAttack = {
+  instanceId: string;
+  itemId: string;
+  name: string;
+  ability: AbilityKey;
+  attackBonus: number;
+  damage: string;
+  range?: WeaponData["range"];
+  properties: WeaponData["properties"];
+  mastery?: WeaponData["mastery"];
+  isOffHand?: boolean;
+  isThrown?: boolean;
+  isTwoHanded?: boolean;
+};
+
 export type ArmorData = {
   armorCategory: ArmorCategory;
   baseAc: number;
@@ -992,6 +1007,8 @@ export type CharacterEquipmentEntry = {
   equipped?: boolean;
   equippedSlots?: EquipmentSlotId[];
   wieldMode?: WieldMode;
+  attackBonus?: number;
+  damageBonus?: number;
 };
 
 export type EquipmentItemGrant = {

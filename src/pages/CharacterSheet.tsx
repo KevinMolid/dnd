@@ -417,6 +417,31 @@ const SourceBadge = ({ groupKey }: { groupKey: TraitGroupKey }) => {
   );
 };
 
+const AttackModePill = ({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "offhand" | "thrown" | "twohanded";
+}) => {
+  const className =
+    tone === "offhand"
+      ? "border border-amber-500/20 bg-amber-500/10 text-amber-300"
+      : tone === "thrown"
+        ? "border border-sky-500/20 bg-sky-500/10 text-sky-300"
+        : tone === "twohanded"
+          ? "border border-violet-500/20 bg-violet-500/10 text-violet-300"
+          : "border border-white/10 bg-zinc-900 text-zinc-300";
+
+  return (
+    <span
+      className={`rounded-full px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] ${className}`}
+    >
+      {children}
+    </span>
+  );
+};
+
 const TraitPill = ({
   children,
   tone = "neutral",
@@ -1674,11 +1699,32 @@ const CharacterSheet = () => {
                       key={attack.instanceId}
                       className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
                     >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-white">
-                            {attack.name}
-                          </p>
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="font-medium text-white">
+                              {attack.name}
+                            </p>
+
+                            {attack.isOffHand && (
+                              <AttackModePill tone="offhand">
+                                Off-Hand
+                              </AttackModePill>
+                            )}
+
+                            {attack.isThrown && (
+                              <AttackModePill tone="thrown">
+                                Thrown
+                              </AttackModePill>
+                            )}
+
+                            {attack.isTwoHanded && (
+                              <AttackModePill tone="twohanded">
+                                Two-Handed
+                              </AttackModePill>
+                            )}
+                          </div>
+
                           <p className="mt-1 text-xs text-zinc-500">
                             {attack.properties.map(formatLabel).join(" • ")}
                           </p>
@@ -1694,7 +1740,7 @@ const CharacterSheet = () => {
                         </div>
                       </div>
 
-                      <div className="mt-2 flex flex-wrap gap-2 text-xs text-zinc-400">
+                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
                         <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
                           Uses {abilityLabels[attack.ability]}
                         </span>
