@@ -7,7 +7,6 @@ import React, {
 } from "react";
 import type { StatBlockProps } from "../components/StatBlock";
 import { monsters } from "../data/monsters";
-import { players } from "../data/players";
 
 const STORAGE_KEY = "lmop-encounter";
 
@@ -24,6 +23,27 @@ export type EncounterTemplate = {
   entities: EncounterTemplateEntity[];
 };
 
+export type EncounterPlayerInput = {
+  characterId?: string;
+  name: string;
+  maxHp: number;
+  currentHp?: number;
+  armorClass?: number;
+  initiativeBonus?: number;
+  level?: number;
+  classId?: string;
+  speciesId?: string;
+};
+
+export type EncounterPlayerSnapshot = {
+  characterId: string | null;
+  armorClass: number | null;
+  initiativeBonus: number;
+  level: number | null;
+  classId: string | null;
+  speciesId: string | null;
+};
+
 export type EncounterEntry = {
   id: string;
   entityKind: EncounterEntityKind;
@@ -33,6 +53,7 @@ export type EncounterEntry = {
   currentHp: number;
   maxHp: number;
   initiative: number | "";
+  playerSnapshot?: EncounterPlayerSnapshot;
 };
 
 export type SavedEncounter = {
@@ -60,10 +81,10 @@ type EncounterContextType = {
   savedEncounters: SavedEncounter[];
   activeEncounterId: string | null;
   addMonsterToEncounter: (monster: StatBlockProps) => void;
-  addPlayerToEncounter: (player: StatBlockProps) => void;
+  addPlayerToEncounter: (player: EncounterPlayerInput) => void;
   addEntityToEncounter: (
     entityKind: EncounterEntityKind,
-    entity: StatBlockProps,
+    entity: StatBlockProps | EncounterPlayerInput,
   ) => void;
   removeEntityFromEncounter: (id: string) => void;
   updateEntityHp: (id: string, hp: number) => void;
@@ -96,10 +117,30 @@ const makeId = () => {
 
 const cloneEncounterEntry = (entry: EncounterEntry): EncounterEntry => ({
   ...entry,
+  playerSnapshot: entry.playerSnapshot
+    ? { ...entry.playerSnapshot }
+    : undefined,
 });
 
 const cloneEncounter = (entries: EncounterEntry[]): EncounterEntry[] =>
   entries.map(cloneEncounterEntry);
+
+const isEncounterPlayerSnapshot = (
+  value: unknown,
+): value is EncounterPlayerSnapshot => {
+  if (!value || typeof value !== "object") return false;
+
+  const item = value as EncounterPlayerSnapshot;
+
+  return (
+    (typeof item.characterId === "string" || item.characterId === null) &&
+    (typeof item.armorClass === "number" || item.armorClass === null) &&
+    typeof item.initiativeBonus === "number" &&
+    (typeof item.level === "number" || item.level === null) &&
+    (typeof item.classId === "string" || item.classId === null) &&
+    (typeof item.speciesId === "string" || item.speciesId === null)
+  );
+};
 
 const isValidEncounterEntry = (value: unknown): value is EncounterEntry => {
   if (!value || typeof value !== "object") return false;
@@ -114,7 +155,9 @@ const isValidEncounterEntry = (value: unknown): value is EncounterEntry => {
     typeof item.displayName === "string" &&
     typeof item.currentHp === "number" &&
     typeof item.maxHp === "number" &&
-    (typeof item.initiative === "number" || item.initiative === "")
+    (typeof item.initiative === "number" || item.initiative === "") &&
+    (item.playerSnapshot === undefined ||
+      isEncounterPlayerSnapshot(item.playerSnapshot))
   );
 };
 
@@ -244,6 +287,70 @@ const getNextInstanceNumber = (
   return Math.max(...sameEntries.map((entry) => entry.instanceNumber)) + 1;
 };
 
+const getMonsterInitiativeBonus = (monster: StatBlockProps) => {
+  return Math.floor((monster.stats.Dex - 10) / 2);
+};
+
+const buildMonsterEncounterEntry = (
+  previousEncounter: EncounterEntry[],
+  monster: StatBlockProps,
+): EncounterEntry => {
+  const instanceNumber = getNextInstanceNumber(
+    previousEncounter,
+    "monster",
+    monster.name,
+  );
+
+  return {
+    id: makeId(),
+    entityKind: "monster",
+    entityName: monster.name,
+    instanceNumber,
+    displayName:
+      instanceNumber > 1 ? `${monster.name} ${instanceNumber}` : monster.name,
+    currentHp: monster.HP,
+    maxHp: monster.HP,
+    initiative: "",
+  };
+};
+
+const buildPlayerEncounterEntry = (
+  previousEncounter: EncounterEntry[],
+  player: EncounterPlayerInput,
+): EncounterEntry => {
+  const instanceNumber = getNextInstanceNumber(
+    previousEncounter,
+    "player",
+    player.name,
+  );
+
+  const maxHp = Math.max(1, player.maxHp);
+  const currentHp = Math.max(
+    0,
+    Math.min(player.currentHp ?? player.maxHp, player.maxHp),
+  );
+
+  return {
+    id: makeId(),
+    entityKind: "player",
+    entityName: player.name,
+    instanceNumber,
+    displayName: player.name,
+    currentHp,
+    maxHp,
+    initiative: "",
+    playerSnapshot: {
+      characterId: player.characterId ?? null,
+      armorClass:
+        typeof player.armorClass === "number" ? player.armorClass : null,
+      initiativeBonus: player.initiativeBonus ?? 0,
+      level: typeof player.level === "number" ? player.level : null,
+      classId: player.classId ?? null,
+      speciesId: player.speciesId ?? null,
+    },
+  };
+};
+
 export const EncounterProvider = ({
   children,
 }: {
@@ -324,30 +431,30 @@ export const EncounterProvider = ({
     entityKind: EncounterEntityKind,
     name: string,
   ): StatBlockProps | undefined => {
-    if (entityKind === "monster") {
-      return monsters.find((monster) => monster.name === name);
-    }
-
-    return players.find((player) => player.name === name);
-  };
-
-  const getInitiativeBonus = (entity: StatBlockProps) => {
-    return Math.floor((entity.stats.Dex - 10) / 2);
+    if (entityKind !== "monster") return undefined;
+    return monsters.find((monster) => monster.name === name);
   };
 
   const rollInitiative = () => {
     setEncounter((prev) =>
       prev.map((entry) => {
-        const entity = getEntityByName(entry.entityKind, entry.entityName);
-
-        if (!entity) return entry;
-
         const roll = Math.floor(Math.random() * 20) + 1;
-        const initiativeBonus = getInitiativeBonus(entity);
+
+        if (entry.entityKind === "player") {
+          const initiativeBonus = entry.playerSnapshot?.initiativeBonus ?? 0;
+
+          return {
+            ...entry,
+            initiative: roll + initiativeBonus,
+          };
+        }
+
+        const monster = getEntityByName("monster", entry.entityName);
+        if (!monster) return entry;
 
         return {
           ...entry,
-          initiative: roll + initiativeBonus,
+          initiative: roll + getMonsterInitiativeBonus(monster),
         };
       }),
     );
@@ -408,32 +515,19 @@ export const EncounterProvider = ({
 
   const addEntityToEncounter = (
     entityKind: EncounterEntityKind,
-    entity: StatBlockProps,
+    entity: StatBlockProps | EncounterPlayerInput,
   ) => {
     setEncounter((prev) => {
-      const instanceNumber = getNextInstanceNumber(
-        prev,
-        entityKind,
-        entity.name,
-      );
+      if (entityKind === "monster") {
+        return [
+          ...prev,
+          buildMonsterEncounterEntry(prev, entity as StatBlockProps),
+        ];
+      }
 
       return [
         ...prev,
-        {
-          id: makeId(),
-          entityKind,
-          entityName: entity.name,
-          instanceNumber,
-          displayName:
-            entityKind === "monster"
-              ? instanceNumber > 1
-                ? `${entity.name} ${instanceNumber}`
-                : entity.name
-              : entity.name,
-          currentHp: entity.HP,
-          maxHp: entity.HP,
-          initiative: "",
-        },
+        buildPlayerEncounterEntry(prev, entity as EncounterPlayerInput),
       ];
     });
   };
@@ -442,7 +536,7 @@ export const EncounterProvider = ({
     addEntityToEncounter("monster", monster);
   };
 
-  const addPlayerToEncounter = (player: StatBlockProps) => {
+  const addPlayerToEncounter = (player: EncounterPlayerInput) => {
     addEntityToEncounter("player", player);
   };
 
@@ -568,35 +662,16 @@ export const EncounterProvider = ({
 
     template.entities.forEach((templateEntity) => {
       const count = templateEntity.count ?? 1;
-      const statBlock = getEntityByName(
-        templateEntity.entityKind,
-        templateEntity.entityName,
-      );
 
-      if (!statBlock) return;
+      if (templateEntity.entityKind !== "monster") {
+        return;
+      }
+
+      const monster = getEntityByName("monster", templateEntity.entityName);
+      if (!monster) return;
 
       for (let i = 0; i < count; i++) {
-        const instanceNumber = getNextInstanceNumber(
-          nextEncounter,
-          templateEntity.entityKind,
-          templateEntity.entityName,
-        );
-
-        nextEncounter.push({
-          id: makeId(),
-          entityKind: templateEntity.entityKind,
-          entityName: templateEntity.entityName,
-          instanceNumber,
-          displayName:
-            templateEntity.entityKind === "monster"
-              ? instanceNumber > 1
-                ? `${templateEntity.entityName} ${instanceNumber}`
-                : templateEntity.entityName
-              : templateEntity.entityName,
-          currentHp: statBlock.HP,
-          maxHp: statBlock.HP,
-          initiative: "",
-        });
+        nextEncounter.push(buildMonsterEncounterEntry(nextEncounter, monster));
       }
     });
 

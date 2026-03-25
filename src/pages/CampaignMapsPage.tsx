@@ -8,7 +8,6 @@ import { createCampaignMap } from "../features/maps/mapService";
 import { useCampaignMaps } from "../features/maps/useCampaignMaps";
 import type { CampaignMap } from "../features/maps/types";
 
-
 const DEFAULT_IMAGE_URL =
   "https://i.etsystatic.com/18388031/r/il/056bd0/6063210018/il_1080xN.6063210018_a4k1.jpg";
 
@@ -65,11 +64,10 @@ const CampaignMapsPage = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto max-w-7xl py-6 sm:py-8">
-
         <div className="mb-6 flex items-center justify-between gap-4">
           <Link
             to={`/campaigns/${campaignId}`}
-              className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
+            className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
           >
             ← Back to campaign
           </Link>
@@ -205,6 +203,7 @@ const CampaignMapsPage = () => {
 
       {selectedMap && (
         <MapViewer
+          campaignId={campaignId}
           map={selectedMap}
           onClose={() => setSelectedMapId(null)}
           players={[]}

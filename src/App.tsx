@@ -9,7 +9,6 @@ import Karakterer from "./pages/Karakterer";
 import Stats from "./pages/Stats";
 import Encounter from "./pages/Encounter";
 import Players from "./pages/Players";
-import Handouts from "./pages/Handouts";
 import Quests from "./pages/Quests";
 import Login from "./pages/Login";
 import NewCharacter from "./pages/NewCharacter";
@@ -52,13 +51,7 @@ function App() {
           <Route path="reglene" element={<Reglene />} />
           <Route path="karakterer" element={<Karakterer />} />
           <Route path="stats" element={<Stats />} />
-          <Route path="/kamp" element={<Encounter />} />
           <Route path="/spillere" element={<Players />} />
-          <Route path="/handouts" element={<Handouts />} />
-          <Route
-            path="/campaigns/:campaignId/handouts"
-            element={<HandoutsPage />}
-          />
           <Route path="/quests" element={<Quests />} />
           <Route path="/characters/new" element={<NewCharacter />} />
           <Route path="/characters/:characterId" element={<CharacterSheet />} />
@@ -88,6 +81,14 @@ function App() {
           <Route
             path="/campaigns/:campaignId/journal"
             element={<CampaignJournalPage />}
+          />
+          <Route
+            path="/campaigns/:campaignId/encounter"
+            element={<Encounter />}
+          />
+          <Route
+            path="/campaigns/:campaignId/handouts"
+            element={<HandoutsPage />}
           />
         </Routes>
       </main>

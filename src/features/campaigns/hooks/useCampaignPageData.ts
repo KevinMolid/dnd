@@ -122,6 +122,7 @@ export type CampaignCharacter = {
   derivedLevel?: number;
   levelUpAvailable?: boolean;
 
+  armorClass?: number;
   xp?: number;
   currentHp?: number;
   maxHp?: number;

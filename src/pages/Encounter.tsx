@@ -1,12 +1,91 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
+
 import Container from "../components/Container";
 import H1 from "../components/H1";
 import H3 from "../components/H3";
 import StatBlock, { StatBlockProps } from "../components/StatBlock";
 import { useEncounter } from "../context/EncounterContext";
-import { players } from "../data/players";
+import useCampaignPageData, {
+  type CampaignCharacter,
+} from "../features/campaigns/hooks/useCampaignPageData";
+
+type EncounterPlayerInput = {
+  name: string;
+  maxHp: number;
+  currentHp?: number;
+  armorClass?: number;
+  initiativeBonus?: number;
+  level?: number;
+  classId?: string;
+  speciesId?: string;
+};
+
+const getEncounterInitiativeBonus = (character: CampaignCharacter) => {
+  const dex = character.abilityScores?.dex;
+  if (typeof dex === "number") {
+    return Math.floor((dex - 10) / 2);
+  }
+
+  return 0;
+};
+
+const getEncounterArmorClass = (_character: CampaignCharacter) => {
+  return 10;
+};
+
+const formatModifier = (value: number) =>
+  value >= 0 ? `+${value}` : `${value}`;
+
+const getPassivePerception = (character?: CampaignCharacter) => {
+  const wis = character?.abilityScores?.wis;
+  if (typeof wis === "number") {
+    return 10 + Math.floor((wis - 10) / 2);
+  }
+
+  return undefined;
+};
+
+const getProficiencyBonus = (level?: number) => {
+  if (!level || level < 1) return undefined;
+  return 2 + Math.floor((level - 1) / 4);
+};
+
+const buildPlayerSubtitle = (character?: CampaignCharacter) => {
+  if (!character) return "Player Character";
+
+  const parts = [
+    character.race,
+    character.className,
+    typeof character.level === "number"
+      ? `Level ${character.level}`
+      : undefined,
+  ].filter(Boolean);
+
+  return parts.length > 0 ? parts.join(" • ") : "Player Character";
+};
+
+const mapCharacterToEncounterPlayer = (
+  character: CampaignCharacter,
+): EncounterPlayerInput => {
+  return {
+    name: character.name,
+    maxHp: character.maxHp ?? 1,
+    currentHp: character.currentHp ?? character.maxHp ?? 1,
+    armorClass: getEncounterArmorClass(character),
+    initiativeBonus: getEncounterInitiativeBonus(character),
+    level: character.level,
+    classId: character.classId,
+    speciesId: character.speciesId,
+  };
+};
 
 const Encounter = () => {
+  const { campaignId } = useParams<{ campaignId: string }>();
+
+  const { campaignCharacters, campaignCharactersLoading } =
+    useCampaignPageData(campaignId);
+
   const {
     encounter,
     currentTurnIndex,
@@ -149,15 +228,20 @@ const Encounter = () => {
 
   const isPlayerInEncounter = (playerName: string) =>
     encounter.some(
-      (e) => e.entityKind === "player" && e.entityName === playerName,
+      (entry) =>
+        entry.entityKind === "player" && entry.entityName === playerName,
     );
 
   const areAllPlayersInEncounter =
-    players.length > 0 && players.every((p) => isPlayerInEncounter(p.name));
+    campaignCharacters.length > 0 &&
+    campaignCharacters.every((character) =>
+      isPlayerInEncounter(character.name),
+    );
 
-  const togglePlayerInEncounter = (playerName: string) => {
+  const togglePlayerInEncounter = (character: CampaignCharacter) => {
     const existing = encounter.find(
-      (e) => e.entityKind === "player" && e.entityName === playerName,
+      (entry) =>
+        entry.entityKind === "player" && entry.entityName === character.name,
     );
 
     if (existing) {
@@ -165,26 +249,26 @@ const Encounter = () => {
       return;
     }
 
-    const player = players.find((p) => p.name === playerName);
-    if (player) addPlayerToEncounter(player);
+    addPlayerToEncounter(mapCharacterToEncounterPlayer(character));
   };
 
   const toggleAllPlayers = () => {
     if (areAllPlayersInEncounter) {
       encounter
-        .filter((e) => e.entityKind === "player")
-        .forEach((e) => removeEntityFromEncounter(e.id));
-    } else {
-      players.forEach((player) => {
-        if (!isPlayerInEncounter(player.name)) {
-          addPlayerToEncounter(player);
-        }
-      });
+        .filter((entry) => entry.entityKind === "player")
+        .forEach((entry) => removeEntityFromEncounter(entry.id));
+      return;
     }
+
+    campaignCharacters.forEach((character) => {
+      if (!isPlayerInEncounter(character.name)) {
+        addPlayerToEncounter(mapCharacterToEncounterPlayer(character));
+      }
+    });
   };
 
   const handleSaveEncounter = () => {
-    saveCurrentEncounter(encounterName);
+    saveCurrentEncounter(encounterName.trim());
   };
 
   const handleCreateNewEncounter = () => {
@@ -216,191 +300,243 @@ const Encounter = () => {
     ).values(),
   );
 
-  const relevantStatBlocks: StatBlockProps[] = uniqueEncounterEntities
+  const monsterStatBlocks: StatBlockProps[] = uniqueEncounterEntities
+    .filter((entry) => entry.entityKind !== "player")
     .map((entry) => getEntityByName(entry.entityKind, entry.entityName))
     .filter((entity): entity is StatBlockProps => entity !== undefined);
 
-  return (
-    <div>
+  const encounterPlayers = sortedEncounter
+    .filter((entry) => entry.entityKind === "player")
+    .map((entry) => {
+      const snapshotId = entry.playerSnapshot?.characterId;
+
+      const campaignCharacter = campaignCharacters.find((character) => {
+        if (snapshotId) return character.id === snapshotId;
+        return character.name === entry.entityName;
+      });
+
+      return {
+        entry,
+        campaignCharacter,
+      };
+    });
+
+  if (!campaignId) {
+    return (
       <Container>
-        <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
-          <div className="flex w-full flex-col gap-3">
-            <H1>Kamp</H1>
+        <div className="rounded-2xl border border-red-800 bg-red-500/10 p-4 text-sm text-red-300">
+          No campaign selected.
+        </div>
+      </Container>
+    );
+  }
 
-            <div className="mb-4 rounded border border-neutral-700 bg-neutral-800 p-3">
-              <p className="mb-2 font-medium text-yellow-500">Lagrede kamper</p>
+  return (
+    <Container>
+      <div className="space-y-6">
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5 shadow-sm">
+          <div className="mb-4 flex flex-col gap-2">
+            <H1>Encounter</H1>
+            <p className="text-sm text-neutral-400">
+              Manage initiative, turn order, and active characters from the
+              campaign.
+            </p>
+          </div>
 
-              <div className="mb-3 flex flex-wrap gap-2">
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <H3 className="mb-0">Campaign Characters</H3>
+
+                {campaignCharacters.length > 0 && (
+                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-yellow-700/60 bg-yellow-500/10 px-3 py-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={areAllPlayersInEncounter}
+                      onChange={toggleAllPlayers}
+                    />
+                    <span className="font-medium text-yellow-300">All</span>
+                  </label>
+                )}
+              </div>
+
+              {campaignCharactersLoading ? (
+                <p className="text-sm text-neutral-400">
+                  Loading campaign characters...
+                </p>
+              ) : campaignCharacters.length === 0 ? (
+                <p className="text-sm text-neutral-400">
+                  No characters found for this campaign.
+                </p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {campaignCharacters.map((character) => {
+                    const isChecked = isPlayerInEncounter(character.name);
+
+                    return (
+                      <button
+                        key={character.id}
+                        type="button"
+                        onClick={() => togglePlayerInEncounter(character)}
+                        className={`rounded-xl border px-3 py-2 text-left text-sm transition ${
+                          isChecked
+                            ? "border-green-700 bg-green-500/10 text-green-300"
+                            : "border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-neutral-600"
+                        }`}
+                      >
+                        <div className="font-medium">{character.name}</div>
+                        <div className="text-xs text-neutral-400">
+                          HP {character.currentHp ?? 1}/{character.maxHp ?? 1}
+                          {typeof character.level === "number"
+                            ? ` • Level ${character.level}`
+                            : ""}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
+              <H3 className="mb-3">Saved Encounters</H3>
+
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row">
                 <input
                   value={encounterName}
                   onChange={(e) => setEncounterName(e.target.value)}
-                  placeholder="Navn på kamp..."
-                  className="rounded border border-neutral-600 bg-neutral-900 px-3 py-2 text-white"
+                  placeholder="Encounter name..."
+                  className="flex-1 rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-600"
                 />
 
                 <button
                   onClick={handleSaveEncounter}
-                  className="rounded border border-green-700 bg-green-900 px-3 py-2 text-white"
+                  className="rounded-xl border border-green-700 bg-green-500/10 px-3 py-2 text-sm font-medium text-green-300 transition hover:bg-green-500/15"
                 >
-                  Lagre kamp
+                  Save
                 </button>
 
                 <button
                   onClick={handleCreateNewEncounter}
-                  className="rounded border border-neutral-600 bg-neutral-800 px-3 py-2 text-white"
+                  className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-200 transition hover:border-neutral-600"
                 >
-                  Ny kamp
+                  New Encounter
                 </button>
               </div>
 
-              <div className="flex flex-col gap-2">
+              <div className="space-y-2">
                 {savedEncounters.length === 0 ? (
                   <p className="text-sm text-neutral-400">
-                    Ingen lagrede kamper ennå.
+                    No saved encounters yet.
                   </p>
                 ) : (
                   savedEncounters.map((saved) => (
                     <div
                       key={saved.id}
-                      className={`flex items-center justify-between rounded border px-3 py-2 ${
+                      className={`flex items-center justify-between gap-3 rounded-xl border px-3 py-2 ${
                         activeEncounterId === saved.id
-                          ? "border-yellow-500 bg-neutral-700"
-                          : "border-neutral-600 bg-neutral-900"
+                          ? "border-yellow-700 bg-yellow-500/10"
+                          : "border-neutral-800 bg-neutral-900"
                       }`}
                     >
-                      <span>{saved.name}</span>
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-neutral-100">
+                          {saved.name}
+                        </p>
+                      </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex shrink-0 gap-2">
                         <button
                           onClick={() => handleLoadEncounter(saved.id)}
-                          className="rounded border border-blue-700 bg-blue-900 px-2 py-1 text-white"
+                          className="rounded-lg border border-blue-700 bg-blue-500/10 px-2.5 py-1.5 text-xs font-medium text-blue-300"
                         >
-                          Last inn
+                          Load
                         </button>
 
                         <button
                           onClick={() => handleDeleteEncounter(saved.id)}
-                          className="rounded border border-red-700 bg-red-900 px-2 py-1 text-white"
+                          className="rounded-lg border border-red-700 bg-red-500/10 px-2.5 py-1.5 text-xs font-medium text-red-300"
                         >
-                          Slett
+                          Delete
                         </button>
                       </div>
                     </div>
                   ))
                 )}
               </div>
-            </div>
-
-            <div className="mb-4">
-              <p className="mb-2 font-medium">Aktive spillere</p>
-
-              <div className="flex flex-wrap gap-2">
-                <label className="flex cursor-pointer items-center gap-2 rounded border border-yellow-700 bg-neutral-900 px-3 py-2">
-                  <input
-                    type="checkbox"
-                    checked={areAllPlayersInEncounter}
-                    onChange={toggleAllPlayers}
-                  />
-                  <span className="font-medium text-yellow-400">Alle</span>
-                </label>
-
-                {players.map((player) => {
-                  const isChecked = isPlayerInEncounter(player.name);
-
-                  return (
-                    <label
-                      key={player.name}
-                      className="flex cursor-pointer items-center gap-2 rounded border border-neutral-600 px-3 py-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => togglePlayerInEncounter(player.name)}
-                      />
-                      <span>{player.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            {encounter.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={rollInitiative}
-                  className="rounded border border-blue-700 bg-blue-900 px-2 py-1 text-white"
-                >
-                  <i className="fa-solid fa-play"></i> Start Kamp
-                </button>
-
-                <button
-                  onClick={previousTurn}
-                  className="rounded border border-neutral-600 bg-neutral-800 px-2 py-1 text-white"
-                >
-                  <i className="fa-solid fa-angle-left"></i> Forrige Tur
-                </button>
-
-                <button
-                  onClick={nextTurn}
-                  className="rounded border border-green-700 bg-green-900 px-2 py-1 text-white"
-                >
-                  <i className="fa-solid fa-angle-right"></i> Neste Tur
-                </button>
-
-                <button
-                  onClick={resetTurns}
-                  className="rounded border border-neutral-600 bg-neutral-800 px-2 py-1 text-white"
-                >
-                  <i className="fa-solid fa-arrow-rotate-left"></i> Tilbakestill
-                </button>
-
-                <button
-                  onClick={clearEncounter}
-                  className="rounded border border-red-700 bg-red-900 px-2 py-1 text-white"
-                >
-                  <i className="fa-solid fa-trash"></i> Slett Aktiv Kamp
-                </button>
-              </div>
-            )}
+            </section>
           </div>
         </div>
 
-        {encounter.length === 0 ? (
-          <p className="text-neutral-400">
-            Ingen karakterer lagt til ennå. Gå til Stats eller Players og legg
-            dem til i kampen.
-          </p>
-        ) : (
+        {encounter.length > 0 ? (
           <>
-            <div className="mb-8">
-              <div className="mb-2 flex items-center justify-between gap-3">
-                <H3 className="mb-0">Tur</H3>
-                <div className="flex items-center gap-4 text-sm text-neutral-300">
-                  <p>
-                    Runde{" "}
-                    <span className="font-semibold text-yellow-500">
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5 shadow-sm">
+              <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-300">
+                  <div className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2">
+                    Round{" "}
+                    <span className="font-semibold text-yellow-400">
                       {currentRound}
                     </span>
-                  </p>
+                  </div>
 
-                  {activeEntity && (
-                    <p>
-                      Aktiv karakter:{" "}
-                      <span className="font-semibold text-yellow-500">
-                        {activeEntity.displayName}
-                      </span>
-                    </p>
-                  )}
+                  <div className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2">
+                    Active{" "}
+                    <span className="font-semibold text-yellow-400">
+                      {activeEntity?.displayName ?? "—"}
+                    </span>
+                  </div>
                 </div>
 
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={rollInitiative}
+                    className="rounded-xl border border-blue-700 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-300"
+                  >
+                    Start Encounter
+                  </button>
+
+                  <button
+                    onClick={previousTurn}
+                    className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-200"
+                  >
+                    Previous Turn
+                  </button>
+
+                  <button
+                    onClick={nextTurn}
+                    className="rounded-xl border border-green-700 bg-green-500/10 px-3 py-2 text-sm font-medium text-green-300"
+                  >
+                    Next Turn
+                  </button>
+
+                  <button
+                    onClick={resetTurns}
+                    className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-medium text-neutral-200"
+                  >
+                    Reset
+                  </button>
+
+                  <button
+                    onClick={clearEncounter}
+                    className="rounded-xl border border-red-700 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-300"
+                  >
+                    Delete Active Encounter
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <H3 className="mb-0">Turn Order</H3>
+
                 <div className="flex items-center gap-2">
-                  <div className="min-w-8 text-center text-sm text-neutral-400">
+                  <div className="min-w-6 text-center text-xs text-neutral-500">
                     {hiddenLeftCount > 0 ? hiddenLeftCount : ""}
                   </div>
 
                   <button
                     onClick={() => scrollTracker("left")}
-                    className="rounded border border-neutral-600 bg-neutral-800 px-3 py-2 text-white"
+                    className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white"
                     title="Scroll left"
                   >
                     <i className="fa-solid fa-chevron-left"></i>
@@ -408,13 +544,13 @@ const Encounter = () => {
 
                   <button
                     onClick={() => scrollTracker("right")}
-                    className="rounded border border-neutral-600 bg-neutral-800 px-3 py-2 text-white"
+                    className="rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white"
                     title="Scroll right"
                   >
                     <i className="fa-solid fa-chevron-right"></i>
                   </button>
 
-                  <div className="min-w-8 text-center text-sm text-neutral-400">
+                  <div className="min-w-6 text-center text-xs text-neutral-500">
                     {hiddenRightCount > 0 ? hiddenRightCount : ""}
                   </div>
                 </div>
@@ -422,33 +558,9 @@ const Encounter = () => {
 
               <div
                 ref={trackerRef}
-                className="flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               >
                 {sortedEncounter.map((entry, index) => {
-                  const entity = getEntityByName(
-                    entry.entityKind,
-                    entry.entityName,
-                  );
-
-                  if (!entity) {
-                    return (
-                      <div
-                        key={entry.id}
-                        className="w-44 shrink-0 rounded border border-red-700 bg-neutral-800 p-3"
-                      >
-                        <p className="text-red-400">
-                          Entity data not found for: {entry.entityName}
-                        </p>
-                        <button
-                          onClick={() => removeEntityFromEncounter(entry.id)}
-                          className="mt-2 text-sm text-white underline"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    );
-                  }
-
                   const isPlayer = entry.entityKind === "player";
                   const isActive =
                     sortedEncounter[currentTurnIndex]?.id === entry.id;
@@ -459,60 +571,66 @@ const Encounter = () => {
                       ref={(el) => {
                         itemRefs.current[index] = el;
                       }}
-                      className={`w-44 shrink-0 rounded border-2 px-2 py-1 ${
+                      className={`w-56 shrink-0 rounded-2xl border p-3 transition ${
                         isActive
                           ? isPlayer
-                            ? "border-green-500 bg-neutral-800"
-                            : "border-yellow-500 bg-neutral-800"
-                          : "border-neutral-700 bg-neutral-800"
+                            ? "border-green-600 bg-green-500/10"
+                            : "border-yellow-600 bg-yellow-500/10"
+                          : "border-neutral-800 bg-neutral-950"
                       }`}
                     >
-                      <div className="mb-2 flex items-start justify-between gap-2">
+                      <div className="mb-3 flex items-start justify-between gap-2">
                         <input
                           value={entry.displayName}
                           onChange={(e) =>
                             renameEntity(entry.id, e.target.value)
                           }
-                          className={`min-w-0 flex-1 border-b bg-transparent font-semibold focus:outline-none ${
+                          className={`min-w-0 flex-1 border-b bg-transparent pb-1 font-semibold outline-none ${
                             isPlayer
-                              ? "border-neutral-600 text-green-400"
-                              : "border-neutral-600 text-yellow-500"
+                              ? "border-green-800 text-green-300"
+                              : "border-yellow-800 text-yellow-300"
                           }`}
                         />
 
                         <button
                           onClick={() => removeEntityFromEncounter(entry.id)}
-                          className="shrink-0 text-neutral-400 transition hover:text-red-400"
+                          className="shrink-0 text-neutral-500 transition hover:text-red-400"
                           title="Remove from encounter"
                         >
                           <i className="fa-solid fa-trash"></i>
                         </button>
                       </div>
 
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <label className="flex items-center gap-1">
-                          <span>
-                            <i className="fa-solid fa-heart"></i>
-                          </span>
-                          <input
-                            type="number"
-                            value={entry.currentHp}
-                            onChange={(e) =>
-                              updateEntityHp(entry.id, Number(e.target.value))
-                            }
-                            className="w-14 rounded border border-neutral-600 bg-neutral-900 px-2 py-1 text-white"
-                          />
-                          <span className="text-neutral-400">
-                            / {entry.maxHp}
-                          </span>
-                        </label>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-neutral-400">HP</span>
 
-                        <div className="flex items-center gap-2 text-neutral-200">
-                          <span>
-                            <i className="fa-solid fa-forward-fast"></i>
-                          </span>
-                          <span>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={entry.currentHp}
+                              onChange={(e) =>
+                                updateEntityHp(entry.id, Number(e.target.value))
+                              }
+                              className="w-16 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-right text-white"
+                            />
+                            <span className="text-neutral-500">
+                              / {entry.maxHp}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-neutral-400">Initiative</span>
+                          <span className="font-medium text-neutral-100">
                             {entry.initiative === "" ? "—" : entry.initiative}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-neutral-400">Type</span>
+                          <span className="capitalize text-neutral-300">
+                            {entry.entityKind}
                           </span>
                         </div>
                       </div>
@@ -522,22 +640,70 @@ const Encounter = () => {
               </div>
             </div>
 
-            <div>
-              <H3 className="mb-4">Stats</H3>
+            {encounterPlayers.length > 0 && (
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5 shadow-sm">
+                <H3 className="mb-4">Players in the Encounter</H3>
 
-              <div className="flex flex-wrap gap-4">
-                {relevantStatBlocks.map((entity) => (
-                  <StatBlock
-                    key={`${entity.type}-${entity.name}`}
-                    {...entity}
-                  />
-                ))}
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {encounterPlayers.map(({ entry, campaignCharacter }) => {
+                    const armorClass = entry.playerSnapshot?.armorClass ?? "—";
+                    const initiativeBonus =
+                      entry.playerSnapshot?.initiativeBonus;
+                    const passivePerception =
+                      getPassivePerception(campaignCharacter);
+                    const proficiencyBonus = getProficiencyBonus(
+                      campaignCharacter?.level,
+                    );
+
+                    return (
+                      <StatBlock
+                        key={entry.id}
+                        variant="player"
+                        name={entry.displayName}
+                        img={campaignCharacter?.imageUrl}
+                        quickView={{
+                          subtitle: buildPlayerSubtitle(campaignCharacter),
+                          armorClass,
+                          currentHp: entry.currentHp,
+                          maxHp: entry.maxHp,
+                          initiativeBonus:
+                            typeof initiativeBonus === "number"
+                              ? formatModifier(initiativeBonus)
+                              : undefined,
+                          passivePerception,
+                          proficiencyBonus:
+                            typeof proficiencyBonus === "number"
+                              ? formatModifier(proficiencyBonus)
+                              : undefined,
+                          conditions: campaignCharacter?.conditions ?? [],
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+
+            {monsterStatBlocks.length > 0 && (
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-5 shadow-sm">
+                <H3 className="mb-4">Stat Blocks</H3>
+
+                <div className="flex flex-wrap gap-4">
+                  {monsterStatBlocks.map((entity) => (
+                    <StatBlock key={`${entity.name}`} {...entity} />
+                  ))}
+                </div>
+              </div>
+            )}
           </>
+        ) : (
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-6 text-sm text-neutral-400 shadow-sm">
+            No characters have been added yet. Select players from the campaign
+            or add enemies to the encounter system.
+          </div>
         )}
-      </Container>
-    </div>
+      </div>
+    </Container>
   );
 };
 

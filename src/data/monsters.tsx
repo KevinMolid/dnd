@@ -28,7 +28,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Goblinoid), Chaotic Evil",
     img: "https://www.dndbeyond.com/avatars/thumbnails/47144/717/1000/1000/638742157685478339.png",
-    AC: "16 (Hide Armor, Shield)",
+    armorClass: 16,
+    armorClassNotes: "Hide Armor, Shield",
     HP: 27,
     speed: 30,
     stats: {
@@ -42,7 +43,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Stealth +6, Survival +2",
     senses: "Darkvision 60 ft., passive Perception 10",
     language: "Common, Goblin",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     traits: (
       <>
         <p className="mb-2">
@@ -83,7 +85,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Small Humanoid (Goblinoid), Neutral Evil",
     img: "https://www.aidedd.org/dnd/images/goblin.jpg",
-    AC: "15 (Leather Armor, Shield)",
+    armorClass: 15,
+    armorClassNotes: "Leather Armor, Shield",
     HP: 7,
     speed: 30,
     stats: {
@@ -97,7 +100,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Stealth +6",
     senses: "Darkvision 60 ft., passive Perception 9",
     language: "Common, Goblin",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     actions: (
       <>
         <p className="mb-2">
@@ -127,7 +131,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Small Humanoid (Goblinoid), Neutral Evil",
     img: Yegg,
-    AC: "15 (Leather Armor, Shield)",
+    armorClass: 15,
+    armorClassNotes: "Leather Armor, Shield",
     HP: 12,
     speed: 30,
     stats: {
@@ -141,7 +146,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Stealth +6, Intimidation +2",
     senses: "Darkvision 60 ft., passive Perception 9",
     language: "Common, Goblin",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     actions: (
       <>
         <p className="mb-2">
@@ -176,7 +182,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Small Humanoid (Goblinoid), Neutral Evil",
     img: Lhupo,
-    AC: "15 (Leather Armor, Shield)",
+    armorClass: 15,
+    armorClassNotes: "Leather Armor, Shield",
     HP: 12,
     speed: 30,
     stats: {
@@ -190,7 +197,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Stealth +6, Religion +3, Deception +2",
     senses: "Darkvision 60 ft., passive Perception 11",
     language: "Common, Goblin",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     actions: (
       <>
         <p className="mb-2">
@@ -235,7 +243,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Goblinoid), Lawful Evil",
     img: "https://www.belloflostsouls.net/wp-content/uploads/2023/07/hobgoblin-feat.jpg",
-    AC: "18 (Chain Mail, Shield)",
+    armorClass: 18,
+    armorClassNotes: "Chain Mail, Shield",
     HP: 11,
     speed: 30,
     stats: {
@@ -248,7 +257,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 10",
     language: "Common, Goblin",
-    CR: "1/2 (XP 100)",
+    challengeRating: "1/2",
+    xp: 100,
     traits: (
       <>
         <p>
@@ -286,7 +296,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Human, Wizard), Lawful Evil",
     img: "https://static.wikia.nocookie.net/rysarian/images/f/fa/Redwizard.jpg/revision/latest/smart/width/386/height/259?cb=20170422184717",
-    AC: "12 (16 with mage armor and staff of defense)",
+    armorClass: 12,
+    armorClassNotes: "16 with mage armor and staff of defense",
     HP: 22,
     speed: 30,
     stats: {
@@ -300,7 +311,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Arcana +5, History +5",
     senses: "Passive Perception 11",
     language: "Common, Draconic, Dwarvish, Elvish",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     traits: (
       <>
         <p>
@@ -354,7 +366,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Elf), Neutral Evil",
     img: "https://static.wikia.nocookie.net/dnd-angel-grove/images/0/07/Black_Spider_-_Nezzaria_Yauntyrr.jpg/revision/latest?cb=20160723130647",
-    AC: "11 (14 with mage armor)",
+    armorClass: 11,
+    armorClassNotes: "14 with mage armor",
     HP: 27,
     speed: 30,
     stats: {
@@ -368,7 +381,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Arcana +5, Perception +4, Stealth +3",
     senses: "Darkvision 120 ft.",
     language: "Elvish, Undercommon",
-    CR: "2 (XP 450)",
+    challengeRating: "2",
+    xp: 450,
     traits: (
       <>
         <p className="mb-2">
@@ -439,7 +453,7 @@ export const monsters: StatBlockProps[] = [
     type: "Aberration",
     description: "Medium Aberration, Neutral Evil",
     img: "https://files.d20.io/images/424035419/FcHd6uUNsi7DO7vulKUufg/original.png",
-    AC: "15",
+    armorClass: 15,
     HP: 45,
     speed: 30,
     stats: {
@@ -453,7 +467,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Arcana +3, Insight +4, Perception +4, Stealth +5",
     senses: "Truesight 120 ft., passive Perception 14",
     language: "Undercommon",
-    CR: "2 (XP 450)",
+    challengeRating: "2",
+    xp: 450,
     traits: (
       <>
         <p className="mb-2">
@@ -502,7 +517,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Human), Neutral Evil",
     img: "https://static.wikia.nocookie.net/forgottenrealms/images/2/28/Redbrand-ruffians.webp/revision/latest?cb=20231001232349https://static.wikia.nocookie.net/ian-melbourne-dnd/images/1/1c/Redbrand_Ruffian.png/revision/latest?cb=20180815091506https://www.aidedd.org/dnd/images/bandit.jpg",
-    AC: "14 (Studded Leather Armor)",
+    armorClass: 14,
+    armorClassNotes: "Studded Leather Armor",
     HP: 16,
     speed: 30,
     stats: {
@@ -515,7 +531,8 @@ export const monsters: StatBlockProps[] = [
     },
     skills: "Intimidation +2",
     language: "Common",
-    CR: "1/2 (XP 100)",
+    challengeRating: "1/2",
+    xp: 100,
     actions: (
       <>
         <p className="mb-2">
@@ -534,7 +551,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Goblinoid), Chaotic Evil",
     img: "https://static.wikia.nocookie.net/forgottenrealms/images/f/fa/Klarg-et-al.webp/revision/latest?cb=20231001230817",
-    AC: "16 (Hide Armor, Shield)",
+    armorClass: 16,
+    armorClassNotes: "Hide Armor, Shield",
     HP: 27,
     speed: 30,
     stats: {
@@ -548,7 +566,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Stealth +6, Survival +2",
     senses: "Darkvision 60 ft., passive Perception 10",
     language: "Common, Goblin",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     traits: (
       <>
         <p className="mb-2">
@@ -589,7 +608,8 @@ export const monsters: StatBlockProps[] = [
     type: "Beast",
     description: "Medium Beast, Unaligned",
     img: "data:image/jpeg;base64,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",
-    AC: "13 (Natural Armor)",
+    armorClass: 13,
+    armorClassNotes: "Natural Armor",
     HP: 11,
     speed: 40,
     stats: {
@@ -603,7 +623,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Perception +3, Stealth +4",
     senses: "Passive Perception 13",
     language: "-",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     traits: (
       <>
         <p>
@@ -634,7 +655,8 @@ export const monsters: StatBlockProps[] = [
     type: "Beast",
     description: "Large Beast, Unaligned",
     img: "https://angrygolem-games.com/wp-content/uploads/2023/09/Giant-Wolf-Spider.webp",
-    AC: "14 (Natural Armor)",
+    armorClass: 14,
+    armorClassNotes: "Natural Armor",
     HP: 26,
     speed: 30,
     stats: {
@@ -648,7 +670,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Stealth +7",
     senses: "Blindsight 10 ft., Darkvision 60 ft., passive Perception 10",
     language: "-",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     traits: (
       <>
         <p className="mb-2">
@@ -697,7 +720,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Small Humanoid (Goblinoid), Neutral Evil",
     img: "https://www.worldanvil.com/uploads/images/0ffc042c22d02cb1988052c9ff689a4f.jpg",
-    AC: "17 (Chain Shirt, Shield)",
+    armorClass: 17,
+    armorClassNotes: "Chain Shirt, Shield",
     HP: 21,
     speed: 30,
     stats: {
@@ -710,7 +734,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 9",
     language: "Common, Goblin",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     traits: (
       <>
         <p>
@@ -755,7 +780,8 @@ export const monsters: StatBlockProps[] = [
     type: "Undead",
     description: "Medium Undead, Lawful Evil",
     img: "https://www.belloflostsouls.net/wp-content/uploads/2022/09/skeleton-header-image-e1663959536234.jpg",
-    AC: "13 (Armor Scraps)",
+    armorClass: 13,
+    armorClassNotes: "Armor Scraps",
     HP: 13,
     speed: 30,
     stats: {
@@ -768,7 +794,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 9",
     language: "Understands the languages it knew in life but can't speak",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     traits: (
       <>
         <p>
@@ -796,7 +823,7 @@ export const monsters: StatBlockProps[] = [
     type: "Monstrosity",
     description: "Medium Monstrosity (Shapechanger), Neutral",
     img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQOgPWDyieDsAzUvdjlNOYLPbbis1Q3j6AubQ&shttps://www.dndbeyond.com/avatars/thumbnails/16/428/1000/1000/636376314975406467.jpeg",
-    AC: "14",
+    armorClass: 14,
     HP: 52,
     speed: 30,
     stats: {
@@ -810,7 +837,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Deception +6, Insight +3",
     senses: "Darkvision 60 ft., passive Perception 11",
     language: "Common",
-    CR: "3 (XP 700)",
+    challengeRating: "3",
+    xp: 700,
     traits: (
       <>
         <p className="mb-2">
@@ -859,7 +887,8 @@ export const monsters: StatBlockProps[] = [
     type: "Monstrosity",
     description: "Medium Monstrosity, Neutral",
     img: "https://static0.thegamerimages.com/wordpress/wp-content/uploads/2025/02/copy-of-untitled-2025-02-27t114454-528.jpg?q=49&fit=crop&w=825&dpr=2",
-    AC: "14 (Natural Armor)",
+    armorClass: 14,
+    armorClassNotes: "Natural Armor",
     HP: 27,
     speed: "30 ft., climb 30 ft.",
     stats: {
@@ -872,7 +901,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 12",
     language: "—",
-    CR: "2 (XP 450)",
+    challengeRating: "2",
+    xp: 450,
     traits: (
       <>
         <p className="mb-2">
@@ -911,7 +941,7 @@ export const monsters: StatBlockProps[] = [
     type: "Undead",
     description: "Medium Undead, Neutral Evil",
     img: "https://images.squarespace-cdn.com/content/v1/5dadaf88e03a4e6bb69307dd/1617289354531-B91NQJTNV3JTEC4E2IWO/d4b25f1a2cd491d1bd7bbdcd1b237859.jpg?format=1000w",
-    AC: "8",
+    armorClass: 8,
     HP: 22,
     speed: 20,
     stats: {
@@ -924,7 +954,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 8",
     language: "Understands the languages it knew in life but can't speak",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     traits: (
       <>
         <p>
@@ -949,7 +980,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Orc), Chaotic Evil",
     img: "https://thinkchristian-website.imgix.net/articleImages/2022/TC-DD-2022-craft.jpeg?auto=format%2Ccompress&crop=focalpoint&fit=crop&fp-x=0.5&fp-y=0.5&h=500&ixlib=php-1.1.0&q=80&w=800&s=a7b9ab23e95c0cb7f9b0ad2f3fd603fb",
-    AC: "13 (Hide Armor)",
+    armorClass: 13,
+    armorClassNotes: "Hide Armor",
     HP: 15,
     speed: 30,
     stats: {
@@ -963,7 +995,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Intimidation +2",
     senses: "Darkvision 60 ft., passive Perception 10",
     language: "Common, Orc",
-    CR: "1/2 (XP 100)",
+    challengeRating: "1/2",
+    xp: 100,
     traits: (
       <>
         <p>
@@ -992,7 +1025,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Orc), Chaotic Evil",
     img: "/Monsters/BrughorAxeBiter.png",
-    AC: "13 (Hide Armor)",
+    armorClass: 13,
+    armorClassNotes: "Hide Armor",
     HP: 30,
     speed: 30,
     stats: {
@@ -1006,7 +1040,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Intimidation +3",
     senses: "Darkvision 60 ft., passive Perception 10",
     language: "Common, Orc",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     traits: (
       <>
         <p className="mb-2">
@@ -1051,7 +1086,8 @@ export const monsters: StatBlockProps[] = [
     type: "Dragon",
     description: "Large Dragon, Lawful Evil",
     img: "https://static.wikia.nocookie.net/forgottenrealms/images/8/84/VenomFang.jpg/revision/latest?cb=20191007180410https://www.dndbeyond.com/avatars/thumbnails/16/431/1000/1000/636376315040015885.jpeg",
-    AC: "18 (Natural Armor)",
+    armorClass: 18,
+    armorClassNotes: "Natural Armor",
     HP: 136,
     speed: 40,
     stats: {
@@ -1065,7 +1101,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Deception +6, Insight +4, Perception +7, Stealth +4",
     senses: "Blindsight 30 ft., Darkvision 120 ft., passive Perception 17",
     language: "Common, Draconic",
-    CR: "8 (XP 3900)",
+    challengeRating: "8",
+    xp: 3900,
     traits: (
       <>
         <p>
@@ -1105,7 +1142,8 @@ export const monsters: StatBlockProps[] = [
     type: "Dragon",
     description: "Large Dragon, Lawful Evil",
     img: "https://static.wikia.nocookie.net/forgottenrealms/images/8/84/VenomFang.jpg/revision/latest?cb=20191007180410https://www.dndbeyond.com/avatars/thumbnails/16/431/1000/1000/636376315040015885.jpeg",
-    AC: "18 (Natural Armor)",
+    armorClass: 18,
+    armorClassNotes: "Natural Armor",
     HP: 136,
     speed: 40,
     stats: {
@@ -1119,7 +1157,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Deception +6, Insight +4, Perception +7, Stealth +4",
     senses: "Blindsight 30 ft., Darkvision 120 ft., passive Perception 17",
     language: "Common, Draconic",
-    CR: "8 (XP 3900)",
+    challengeRating: "8",
+    xp: 3900,
     traits: (
       <>
         <p>
@@ -1159,7 +1198,7 @@ export const monsters: StatBlockProps[] = [
     type: "Undead",
     description: "Medium Undead, Chaotic Evil",
     img: "https://www.dndbeyond.com/avatars/thumbnails/47138/842/1000/1000/638741964088762348.png",
-    AC: "12",
+    armorClass: 12,
     HP: 22,
     speed: 30,
     stats: {
@@ -1172,7 +1211,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 10",
     language: "Common",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     actions: (
       <>
         <p className="mb-2">
@@ -1196,7 +1236,8 @@ export const monsters: StatBlockProps[] = [
     type: "Aberration",
     description: "Medium Aberration, Lawful Neutral",
     img: "https://www.dndbeyond.com/attachments/10/790/332326_spectatorinroom_lilyabdullina.jpg",
-    AC: "14 (Natural Armor)",
+    armorClass: 14,
+    armorClassNotes: "Natural Armor",
     HP: 39,
     speed: 0,
     stats: {
@@ -1209,7 +1250,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 120 ft., passive Perception 12",
     language: "Deep Speech, Undercommon",
-    CR: "3 (XP 700)",
+    challengeRating: "3",
+    xp: 700,
     traits: (
       <>
         <p>
@@ -1258,7 +1300,7 @@ export const monsters: StatBlockProps[] = [
     type: "Undead",
     description: "Tiny Undead, Neutral Evil",
     img: "https://static0.thegamerimages.com/wordpress/wp-content/uploads/2024/04/flameskull.jpg?w=1600&h=900&fit=crop",
-    AC: "13",
+    armorClass: 13,
     HP: 40,
     speed: 0,
     stats: {
@@ -1272,7 +1314,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Arcana +5, Perception +2",
     senses: "Darkvision 60 ft., passive Perception 12",
     language: "Common",
-    CR: "4 (XP 1100)",
+    challengeRating: "4",
+    xp: 1100,
     traits: (
       <>
         <p className="mb-2">
@@ -1330,7 +1373,7 @@ export const monsters: StatBlockProps[] = [
     type: "Undead",
     description: "Medium Undead, Neutral Evil",
     img: "https://i.ytimg.com/vi/FpqAtMGIPeU/hq720.jpg?sqp=-oaymwEhCK4FEIIDSFryq4qpAxMIARUAAAAAGAElAADIQj0AgKJD&rs=AOn4CLA4eF4PG55906reOrf0_upmSfRKBg",
-    AC: "13",
+    armorClass: 13,
     HP: 67,
     speed: 0,
     stats: {
@@ -1343,7 +1386,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 12",
     language: "The languages it knew in life",
-    CR: "5 (XP 1800)",
+    challengeRating: "5",
+    xp: 1800,
     traits: (
       <>
         <p className="mb-2">
@@ -1384,7 +1428,8 @@ export const monsters: StatBlockProps[] = [
     type: "Giant",
     description: "Large Giant, Chaotic Evil",
     img: "https://www.aidedd.org/monster/img/ogre.jpg",
-    AC: "11 (Hide Armor)",
+    armorClass: 11,
+    armorClassNotes: "Hide Armor",
     HP: 59,
     speed: 40,
     stats: {
@@ -1397,7 +1442,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 8",
     language: "Common, Giant",
-    CR: "2 (XP 450)",
+    challengeRating: "2",
+    xp: 450,
     actions: (
       <>
         <p className="mb-2">
@@ -1419,7 +1465,8 @@ export const monsters: StatBlockProps[] = [
     type: "Plant",
     description: "Small Plant, Neutral Evil",
     img: "https://dungeonsolvers.com/wp-content/uploads/2024/06/artis0602_35038_best_and_powerful_pictures_of_The_Writhing_Thor_28c2d2e0-4bec-4bb4-8b2c-09a1bc6c54af.webp",
-    AC: "13 (Natural Armor)",
+    armorClass: 13,
+    armorClassNotes: "Natural Armor",
     HP: 4,
     speed: 20,
     stats: {
@@ -1434,7 +1481,8 @@ export const monsters: StatBlockProps[] = [
     senses:
       "Blindsight 60 ft. (blind beyond this radius), passive Perception 9",
     language: "—",
-    CR: "1/8 (XP 25)",
+    challengeRating: "1/8",
+    xp: 25,
     traits: (
       <>
         <p>
@@ -1457,7 +1505,7 @@ export const monsters: StatBlockProps[] = [
     type: "Undead",
     description: "Medium Undead, Neutral Evil",
     img: "https://static.wikia.nocookie.net/forgottenrealms/images/8/84/Ash-zombie.webp/revision/latest?cb=20231002214113https://www.dndbeyond.com/avatars/thumbnails/16/452/1000/1000/636376315448564641.jpeg",
-    AC: "8",
+    armorClass: 8,
     HP: 22,
     speed: 20,
     stats: {
@@ -1470,7 +1518,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Darkvision 60 ft., passive Perception 8",
     language: "Understands the languages it knew in life but can't speak",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     traits: (
       <>
         <p className="mb-2">
@@ -1502,7 +1551,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Any Race), Neutral Evil",
     img: "https://dungeonsolvers.com/wp-content/uploads/2024/03/artis0602_35038_Cultist_organizations_in_your_DD_campaign_can_s_566d47ad-786c-425f-af26-c0eaf2b34e5e.webp",
-    AC: "12 (Leather Armor)",
+    armorClass: 12,
+    armorClassNotes: "Leather Armor",
     HP: 9,
     speed: 30,
     stats: {
@@ -1516,7 +1566,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Deception +2, Religion +2",
     senses: "Passive Perception 10",
     language: "Any one language (usually Common)",
-    CR: "1/8 (XP 25)",
+    challengeRating: "1/8",
+    xp: 25,
     traits: (
       <>
         <p>
@@ -1539,7 +1590,7 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Any Race), Any Alignment",
     img: "",
-    AC: "10",
+    armorClass: 10,
     HP: 4,
     speed: 30,
     stats: {
@@ -1552,7 +1603,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Passive Perception 10",
     language: "Any (usually Common)",
-    CR: "0 (XP 10)",
+    challengeRating: "0",
+    xp: 10,
     actions: (
       <>
         <p>
@@ -1567,7 +1619,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Any Race), Any Alignment",
     img: "",
-    AC: "16 (Chain Shirt, Shield)",
+    armorClass: 16,
+    armorClassNotes: "Chain Shirt, Shield",
     HP: 11,
     speed: 30,
     stats: {
@@ -1580,7 +1633,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Passive Perception 10",
     language: "Any (usually Common)",
-    CR: "1/8 (XP 25)",
+    challengeRating: "1/8",
+    xp: 25,
     actions: (
       <>
         <p>
@@ -1597,7 +1651,7 @@ export const monsters: StatBlockProps[] = [
     type: "Beast",
     description: "Medium Beast, Unaligned",
     img: "",
-    AC: "12",
+    armorClass: 12,
     HP: 5,
     speed: 40,
     stats: {
@@ -1610,7 +1664,8 @@ export const monsters: StatBlockProps[] = [
     },
     skills: "Perception +3",
     senses: "Passive Perception 13",
-    CR: "1/8 (XP 25)",
+    challengeRating: "1/8",
+    xp: 25,
     traits: (
       <>
         <p>
@@ -1635,7 +1690,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Any Race), Any Non-Lawful Alignment",
     img: "",
-    AC: "12 (Leather Armor)",
+    armorClass: 12,
+    armorClassNotes: "Leather Armor",
     HP: 11,
     speed: 30,
     stats: {
@@ -1648,7 +1704,8 @@ export const monsters: StatBlockProps[] = [
     },
     senses: "Passive Perception 10",
     language: "Any one language (usually Common)",
-    CR: "1/8 (XP 25)",
+    challengeRating: "1/8",
+    xp: 25,
     actions: (
       <>
         <p className="mb-2">
@@ -1669,7 +1726,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Any Race), Any Non-Good Alignment",
     img: "",
-    AC: "11 (Leather Armor)",
+    armorClass: 11,
+    armorClassNotes: "Leather Armor",
     HP: 32,
     speed: 30,
     stats: {
@@ -1683,7 +1741,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Intimidation +2",
     senses: "Passive Perception 10",
     language: "Any one language (usually Common)",
-    CR: "1/2 (XP 100)",
+    challengeRating: "1/2",
+    xp: 100,
     traits: (
       <>
         <p>
@@ -1717,7 +1776,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Any Race), Any Alignment",
     img: "",
-    AC: "13 (Leather Armor)",
+    armorClass: 13,
+    armorClassNotes: "Leather Armor",
     HP: 16,
     speed: 30,
     stats: {
@@ -1731,7 +1791,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Nature +4, Perception +5, Stealth +6, Survival +5",
     senses: "Passive Perception 15",
     language: "Any one language (usually Common)",
-    CR: "1/2 (XP 100)",
+    challengeRating: "1/2",
+    xp: 100,
     traits: (
       <>
         <p>
@@ -1765,7 +1826,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Any Race), Any Alignment",
     img: "",
-    AC: "17 (Splint)",
+    armorClass: 17,
+    armorClassNotes: "Splint",
     HP: 58,
     speed: 30,
     stats: {
@@ -1779,7 +1841,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Athletics +5, Perception +2",
     senses: "Passive Perception 12",
     language: "Any one language (usually Common)",
-    CR: "3 (XP 700)",
+    challengeRating: "3",
+    xp: 700,
     actions: (
       <>
         <p className="mb-2">
@@ -1812,7 +1875,7 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Any Race), Any Alignment",
     img: "",
-    AC: "10",
+    armorClass: 10,
     HP: 9,
     speed: 30,
     stats: {
@@ -1826,7 +1889,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Medicine +4, Religion +2",
     senses: "Passive Perception 12",
     language: "Any one language (usually Common)",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     traits: (
       <>
         <p>
@@ -1858,7 +1922,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Human), Lawful Good",
     img: "https://static.wikia.nocookie.net/forgottenrealms/images/4/4b/Sildar-hallwinter.webp/revision/latest?cb=20230930202940",
-    AC: "16 (Chain Shirt, Shield)",
+    armorClass: 16,
+    armorClassNotes: "Chain Shirt, Shield",
     HP: 27,
     speed: 30,
     stats: {
@@ -1872,7 +1937,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Athletics +4, Insight +3, Perception +3, Persuasion +3",
     senses: "Passive Perception 13",
     language: "Common",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     traits: (
       <>
         <p className="mb-2">
@@ -1920,7 +1986,8 @@ export const monsters: StatBlockProps[] = [
     type: "Monstrosity",
     description: "Large Monstrosity, Unaligned",
     img: "https://static.wikia.nocookie.net/forgottenrealms/images/6/60/Owlbear_AFR.jpg/revision/latest?cb=20210702071532",
-    AC: "13 (Natural Armor)",
+    armorClass: 13,
+    armorClassNotes: "Natural Armor",
     HP: 59,
     speed: 40,
     stats: {
@@ -1933,7 +2000,8 @@ export const monsters: StatBlockProps[] = [
     },
     skills: "Perception +3",
     senses: "Darkvision 60 ft., Passive Perception 13",
-    CR: "3 (XP 700)",
+    challengeRating: "3",
+    xp: 700,
     traits: (
       <>
         <p>
@@ -1966,7 +2034,8 @@ export const monsters: StatBlockProps[] = [
     type: "Beast",
     description: "Medium Beast, Unaligned",
     img: "https://dungeonsolvers.com/wp-content/uploads/2024/12/artis0602_35038_In_Dungeons__Dragons_5th_Edition_the_black_bear_08e8333d-bb15-4b69-8e43-1ed01ee27f1e.webp",
-    AC: "11 (Natural Armor)",
+    armorClass: 11,
+    armorClassNotes: "Natural Armor",
     HP: 19,
     speed: "40 ft., climb 30 ft.",
     stats: {
@@ -1979,7 +2048,8 @@ export const monsters: StatBlockProps[] = [
     },
     skills: "Perception +3",
     senses: "Passive Perception 13",
-    CR: "1/2 (XP 100)",
+    challengeRating: "1/2",
+    xp: 100,
     traits: (
       <>
         <p>
@@ -2012,7 +2082,8 @@ export const monsters: StatBlockProps[] = [
     type: "Beast",
     description: "Large Beast, Unaligned",
     img: "https://static.wikia.nocookie.net/mythgate5884/images/2/25/Runebear1.jpg/revision/latest/thumbnail/width/360/height/360?cb=20230618031258",
-    AC: "11 (Natural Armor)",
+    armorClass: 11,
+    armorClassNotes: "Natural Armor",
     HP: 34,
     speed: "40 ft., climb 30 ft.",
     stats: {
@@ -2025,7 +2096,8 @@ export const monsters: StatBlockProps[] = [
     },
     skills: "Perception +3",
     senses: "Passive Perception 13",
-    CR: "1 (XP 200)",
+    challengeRating: "1",
+    xp: 200,
     traits: (
       <>
         <p>
@@ -2058,7 +2130,7 @@ export const monsters: StatBlockProps[] = [
     type: "Beast",
     description: "Medium Beast, Unaligned",
     img: "https://www.worldanvil.com/uploads/images/ea971ed87cae07e3f04746fc4de84595.jpg",
-    AC: "13",
+    armorClass: 13,
     HP: 11,
     speed: "40 ft., climb 40 ft.",
     stats: {
@@ -2071,7 +2143,8 @@ export const monsters: StatBlockProps[] = [
     },
     skills: "Perception +3, Stealth +7",
     senses: "Blindsight 10 ft., Darkvision 60 ft., Passive Perception 13",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     traits: (
       <>
         <p className="mb-2">
@@ -2111,7 +2184,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Goblinoid), Neutral Evil",
     img: "https://static.wikia.nocookie.net/the-hanged-three/images/0/09/King_Grol.jpg/revision/latest?cb=20170825204945",
-    AC: "17 (Hide Armor, Shield)",
+    armorClass: 17,
+    armorClassNotes: "Hide Armor, Shield",
     HP: 45,
     speed: 30,
     stats: {
@@ -2125,7 +2199,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Intimidation +3, Perception +2, Stealth +6",
     senses: "Darkvision 60 ft., Passive Perception 12",
     language: "Common, Goblin",
-    CR: "2 (XP 450)",
+    challengeRating: "2",
+    xp: 450,
     traits: (
       <>
         <p className="mb-2">
@@ -2160,7 +2235,8 @@ export const monsters: StatBlockProps[] = [
     type: "Beast",
     description: "Medium Beast, Unaligned",
     img: Snarl,
-    AC: "13 (Natural Armor)",
+    armorClass: 13,
+    armorClassNotes: "Natural Armor",
     HP: 18,
     speed: 40,
     stats: {
@@ -2174,7 +2250,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Perception +3, Stealth +4",
     senses: "Passive Perception 13",
     language: "-",
-    CR: "1/4 (XP 50)",
+    challengeRating: "1/4",
+    xp: 50,
     actions: (
       <>
         <p>
@@ -2206,7 +2283,7 @@ export const monsters: StatBlockProps[] = [
     type: "Monstrosity",
     description: "Medium Monstrosity (Shapechanger), Neutral",
     img: "/Monsters/Vyerith.png",
-    AC: "14",
+    armorClass: 14,
     HP: 52,
     speed: 30,
     stats: {
@@ -2220,7 +2297,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Deception +6, Insight +3",
     senses: "Darkvision 60 ft., passive Perception 11",
     language: "Common",
-    CR: "3 (XP 700)",
+    challengeRating: "3",
+    xp: 700,
     traits: (
       <>
         <p>
@@ -2260,7 +2338,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Human), Neutral Evil",
     img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRy-2qM8MEEOH_5bQ0wjiaAbxizb5JswqMDXQ&s",
-    AC: "12 (15 with mage armor)",
+    armorClass: 12,
+    armorClassNotes: "15 with mage armor",
     HP: 27,
     speed: 30,
     stats: {
@@ -2274,7 +2353,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Arcana +5, History +5, Religion +5",
     senses: "Passive Perception 11",
     language: "Common, Draconic",
-    CR: "3 (XP 700)",
+    challengeRating: "3",
+    xp: 700,
     traits: (
       <>
         <p>
@@ -2326,7 +2406,8 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Human), Neutral Good",
     img: "https://i.redd.it/pkf9aumn5gib1.png",
-    AC: "11 (14 with barkskin)",
+    armorClass: 11,
+    armorClassNotes: "14 with barkskin",
     HP: 22,
     speed: 30,
     stats: {
@@ -2340,7 +2421,8 @@ export const monsters: StatBlockProps[] = [
     skills: "Medicine +5, Nature +3, Perception +5, Survival +5",
     senses: "Passive Perception 15",
     language: "Common, Druidic, Elvish",
-    CR: "2 (XP 450)",
+    challengeRating: "2",
+    xp: 450,
     traits: (
       <>
         <p>
@@ -2393,7 +2475,7 @@ export const monsters: StatBlockProps[] = [
     type: "Humanoid",
     description: "Medium Humanoid (Dwarf), Neutral Good",
     img: "https://crossroadsofeternity.wordpress.com/wp-content/uploads/2015/08/gundren.jpg",
-    AC: "11",
+    armorClass: 11,
     HP: 9,
     speed: 25,
     stats: {
@@ -2407,7 +2489,8 @@ export const monsters: StatBlockProps[] = [
     skills: "History +3, Insight +2, Persuasion +3",
     senses: "Darkvision 60 ft., Passive Perception 10",
     language: "Common, Dwarvish",
-    CR: "0 (XP 10)",
+    challengeRating: "0",
+    xp: 10,
     traits: (
       <>
         <p className="mb-2">

@@ -6,6 +6,7 @@ import type { Money, PlayerCharacter } from "../data/players";
 import type { CampaignMap } from "../features/maps/types";
 
 type MapViewerProps = {
+  campaignId: string;
   map: CampaignMap | null;
   onClose: () => void;
   players: PlayerCharacter[];
@@ -146,6 +147,7 @@ const renderParagraphs = (
 };
 
 const MapViewer = ({
+  campaignId,
   map,
   onClose,
   players,
@@ -318,7 +320,7 @@ const MapViewer = ({
 
     loadEncounterTemplate(selectedRoom.encounterTemplate);
     onClose();
-    navigate("/kamp");
+    navigate(`/campaigns/${campaignId}/encounter`);
   };
 
   const zoomIn = () => {
@@ -510,8 +512,8 @@ const MapViewer = ({
                               </div>
                               <div className="mt-1 text-sm text-white/55">
                                 {room.monsters?.length
-                                  ? `${room.monsters.length} monster entry${
-                                      room.monsters.length === 1 ? "" : "ies"
+                                  ? `${room.monsters.length} monster entr${
+                                      room.monsters.length === 1 ? "y" : "ies"
                                     }`
                                   : "No monsters listed"}
                               </div>
@@ -538,7 +540,7 @@ const MapViewer = ({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <div className="text-xs uppercase tracking-wide text-white/50">
-                      Område {selectedRoom.id}
+                      Area {selectedRoom.id}
                     </div>
                     <h3 className="text-xl font-bold">{selectedRoom.name}</h3>
                   </div>
@@ -576,7 +578,7 @@ const MapViewer = ({
                 {selectedRoom.captives && selectedRoom.captives.length > 0 && (
                   <section className="space-y-2">
                     <div className="text-sm font-semibold text-white/90">
-                      Fanger
+                      Captives
                     </div>
                     {renderParagraphs(selectedRoom.captives)}
                   </section>
@@ -585,7 +587,7 @@ const MapViewer = ({
                 {selectedRoom.monsters && selectedRoom.monsters.length > 0 && (
                   <section className="space-y-2">
                     <div className="text-sm font-semibold text-white/90">
-                      Monstre
+                      Monsters
                     </div>
                     <div className="space-y-2">
                       {selectedRoom.monsters.map((monster, index) => (
@@ -612,7 +614,7 @@ const MapViewer = ({
                   selectedRoom.developments.length > 0 && (
                     <section className="space-y-2">
                       <div className="text-sm font-semibold text-white/90">
-                        Utvikling
+                        Developments
                       </div>
                       {renderParagraphs(selectedRoom.developments)}
                     </section>
@@ -621,7 +623,7 @@ const MapViewer = ({
                 {selectedRoom.treasure && selectedRoom.treasure.length > 0 && (
                   <section className="space-y-2">
                     <div className="text-sm font-semibold text-white/90">
-                      Skatter
+                      Treasure
                     </div>
 
                     <ul className="list-disc space-y-1 pl-5 text-sm text-white/75">
@@ -650,7 +652,7 @@ const MapViewer = ({
                           onClick={openTreasureModal}
                           className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-emerald-500"
                         >
-                          Fordel skatter
+                          Distribute treasure
                         </button>
                       </div>
                     )}
@@ -660,7 +662,7 @@ const MapViewer = ({
                 {selectedRoom.experience && (
                   <section className="space-y-2">
                     <div className="text-sm font-semibold text-white/90">
-                      Tildel Erfaringspoeng
+                      Award Experience
                     </div>
                     <p className="text-sm leading-6 text-white/75">
                       {selectedRoom.experience}
@@ -671,7 +673,7 @@ const MapViewer = ({
                 {selectedRoom.notes && selectedRoom.notes.length > 0 && (
                   <section className="space-y-2">
                     <div className="text-sm font-semibold text-white/90">
-                      DM-Notater
+                      DM Notes
                     </div>
                     <ul className="list-disc space-y-1 pl-5 text-sm text-white/75">
                       {selectedRoom.notes.map((note, index) => (
@@ -684,14 +686,14 @@ const MapViewer = ({
                 {selectedRoom.encounterTemplate && (
                   <section className="space-y-2">
                     <div className="text-sm font-semibold text-white/90">
-                      Kamp
+                      Encounter
                     </div>
                     <button
                       type="button"
                       onClick={openRoomEncounter}
                       className="rounded bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-500"
                     >
-                      Åpne kamp for dette rommet
+                      Open encounter for this room
                     </button>
                   </section>
                 )}
@@ -699,7 +701,7 @@ const MapViewer = ({
                 {selectedRoom.exits && selectedRoom.exits.length > 0 && (
                   <section className="space-y-2">
                     <div className="text-sm font-semibold text-white/90">
-                      Tilkoblede områder
+                      Connected Areas
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {selectedRoom.exits.map((exitRoomId) => (
@@ -712,7 +714,7 @@ const MapViewer = ({
                           }}
                           className="rounded bg-white/10 px-3 py-1 text-sm hover:bg-white/20"
                         >
-                          Område {exitRoomId}
+                          Area {exitRoomId}
                         </button>
                       ))}
                     </div>
@@ -729,10 +731,9 @@ const MapViewer = ({
           <div className="w-full max-w-2xl rounded-xl border border-white/10 bg-zinc-950 p-5 text-white shadow-2xl">
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-xl font-bold">Fordel skatter</h3>
+                <h3 className="text-xl font-bold">Distribute Treasure</h3>
                 <p className="text-sm text-white/60">
-                  Velg hvem som skal motta hver gjenstand fra{" "}
-                  {selectedRoom.name}.
+                  Choose who should receive each item from {selectedRoom.name}.
                 </p>
               </div>
 
@@ -741,7 +742,7 @@ const MapViewer = ({
                 onClick={closeTreasureModal}
                 className="rounded bg-red-500 px-3 py-1 text-sm hover:bg-red-600"
               >
-                Lukk
+                Close
               </button>
             </div>
 
@@ -784,7 +785,7 @@ const MapViewer = ({
                 onClick={closeTreasureModal}
                 className="rounded bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20"
               >
-                Avbryt
+                Cancel
               </button>
 
               <button
@@ -792,7 +793,7 @@ const MapViewer = ({
                 onClick={giveTreasure}
                 className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500"
               >
-                Gi skatter
+                Give Treasure
               </button>
             </div>
           </div>
