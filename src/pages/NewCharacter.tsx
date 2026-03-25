@@ -289,6 +289,10 @@ const NewCharacter = () => {
     ToolId | ""
   >("");
 
+  const [clericDivineOrder, setClericDivineOrder] = useState<
+    "protector" | "thaumaturge" | ""
+  >("");
+
   const [rogueExpertiseChoices, setRogueExpertiseChoices] = useState<
     Array<SkillId | "thieves-tools">
   >([]);
@@ -340,6 +344,11 @@ const NewCharacter = () => {
 
   const classStartingCantripChoiceCount =
     classSpellcasting?.cantrips?.chooseAtStart ?? 0;
+
+  const effectiveClassStartingCantripChoiceCount =
+    classId === "cleric" && clericDivineOrder === "thaumaturge"
+      ? classStartingCantripChoiceCount + 1
+      : classStartingCantripChoiceCount;
 
   const classStartingSpellChoiceConfig =
     classSpellcasting?.preparedSpells?.chooseAtStart ??
@@ -393,6 +402,7 @@ const NewCharacter = () => {
   );
 
   const isBarbarian = classId === "barbarian";
+  const isCleric = classId === "cleric";
   const isRogue = classId === "rogue";
 
   const selectedDragonbornAncestryId =
@@ -617,6 +627,7 @@ const NewCharacter = () => {
               rogueWeaponMasteryChoices,
             }
           : {}),
+        ...(isCleric && clericDivineOrder ? { clericDivineOrder } : {}),
       },
     });
   }, [
@@ -773,6 +784,10 @@ const NewCharacter = () => {
             }
           }
 
+          if (isCleric && !clericDivineOrder) {
+            return "Please choose a Divine Order.";
+          }
+
           const validTools = classToolChoices.every((tool) =>
             classToolOptions.includes(tool),
           );
@@ -786,10 +801,13 @@ const NewCharacter = () => {
           }
         }
 
-        if (classStartingCantripChoiceCount > 0) {
-          if (classCantripChoices.length !== classStartingCantripChoiceCount) {
-            return `Please choose ${classStartingCantripChoiceCount} class cantrip${
-              classStartingCantripChoiceCount === 1 ? "" : "s"
+        if (effectiveClassStartingCantripChoiceCount > 0) {
+          if (
+            classCantripChoices.length !==
+            effectiveClassStartingCantripChoiceCount
+          ) {
+            return `Please choose ${effectiveClassStartingCantripChoiceCount} class cantrip${
+              effectiveClassStartingCantripChoiceCount === 1 ? "" : "s"
             }.`;
           }
 
@@ -803,7 +821,7 @@ const NewCharacter = () => {
 
           if (
             new Set(classCantripChoices).size !==
-            classStartingCantripChoiceCount
+            effectiveClassStartingCantripChoiceCount
           ) {
             return "Class cantrip choices must be different.";
           }
@@ -1060,12 +1078,23 @@ const NewCharacter = () => {
   }, [needsBardStartingInstrument]);
 
   useEffect(() => {
+    if (!isCleric) {
+      setClericDivineOrder((prev) => (prev === "" ? prev : ""));
+      return;
+    }
+
+    setClericDivineOrder((prev) =>
+      prev === "protector" || prev === "thaumaturge" ? prev : "protector",
+    );
+  }, [isCleric]);
+
+  useEffect(() => {
     setClassCantripChoices((prev) => {
       const next = prev
         .filter((spellId) =>
           availableClassCantrips.some((spell) => spell.id === spellId),
         )
-        .slice(0, classStartingCantripChoiceCount);
+        .slice(0, effectiveClassStartingCantripChoiceCount);
 
       return arraysEqual(prev, next) ? prev : next;
     });
@@ -1086,7 +1115,7 @@ const NewCharacter = () => {
   }, [
     availableClassCantrips,
     availableClassStartingSpells,
-    classStartingCantripChoiceCount,
+    effectiveClassStartingCantripChoiceCount,
     classStartingSpellChoiceCount,
     classStartingSpellLevel,
   ]);
@@ -1327,7 +1356,7 @@ const NewCharacter = () => {
         return prev.filter((id) => id !== spellId);
       }
 
-      if (prev.length >= classStartingCantripChoiceCount) {
+      if (prev.length >= effectiveClassStartingCantripChoiceCount) {
         return prev;
       }
 
@@ -1492,10 +1521,16 @@ const NewCharacter = () => {
       }
     }
 
-    if (classStartingCantripChoiceCount > 0) {
-      if (classCantripChoices.length !== classStartingCantripChoiceCount) {
-        return `Please choose ${classStartingCantripChoiceCount} class cantrip${
-          classStartingCantripChoiceCount === 1 ? "" : "s"
+    if (isCleric && !clericDivineOrder) {
+      return "Please choose a Divine Order.";
+    }
+
+    if (effectiveClassStartingCantripChoiceCount > 0) {
+      if (
+        classCantripChoices.length !== effectiveClassStartingCantripChoiceCount
+      ) {
+        return `Please choose ${effectiveClassStartingCantripChoiceCount} class cantrip${
+          effectiveClassStartingCantripChoiceCount === 1 ? "" : "s"
         }.`;
       }
 
@@ -1508,7 +1543,8 @@ const NewCharacter = () => {
       }
 
       if (
-        new Set(classCantripChoices).size !== classStartingCantripChoiceCount
+        new Set(classCantripChoices).size !==
+        effectiveClassStartingCantripChoiceCount
       ) {
         return "Class cantrip choices must be different.";
       }
@@ -1747,6 +1783,7 @@ const NewCharacter = () => {
                 rogueWeaponMasteryChoices,
               }
             : {}),
+          ...(isCleric && clericDivineOrder ? { clericDivineOrder } : {}),
         },
         equipment: normalizedStartingEquipment,
         money: startingMoney,
@@ -1792,6 +1829,7 @@ const NewCharacter = () => {
                 rogueWeaponMasteryChoices,
               }
             : {}),
+          ...(isCleric && clericDivineOrder ? { clericDivineOrder } : {}),
         },
         derived,
         equipment: normalizedStartingEquipment,
@@ -2066,6 +2104,73 @@ const NewCharacter = () => {
                   </p>
                 </div>
 
+                {isCleric && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      Divine Order
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      Choose your sacred role.
+                    </p>
+
+                    <div className="space-y-3">
+                      <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
+                          clericDivineOrder === "protector"
+                            ? "border-white/25 bg-white/10"
+                            : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="cleric-divine-order"
+                          value="protector"
+                          checked={clericDivineOrder === "protector"}
+                          onChange={() => setClericDivineOrder("protector")}
+                          className="mt-1 h-4 w-4 border-white/20 bg-zinc-900"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            Protector
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-zinc-400">
+                            Gain proficiency with Martial weapons and training
+                            with Heavy armor.
+                          </p>
+                        </div>
+                      </label>
+
+                      <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${
+                          clericDivineOrder === "thaumaturge"
+                            ? "border-white/25 bg-white/10"
+                            : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="cleric-divine-order"
+                          value="thaumaturge"
+                          checked={clericDivineOrder === "thaumaturge"}
+                          onChange={() => setClericDivineOrder("thaumaturge")}
+                          className="mt-1 h-4 w-4 border-white/20 bg-zinc-900"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-white">
+                            Thaumaturge
+                          </p>
+                          <p className="mt-1 text-xs leading-5 text-zinc-400">
+                            Learn one extra Cleric cantrip and gain a bonus to
+                            Intelligence (Arcana or Religion) checks equal to
+                            your Wisdom modifier, minimum +1.
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 {classDef?.startingEquipment?.options?.length ? (
                   <div className="mt-8">
                     <h3 className="mb-4 text-lg font-semibold text-white">
@@ -2194,15 +2299,18 @@ const NewCharacter = () => {
                   </div>
                 )}
 
-                {classStartingCantripChoiceCount > 0 && (
+                {effectiveClassStartingCantripChoiceCount > 0 && (
                   <div className="mt-8">
                     <h3 className="mb-4 text-lg font-semibold text-white">
                       Class Cantrips
                     </h3>
 
                     <p className="mb-4 text-sm text-zinc-400">
-                      Choose {classStartingCantripChoiceCount} cantrip
-                      {classStartingCantripChoiceCount === 1 ? "" : "s"}.
+                      Choose {effectiveClassStartingCantripChoiceCount} cantrip
+                      {effectiveClassStartingCantripChoiceCount === 1
+                        ? ""
+                        : "s"}
+                      .
                     </p>
 
                     <div className="mb-4">

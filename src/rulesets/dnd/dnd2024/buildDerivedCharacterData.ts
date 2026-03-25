@@ -24,6 +24,7 @@ import type {
 } from "./types";
 
 import { mergeCircleOfTheLandDerivedSpells } from "./data/classes/druid/mergeCircleOfTheLandDerivedSpells";
+import { mergeClericDomainDerivedSpells } from "./data/classes/cleric/mergeClericDomainDerivedSpells";
 
 const uniqueById = <T extends { id: string }>(values: T[]): T[] => {
   const seen = new Set<string>();
@@ -423,9 +424,12 @@ export const buildDerivedCharacterData = (
     weaponProficiencies,
     languages,
     features,
-    spells: mergeCircleOfTheLandDerivedSpells(
+    spells: mergeClericDomainDerivedSpells(
       character,
-      character.derived?.spells ?? [],
+      mergeCircleOfTheLandDerivedSpells(
+        character,
+        character.derived?.spells ?? [],
+      ),
     ),
     expertise: [],
     weaponMasteries: [],

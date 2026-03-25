@@ -1128,6 +1128,9 @@ export type LevelUpDecision = {
   // Barbarian
   primalKnowledgeSkill?: SkillId;
 
+  // Cleric
+  clericDivineOrder?: "protector" | "thaumaturge";
+
   // Druid
   circleOfTheLandType?: "arid" | "polar" | "temperate" | "tropical";
   primalOrder?: "magician" | "warden";
@@ -1172,6 +1175,7 @@ export type CharacterChoices = {
   rogueBonusLanguage?: LanguageId;
   rogueWeaponMasteryChoices?: WeaponMasteryChoiceId[];
   barbarianWeaponMasteryChoices?: WeaponMasteryChoiceId[];
+  clericDivineOrder?: "protector" | "thaumaturge";
 
   preparedSpellIdsBySource?: Record<string, SpellId[]>;
 
