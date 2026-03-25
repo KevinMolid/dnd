@@ -1,3 +1,5 @@
+import { ManeuverId } from "./data/classes/fighter/maneuvers";
+
 export type Ability =
   | "str"
   | "dex"
@@ -86,7 +88,19 @@ export type Usage =
       recharge: RestType;
     };
 
+export type ResourceDie = "d4" | "d6" | "d8" | "d10" | "d12";
+
 export type TraitEffect =
+  | {
+      type: "resource";
+      resourceId: string;
+      amount: ScalingValue;
+    }
+  | {
+      type: "resource-die";
+      resourceId: string;
+      die: ResourceDie;
+    }
   | {
       type: "sense";
       sense: SenseType;
@@ -1149,6 +1163,7 @@ export type SpellSelectionsBySource = Record<string, SpellSelection[]>;
 export type CharacterChoices = {
   toolChoices?: ToolId[];
   languageChoices?: LanguageId[];
+  fighterManeuvers?: ManeuverId[];
 
   // Species
   speciesTraitChoices?: Record<string, string | string[]>;

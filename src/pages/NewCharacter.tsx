@@ -164,6 +164,12 @@ const speciesTraitChoicesEqual = (
 
 const formatTraitEffect = (effect: TraitEffect): string => {
   switch (effect.type) {
+    case "resource":
+      return `Resource: ${effect.resourceId}`;
+
+    case "resource-die":
+      return `${effect.resourceId} uses ${effect.die}`;
+
     case "sense":
       return `${formatLabel(effect.sense)} ${effect.range} ft.`;
 

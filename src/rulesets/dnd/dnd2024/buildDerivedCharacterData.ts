@@ -27,6 +27,7 @@ import type {
 
 import { mergeCircleOfTheLandDerivedSpells } from "./data/classes/druid/mergeCircleOfTheLandDerivedSpells";
 import { mergeClericDomainDerivedSpells } from "./data/classes/cleric/mergeClericDomainDerivedSpells";
+import { fighterManeuvers } from "./data/classes/fighter/maneuvers";
 
 const uniqueById = <T extends { id: string }>(values: T[]): T[] => {
   const seen = new Set<string>();
@@ -341,6 +342,8 @@ export const buildDerivedCharacterData = (
   const fighterFightingStyle = character.choices?.fighterFightingStyle;
   const fighterWeaponMasteryChoices =
     character.choices?.fighterWeaponMasteryChoices ?? [];
+  const fighterManeuverChoices =
+  character.choices?.fighterManeuvers ?? [];
 
   const skillProficiencies = unique<SkillId>([
     ...(backgroundDef?.skillProficiencies ?? []),
@@ -431,6 +434,18 @@ const features = uniqueById<CharacterFeature>([
   ...(classDef?.id === "fighter" && fighterFightingStyle
     ? [getFighterFightingStyleFeature(fighterFightingStyle)]
     : []),
+...(classDef?.id === "fighter"
+  ? fighterManeuverChoices
+      .map((id: string) => fighterManeuvers[id as keyof typeof fighterManeuvers])
+      .filter(Boolean)
+      .map((trait) => ({
+        id: trait.id,
+        name: trait.name,
+        level: trait.level ?? 3,
+        sourceType: "subclass" as const,
+        sourceId: "battle-master",
+      }))
+  : [])
 ]);
 
   const speciesMaxHpBonus = getSpeciesMaxHpBonus(speciesTraits, scalingContext);
