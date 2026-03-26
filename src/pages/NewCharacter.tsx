@@ -370,6 +370,14 @@ const NewCharacter = () => {
     WeaponMasteryChoiceId[]
   >([]);
 
+  const [wizardSpellbookChoices, setWizardSpellbookChoices] = useState<
+    SpellSelection[]
+  >([]);
+
+  const [wizardSpellbookPreviewSpell, setWizardSpellbookPreviewSpell] =
+    useState<SpellPreviewData | null>(null);
+
+  // Background
   const [backgroundFeatCantripChoices, setBackgroundFeatCantripChoices] =
     useState<SpellId[]>([]);
   const [backgroundFeatSpellChoices, setBackgroundFeatSpellChoices] = useState<
@@ -479,6 +487,7 @@ const NewCharacter = () => {
   const isCleric = classId === "cleric";
   const isFighter = classId === "fighter";
   const isRogue = classId === "rogue";
+  const isWizard = classId === "wizard";
 
   const selectedDragonbornAncestryId =
     speciesId === "dragonborn" &&
@@ -561,7 +570,7 @@ const NewCharacter = () => {
   const availableClassStartingSpells = useMemo(() => {
     if (!classSpellcasting || !classId) return [];
 
-    return getAvailableSpells(
+    const allAvailable = getAvailableSpells(
       {
         ownerUid: "",
         campaignId: null,
@@ -579,6 +588,18 @@ const NewCharacter = () => {
         includeCantrips: false,
       },
     ).filter((spell) => spell.level === classStartingSpellLevel);
+
+    if (!isWizard) {
+      return allAvailable;
+    }
+
+    const spellbookIds = new Set(
+      wizardSpellbookChoices
+        .filter((selection) => selection.level === classStartingSpellLevel)
+        .map((selection) => selection.spellId),
+    );
+
+    return allAvailable.filter((spell) => spellbookIds.has(spell.id));
   }, [
     abilityScores,
     effectiveOriginFeatId,
@@ -586,6 +607,39 @@ const NewCharacter = () => {
     classId,
     classSpellcasting,
     classStartingSpellLevel,
+    isWizard,
+    speciesId,
+    wizardSpellbookChoices,
+  ]);
+
+  const availableWizardStartingSpellbookSpells = useMemo(() => {
+    if (!isWizard || !classSpellcasting || !classId) return [];
+
+    return getAvailableSpells(
+      {
+        ownerUid: "",
+        campaignId: null,
+        name: "",
+        level: 1,
+        classId,
+        speciesId: speciesId || "human",
+        backgroundId: backgroundId || "acolyte",
+        originFeatId: effectiveOriginFeatId,
+        abilityScores,
+      } as CharacterSheetData,
+      {
+        spellListId: classSpellcasting.spellListId,
+        maxLevel: 1,
+        includeCantrips: false,
+      },
+    ).filter((spell) => spell.level === 1);
+  }, [
+    abilityScores,
+    effectiveOriginFeatId,
+    backgroundId,
+    classId,
+    classSpellcasting,
+    isWizard,
     speciesId,
   ]);
 
@@ -779,6 +833,9 @@ const NewCharacter = () => {
               },
             }
           : {}),
+        ...(wizardSpellbookChoices.length > 0
+          ? { wizardSpellbookChoices }
+          : {}),
         backgroundAbilityBonuses: {
           plus2: backgroundBonusPlus2,
           plus1: backgroundBonusPlus1,
@@ -822,6 +879,7 @@ const NewCharacter = () => {
     backgroundFeatSpellChoices,
     backgroundFeatSpellListId,
     isRogue,
+    wizardSpellbookChoices,
     rogueBonusLanguage,
     rogueExpertiseChoices,
     rogueWeaponMasteryChoices,
@@ -1128,6 +1186,31 @@ const NewCharacter = () => {
 
           if (new Set(rogueWeaponMasteryChoices).size !== 2) {
             return "Rogue weapon mastery choices must be different.";
+          }
+        }
+
+        if (isWizard) {
+          if (wizardSpellbookChoices.length !== 6) {
+            return "Please choose 6 level 1 Wizard spells for your spellbook.";
+          }
+
+          const validSpellbookSpells = wizardSpellbookChoices.every(
+            (selection) =>
+              selection.level === 1 &&
+              availableWizardStartingSpellbookSpells.some(
+                (spell) => spell.id === selection.spellId,
+              ),
+          );
+
+          if (!validSpellbookSpells) {
+            return "Please choose valid Wizard spellbook spells.";
+          }
+
+          if (
+            new Set(wizardSpellbookChoices.map((spell) => spell.spellId))
+              .size !== 6
+          ) {
+            return "Wizard spellbook choices must be different.";
           }
         }
 
@@ -1466,6 +1549,27 @@ const NewCharacter = () => {
       return arraysEqual(prev, next) ? prev : next;
     });
   }, [isFighter, classWeaponMasteryOptions, fighterWeaponMasteryChoiceCount]);
+
+  useEffect(() => {
+    if (!isWizard) {
+      setWizardSpellbookChoices((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+
+    setWizardSpellbookChoices((prev) => {
+      const next = prev
+        .filter(
+          (selection) =>
+            selection.level === 1 &&
+            availableWizardStartingSpellbookSpells.some(
+              (spell) => spell.id === selection.spellId,
+            ),
+        )
+        .slice(0, 6);
+
+      return spellSelectionsEqual(prev, next) ? prev : next;
+    });
+  }, [isWizard, availableWizardStartingSpellbookSpells]);
 
   useEffect(() => {
     setClassCantripChoices((prev) => {
@@ -1883,6 +1987,28 @@ const NewCharacter = () => {
     });
   };
 
+  const toggleWizardSpellbookChoice = (spellId: SpellId) => {
+    setWizardSpellbookChoices((prev) => {
+      const exists = prev.some((spell) => spell.spellId === spellId);
+
+      if (exists) {
+        return prev.filter((spell) => spell.spellId !== spellId);
+      }
+
+      if (prev.length >= 6) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          spellId,
+          level: 1,
+        },
+      ];
+    });
+  };
+
   const setSpeciesChoiceValue = (choiceId: string, value: string) => {
     setSpeciesTraitChoices((prev) => ({
       ...prev,
@@ -2002,6 +2128,30 @@ const NewCharacter = () => {
         )
       ) {
         return "One or more Fighter weapon mastery choices are invalid.";
+      }
+    }
+
+    if (isWizard) {
+      if (wizardSpellbookChoices.length !== 6) {
+        return "Please choose 6 level 1 Wizard spells for your spellbook.";
+      }
+
+      const validSpellbookSpells = wizardSpellbookChoices.every(
+        (selection) =>
+          selection.level === 1 &&
+          availableWizardStartingSpellbookSpells.some(
+            (spell) => spell.id === selection.spellId,
+          ),
+      );
+
+      if (!validSpellbookSpells) {
+        return "Please choose valid Wizard spellbook spells.";
+      }
+
+      if (
+        new Set(wizardSpellbookChoices.map((spell) => spell.spellId)).size !== 6
+      ) {
+        return "Wizard spellbook choices must be different.";
       }
     }
 
@@ -2225,6 +2375,15 @@ const NewCharacter = () => {
             }
           : undefined;
 
+      const spellbookSpellIdsBySource =
+        isWizard && wizardSpellbookChoices.length > 0
+          ? {
+              [`class:${classId}:spellbook`]: wizardSpellbookChoices.map(
+                (spell) => spell.spellId,
+              ),
+            }
+          : undefined;
+
       const baseCharacter: CharacterSheetData = {
         ownerUid: "",
         campaignId: null,
@@ -2243,6 +2402,10 @@ const NewCharacter = () => {
           ...(classCantripChoices.length > 0 ? { classCantripChoices } : {}),
           ...(classSpellChoices.length > 0 ? { classSpellChoices } : {}),
           ...(preparedSpellIdsBySource ? { preparedSpellIdsBySource } : {}),
+          ...(wizardSpellbookChoices.length > 0
+            ? { wizardSpellbookChoices }
+            : {}),
+          ...(spellbookSpellIdsBySource ? { spellbookSpellIdsBySource } : {}),
           backgroundAbilityBonuses: {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
@@ -2300,6 +2463,10 @@ const NewCharacter = () => {
           ...(classCantripChoices.length > 0 ? { classCantripChoices } : {}),
           ...(classSpellChoices.length > 0 ? { classSpellChoices } : {}),
           ...(preparedSpellIdsBySource ? { preparedSpellIdsBySource } : {}),
+          ...(wizardSpellbookChoices.length > 0
+            ? { wizardSpellbookChoices }
+            : {}),
+          ...(spellbookSpellIdsBySource ? { spellbookSpellIdsBySource } : {}),
           backgroundAbilityBonuses: {
             plus2: backgroundBonusPlus2,
             plus1: backgroundBonusPlus1,
@@ -2951,16 +3118,80 @@ const NewCharacter = () => {
                   </div>
                 )}
 
-                {classStartingSpellChoiceCount > 0 && (
+                {isWizard && (
                   <div className="mt-8">
                     <h3 className="mb-4 text-lg font-semibold text-white">
-                      Class Spells
+                      Wizard Spellbook
                     </h3>
 
                     <p className="mb-4 text-sm text-zinc-400">
-                      Choose {classStartingSpellChoiceCount} level{" "}
-                      {classStartingSpellLevel} spell
-                      {classStartingSpellChoiceCount === 1 ? "" : "s"}.
+                      Choose 6 level 1 spells for your spellbook.
+                    </p>
+
+                    <div className="mb-4">
+                      <SpellPreviewCard spell={wizardSpellbookPreviewSpell} />
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {availableWizardStartingSpellbookSpells.map((spell) => {
+                        const isSelected = wizardSpellbookChoices.some(
+                          (entry) => entry.spellId === spell.id,
+                        );
+
+                        return (
+                          <label
+                            key={spell.id}
+                            onMouseEnter={() =>
+                              setWizardSpellbookPreviewSpell(spell)
+                            }
+                            onFocus={() =>
+                              setWizardSpellbookPreviewSpell(spell)
+                            }
+                            onClick={() =>
+                              setWizardSpellbookPreviewSpell(spell)
+                            }
+                            className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
+                              isSelected
+                                ? "border-white/25 bg-white/10"
+                                : "border-white/10 bg-zinc-900/70 hover:bg-zinc-900"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() =>
+                                toggleWizardSpellbookChoice(spell.id)
+                              }
+                              className="h-4 w-4 rounded border-white/20 bg-zinc-900"
+                            />
+                            <span className="text-sm text-white">
+                              {spell.name}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    <p className="mt-3 text-xs text-zinc-500">
+                      Selected: {wizardSpellbookChoices.length} / 6
+                    </p>
+                  </div>
+                )}
+
+                {classStartingSpellChoiceCount > 0 && (
+                  <div className="mt-8">
+                    <h3 className="mb-4 text-lg font-semibold text-white">
+                      {isWizard ? "Prepared Spells" : "Class Spells"}
+                    </h3>
+
+                    <p className="mb-4 text-sm text-zinc-400">
+                      {isWizard
+                        ? `Choose ${classStartingSpellChoiceCount} level ${classStartingSpellLevel} prepared spell${
+                            classStartingSpellChoiceCount === 1 ? "" : "s"
+                          } from your spellbook.`
+                        : `Choose ${classStartingSpellChoiceCount} level ${classStartingSpellLevel} spell${
+                            classStartingSpellChoiceCount === 1 ? "" : "s"
+                          }.`}
                     </p>
 
                     <div className="mb-4">
@@ -3949,6 +4180,58 @@ const NewCharacter = () => {
                 )}
               </div>
             </div>
+
+            {isWizard && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Wizard Spellbook
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {wizardSpellbookChoices.length > 0 ? (
+                    wizardSpellbookChoices.map((selection) => {
+                      const spell = availableWizardStartingSpellbookSpells.find(
+                        (entry) => entry.id === selection.spellId,
+                      );
+
+                      return (
+                        <span
+                          key={selection.spellId}
+                          className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                        >
+                          {spell?.name ?? selection.spellId}
+                        </span>
+                      );
+                    })
+                  ) : (
+                    <p className="text-sm text-zinc-400">None selected</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {classSpellChoices.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  {isWizard ? "Prepared Spells" : "Class Spells"}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {classSpellChoices.map((selection) => {
+                    const spell = availableClassStartingSpells.find(
+                      (entry) => entry.id === selection.spellId,
+                    );
+
+                    return (
+                      <span
+                        key={selection.spellId}
+                        className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200"
+                      >
+                        {spell?.name ?? selection.spellId}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {isFighter && (
               <div>
