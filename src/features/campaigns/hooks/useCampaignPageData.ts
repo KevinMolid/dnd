@@ -8,6 +8,7 @@ import {
   updateDoc,
   where,
   UpdateData,
+  runTransaction,
 } from "firebase/firestore";
 
 import { useAuth } from "../../../context/AuthContext";
@@ -62,9 +63,13 @@ export type CampaignPageState =
   | "forbidden"
   | "error";
 
+type CampaignCharacterStatus = "inactive" | "active";
+
 export type CharacterDoc = {
-  ownerUid: string;
+  ownerUid: string | null;
+  createdByUid: string | null;
   campaignId: string | null;
+  campaignStatus?: CampaignCharacterStatus;
 
   name: string;
   imageUrl?: string;
@@ -107,16 +112,18 @@ export type AppUserDoc = {
 export type CampaignCharacter = {
   id: string;
   imageUrl?: string;
-  ownerUid: string;
+  ownerUid: string | null;
+  createdByUid?: string | null;
   ownerName?: string;
   ownerEmail?: string;
   campaignId: string | null;
+  campaignStatus: CampaignCharacterStatus;
 
   name: string;
   race?: string;
   className?: string;
-  classId: string;
-  speciesId: string;
+  classId?: string;
+  speciesId?: string;
 
   level?: number;
   derivedLevel?: number;
@@ -161,6 +168,9 @@ export const formatRoleLabel = (role: CampaignRole) => {
   if (role === "co-gm") return "Co-GM";
   return "Player";
 };
+
+export const getCampaignStatus = (value: unknown): CampaignCharacterStatus =>
+  value === "active" ? "active" : "inactive";
 
 export const getRoleBadgeClass = (role: CampaignRole) => {
   if (role === "gm") {
@@ -326,7 +336,7 @@ export const useCampaignPageData = (campaignId?: string) => {
           const nextCharacters = await Promise.all(
             snapshot.docs.map(async (characterSnap) => {
               const data = characterSnap.data() as CharacterDoc;
-              const owner = usersById[data.ownerUid];
+              const owner = data.ownerUid ? usersById[data.ownerUid] : undefined;;
 
               const ownerName = owner?.displayName ?? "";
               const ownerEmail = owner?.email ?? "";
@@ -341,10 +351,12 @@ export const useCampaignPageData = (campaignId?: string) => {
 
               return {
                 id: characterSnap.id,
-                ownerUid: data.ownerUid,
+                ownerUid: data.ownerUid ?? null,
+                createdByUid: data.createdByUid ?? null,
                 ownerName,
                 ownerEmail,
                 campaignId: data.campaignId,
+                campaignStatus: getCampaignStatus(data.campaignStatus),
 
                 name: data.name,
                 imageUrl: data.imageUrl,
@@ -617,6 +629,49 @@ const handleLevelUp = useCallback(
     [campaignCharacters, updateCharacterXp],
   );
 
+    const handleClaimCharacter = useCallback(
+    async (characterId: string) => {
+      if (!user || !campaignId) return;
+
+      try {
+        await runTransaction(db, async (transaction) => {
+          const characterRef = doc(db, "characters", characterId);
+          const characterSnap = await transaction.get(characterRef);
+
+          if (!characterSnap.exists()) {
+            throw new Error("Character not found.");
+          }
+
+          const data = characterSnap.data() as CharacterDoc;
+
+          if (data.campaignId !== campaignId) {
+            throw new Error("Character is no longer in this campaign.");
+          }
+
+          if (data.ownerUid !== null) {
+            throw new Error("Character has already been claimed.");
+          }
+
+          transaction.update(characterRef, {
+            ownerUid: user.uid,
+          });
+        });
+      } catch (error) {
+        console.error("Failed to claim character:", error);
+      }
+    },
+    [campaignId, user],
+  );
+
+    const handleSetCharacterActive = useCallback(
+    async (characterId: string) => {
+      await updateCharacter(characterId, {
+        campaignStatus: "active",
+      });
+    },
+    [updateCharacter],
+  );
+
   return {
     user,
     pageState,
@@ -638,9 +693,11 @@ const handleLevelUp = useCallback(
     toggleCondition,
     handleLevelUp,
     handleApplyXp,
+    handleClaimCharacter,
 
     latestJournalEntry,
     latestJournalEntryLoading,
+    handleSetCharacterActive,
   };
 };
 

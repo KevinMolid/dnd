@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import InvitePlayersModal from "../components/InvitePlayersModal";
@@ -11,6 +11,8 @@ import CampaignMembersSection from "../features/campaigns/components/CampaignMem
 import CampaignQuickActions from "../features/campaigns/components/CampaignQuickActions";
 import PartyControlSection from "../features/campaigns/components/PartyControlSection";
 import CampaignRecentActivitySection from "../features/campaigns/components/CampaignRecentActivitySection";
+import ClaimableCharactersSection from "../features/campaigns/components/ClaimableCharactersSection";
+import InactiveOwnedCharactersSection from "../features/campaigns/components/InactiveOwnedCharactersSection";
 import useCampaignPageData, {
   type CampaignCharacter,
 } from "../features/campaigns/hooks/useCampaignPageData";
@@ -35,6 +37,8 @@ const CampaignPage = () => {
     updateCharacterXp,
     toggleCondition,
     handleLevelUp,
+    handleClaimCharacter,
+    handleSetCharacterActive,
   } = useCampaignPageData(campaignId);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -42,6 +46,28 @@ const CampaignPage = () => {
   const [xpModalOpen, setXpModalOpen] = useState(false);
   const [levelUpCharacter, setLevelUpCharacter] =
     useState<CampaignCharacter | null>(null);
+  const claimableCharacters = useMemo(
+    () => campaignCharacters.filter((character) => character.ownerUid === null),
+    [campaignCharacters],
+  );
+
+  const activeCampaignCharacters = useMemo(
+    () =>
+      campaignCharacters.filter(
+        (character) => character.campaignStatus === "active",
+      ),
+    [campaignCharacters],
+  );
+
+  const myInactiveCampaignCharacters = useMemo(
+    () =>
+      campaignCharacters.filter(
+        (character) =>
+          character.ownerUid === (user?.uid ?? null) &&
+          character.campaignStatus === "inactive",
+      ),
+    [campaignCharacters, user?.uid],
+  );
 
   if (pageState === "loading") {
     return (
@@ -143,7 +169,7 @@ const CampaignPage = () => {
         member.displayName?.trim() || member.email?.trim() || "Unnamed player",
     }));
 
-  const awardXpCharacters = campaignCharacters.map((character) => ({
+  const awardXpCharacters = activeCampaignCharacters.map((character) => ({
     id: character.id,
     name: character.name,
     level: character.level ?? 1,
@@ -171,7 +197,7 @@ const CampaignPage = () => {
             )}
 
             <PartyControlSection
-              characters={campaignCharacters}
+              characters={activeCampaignCharacters}
               isGm={isGm}
               currentUserId={user?.uid ?? null}
               onOpenLevelUp={setLevelUpCharacter}
@@ -180,20 +206,33 @@ const CampaignPage = () => {
               onUpdateCharacterXp={updateCharacterXp}
               onToggleCondition={toggleCondition}
             />
+
+            <ClaimableCharactersSection
+              characters={claimableCharacters}
+              loading={false}
+              isGm={isGm}
+              onClaimCharacter={handleClaimCharacter}
+            />
+
+            <InactiveOwnedCharactersSection
+              characters={myInactiveCampaignCharacters}
+              loading={false}
+              onActivateCharacter={handleSetCharacterActive}
+            />
           </div>
 
           <aside className="space-y-6">
+            <CampaignRecentActivitySection
+              campaignId={campaign.id}
+              loading={latestJournalEntryLoading}
+              latestJournalEntry={latestJournalEntry}
+            />
+
             <CampaignMembersSection
               members={members}
               loading={membersLoading}
               isGm={isGm}
               onInvitePlayers={() => setInviteModalOpen(true)}
-            />
-
-            <CampaignRecentActivitySection
-              campaignId={campaign.id}
-              loading={latestJournalEntryLoading}
-              latestJournalEntry={latestJournalEntry}
             />
           </aside>
         </div>
