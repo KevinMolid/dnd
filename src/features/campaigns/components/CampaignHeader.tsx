@@ -90,6 +90,13 @@ const CampaignHeader = ({
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-auto rtl-grid">
             <Link
+              to={`/campaigns/${campaign.id}/handouts`}
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
+            >
+              Handouts
+            </Link>
+
+            <Link
               to={`/campaigns/${campaign.id}/journal`}
               className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
             >
@@ -117,13 +124,6 @@ const CampaignHeader = ({
                   className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
                 >
                   Encounters
-                </Link>
-
-                <Link
-                  to={`/campaigns/${campaign.id}/handouts`}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
-                >
-                  Handouts
                 </Link>
               </>
             )}

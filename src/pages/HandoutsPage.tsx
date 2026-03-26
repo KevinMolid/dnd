@@ -9,6 +9,7 @@ import {
   orderBy,
   query,
   Timestamp,
+  where,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -167,38 +168,125 @@ export default function HandoutsPage() {
   }, [campaignId, user]);
 
   useEffect(() => {
-    if (!user || !campaignId) {
+    if (!user || !campaignId || !membership) {
       setHandouts([]);
       setLoadingHandouts(false);
       return;
     }
 
     const safeCampaignId = campaignId;
+    const handoutsRef = collection(db, "campaigns", safeCampaignId, "handouts");
+
     setLoadingHandouts(true);
 
-    const handoutsRef = collection(db, "campaigns", safeCampaignId, "handouts");
-    const q = query(handoutsRef, orderBy("createdAt", "desc"));
+    if (membership.role === "gm" || membership.role === "co-gm") {
+      const q = query(handoutsRef, orderBy("createdAt", "desc"));
 
-    const unsub = onSnapshot(
-      q,
+      const unsub = onSnapshot(
+        q,
+        (snapshot) => {
+          const next: HandoutWithId[] = snapshot.docs.map((docSnap) => ({
+            id: docSnap.id,
+            ...(docSnap.data() as CampaignHandoutDoc),
+          }));
+
+          setHandouts(next);
+          setLoadingHandouts(false);
+        },
+        (error) => {
+          console.error("Failed to load handouts:", error);
+          setHandouts([]);
+          setLoadingHandouts(false);
+        },
+      );
+
+      return () => unsub();
+    }
+
+    const visibleToAllQuery = query(
+      handoutsRef,
+      where("visibility", "==", "allPlayers"),
+      orderBy("createdAt", "desc"),
+    );
+
+    const visibleToSelectedQuery = query(
+      handoutsRef,
+      where("visibility", "==", "selectedPlayers"),
+      where("visibleToPlayerUids", "array-contains", user.uid),
+      orderBy("createdAt", "desc"),
+    );
+
+    let allPlayersDocs: HandoutWithId[] = [];
+    let selectedPlayerDocs: HandoutWithId[] = [];
+    let finishedCount = 0;
+
+    const syncMerged = () => {
+      const mergedMap = new Map<string, HandoutWithId>();
+
+      [...allPlayersDocs, ...selectedPlayerDocs].forEach((handout) => {
+        mergedMap.set(handout.id, handout);
+      });
+
+      const merged = Array.from(mergedMap.values()).sort((a, b) => {
+        const aTime = a.createdAt?.toMillis?.() ?? 0;
+        const bTime = b.createdAt?.toMillis?.() ?? 0;
+        return bTime - aTime;
+      });
+
+      setHandouts(merged);
+      setLoadingHandouts(false);
+    };
+
+    const handleInitialLoad = () => {
+      finishedCount += 1;
+      if (finishedCount >= 2) {
+        syncMerged();
+      }
+    };
+
+    const unsubAll = onSnapshot(
+      visibleToAllQuery,
       (snapshot) => {
-        const next: HandoutWithId[] = snapshot.docs.map((docSnap) => ({
+        allPlayersDocs = snapshot.docs.map((docSnap) => ({
           id: docSnap.id,
           ...(docSnap.data() as CampaignHandoutDoc),
         }));
-
-        setHandouts(next);
-        setLoadingHandouts(false);
+        handleInitialLoad();
+        if (finishedCount >= 2) {
+          syncMerged();
+        }
       },
       (error) => {
-        console.error("Failed to load handouts:", error);
-        setHandouts([]);
-        setLoadingHandouts(false);
+        console.error("Failed to load public handouts:", error);
+        allPlayersDocs = [];
+        handleInitialLoad();
       },
     );
 
-    return () => unsub();
-  }, [campaignId, user]);
+    const unsubSelected = onSnapshot(
+      visibleToSelectedQuery,
+      (snapshot) => {
+        selectedPlayerDocs = snapshot.docs.map((docSnap) => ({
+          id: docSnap.id,
+          ...(docSnap.data() as CampaignHandoutDoc),
+        }));
+        handleInitialLoad();
+        if (finishedCount >= 2) {
+          syncMerged();
+        }
+      },
+      (error) => {
+        console.error("Failed to load selected handouts:", error);
+        selectedPlayerDocs = [];
+        handleInitialLoad();
+      },
+    );
+
+    return () => {
+      unsubAll();
+      unsubSelected();
+    };
+  }, [campaignId, user, membership]);
 
   const isGm = membership?.role === "gm" || membership?.role === "co-gm";
 
@@ -292,9 +380,15 @@ export default function HandoutsPage() {
                   : `${campaign?.name ?? "Campaign"} Handouts`}
               </h1>
 
-              <p className="mt-1 text-sm text-zinc-400">
-                Create and manage shared player handouts.
-              </p>
+              {isGm ? (
+                <p className="mt-1 text-sm text-zinc-400">
+                  Create and manage shared player handouts.
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-zinc-400">
+                  See player handouts shared with you.
+                </p>
+              )}
             </div>
 
             {isGm ? (

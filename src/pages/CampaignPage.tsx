@@ -162,11 +162,13 @@ const CampaignPage = () => {
 
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="space-y-6">
-            <CampaignQuickActions
-              campaignId={campaign.id}
-              isGm={isGm}
-              onCreateHandout={() => setCreateHandoutOpen(true)}
-            />
+            {isGm && (
+              <CampaignQuickActions
+                campaignId={campaign.id}
+                isGm={isGm}
+                onCreateHandout={() => setCreateHandoutOpen(true)}
+              />
+            )}
 
             <PartyControlSection
               characters={campaignCharacters}
