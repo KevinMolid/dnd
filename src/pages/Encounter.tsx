@@ -173,7 +173,7 @@ const Encounter = () => {
 
   useEffect(() => {
     if (!activeEncounterId) {
-      setEncounterName("");
+      setEncounterName((prev) => (prev === "" ? prev : ""));
       return;
     }
 
@@ -181,9 +181,8 @@ const Encounter = () => {
       (saved) => saved.id === activeEncounterId,
     );
 
-    if (activeSavedEncounter) {
-      setEncounterName(activeSavedEncounter.name);
-    }
+    const nextName = activeSavedEncounter?.name ?? "";
+    setEncounterName((prev) => (prev === nextName ? prev : nextName));
   }, [activeEncounterId, savedEncounters]);
 
   const sortedEncounter = useMemo(() => {
@@ -203,31 +202,65 @@ const Encounter = () => {
 
   const activeEntity = sortedEncounter[currentTurnIndex];
 
+  const campaignCharactersById = useMemo(() => {
+    return new Map(
+      campaignCharacters.map((character) => [character.id, character]),
+    );
+  }, [campaignCharacters]);
+
+  const campaignCharactersByName = useMemo(() => {
+    return new Map(
+      campaignCharacters.map((character) => [character.name, character]),
+    );
+  }, [campaignCharacters]);
+
   const findCampaignCharacterForEntry = (
     entry: (typeof encounter)[number],
   ): CampaignCharacter | undefined => {
     const snapshotId = entry.playerSnapshot?.characterId;
 
-    return campaignCharacters.find((character) => {
-      if (snapshotId) return character.id === snapshotId;
-      return character.name === entry.entityName;
-    });
+    if (snapshotId) {
+      return campaignCharactersById.get(snapshotId);
+    }
+
+    return campaignCharactersByName.get(entry.entityName);
   };
 
-  useEffect(() => {
-    encounter
+  const hpSyncQueue = useMemo(() => {
+    return encounter
       .filter((entry) => entry.entityKind === "player")
-      .forEach((entry) => {
+      .map((entry) => {
         const campaignCharacter = findCampaignCharacterForEntry(entry);
-        if (!campaignCharacter) return;
+        if (!campaignCharacter) return null;
 
         const liveHp = getLiveCharacterHp(campaignCharacter);
 
-        if (entry.currentHp !== liveHp.currentHp) {
-          updateEntityHp(entry.id, liveHp.currentHp);
+        if (entry.currentHp === liveHp.currentHp) {
+          return null;
         }
-      });
-  }, [campaignCharacters, encounter, updateEntityHp]);
+
+        return {
+          entryId: entry.id,
+          nextHp: liveHp.currentHp,
+        };
+      })
+      .filter(
+        (
+          item,
+        ): item is {
+          entryId: string;
+          nextHp: number;
+        } => item !== null,
+      );
+  }, [encounter, campaignCharactersById, campaignCharactersByName]);
+
+  useEffect(() => {
+    if (hpSyncQueue.length === 0) return;
+
+    hpSyncQueue.forEach(({ entryId, nextHp }) => {
+      updateEntityHp(entryId, nextHp);
+    });
+  }, [hpSyncQueue, updateEntityHp]);
 
   const isPlayerInEncounter = (playerName: string) =>
     encounter.some(

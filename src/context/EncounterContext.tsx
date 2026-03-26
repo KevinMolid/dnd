@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -364,7 +365,9 @@ export const EncounterProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const initialData = loadEncounterFromStorage();
+  const [initialData] = useState<EncounterStorageData>(() =>
+    loadEncounterFromStorage(),
+  );
 
   const [encounter, setEncounter] = useState<EncounterEntry[]>(
     initialData.activeEncounter.encounter,
@@ -421,31 +424,48 @@ export const EncounterProvider = ({
   useEffect(() => {
     if (!activeEncounterId) return;
 
-    setSavedEncounters((prev) =>
-      prev.map((saved) =>
-        saved.id === activeEncounterId
-          ? {
-              ...saved,
-              encounter: cloneEncounter(encounter),
-              currentTurnIndex,
-              currentRound,
-            }
-          : saved,
-      ),
-    );
+    setSavedEncounters((prev) => {
+      let changed = false;
+
+      const next = prev.map((saved) => {
+        if (saved.id !== activeEncounterId) return saved;
+
+        const sameTurnIndex = saved.currentTurnIndex === currentTurnIndex;
+        const sameRound = saved.currentRound === currentRound;
+        const sameEncounter =
+          JSON.stringify(saved.encounter) === JSON.stringify(encounter);
+
+        if (sameTurnIndex && sameRound && sameEncounter) {
+          return saved;
+        }
+
+        changed = true;
+        return {
+          ...saved,
+          encounter: cloneEncounter(encounter),
+          currentTurnIndex,
+          currentRound,
+        };
+      });
+
+      return changed ? next : prev;
+    });
   }, [encounter, currentTurnIndex, currentRound, activeEncounterId]);
 
-  const getEntityByName = (
-    entityKind: EncounterEntityKind,
-    name: string,
-  ): MonsterEncounterSource | undefined => {
-    if (entityKind !== "monster") return undefined;
+  const getEntityByName = useCallback(
+    (
+      entityKind: EncounterEntityKind,
+      name: string,
+    ): MonsterEncounterSource | undefined => {
+      if (entityKind !== "monster") return undefined;
 
-    const monster = monsters.find((monster) => monster.name === name);
-    return monster && isMonsterStatBlock(monster) ? monster : undefined;
-  };
+      const monster = monsters.find((monster) => monster.name === name);
+      return monster && isMonsterStatBlock(monster) ? monster : undefined;
+    },
+    [],
+  );
 
-  const rollInitiative = () => {
+  const rollInitiative = useCallback(() => {
     setEncounter((prev) =>
       prev.map((entry) => {
         const roll = Math.floor(Math.random() * 20) + 1;
@@ -471,14 +491,14 @@ export const EncounterProvider = ({
 
     setCurrentTurnIndex(0);
     setCurrentRound(1);
-  };
+  }, [getEntityByName]);
 
-  const nextTurn = () => {
-    const sorted = sortEncounterByInitiative(encounter);
-
-    if (sorted.length === 0) return;
-
+  const nextTurn = useCallback(() => {
     setCurrentTurnIndex((prev) => {
+      const sorted = sortEncounterByInitiative(encounter);
+
+      if (sorted.length === 0) return prev;
+
       const nextIndex = (prev + 1) % sorted.length;
 
       if (nextIndex === 0) {
@@ -487,14 +507,14 @@ export const EncounterProvider = ({
 
       return nextIndex;
     });
-  };
+  }, [encounter]);
 
-  const previousTurn = () => {
-    const sorted = sortEncounterByInitiative(encounter);
-
-    if (sorted.length === 0) return;
-
+  const previousTurn = useCallback(() => {
     setCurrentTurnIndex((prev) => {
+      const sorted = sortEncounterByInitiative(encounter);
+
+      if (sorted.length === 0) return prev;
+
       const nextIndex = (prev - 1 + sorted.length) % sorted.length;
 
       if (prev === 0) {
@@ -503,206 +523,261 @@ export const EncounterProvider = ({
 
       return nextIndex;
     });
-  };
+  }, [encounter]);
 
-  const resetTurns = () => {
+  const resetTurns = useCallback(() => {
     setCurrentTurnIndex(0);
     setCurrentRound(1);
-  };
+  }, []);
 
-  const renameEntity = (id: string, newName: string) => {
-    setEncounter((prev) =>
-      prev.map((entry) =>
-        entry.id === id
-          ? {
-              ...entry,
-              displayName: newName,
-            }
-          : entry,
-      ),
-    );
-  };
-
-  const addEntityToEncounter = (
-    entityKind: EncounterEntityKind,
-    entity: MonsterEncounterSource | EncounterPlayerInput,
-  ) => {
+  const renameEntity = useCallback((id: string, newName: string) => {
     setEncounter((prev) => {
-      if (entityKind === "monster") {
+      let changed = false;
+
+      const next = prev.map((entry) => {
+        if (entry.id !== id) return entry;
+        if (entry.displayName === newName) return entry;
+
+        changed = true;
+        return {
+          ...entry,
+          displayName: newName,
+        };
+      });
+
+      return changed ? next : prev;
+    });
+  }, []);
+
+  const addEntityToEncounter = useCallback(
+    (
+      entityKind: EncounterEntityKind,
+      entity: MonsterEncounterSource | EncounterPlayerInput,
+    ) => {
+      setEncounter((prev) => {
+        if (entityKind === "monster") {
+          return [
+            ...prev,
+            buildMonsterEncounterEntry(prev, entity as MonsterEncounterSource),
+          ];
+        }
+
         return [
           ...prev,
-          buildMonsterEncounterEntry(prev, entity as MonsterEncounterSource),
+          buildPlayerEncounterEntry(prev, entity as EncounterPlayerInput),
         ];
-      }
+      });
+    },
+    [],
+  );
 
-      return [
-        ...prev,
-        buildPlayerEncounterEntry(prev, entity as EncounterPlayerInput),
-      ];
+  const addMonsterToEncounter = useCallback(
+    (monster: MonsterEncounterSource) => {
+      addEntityToEncounter("monster", monster);
+    },
+    [addEntityToEncounter],
+  );
+
+  const addPlayerToEncounter = useCallback(
+    (player: EncounterPlayerInput) => {
+      addEntityToEncounter("player", player);
+    },
+    [addEntityToEncounter],
+  );
+
+  const removeEntityFromEncounter = useCallback((id: string) => {
+    setEncounter((prev) => {
+      const next = prev.filter((entry) => entry.id !== id);
+      return next.length === prev.length ? prev : next;
     });
-  };
+  }, []);
 
-  const addMonsterToEncounter = (monster: MonsterEncounterSource) => {
-    addEntityToEncounter("monster", monster);
-  };
-
-  const addPlayerToEncounter = (player: EncounterPlayerInput) => {
-    addEntityToEncounter("player", player);
-  };
-
-  const removeEntityFromEncounter = (id: string) => {
-    setEncounter((prev) => prev.filter((entry) => entry.id !== id));
-  };
-
-  const updateEntityHp = (id: string, hp: number) => {
+  const updateEntityHp = useCallback((id: string, hp: number) => {
     if (Number.isNaN(hp)) return;
 
-    setEncounter((prev) =>
-      prev.map((entry) =>
-        entry.id === id
-          ? {
-              ...entry,
-              currentHp: Math.max(0, Math.min(hp, entry.maxHp)),
-            }
-          : entry,
-      ),
-    );
-  };
+    setEncounter((prev) => {
+      let changed = false;
 
-  const updateEntityInitiative = (id: string, initiative: number | "") => {
-    setEncounter((prev) =>
-      prev.map((entry) =>
-        entry.id === id
-          ? {
-              ...entry,
-              initiative,
-            }
-          : entry,
-      ),
-    );
-  };
+      const next = prev.map((entry) => {
+        if (entry.id !== id) return entry;
 
-  const clearEncounter = () => {
+        const nextHp = Math.max(0, Math.min(hp, entry.maxHp));
+        if (entry.currentHp === nextHp) return entry;
+
+        changed = true;
+        return {
+          ...entry,
+          currentHp: nextHp,
+        };
+      });
+
+      return changed ? next : prev;
+    });
+  }, []);
+
+  const updateEntityInitiative = useCallback(
+    (id: string, initiative: number | "") => {
+      setEncounter((prev) => {
+        let changed = false;
+
+        const next = prev.map((entry) => {
+          if (entry.id !== id) return entry;
+          if (entry.initiative === initiative) return entry;
+
+          changed = true;
+          return {
+            ...entry,
+            initiative,
+          };
+        });
+
+        return changed ? next : prev;
+      });
+    },
+    [],
+  );
+
+  const clearEncounter = useCallback(() => {
     setEncounter([]);
     setCurrentTurnIndex(0);
     setCurrentRound(1);
     setActiveEncounterId(null);
-  };
+  }, []);
 
-  const createNewEncounter = () => {
+  const createNewEncounter = useCallback(() => {
     clearEncounter();
-  };
+  }, [clearEncounter]);
 
-  const saveCurrentEncounter = (name: string) => {
-    const trimmedName = name.trim();
-    if (!trimmedName) return;
+  const saveCurrentEncounter = useCallback(
+    (name: string) => {
+      const trimmedName = name.trim();
+      if (!trimmedName) return;
 
-    if (activeEncounterId) {
-      setSavedEncounters((prev) =>
-        prev.map((saved) =>
-          saved.id === activeEncounterId
-            ? {
-                ...saved,
-                name: trimmedName,
-                encounter: cloneEncounter(encounter),
-                currentTurnIndex,
-                currentRound,
-              }
-            : saved,
-        ),
-      );
-      return;
-    }
-
-    const newId = makeId();
-
-    setSavedEncounters((prev) => [
-      ...prev,
-      {
-        id: newId,
-        name: trimmedName,
-        encounter: cloneEncounter(encounter),
-        currentTurnIndex,
-        currentRound,
-      },
-    ]);
-
-    setActiveEncounterId(newId);
-  };
-
-  const loadEncounter = (id: string) => {
-    const saved = savedEncounters.find((enc) => enc.id === id);
-    if (!saved) return;
-
-    setEncounter(cloneEncounter(saved.encounter));
-    setCurrentTurnIndex(saved.currentTurnIndex);
-    setCurrentRound(saved.currentRound);
-    setActiveEncounterId(saved.id);
-  };
-
-  const deleteEncounter = (id: string) => {
-    setSavedEncounters((prev) => prev.filter((enc) => enc.id !== id));
-
-    if (activeEncounterId === id) {
-      setActiveEncounterId(null);
-      setEncounter([]);
-      setCurrentTurnIndex(0);
-      setCurrentRound(1);
-    }
-  };
-
-  const renameEncounter = (id: string, name: string) => {
-    const trimmedName = name.trim();
-    if (!trimmedName) return;
-
-    setSavedEncounters((prev) =>
-      prev.map((enc) =>
-        enc.id === id
-          ? {
-              ...enc,
-              name: trimmedName,
-            }
-          : enc,
-      ),
-    );
-  };
-
-  const loadEncounterTemplate = (template: EncounterTemplate) => {
-    const nextEncounter: EncounterEntry[] = [];
-
-    template.entities.forEach((templateEntity) => {
-      const count = templateEntity.count ?? 1;
-
-      if (templateEntity.entityKind !== "monster") {
+      if (activeEncounterId) {
+        setSavedEncounters((prev) =>
+          prev.map((saved) =>
+            saved.id === activeEncounterId
+              ? {
+                  ...saved,
+                  name: trimmedName,
+                  encounter: cloneEncounter(encounter),
+                  currentTurnIndex,
+                  currentRound,
+                }
+              : saved,
+          ),
+        );
         return;
       }
 
-      const monster = getEntityByName("monster", templateEntity.entityName);
-      if (!monster) return;
+      const newId = makeId();
 
-      for (let i = 0; i < count; i++) {
-        nextEncounter.push(buildMonsterEncounterEntry(nextEncounter, monster));
+      setSavedEncounters((prev) => [
+        ...prev,
+        {
+          id: newId,
+          name: trimmedName,
+          encounter: cloneEncounter(encounter),
+          currentTurnIndex,
+          currentRound,
+        },
+      ]);
+
+      setActiveEncounterId(newId);
+    },
+    [activeEncounterId, encounter, currentTurnIndex, currentRound],
+  );
+
+  const loadEncounter = useCallback(
+    (id: string) => {
+      const saved = savedEncounters.find((enc) => enc.id === id);
+      if (!saved) return;
+
+      setEncounter(cloneEncounter(saved.encounter));
+      setCurrentTurnIndex(saved.currentTurnIndex);
+      setCurrentRound(saved.currentRound);
+      setActiveEncounterId(saved.id);
+    },
+    [savedEncounters],
+  );
+
+  const deleteEncounter = useCallback(
+    (id: string) => {
+      setSavedEncounters((prev) => prev.filter((enc) => enc.id !== id));
+
+      if (activeEncounterId === id) {
+        setActiveEncounterId(null);
+        setEncounter([]);
+        setCurrentTurnIndex(0);
+        setCurrentRound(1);
       }
+    },
+    [activeEncounterId],
+  );
+
+  const renameEncounter = useCallback((id: string, name: string) => {
+    const trimmedName = name.trim();
+    if (!trimmedName) return;
+
+    setSavedEncounters((prev) => {
+      let changed = false;
+
+      const next = prev.map((enc) => {
+        if (enc.id !== id) return enc;
+        if (enc.name === trimmedName) return enc;
+
+        changed = true;
+        return {
+          ...enc,
+          name: trimmedName,
+        };
+      });
+
+      return changed ? next : prev;
     });
+  }, []);
 
-    const newId = makeId();
+  const loadEncounterTemplate = useCallback(
+    (template: EncounterTemplate) => {
+      const nextEncounter: EncounterEntry[] = [];
 
-    setEncounter(nextEncounter);
-    setCurrentTurnIndex(0);
-    setCurrentRound(1);
-    setActiveEncounterId(newId);
+      template.entities.forEach((templateEntity) => {
+        const count = templateEntity.count ?? 1;
 
-    setSavedEncounters((prev) => [
-      ...prev,
-      {
-        id: newId,
-        name: template.name.trim() || "Ny kamp",
-        encounter: cloneEncounter(nextEncounter),
-        currentTurnIndex: 0,
-        currentRound: 1,
-      },
-    ]);
-  };
+        if (templateEntity.entityKind !== "monster") {
+          return;
+        }
+
+        const monster = getEntityByName("monster", templateEntity.entityName);
+        if (!monster) return;
+
+        for (let i = 0; i < count; i++) {
+          nextEncounter.push(
+            buildMonsterEncounterEntry(nextEncounter, monster),
+          );
+        }
+      });
+
+      const newId = makeId();
+
+      setEncounter(nextEncounter);
+      setCurrentTurnIndex(0);
+      setCurrentRound(1);
+      setActiveEncounterId(newId);
+
+      setSavedEncounters((prev) => [
+        ...prev,
+        {
+          id: newId,
+          name: template.name.trim() || "Ny kamp",
+          encounter: cloneEncounter(nextEncounter),
+          currentTurnIndex: 0,
+          currentRound: 1,
+        },
+      ]);
+    },
+    [getEntityByName],
+  );
 
   const value = useMemo(
     () => ({
@@ -737,6 +812,25 @@ export const EncounterProvider = ({
       currentRound,
       savedEncounters,
       activeEncounterId,
+      addMonsterToEncounter,
+      addPlayerToEncounter,
+      addEntityToEncounter,
+      removeEntityFromEncounter,
+      updateEntityHp,
+      updateEntityInitiative,
+      renameEntity,
+      clearEncounter,
+      createNewEncounter,
+      saveCurrentEncounter,
+      loadEncounter,
+      deleteEncounter,
+      renameEncounter,
+      loadEncounterTemplate,
+      getEntityByName,
+      nextTurn,
+      previousTurn,
+      resetTurns,
+      rollInitiative,
     ],
   );
 
