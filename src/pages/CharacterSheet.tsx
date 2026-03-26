@@ -74,6 +74,77 @@ type CharacterDoc = CharacterSheetData & {
   equipment?: CharacterEquipmentEntry[];
 };
 
+const getTraitResistances = (traits: Trait[]): string[] =>
+  unique(
+    traits.flatMap((trait) =>
+      (trait.effects ?? []).flatMap((effect) =>
+        effect.type === "resistance" ? [effect.damageType] : [],
+      ),
+    ),
+  );
+
+const getTraitGrantedSpells = (
+  traits: Trait[],
+  characterLevel: number,
+): CharacterSpell[] => {
+  const result: CharacterSpell[] = [];
+
+  for (const trait of traits) {
+    for (const effect of trait.effects ?? []) {
+      if (effect.type !== "spell") continue;
+
+      const requiredCharacterLevel = effect.level ?? 1;
+      if (characterLevel < requiredCharacterLevel) continue;
+
+      const usage =
+        effect.frequency?.type === "at-will"
+          ? {
+              type: "at-will" as const,
+            }
+          : effect.frequency?.type === "limited"
+            ? {
+                type: "limited" as const,
+                recharge: effect.frequency.recharge,
+                max:
+                  effect.frequency.uses?.type === "fixed"
+                    ? effect.frequency.uses.value
+                    : 1,
+              }
+            : undefined;
+
+      const spellData = getSpellById(effect.spellId as SpellId);
+
+      result.push({
+        spellId: effect.spellId as SpellId,
+        level: (spellData?.level ?? 0) as CharacterSpell["level"],
+        sourceType: "species",
+        sourceId: trait.id,
+        known: true,
+        prepared: false,
+        countsAgainstKnownLimit: false,
+        countsAgainstPreparationLimit: false,
+        ...(usage ? { usage } : {}),
+      });
+    }
+  }
+
+  return result;
+};
+
+const abilityValues: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
+
+const isAbility = (value: unknown): value is AbilityKey =>
+  typeof value === "string" && abilityValues.includes(value as AbilityKey);
+
+const getTieflingLegacyCastingAbility = (
+  character: CharacterSheetData,
+): AbilityKey | null => {
+  const raw =
+    character.choices?.speciesTraitChoices?.["fiendish-legacy-ability-choice"];
+
+  return isAbility(raw) ? raw : null;
+};
+
 type TraitGroupKey =
   | "species"
   | "class"
@@ -891,10 +962,6 @@ const CharacterSheet = () => {
       ...fallbackSkillProficiencies,
     ]);
 
-    const resistances = unique<string>([
-      ...((character.derived?.resistances as string[] | undefined) ?? []),
-    ]);
-
     const expertise = unique<SkillId | "thieves-tools">([
       ...((character.derived?.expertise ?? []) as Array<
         SkillId | "thieves-tools"
@@ -1005,6 +1072,114 @@ const CharacterSheet = () => {
     const speciesTraits = dedupeTraits(
       getSpeciesTraits(character.speciesId, character.choices),
     );
+
+    console.log("speciesTraits", speciesTraits);
+    console.log("speciesTraitChoices", character.choices?.speciesTraitChoices);
+
+    const speciesTraitResistances = getTraitResistances(speciesTraits);
+
+    const speciesGrantedSpells = getTraitGrantedSpells(
+      speciesTraits,
+      character.level,
+    ).map((spell) => {
+      const spellData = getSpellById(spell.spellId);
+
+      return {
+        ...spell,
+        ...spellData,
+        level: spellData?.level ?? spell.level,
+        school: spellData?.school,
+        name: spellData?.name ?? spell.spellId,
+      };
+    });
+
+    const tieflingSpeciesSpells =
+      character.speciesId === "tiefling" ? speciesGrantedSpells : [];
+
+    const selectedTieflingLegacyId =
+      character.speciesId === "tiefling"
+        ? character.choices?.speciesTraitChoices?.["fiendish-legacy-choice"]
+        : null;
+
+    const selectedTieflingLegacyTraitId =
+      typeof selectedTieflingLegacyId === "string"
+        ? `${selectedTieflingLegacyId}-legacy`
+        : null;
+
+    const tieflingLegacySpells =
+      character.speciesId === "tiefling"
+        ? tieflingSpeciesSpells.filter(
+            (spell) =>
+              spell.spellId === "thaumaturgy" ||
+              spell.sourceId === selectedTieflingLegacyTraitId,
+          )
+        : [];
+
+    const tieflingLegacyCastingAbility =
+      character.speciesId === "tiefling"
+        ? getTieflingLegacyCastingAbility(character)
+        : null;
+
+    const tieflingLegacyTrait =
+      character.speciesId === "tiefling" &&
+      typeof selectedTieflingLegacyId === "string"
+        ? (speciesTraits.find(
+            (trait) => trait.id === `${selectedTieflingLegacyId}-legacy`,
+          ) ?? null)
+        : null;
+
+    console.log("tieflingLegacyTrait", tieflingLegacyTrait);
+    console.log("speciesGrantedSpells", speciesGrantedSpells);
+    console.log("tieflingLegacySpells", tieflingLegacySpells);
+    console.log("tieflingLegacyCastingAbility", tieflingLegacyCastingAbility);
+
+    const tieflingLegacyCastingMod =
+      tieflingLegacyCastingAbility !== null
+        ? getAbilityModifier(finalAbilityScores[tieflingLegacyCastingAbility])
+        : null;
+
+    const tieflingLegacySpellSaveDc =
+      tieflingLegacyCastingMod !== null
+        ? 8 + proficiencyBonus + tieflingLegacyCastingMod
+        : null;
+
+    const tieflingLegacySpellAttackBonus =
+      tieflingLegacyCastingMod !== null
+        ? proficiencyBonus + tieflingLegacyCastingMod
+        : null;
+
+    const groupedTieflingLegacySpells = tieflingLegacySpells
+      .reduce<
+        Array<{
+          level: number;
+          title: string;
+          spells: typeof tieflingLegacySpells;
+        }>
+      >((groups, spell) => {
+        const spellLevel = spell.level ?? 0;
+
+        let group = groups.find((entry) => entry.level === spellLevel);
+
+        if (!group) {
+          group = {
+            level: spellLevel,
+            title:
+              spellLevel === 0
+                ? "Cantrips"
+                : `${spellLevel}${getOrdinalSuffix(spellLevel)}-Level Spells`,
+            spells: [],
+          };
+          groups.push(group);
+        }
+
+        group.spells.push(spell);
+        return groups;
+      }, [])
+      .sort((a, b) => a.level - b.level)
+      .map((group) => ({
+        ...group,
+        spells: [...group.spells].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
 
     const classTraits = dedupeTraits(
       Array.from({ length: character.level }, (_, index) => index + 1).flatMap(
@@ -1204,7 +1379,13 @@ const CharacterSheet = () => {
       })),
     ];
 
-    const spells = unique(derivedKnownSpells.map((spell) => spell.spellId))
+    const nonSpeciesDerivedKnownSpells = derivedKnownSpells.filter(
+      (spell) => spell.sourceType !== "species",
+    );
+
+    const spells = unique(
+      nonSpeciesDerivedKnownSpells.map((spell) => spell.spellId),
+    )
       .map((spellId) =>
         derivedKnownSpells.find((spell) => spell.spellId === spellId),
       )
@@ -1382,7 +1563,7 @@ const CharacterSheet = () => {
         character.languages ??
         speciesById[character.speciesId]?.languages ??
         [],
-      resistances,
+      resistances: speciesTraitResistances,
       expertise,
       equippedWeaponAttacks,
       genericAttackBonuses,
@@ -1405,6 +1586,18 @@ const CharacterSheet = () => {
       groupedSpells,
       selectedCantripCount,
       selectedLeveledSpellCount,
+
+      tieflingLegacyName:
+        character.speciesId === "tiefling"
+          ? (tieflingLegacyTrait?.name ?? null)
+          : null,
+      tieflingLegacyCastingAbility,
+      tieflingLegacyCastingMod,
+      tieflingLegacySpellSaveDc,
+      tieflingLegacySpellAttackBonus,
+      tieflingLegacySpells,
+      groupedTieflingLegacySpells,
+
       money: {
         cp: character.money?.cp ?? 0,
         sp: character.money?.sp ?? 0,
@@ -2183,7 +2376,10 @@ const CharacterSheet = () => {
     </div>
   );
 
-  const hasAnySpells = derived.groupedSpells.length > 0;
+  const hasAnySpells =
+    derived.groupedSpells.length > 0 ||
+    derived.groupedTieflingLegacySpells.length > 0;
+
   const showSpellcastingPanel = !!derived.activeSpellcasting;
 
   const renderSpellsTab = () => (
@@ -2305,6 +2501,125 @@ const CharacterSheet = () => {
               </div>
             )}
           </div>
+
+          {(derived.tieflingLegacyName ||
+            derived.tieflingLegacyCastingAbility) && (
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-red-300">
+                    {derived.tieflingLegacyName ?? "Fiendish Legacy"}
+                  </h3>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Innate species spellcasting
+                  </p>
+                </div>
+
+                <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs text-red-300">
+                  {derived.tieflingLegacySpells.length} spell
+                  {derived.tieflingLegacySpells.length === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="mb-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Spellcasting Ability
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {derived.tieflingLegacyCastingAbility
+                      ? abilityFullLabels[derived.tieflingLegacyCastingAbility]
+                      : "—"}
+                  </p>
+                  {derived.tieflingLegacyCastingMod !== null && (
+                    <p className="mt-1 text-sm text-zinc-400">
+                      Mod {formatModifier(derived.tieflingLegacyCastingMod)}
+                    </p>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Spell Save DC
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {derived.tieflingLegacySpellSaveDc ?? "—"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Spell Attack Bonus
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {derived.tieflingLegacySpellAttackBonus !== null
+                      ? formatModifier(derived.tieflingLegacySpellAttackBonus)
+                      : "—"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Spellcasting Source
+                  </p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {derived.tieflingLegacyName ?? "Fiendish Legacy"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {derived.groupedTieflingLegacySpells.map((group) => (
+                  <div
+                    key={`tiefling-${group.level}`}
+                    className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4"
+                  >
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-300">
+                        {group.title}
+                      </h3>
+
+                      <span className="rounded-full border border-white/10 bg-zinc-800 px-2.5 py-1 text-xs text-zinc-400">
+                        {group.spells.length} spell
+                        {group.spells.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+
+                    <div className="flex gap-2">
+                      {group.spells.map((spell) => {
+                        const usageLabel = formatSpellUsage(spell.usage);
+
+                        return (
+                          <div key={`tiefling-${spell.spellId}`}>
+                            <SpellTooltip spell={spell}>
+                              <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                                <div>
+                                  <p className="font-medium text-white">
+                                    {spell.name}
+                                  </p>
+                                  {spell.school && (
+                                    <p className="mt-1 text-sm text-zinc-500">
+                                      {spell.school}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {usageLabel && (
+                                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                                    {usageLabel}
+                                  </span>
+                                )}
+                              </div>
+                            </SpellTooltip>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {derived.groupedSpells.length > 0 ? (
             <div className="space-y-4">

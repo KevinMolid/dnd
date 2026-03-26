@@ -938,7 +938,25 @@ export const spells: Spell[] = [
     special:
       "You do learn the general nature of the danger posed by a trap you sense.",
   },
-    { id: "fire-bolt", name: "Fire Bolt", level: 0, school: "Evocation" },
+{
+  id: "fire-bolt",
+  name: "Fire Bolt",
+  level: 0,
+  school: "Evocation",
+
+  castingTime: "Action",
+  range: "120 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You hurl a mote of fire at a creature or object within range. Make a ranged spell attack against the target.",
+  effects:
+    "On a hit, the target takes 1d10 Fire damage. A flammable object hit by this spell starts burning if it isn’t being worn or carried.",
+  cantripUpgrade:
+    "The damage increases by 1d10 when you reach levels 5 (2d10), 11 (3d10), and 17 (4d10).",
+},
   { id: "fire-shield", name: "Fire Shield", level: 4, school: "Evocation" },
   { id: "fire-storm", name: "Fire Storm", level: 7, school: "Evocation" },
 {

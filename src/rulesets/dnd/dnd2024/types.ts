@@ -1203,6 +1203,7 @@ export type CharacterChoices = {
 
   // Species
   speciesTraitChoices?: Record<string, string | string[]>;
+  fiendishLegacySpellcastingAbility?: Ability;
 
   dragonbornAncestry?: DragonbornAncestryId;
 
