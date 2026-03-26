@@ -1073,9 +1073,6 @@ const CharacterSheet = () => {
       getSpeciesTraits(character.speciesId, character.choices),
     );
 
-    console.log("speciesTraits", speciesTraits);
-    console.log("speciesTraitChoices", character.choices?.speciesTraitChoices);
-
     const speciesTraitResistances = getTraitResistances(speciesTraits);
 
     const speciesGrantedSpells = getTraitGrantedSpells(
@@ -1127,11 +1124,6 @@ const CharacterSheet = () => {
             (trait) => trait.id === `${selectedTieflingLegacyId}-legacy`,
           ) ?? null)
         : null;
-
-    console.log("tieflingLegacyTrait", tieflingLegacyTrait);
-    console.log("speciesGrantedSpells", speciesGrantedSpells);
-    console.log("tieflingLegacySpells", tieflingLegacySpells);
-    console.log("tieflingLegacyCastingAbility", tieflingLegacyCastingAbility);
 
     const tieflingLegacyCastingMod =
       tieflingLegacyCastingAbility !== null
