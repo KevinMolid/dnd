@@ -207,18 +207,22 @@ const CampaignPage = () => {
               onToggleCondition={toggleCondition}
             />
 
-            <ClaimableCharactersSection
-              characters={claimableCharacters}
-              loading={false}
-              isGm={isGm}
-              onClaimCharacter={handleClaimCharacter}
-            />
+            {claimableCharacters.length > 0 && (
+              <ClaimableCharactersSection
+                characters={claimableCharacters}
+                loading={false}
+                isGm={isGm}
+                onClaimCharacter={handleClaimCharacter}
+              />
+            )}
 
-            <InactiveOwnedCharactersSection
-              characters={myInactiveCampaignCharacters}
-              loading={false}
-              onActivateCharacter={handleSetCharacterActive}
-            />
+            {myInactiveCampaignCharacters.length > 0 && (
+              <InactiveOwnedCharactersSection
+                characters={myInactiveCampaignCharacters}
+                loading={false}
+                onActivateCharacter={handleSetCharacterActive}
+              />
+            )}
           </div>
 
           <aside className="space-y-6">
