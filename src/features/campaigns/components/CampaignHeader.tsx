@@ -21,6 +21,9 @@ const CampaignHeader = ({
   isGm,
   onOpenSettings,
 }: CampaignHeaderProps) => {
+  const canManageCampaign =
+    membership.role === "gm" || membership.role === "co-gm";
+
   return (
     <>
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -31,12 +34,14 @@ const CampaignHeader = ({
           ← Back to home
         </Link>
 
-        <button
-          onClick={onOpenSettings}
-          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-        >
-          {isGm ? "Campaign settings" : "View details"}
-        </button>
+        {canManageCampaign && (
+          <button
+            onClick={onOpenSettings}
+            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+          >
+            {isGm ? "Campaign settings" : "View details"}
+          </button>
+        )}
       </div>
 
       <section className="mb-6 rounded-3xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-6 shadow-2xl sm:p-8">
@@ -83,7 +88,7 @@ const CampaignHeader = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-auto">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:w-auto rtl-grid">
             <Link
               to={`/campaigns/${campaign.id}/journal`}
               className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
@@ -91,33 +96,37 @@ const CampaignHeader = ({
               Journal
             </Link>
 
-            <Link
-              to={`/campaigns/${campaign.id}/characters`}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              Characters
-            </Link>
+            {canManageCampaign && (
+              <>
+                <Link
+                  to={`/campaigns/${campaign.id}/characters`}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
+                >
+                  Characters
+                </Link>
 
-            <Link
-              to={`/campaigns/${campaign.id}/maps`}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              Maps
-            </Link>
+                <Link
+                  to={`/campaigns/${campaign.id}/maps`}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
+                >
+                  Maps
+                </Link>
 
-            <Link
-              to={`/campaigns/${campaign.id}/encounter`}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              Encounters
-            </Link>
+                <Link
+                  to={`/campaigns/${campaign.id}/encounter`}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
+                >
+                  Encounters
+                </Link>
 
-            <Link
-              to={`/campaigns/${campaign.id}/handouts`}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              Handouts
-            </Link>
+                <Link
+                  to={`/campaigns/${campaign.id}/handouts`}
+                  className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
+                >
+                  Handouts
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </section>

@@ -11,7 +11,7 @@ import {
 
 type PartyControlSectionProps = {
   characters: CampaignCharacter[];
-  isGm: boolean;
+  isGm: boolean; // assume this is true for GM and Co-GM
   currentUserId?: string | null;
   onOpenLevelUp: (character: CampaignCharacter) => void;
   onOpenAwardXpModal: () => void;
@@ -86,6 +86,8 @@ const PartyControlSection = ({
           const isExpanded = expandedCharacterId === character.id;
           const pendingHpDelta = hpAdjustments[character.id] ?? 0;
           const pendingXpDelta = xpAdjustments[character.id] ?? 0;
+
+          const canOpenCharacter = isGm || currentUserId === character.ownerUid;
 
           return (
             <div
@@ -162,7 +164,6 @@ const PartyControlSection = ({
                     )}
                   </div>
 
-                  {/* HP BAR */}
                   <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
                     <div
                       className={`h-full rounded-full transition-all ${
@@ -176,7 +177,6 @@ const PartyControlSection = ({
                     />
                   </div>
 
-                  {/* XP BAR */}
                   {xpData.nextLevelXp !== null && (
                     <div className="h-0.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
                       <div
@@ -217,12 +217,14 @@ const PartyControlSection = ({
                       </button>
                     )}
 
-                    <Link
-                      to={`/characters/${character.id}`}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white"
-                    >
-                      Open
-                    </Link>
+                    {canOpenCharacter && (
+                      <Link
+                        to={`/characters/${character.id}`}
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                      >
+                        Open
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
