@@ -2,9 +2,18 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import type { CharacterSheetData } from "./rulesets/dnd/dnd2024/types";
 
-export const createCharacter = async (
-  data: Omit<CharacterSheetData, "ownerUid" | "createdAt" | "updatedAt">,
-) => {
+type CampaignCharacterStatus = "inactive" | "active";
+
+type CreateCharacterInput = Omit<
+  CharacterSheetData,
+  "ownerUid" | "createdByUid" | "createdAt" | "updatedAt"
+> & {
+  ownerUid?: string | null;
+  createdByUid?: string | null;
+  campaignStatus?: CampaignCharacterStatus;
+};
+
+export const createCharacter = async (data: CreateCharacterInput) => {
   const user = auth.currentUser;
 
   if (!user) {
@@ -17,7 +26,11 @@ export const createCharacter = async (
 
   const docRef = await addDoc(collection(db, "characters"), {
     ...data,
-    ownerUid: user.uid,
+    ownerUid: data.ownerUid !== undefined ? data.ownerUid : user.uid,
+    createdByUid:
+      data.createdByUid !== undefined ? data.createdByUid : user.uid,
+    campaignId: data.campaignId ?? null,
+    campaignStatus: data.campaignStatus ?? "inactive",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

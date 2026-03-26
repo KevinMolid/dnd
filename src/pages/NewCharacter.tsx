@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { createCharacter } from "../characters";
 import { backgrounds, classes, species } from "../rulesets/dnd/dnd2024/data";
 import { buildDerivedCharacterData } from "../rulesets/dnd/dnd2024/buildDerivedCharacterData";
@@ -247,6 +247,14 @@ const getTraitSummaryLines = (trait: Trait): string[] => {
 
 const NewCharacter = () => {
   const navigate = useNavigate();
+
+  const [searchParams] = useSearchParams();
+
+  const campaignIdFromQuery = searchParams.get("campaignId");
+  const campaignMode = searchParams.get("campaignMode");
+
+  const isCampaignUnassignedCreate =
+    Boolean(campaignIdFromQuery) && campaignMode === "unassigned";
 
   const [currentStep, setCurrentStep] =
     useState<CharacterCreationStep>("details");
@@ -2386,6 +2394,7 @@ const NewCharacter = () => {
 
       const baseCharacter: CharacterSheetData = {
         ownerUid: "",
+        createdByUid: "",
         campaignId: null,
         name: name.trim(),
         level: 1,
@@ -2446,7 +2455,11 @@ const NewCharacter = () => {
       const derived = buildDerivedCharacterData(baseCharacter);
 
       await createCharacter({
-        campaignId: null,
+        ownerUid: isCampaignUnassignedCreate ? null : undefined,
+        createdByUid: undefined,
+        campaignId: campaignIdFromQuery ?? null,
+        campaignStatus: "inactive",
+
         name: name.trim(),
         ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
         level: 1,
@@ -2511,7 +2524,11 @@ const NewCharacter = () => {
         money: startingMoney,
       });
 
-      navigate("/");
+      navigate(
+        campaignIdFromQuery
+          ? `/campaigns/${campaignIdFromQuery}/characters`
+          : "/",
+      );
     } catch (err: any) {
       setError(err?.message || "Failed to create character.");
     } finally {

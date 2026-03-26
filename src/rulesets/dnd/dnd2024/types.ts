@@ -1286,8 +1286,10 @@ export type LevelUpHistoryEntry = {
 };
 
 export type CharacterSheetData = {
-  ownerUid: string;
+  ownerUid: string | null
+  createdByUid: string | null
   campaignId: string | null;
+  campaignStatus?: "inactive" | "active"
 
   name: string;
   imageUrl?: string;
