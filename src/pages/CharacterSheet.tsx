@@ -891,6 +891,10 @@ const CharacterSheet = () => {
       ...fallbackSkillProficiencies,
     ]);
 
+    const resistances = unique<string>([
+      ...((character.derived?.resistances as string[] | undefined) ?? []),
+    ]);
+
     const expertise = unique<SkillId | "thieves-tools">([
       ...((character.derived?.expertise ?? []) as Array<
         SkillId | "thieves-tools"
@@ -1149,6 +1153,7 @@ const CharacterSheet = () => {
         : (selectedSubclassId ?? character.classId));
 
     const derivedKnownSpells: CharacterSpell[] = [
+      ...((character.derived?.spells as CharacterSpell[] | undefined) ?? []),
       ...allKnownCantripIds.map((spellId) => ({
         spellId,
         level: 0 as const,
@@ -1377,6 +1382,7 @@ const CharacterSheet = () => {
         character.languages ??
         speciesById[character.speciesId]?.languages ??
         [],
+      resistances,
       expertise,
       equippedWeaponAttacks,
       genericAttackBonuses,
@@ -1801,6 +1807,25 @@ const CharacterSheet = () => {
               </div>
             </div>
 
+            {derived.resistances.length > 0 && (
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-sm font-semibold text-zinc-200">
+                  Resistances
+                </p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {derived.resistances.map((resistance) => (
+                    <span
+                      key={resistance}
+                      className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-300"
+                    >
+                      {formatLabel(resistance)} Resistance
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {derived.dragonbornAncestryName && derived.dragonbornDamageType && (
               <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
                 <p className="text-sm font-semibold text-zinc-200">
@@ -2158,56 +2183,61 @@ const CharacterSheet = () => {
     </div>
   );
 
+  const hasAnySpells = derived.groupedSpells.length > 0;
+  const showSpellcastingPanel = !!derived.activeSpellcasting;
+
   const renderSpellsTab = () => (
     <SectionCard title="Spells">
-      {derived.activeSpellcasting ? (
+      {showSpellcastingPanel || hasAnySpells ? (
         <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Spellcasting Ability
-              </p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {derived.spellcastingAbility
-                  ? abilityFullLabels[derived.spellcastingAbility]
-                  : "—"}
-              </p>
-              {derived.spellcastingAbilityMod !== null && (
-                <p className="mt-1 text-sm text-zinc-400">
-                  Mod {formatModifier(derived.spellcastingAbilityMod)}
+          {showSpellcastingPanel && (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Spellcasting Ability
                 </p>
-              )}
-            </div>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {derived.spellcastingAbility
+                    ? abilityFullLabels[derived.spellcastingAbility]
+                    : "—"}
+                </p>
+                {derived.spellcastingAbilityMod !== null && (
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Mod {formatModifier(derived.spellcastingAbilityMod)}
+                  </p>
+                )}
+              </div>
 
-            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Spell Save DC
-              </p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {derived.spellSaveDc ?? "—"}
-              </p>
-            </div>
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Spell Save DC
+                </p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {derived.spellSaveDc ?? "—"}
+                </p>
+              </div>
 
-            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Spell Attack Bonus
-              </p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {derived.spellAttackBonus !== null
-                  ? formatModifier(derived.spellAttackBonus)
-                  : "—"}
-              </p>
-            </div>
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Spell Attack Bonus
+                </p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {derived.spellAttackBonus !== null
+                    ? formatModifier(derived.spellAttackBonus)
+                    : "—"}
+                </p>
+              </div>
 
-            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                Spellcasting Source
-              </p>
-              <p className="mt-2 text-lg font-semibold text-white">
-                {derived.subclassName ?? derived.className}
-              </p>
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Spellcasting Source
+                </p>
+                <p className="mt-2 text-lg font-semibold text-white">
+                  {derived.subclassName ?? derived.className}
+                </p>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
             <p className="text-sm font-semibold text-zinc-200">Spell Slots</p>

@@ -15,12 +15,12 @@ export const tieflingLegacies: TieflingLegacy[] = [
           },
           {
             type: "spell",
-            spellId: "Poison Spray",
+            spellId: "poison-spray",
             frequency: { type: "at-will" },
           },
           {
             type: "spell",
-            spellId: "Ray of Sickness",
+            spellId: "ray-of-sickness",
             level: 3,
             frequency: {
               type: "limited",
@@ -30,7 +30,7 @@ export const tieflingLegacies: TieflingLegacy[] = [
           },
           {
             type: "spell",
-            spellId: "Hold Person",
+            spellId: "hold-person",
             level: 5,
             frequency: {
               type: "limited",
@@ -61,12 +61,12 @@ export const tieflingLegacies: TieflingLegacy[] = [
           },
           {
             type: "spell",
-            spellId: "Chill Touch",
+            spellId: "chill-touch",
             frequency: { type: "at-will" },
           },
           {
             type: "spell",
-            spellId: "False Life",
+            spellId: "false-life",
             level: 3,
             frequency: {
               type: "limited",
@@ -76,7 +76,7 @@ export const tieflingLegacies: TieflingLegacy[] = [
           },
           {
             type: "spell",
-            spellId: "Ray of Enfeeblement",
+            spellId: "ray-of-enfeeblement",
             level: 5,
             frequency: {
               type: "limited",
@@ -107,12 +107,12 @@ export const tieflingLegacies: TieflingLegacy[] = [
           },
           {
             type: "spell",
-            spellId: "Fire Bolt",
+            spellId: "fire-bolt",
             frequency: { type: "at-will" },
           },
           {
             type: "spell",
-            spellId: "Hellish Rebuke",
+            spellId: "hellish-rebuke",
             level: 3,
             frequency: {
               type: "limited",
@@ -122,7 +122,7 @@ export const tieflingLegacies: TieflingLegacy[] = [
           },
           {
             type: "spell",
-            spellId: "Darkness",
+            spellId: "darkness",
             level: 5,
             frequency: {
               type: "limited",

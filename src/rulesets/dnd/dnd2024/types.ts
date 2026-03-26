@@ -1122,7 +1122,7 @@ export type CharacterSpell = {
 
   usage?: {
     type: "at-will" | "limited";
-    recharge?: "short-rest" | "long-rest";
+    recharge?: "short-rest" | "long-rest" | "short-or-long-rest";
     max?: number;
   };
 };
@@ -1254,6 +1254,7 @@ export type DerivedCharacterData = {
 
   expertise: Array<SkillId | "thieves-tools">;
   weaponMasteries: WeaponMasteryChoiceId[];
+  resistances?: string[],
 };
 
 export type DerivedSpellcastingData = {

@@ -64,13 +64,19 @@ const getAverageHpPerLevel = (hitDie: number) => Math.floor(hitDie / 2) + 1;
 const applyTraitEffectsToDerived = (
   traits: Trait[],
   derived: DerivedCharacterData,
+  characterLevel: number,
 ): DerivedCharacterData => {
   const next: DerivedCharacterData = {
     ...derived,
     skillProficiencies: [...derived.skillProficiencies],
     toolProficiencies: [...derived.toolProficiencies],
     languages: [...derived.languages],
+    resistances: [...(derived.resistances ?? [])],
+    spells: [...(derived.spells ?? [])],
   };
+
+  const nextResistances = next.resistances ?? [];
+  const nextSpells = next.spells ?? [];
 
   for (const trait of traits) {
     for (const effect of trait.effects ?? []) {
@@ -93,6 +99,63 @@ const applyTraitEffectsToDerived = (
           }
           break;
 
+        case "resistance":
+          if (!nextResistances.includes(effect.damageType)) {
+            nextResistances.push(effect.damageType);
+          }
+          break;
+
+        case "spell": {
+          const requiredLevel = effect.level ?? 1;
+          if (requiredLevel > characterLevel) {
+            break;
+          }
+
+          const alreadyExists = nextSpells.some(
+            (spell) => spell.spellId === effect.spellId,
+          );
+
+          if (!alreadyExists) {
+            nextSpells.push({
+              spellId: effect.spellId,
+              level:
+                requiredLevel === 1
+                  ? 0
+                  : requiredLevel === 3
+                    ? 2
+                    : requiredLevel === 5
+                      ? 3
+                      : 0,
+              sourceType: "species",
+              sourceId: trait.id,
+              known: true,
+              prepared: false,
+              countsAgainstKnownLimit: false,
+              countsAgainstPreparationLimit: false,
+              ...(effect.frequency?.type === "at-will"
+                ? {
+                    usage: {
+                      type: "at-will" as const,
+                    },
+                  }
+                : effect.frequency?.type === "limited"
+                  ? {
+                      usage: {
+                        type: "limited" as const,
+                        recharge: effect.frequency.recharge,
+                        max:
+                          effect.frequency.uses?.type === "fixed"
+                            ? effect.frequency.uses.value
+                            : 1,
+                      },
+                    }
+                  : {}),
+            });
+          }
+
+          break;
+        }
+
         default:
           break;
       }
@@ -101,6 +164,8 @@ const applyTraitEffectsToDerived = (
 
   return {
     ...next,
+    resistances: unique(nextResistances),
+    spells: nextSpells,
     skillProficiencies: unique(next.skillProficiencies),
     toolProficiencies: unique(next.toolProficiencies),
     languages: unique(next.languages),
@@ -497,12 +562,19 @@ const features = uniqueById<CharacterFeature>([
         : [],
   };
 
-  const derivedWithSubclassEffects = subclassDef
-    ? applyTraitEffectsToDerived(
-        getTraitsUpToLevel(subclassDef.featuresByLevel, character.level),
-        baseDerived,
-      )
-    : baseDerived;
+  const derivedWithSpeciesEffects = applyTraitEffectsToDerived(
+  speciesTraits,
+  baseDerived,
+  character.level,
+);
+
+const derivedWithSubclassEffects = subclassDef
+  ? applyTraitEffectsToDerived(
+      getTraitsUpToLevel(subclassDef.featuresByLevel, character.level),
+      derivedWithSpeciesEffects,
+      character.level,
+    )
+  : derivedWithSpeciesEffects;
 
   const rogueDerived =
     classDef?.id === "rogue"
