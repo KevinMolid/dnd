@@ -893,7 +893,7 @@ export type ItemCategory =
 
 export type DamageDie = {
   count: number;
-  die: 4 | 6 | 8 | 10 | 12;
+  die: 1 | 4 | 6 | 8 | 10 | 12;
 };
 
 export type WeaponProperty =
