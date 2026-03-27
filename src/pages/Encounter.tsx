@@ -583,7 +583,7 @@ const Encounter = () => {
             </p>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
             <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
                 <H3 className="mb-0">Campaign Characters</H3>
