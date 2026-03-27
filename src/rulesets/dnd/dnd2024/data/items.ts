@@ -766,6 +766,9 @@ export const items: Item[] = [
     category: "ammunition",
     stackable: true,
   },
+  { id: "firearm-bullet", name: "Firearm Bullet", category: "ammunition", stackable: true },
+  { id: "sling-bullet", name: "Sling Bullet", category: "ammunition", stackable: true },
+  { id: "blowgun-needle", name: "Blowgun Needle", category: "ammunition", stackable: true },
 
   // === TOOLS ===
   { id: "thieves-tools", name: "Thieves' Tools", category: "tool" },
