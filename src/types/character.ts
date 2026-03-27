@@ -33,6 +33,16 @@ export type CharacterItem = {
   equipped?: boolean;
 };
 
+export type CharacterEquipmentItem = {
+  instanceId: string;
+  itemId: string;
+  name: string;
+  quantity: number;
+  equipped: boolean;
+  equippedSlots: string[];
+  wieldMode?: string;
+};
+
 export type CharacterDoc = {
   ownerUid: string;
   campaignId: string | null;

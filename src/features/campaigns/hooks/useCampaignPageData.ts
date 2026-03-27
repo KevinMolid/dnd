@@ -43,7 +43,7 @@ import type {
   LevelUpDecision,
 } from "../../../rulesets/dnd/dnd2024/types";
 
-import type { CharacterItem } from "../../../types/character";
+import type { CharacterEquipmentItem  } from "../../../types/character";
 import { itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
 
 
@@ -92,7 +92,7 @@ export type CharacterDoc = {
   conditions?: string[];
 
   gold?: number;
-  inventory?: CharacterItem[];
+  equipment?: CharacterEquipmentItem[];
 
   pendingLevelUp?: {
     fromLevel: number;
@@ -143,7 +143,7 @@ export type CampaignCharacter = {
   conditions?: string[];
 
   gold?: number;
-  inventory?: CharacterItem[];
+  equipment?: CharacterEquipmentItem[];
 
   abilityScores?: Record<string, number>;
   pendingLevelUp?: {
@@ -383,7 +383,7 @@ export const useCampaignPageData = (campaignId?: string) => {
                 conditions: data.conditions ?? [],
 
                 gold: data.gold ?? 0,
-                inventory: data.inventory ?? [],
+                equipment: data.equipment ?? [],
 
                 abilityScores: data.abilityScores,
                 pendingLevelUp: data.pendingLevelUp ?? null,
@@ -691,40 +691,76 @@ const handleLevelUp = useCallback(
   };
 
   type RewardPayload = {
-    characterIds: string[];
-    gold?: number;
-    items?: RewardItemInput[];
-  };
+  characterIds: string[];
+  gold?: number;
+  items?: RewardItemInput[];
+};
 
-const mergeInventoryItems = (
-  current: CharacterItem[],
+const createEquipmentInstanceId = (
+  itemId: string,
+  existing: CharacterEquipmentItem[],
+) => {
+  const usedIds = new Set(existing.map((item) => item.instanceId));
+  let nextNumber = 1;
+
+  while (usedIds.has(`${itemId}__${nextNumber}`)) {
+    nextNumber += 1;
+  }
+
+  return `${itemId}__${nextNumber}`;
+};
+
+const mergeEquipmentItems = (
+  current: CharacterEquipmentItem[],
   incoming: { itemId: string; quantity: number }[],
-): CharacterItem[] => {
+): CharacterEquipmentItem[] => {
   const result = [...current];
 
   incoming.forEach(({ itemId, quantity }) => {
     if (!itemId || quantity <= 0) return;
 
     const itemDef = itemsById[itemId];
-    const isStackable = itemDef?.stackable ?? false;
+    const itemName = itemDef?.name ?? itemId;
+    const isStackable = itemDef?.stackable === true;
 
     if (isStackable) {
-      const existing = result.find((i) => i.id === itemId);
+      const existing = result.find(
+        (item) =>
+          item.itemId === itemId &&
+          !item.equipped &&
+          (item.equippedSlots?.length ?? 0) === 0 &&
+          !item.wieldMode,
+      );
 
       if (existing) {
         existing.quantity += quantity;
       } else {
-        result.push({ id: itemId, quantity });
+        result.push({
+          instanceId: createEquipmentInstanceId(itemId, result),
+          itemId,
+          name: itemName,
+          quantity,
+          equipped: false,
+          equippedSlots: [],
+        });
       }
-    } else {
-      // Non-stackable → add separate entries
-      for (let i = 0; i < quantity; i++) {
-        result.push({ id: itemId, quantity: 1 });
-      }
+
+      return;
+    }
+
+    for (let i = 0; i < quantity; i += 1) {
+      result.push({
+        instanceId: createEquipmentInstanceId(itemId, result),
+        itemId,
+        name: itemName,
+        quantity: 1,
+        equipped: false,
+        equippedSlots: [],
+      });
     }
   });
 
-  return result;
+  return result.sort((a, b) => a.name.localeCompare(b.name));
 };
 
 const handleRewardCharacters = useCallback(
@@ -760,14 +796,14 @@ const handleRewardCharacters = useCallback(
             }
 
             const nextGold = (data.gold ?? 0) + normalizedGold;
-            const nextInventory = mergeInventoryItems(
-              data.inventory ?? [],
+            const nextEquipment = mergeEquipmentItems(
+              data.equipment ?? [],
               normalizedItems,
             );
 
             transaction.update(characterRef, {
               gold: nextGold,
-              inventory: nextInventory,
+              equipment: nextEquipment,
             });
           });
         }),
