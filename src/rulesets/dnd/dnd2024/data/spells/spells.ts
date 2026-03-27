@@ -252,7 +252,25 @@ export const spells: Spell[] = [
     special:
       "You can also set a password that, when spoken within 5 feet of the object, unlocks it for 1 minute.",
   },
-    { id: "arcane-vigor", name: "Arcane Vigor", level: 2, school: "Abjuration" },
+    {
+  id: "arcane-vigor",
+  name: "Arcane Vigor",
+  level: 2,
+  school: "Abjuration",
+
+  castingTime: "Bonus Action",
+  range: "Self",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You tap into your life force to heal yourself.",
+  effects:
+    "Roll one or two of your unexpended Hit Point Dice and regain a number of Hit Points equal to the roll’s total plus your spellcasting ability modifier. Those dice are then expended.",
+  higherLevel:
+    "The number of unexpended Hit Dice you can roll increases by one for each spell slot level above 2.",
+},
   { id: "astral-projection", name: "Astral Projection", level: 9, school: "Necromancy" },
 {
     id: "augury",
@@ -424,7 +442,26 @@ export const spells: Spell[] = [
   },
     { id: "blight", name: "Blight", level: 4, school: "Necromancy" },
   { id: "blinding-smite", name: "Blinding Smite", level: 3, school: "Evocation", concentration: true },
-  { id: "blur", name: "Blur", level: 2, school: "Illusion", concentration: true },
+  {
+  id: "blur",
+  name: "Blur",
+  level: 2,
+  school: "Illusion",
+  concentration: true,
+
+  castingTime: "Action",
+  range: "Self",
+  components: "V",
+  duration: "Up to 1 minute",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "Your body becomes blurred, shifting and wavering to all who can see you.",
+  effects:
+    "For the duration, any creature has Disadvantage on attack rolls against you.",
+  limitations:
+    "An attacker is immune to this effect if it perceives you with Blindsight or Truesight.",
+},
 {
     id: "burning-hands",
     name: "Burning Hands",
@@ -446,7 +483,35 @@ export const spells: Spell[] = [
       "The damage increases by 1d6 for each spell slot level above 1.",
   },
     { id: "call-lightning", name: "Call Lightning", level: 3, school: "Conjuration", concentration: true },
-  { id: "calm-emotions", name: "Calm Emotions", level: 2, school: "Enchantment", concentration: true },
+  {
+  id: "calm-emotions",
+  name: "Calm Emotions",
+  level: 2,
+  school: "Enchantment",
+  concentration: true,
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S",
+  duration: "Up to 1 minute",
+  classes: ["bard", "cleric"],
+
+  description:
+    "You attempt to suppress strong emotions in creatures in a 20-foot-radius sphere centered on a point within range.",
+  effects:
+    "Each Humanoid in the area must succeed on a Charisma saving throw or be affected by one of the following effects (your choice for each creature).",
+  savingThrows: "Charisma",
+  options: [
+    {
+      name: "Suppress Conditions",
+      text: "The creature has Immunity to the Charmed and Frightened conditions. If already affected, those conditions are suppressed for the duration.",
+    },
+    {
+      name: "Indifference",
+      text: "The creature becomes Indifferent about creatures of your choice that it’s Hostile toward. This indifference ends if the target takes damage or witnesses its allies taking damage. When the spell ends, the creature’s attitude returns to normal.",
+    },
+  ],
+},
   { id: "charm-monster", name: "Charm Monster", level: 4, school: "Enchantment" },
 {
   id: "charm-person",
@@ -843,7 +908,40 @@ export const spells: Spell[] = [
   { id: "divine-word", name: "Divine Word", level: 7, school: "Evocation" },
   { id: "dominate-beast", name: "Dominate Beast", level: 4, school: "Enchantment", concentration: true },
   { id: "dragons-breath", name: "Dragon's Breath", level: 2, school: "Transmutation", concentration: true },
-  { id: "druidcraft", name: "Druidcraft", level: 0, school: "Transmutation" },
+  {
+  id: "druidcraft",
+  name: "Druidcraft",
+  level: 0,
+  school: "Transmutation",
+
+  castingTime: "Action",
+  range: "30 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["druid"],
+
+  description:
+    "Whispering to the spirits of nature, you create one of the following effects within range.",
+
+  options: [
+    {
+      name: "Weather Sensor",
+      text: "You create a Tiny, harmless sensory effect that predicts what the weather will be at your location for the next 24 hours. The effect might manifest as a golden orb for clear skies, a cloud for rain, falling snowflakes for snow, and so on. This effect persists for 1 round.",
+    },
+    {
+      name: "Bloom",
+      text: "You instantly make a flower blossom, a seed pod open, or a leaf bud bloom.",
+    },
+    {
+      name: "Sensory Effect",
+      text: "You create a harmless sensory effect, such as falling leaves, spectral dancing fairies, a gentle breeze, the sound of an animal, or the faint odor of skunk. The effect must fit in a 5-foot Cube.",
+    },
+    {
+      name: "Fire Play",
+      text: "You light or snuff out a candle, a torch, or a campfire.",
+    },
+  ],
+},
   { id: "earthquake", name: "Earthquake", level: 8, school: "Transmutation", concentration: true },
   { id: "elemental-weapon", name: "Elemental Weapon", level: 3, school: "Transmutation", concentration: true },
   {
@@ -1462,7 +1560,26 @@ export const spells: Spell[] = [
       "A creature with Truesight can read the hidden message.",
   },
     { id: "incendiary-cloud", name: "Incendiary Cloud", level: 8, school: "Conjuration", concentration: true },
-  { id: "inflict-wounds", name: "Inflict Wounds", level: 1, school: "Necromancy" },
+  {
+  id: "inflict-wounds",
+  name: "Inflict Wounds",
+  level: 1,
+  school: "Necromancy",
+
+  castingTime: "Action",
+  range: "Touch",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["cleric"],
+
+  description:
+    "A creature you touch is wracked with necromantic energy.",
+  effects:
+    "The target must make a Constitution saving throw, taking 2d10 Necrotic damage on a failed save, or half as much damage on a successful one.",
+  savingThrows: "Constitution",
+  higherLevel:
+    "The damage increases by 1d10 for each spell slot level above 1.",
+},
   { id: "insect-plague", name: "Insect Plague", level: 5, school: "Conjuration", concentration: true },
 {
     id: "invisibility",
@@ -1942,7 +2059,27 @@ export const spells: Spell[] = [
     limitations:
       "If you cast this spell multiple times, you can have up to three of its non-instantaneous effects active at a time.",
   },
-    { id: "produce-flame", name: "Produce Flame", level: 0, school: "Conjuration" },
+    {
+  id: "produce-flame",
+  name: "Produce Flame",
+  level: 0,
+  school: "Conjuration",
+
+  castingTime: "Bonus Action",
+  range: "Self",
+  components: "V, S",
+  duration: "10 minutes",
+  classes: ["druid"],
+
+  description:
+    "A flickering flame appears in your hand and remains there for the duration.",
+  effects:
+    "The flame sheds Bright Light in a 20-foot radius and Dim Light for an additional 20 feet, and it emits no heat. Until the spell ends, you can take a Magic action to hurl fire at a creature or object within 60 feet of you.",
+  interaction:
+    "Make a ranged spell attack. On a hit, the target takes 1d8 Fire damage.",
+  cantripUpgrade:
+    "The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8).",
+},
   { id: "protection-from-energy", name: "Protection from Energy", level: 3, school: "Abjuration", concentration: true },
 {
   id: "protection-from-evil-and-good",
@@ -2038,14 +2175,114 @@ export const spells: Spell[] = [
   { id: "reincarnate", name: "Reincarnate", level: 5, school: "Necromancy" },
   { id: "regenerate", name: "Regenerate", level: 7, school: "Transmutation" },
   { id: "remove-curse", name: "Remove Curse", level: 3, school: "Abjuration" },
-  { id: "resistance", name: "Resistance", level: 0, school: "Abjuration", concentration: true },
+  {
+  id: "resistance",
+  name: "Resistance",
+  level: 0,
+  school: "Abjuration",
+  concentration: true,
+
+  castingTime: "Action",
+  range: "Touch",
+  components: "V, S",
+  duration: "Up to 1 minute",
+  classes: ["cleric", "druid"],
+
+  description:
+    "You touch a willing creature and choose a damage type.",
+  effects:
+    "When the creature takes damage of the chosen type—Acid, Bludgeoning, Cold, Fire, Lightning, Necrotic, Piercing, Poison, Radiant, Slashing, or Thunder—before the spell ends, the creature reduces the total damage taken by 1d4.",
+  limitations:
+    "A creature can benefit from this spell only once per turn.",
+},
   { id: "resurrection", name: "Resurrection", level: 7, school: "Necromancy" },
   { id: "revivify", name: "Revivify", level: 3, school: "Necromancy" },
   { id: "reverse-gravity", name: "Reverse Gravity", level: 7, school: "Transmutation", concentration: true },
-  { id: "rope-trick", name: "Rope Trick", level: 2, school: "Transmutation" },
-  { id: "sacred-flame", name: "Sacred Flame", level: 0, school: "Evocation" },
-  { id: "sanctuary", name: "Sanctuary", level: 1, school: "Abjuration" },
-  { id: "scorching-ray", name: "Scorching Ray", level: 2, school: "Evocation" },
+  {
+  id: "rope-trick",
+  name: "Rope Trick",
+  level: 2,
+  school: "Transmutation",
+  ritual: true,
+
+  castingTime: "Action",
+  range: "Touch",
+  components: "V, S, M (a segment of rope)",
+  duration: "1 hour",
+  classes: ["wizard"],
+
+  description:
+    "You touch a rope. One end rises upward until it hangs perpendicular to the ground or reaches a ceiling.",
+  effects:
+    "At the rope’s upper end, an invisible 3-foot-by-5-foot portal opens to an extradimensional space that lasts for the duration.",
+  details:
+    "The space can be reached by climbing the rope and can hold up to eight Medium or smaller creatures. Creatures can pull objects into or drop them out of the space.",
+  limitations:
+    "Attacks, spells, and other effects can’t pass into or out of the space, but creatures inside it can see through the portal.",
+  endConditions:
+    "Anything inside the space drops out when the spell ends.",
+},
+  {
+  id: "sacred-flame",
+  name: "Sacred Flame",
+  level: 0,
+  school: "Evocation",
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["cleric"],
+
+  description:
+    "Flame-like radiance descends on a creature that you can see within range.",
+  effects:
+    "The target must succeed on a Dexterity saving throw or take 1d8 Radiant damage. The target gains no benefit from Half Cover or Three-Quarters Cover for this save.",
+  savingThrows: "Dexterity",
+  cantripUpgrade:
+    "The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8).",
+},
+  {
+  id: "sanctuary",
+  name: "Sanctuary",
+  level: 1,
+  school: "Abjuration",
+
+  castingTime: "Bonus Action",
+  range: "30 feet",
+  components: "V, S, M (a shard of glass from a mirror)",
+  duration: "1 minute",
+  classes: ["cleric"],
+
+  description:
+    "You ward a creature within range.",
+  effects:
+    "Until the spell ends, any creature who targets the warded creature with an attack roll or a damaging spell must succeed on a Wisdom saving throw or choose a new target or lose the attack or spell.",
+  savingThrows: "Wisdom",
+  limitations:
+    "This spell doesn't protect the warded creature from area effects.",
+  endConditions:
+    "The spell ends if the warded creature makes an attack roll, casts a spell, or deals damage.",
+},
+  {
+  id: "scorching-ray",
+  name: "Scorching Ray",
+  level: 2,
+  school: "Evocation",
+
+  castingTime: "Action",
+  range: "120 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You hurl three fiery rays at targets within range.",
+  effects:
+    "You can hurl the rays at one target or several. Make a ranged spell attack for each ray. On a hit, the target takes 2d6 Fire damage.",
+  higherLevel:
+    "You create one additional ray for each spell slot level above 2.",
+},
   { id: "scrying", name: "Scrying", level: 5, school: "Divination", concentration: true },
 {
   id: "searing-smite",
@@ -2065,7 +2302,23 @@ export const spells: Spell[] = [
   higherLevel:
     "When cast with a higher-level spell slot, all the damage increases by 1d6 for each slot level above 1.",
 },
-  { id: "see-invisibility", name: "See Invisibility", level: 2, school: "Divination" },
+  {
+  id: "see-invisibility",
+  name: "See Invisibility",
+  level: 2,
+  school: "Divination",
+
+  castingTime: "Action",
+  range: "Self",
+  components: "V, S, M (a pinch of talc)",
+  duration: "1 hour",
+  classes: ["bard", "sorcerer", "wizard"],
+
+  description:
+    "For the duration, you see creatures and objects that have the Invisible condition as if they were visible.",
+  effects:
+    "You can also see into the Ethereal Plane. Creatures and objects there appear ghostly.",
+},
   { id: "sending", name: "Sending", level: 3, school: "Divination" },
   { id: "shapechange", name: "Shapechange", level: 9, school: "Transmutation", concentration: true },
 {
@@ -2122,8 +2375,50 @@ export const spells: Spell[] = [
   description:
     "A shimmering field surrounds a creature of your choice within range, granting it a +2 bonus to AC for the duration.",
 },
-  { id: "shillelagh", name: "Shillelagh", level: 0, school: "Transmutation" },
-  { id: "shining-smite", name: "Shining Smite", level: 2, school: "Transmutation", concentration: true },
+  {
+  id: "shillelagh",
+  name: "Shillelagh",
+  level: 0,
+  school: "Transmutation",
+
+  castingTime: "Bonus Action",
+  range: "Self",
+  components: "V, S, M (mistletoe)",
+  duration: "1 minute",
+  classes: ["druid"],
+
+  description:
+    "A club or quarterstaff you are holding is imbued with nature’s power.",
+  effects:
+    "For the duration, you can use your spellcasting ability instead of Strength for the attack and damage rolls of melee attacks using that weapon, and the weapon’s damage die becomes a d8.",
+  details:
+    "If the attack deals damage, it can be Force damage or the weapon’s normal damage type (your choice). The spell ends early if you cast it again or if you let go of the weapon.",
+  cantripUpgrade:
+    "The damage die changes when you reach levels 5 (d10), 11 (d12), and 17 (2d6).",
+},
+  {
+  id: "shining-smite",
+  name: "Shining Smite",
+  level: 2,
+  school: "Transmutation",
+  concentration: true,
+
+  castingTime:
+    "Bonus Action, which you take immediately after hitting a creature with a Melee weapon or an Unarmed Strike",
+  range: "Self",
+  components: "V",
+  duration: "Up to 1 minute",
+  classes: ["paladin"],
+
+  description:
+    "Your strike burns with radiant power.",
+  effects:
+    "The target hit by the strike takes an extra 2d6 Radiant damage from the attack.",
+  details:
+    "Until the spell ends, the target sheds Bright Light in a 5-foot radius, attack rolls against it have Advantage, and it can't benefit from the Invisible condition.",
+  higherLevel:
+    "The damage increases by 1d6 for each spell slot level above 2.",
+},
 {
     id: "silent-image",
     name: "Silent Image",
@@ -2227,8 +2522,45 @@ export const spells: Spell[] = [
     "The spell does not return the creature’s soul, only animates its spirit. The corpse cannot learn new information, doesn’t understand events after its death, and cannot speculate about the future.",
 },
   { id: "speak-with-plants", name: "Speak with Plants", level: 3, school: "Transmutation" },
-  { id: "spare-the-dying", name: "Spare the Dying", level: 0, school: "Necromancy" },
-  { id: "spider-climb", name: "Spider Climb", level: 2, school: "Transmutation", concentration: true },
+  {
+  id: "spare-the-dying",
+  name: "Spare the Dying",
+  level: 0,
+  school: "Necromancy",
+
+  castingTime: "Action",
+  range: "15 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["cleric", "druid"],
+
+  description:
+    "Choose a creature within range that has 0 Hit Points and isn't dead.",
+  effects:
+    "The creature becomes Stable.",
+  cantripUpgrade:
+    "The range doubles when you reach levels 5 (30 feet), 11 (60 feet), and 17 (120 feet).",
+},
+  {
+  id: "spider-climb",
+  name: "Spider Climb",
+  level: 2,
+  school: "Transmutation",
+  concentration: true,
+
+  castingTime: "Action",
+  range: "Touch",
+  components: "V, S, M (a drop of bitumen and a spider)",
+  duration: "Up to 1 hour",
+  classes: ["sorcerer", "warlock", "wizard"],
+
+  description:
+    "You grant a creature the ability to move like a spider.",
+  effects:
+    "Until the spell ends, one willing creature you touch can move up, down, and across vertical surfaces and along ceilings, while leaving its hands free. The target also gains a Climb Speed equal to its Speed.",
+  higherLevel:
+    "You can target one additional creature for each spell slot level above 2.",
+},
 {
   id: "spike-growth",
   name: "Spike Growth",
@@ -2250,7 +2582,27 @@ export const spells: Spell[] = [
     "A creature that cannot see the area when the spell is cast must take a Search action and succeed on a Wisdom (Perception or Survival) check against your spell save DC to recognize the terrain as hazardous before entering it.",
 },
   { id: "spirit-guardians", name: "Spirit Guardians", level: 3, school: "Conjuration", concentration: true },
-  { id: "spiritual-weapon", name: "Spiritual Weapon", level: 2, school: "Evocation", concentration: true },
+  {
+  id: "spiritual-weapon",
+  name: "Spiritual Weapon",
+  level: 2,
+  school: "Evocation",
+
+  castingTime: "Bonus Action",
+  range: "60 feet",
+  components: "V, S",
+  duration: "1 minute",
+  classes: ["cleric"],
+
+  description:
+    "You create a floating, spectral force that resembles a weapon of your choice.",
+  effects:
+    "The weapon appears within range in a space of your choice. You can immediately make a melee spell attack against one creature within 5 feet of it. On a hit, the target takes 1d8 Force damage plus your spellcasting ability modifier.",
+  interaction:
+    "As a Bonus Action on your later turns, you can move the weapon up to 20 feet and repeat the attack against a creature within 5 feet of it.",
+  higherLevel:
+    "The damage increases by 1d8 for each spell slot level above 2.",
+},
   { id: "staggering-smite", name: "Staggering Smite", level: 4, school: "Enchantment", concentration: true },
 {
     id: "starry-wisp",
@@ -2651,7 +3003,26 @@ export const spells: Spell[] = [
   higherLevel:
     "The initial damage increases by 1d12 for each spell slot level above 1.",
 },
-  { id: "word-of-radiance", name: "Word of Radiance", level: 0, school: "Evocation" },
+  {
+  id: "word-of-radiance",
+  name: "Word of Radiance",
+  level: 0,
+  school: "Evocation",
+
+  castingTime: "Action",
+  range: "Self",
+  components: "V, M (a sunburst token)",
+  duration: "Instantaneous",
+  classes: ["cleric"],
+
+  description:
+    "Burning radiance erupts from you in a 5-foot emanation.",
+  effects:
+    "Each creature of your choice that you can see in the area must succeed on a Constitution saving throw or take 1d6 Radiant damage.",
+  savingThrows: "Constitution",
+  cantripUpgrade:
+    "The damage increases by 1d6 when you reach levels 5 (2d6), 11 (3d6), and 17 (4d6).",
+},
   { id: "word-of-recall", name: "Word of Recall", level: 6, school: "Conjuration" },
 {
   id: "wrathful-smite",
