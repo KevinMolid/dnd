@@ -1,7 +1,7 @@
 import { FormEvent, useState } from "react";
 import { loginUser, registerUser } from "../auth";
 
-import logo from "/images/logo3.png";
+import logo from "/images/logo4smaller.png";
 
 const Login = () => {
   const [isRegister, setIsRegister] = useState(false);
@@ -39,7 +39,7 @@ const Login = () => {
             </p>
 
             <div className="flex justify-center items-center">
-              <img src={logo} alt="rphub logo" className="w-14 mr-2" />
+              <img src={logo} alt="rphub logo" className="w-16 mr-2" />
               <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl">
                 rphub
               </h1>

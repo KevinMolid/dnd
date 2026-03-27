@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Container from "./Container";
-import logo from "/images/logo3.png";
+import logo from "/images/logo4smaller.png";
 
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
