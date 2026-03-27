@@ -862,6 +862,103 @@ export const items: Item[] = [
       slots: ["neck"],
     },
   },
+
+  // Adventuring Gear
+  // === ADDITIONAL GEAR ===
+{ id: "acid", name: "Acid (vial)", category: "consumable", stackable: true },
+{ id: "alchemists-fire", name: "Alchemist's Fire", category: "consumable", stackable: true },
+{ id: "antitoxin", name: "Antitoxin", category: "consumable" },
+
+{ id: "arcane-focus", name: "Arcane Focus", category: "gear" },
+
+{ id: "backpack", name: "Backpack", category: "container" },
+{ id: "ball-bearings", name: "Ball Bearings", category: "gear", stackable: true },
+{ id: "barrel", name: "Barrel", category: "container" },
+{ id: "basket", name: "Basket", category: "container" },
+
+{ id: "bell", name: "Bell", category: "gear" },
+{ id: "blanket", name: "Blanket", category: "gear" },
+{ id: "block-and-tackle", name: "Block and Tackle", category: "gear" },
+
+{ id: "glass-bottle", name: "Glass Bottle", category: "container" },
+{ id: "bucket", name: "Bucket", category: "container" },
+
+{ id: "burglars-pack", name: "Burglar's Pack", category: "container" },
+{ id: "diplomats-pack", name: "Diplomat's Pack", category: "container" },
+{ id: "dungeoneers-pack", name: "Dungeoneer's Pack", category: "container" },
+{ id: "entertainers-pack", name: "Entertainer's Pack", category: "container" },
+{ id: "explorers-pack", name: "Explorer's Pack", category: "container" },
+{ id: "scholars-pack", name: "Scholar's Pack", category: "container" },
+
+{ id: "caltrops", name: "Caltrops", category: "gear", stackable: true },
+{ id: "candle", name: "Candle", category: "consumable", stackable: true },
+
+{ id: "crossbow-bolt-case", name: "Crossbow Bolt Case", category: "container" },
+{ id: "map-scroll-case", name: "Map or Scroll Case", category: "container" },
+
+{ id: "chain", name: "Chain", category: "gear" },
+{ id: "chest", name: "Chest", category: "container" },
+
+{ id: "climbers-kit", name: "Climber's Kit", category: "gear" },
+
+{ id: "component-pouch", name: "Component Pouch", category: "gear" },
+{ id: "costume", name: "Costume", category: "clothing" }, // (already exists, skip if duplicate)
+
+{ id: "druidic-focus", name: "Druidic Focus", category: "gear" },
+
+{ id: "flask", name: "Flask", category: "container" },
+{ id: "grappling-hook", name: "Grappling Hook", category: "gear" },
+
+{ id: "holy-water", name: "Holy Water", category: "consumable" },
+{ id: "hunting-trap", name: "Hunting Trap", category: "gear" },
+
+{ id: "ink", name: "Ink", category: "consumable", stackable: true },
+{ id: "ink-pen", name: "Ink Pen", category: "gear" },
+
+{ id: "jug", name: "Jug", category: "container" },
+{ id: "ladder", name: "Ladder", category: "gear" },
+
+{ id: "bullseye-lantern", name: "Bullseye Lantern", category: "gear" },
+
+{ id: "lock", name: "Lock", category: "gear" },
+{ id: "magnifying-glass", name: "Magnifying Glass", category: "gear" },
+
+{ id: "map", name: "Map", category: "gear" },
+
+{ id: "net", name: "Net", category: "gear" },
+
+{ id: "paper", name: "Paper", category: "consumable", stackable: true },
+
+{ id: "basic-poison", name: "Basic Poison", category: "consumable" },
+
+{ id: "pole", name: "Pole", category: "gear" },
+
+{ id: "potion-of-healing", name: "Potion of Healing", category: "consumable", stackable: true },
+
+{ id: "portable-ram", name: "Portable Ram", category: "gear" },
+
+{ id: "rations", name: "Rations", category: "consumable", stackable: true },
+
+{ id: "sack", name: "Sack", category: "container" },
+
+{ id: "signal-whistle", name: "Signal Whistle", category: "gear" },
+
+{ id: "spell-scroll-cantrip", name: "Spell Scroll (Cantrip)", category: "consumable" },
+{ id: "spell-scroll-level-1", name: "Spell Scroll (Level 1)", category: "consumable" },
+
+{ id: "iron-spikes", name: "Iron Spikes", category: "gear", stackable: true },
+
+{ id: "spyglass", name: "Spyglass", category: "gear" },
+
+{ id: "string", name: "String", category: "gear", stackable: true },
+
+{ id: "tinderbox", name: "Tinderbox", category: "gear" },
+
+{ id: "torch", name: "Torch", category: "consumable", stackable: true },
+
+{ id: "vial", name: "Vial", category: "container", stackable: true },
+
+{ id: "waterskin", name: "Waterskin", category: "container" },
 ];
 
 export const itemsById = Object.fromEntries(
