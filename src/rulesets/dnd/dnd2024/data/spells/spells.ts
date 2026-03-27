@@ -486,7 +486,25 @@ export const spells: Spell[] = [
   cantripUpgrade:
     "The damage increases by 1d10 when you reach levels 5 (2d10), 11 (3d10), and 17 (4d10).",
 },
-  { id: "chromatic-orb", name: "Chromatic Orb", level: 1, school: "Evocation" },
+  {
+  id: "chromatic-orb",
+  name: "Chromatic Orb",
+  level: 1,
+  school: "Evocation",
+
+  castingTime: "Action",
+  range: "90 feet",
+  components: "V, S, M (a diamond worth 50+ GP)",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You hurl an orb of energy at a target within range. Choose Acid, Cold, Fire, Lightning, Poison, or Thunder for the type of orb you create, then make a ranged spell attack against the target.",
+  effects:
+    "On a hit, the target takes 3d8 damage of the chosen type. If you roll the same number on two or more of the d8s, the orb leaps to a different target of your choice within 30 feet of the target. Make an attack roll against the new target and make a new damage roll. The orb can't leap again unless you cast the spell with a level 2+ spell slot.",
+  higherLevel:
+    "The damage increases by 1d8 for each spell slot level above 1. The orb can leap a maximum number of times equal to the level of the slot expended, and a creature can be targeted only once by each casting of this spell.",
+},
   { id: "circle-of-power", name: "Circle of Power", level: 5, school: "Abjuration", concentration: true },
   { id: "clairvoyance", name: "Clairvoyance", level: 3, school: "Divination", concentration: true },
   { id: "cloud-of-daggers", name: "Cloud of Daggers", level: 2, school: "Conjuration", concentration: true },
@@ -931,7 +949,24 @@ export const spells: Spell[] = [
     "A Restrained creature can take an action to make a Strength (Athletics) check against your spell save DC. On a success, it frees itself and is no longer Restrained.",
 },
   { id: "etherealness", name: "Etherealness", level: 7, school: "Conjuration" },
-  { id: "expeditious-retreat", name: "Expeditious Retreat", level: 1, school: "Transmutation", concentration: true },
+  {
+  id: "expeditious-retreat",
+  name: "Expeditious Retreat",
+  level: 1,
+  school: "Transmutation",
+  concentration: true,
+
+  castingTime: "Bonus Action",
+  range: "Self",
+  components: "V, S",
+  duration: "Up to 10 minutes",
+  classes: ["sorcerer", "warlock", "wizard"],
+
+  description:
+    "You move with extraordinary speed.",
+  effects:
+    "You take the Dash action, and until the spell ends, you can take that action again as a Bonus Action.",
+},
 {
   id: "faerie-fire",
   name: "Faerie Fire",
@@ -950,7 +985,25 @@ export const spells: Spell[] = [
   benefits:
     "Attack rolls against an affected creature or object have Advantage if the attacker can see it.",
 },
-  { id: "false-life", name: "False Life", level: 1, school: "Necromancy" },
+  {
+  id: "false-life",
+  name: "False Life",
+  level: 1,
+  school: "Necromancy",
+
+  castingTime: "Action",
+  range: "Self",
+  components: "V, S, M (a drop of alcohol)",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You gain a measure of necromantic vitality.",
+  effects:
+    "You gain 2d4 + 4 Temporary Hit Points.",
+  higherLevel:
+    "You gain 5 additional Temporary Hit Points for each spell slot level above 1.",
+},
 {
     id: "feather-fall",
     name: "Feather Fall",
@@ -970,7 +1023,41 @@ export const spells: Spell[] = [
       "If a creature lands before the spell ends, it takes no damage from the fall, and the spell ends for that creature.",
   },
   { id: "feign-death", name: "Feign Death", level: 3, school: "Necromancy", ritual: true },
-  { id: "find-familiar", name: "Find Familiar", level: 1, school: "Conjuration", ritual: true },
+  {
+  id: "find-familiar",
+  name: "Find Familiar",
+  level: 1,
+  school: "Conjuration",
+  ritual: true,
+
+  castingTime: "1 hour or Ritual",
+  range: "10 feet",
+  components:
+    "V, S, M (burning incense worth 10+ GP, which the spell consumes)",
+  duration: "Instantaneous",
+  classes: ["wizard"],
+
+  description:
+    "You gain the service of a familiar, a spirit that takes an animal form of your choice.",
+
+  details:
+    "Choose Bat, Cat, Frog, Hawk, Lizard, Octopus, Owl, Rat, Raven, Spider, Weasel, or another Beast with a Challenge Rating of 0. The familiar appears in an unoccupied space within range and has the statistics of the chosen form, though it is a Celestial, Fey, or Fiend (your choice) instead of a Beast.",
+
+  behavior:
+    "Your familiar acts independently of you but obeys your commands. It rolls its own Initiative and acts on its own turn. A familiar can't attack, but it can take other actions as normal.",
+
+  benefits:
+    "While your familiar is within 100 feet of you, you can communicate with it telepathically. As a Bonus Action, you can see through the familiar’s eyes and hear what it hears until the start of your next turn, gaining the benefits of any special senses it has.",
+
+  interaction:
+    "When you cast a spell with a range of touch, your familiar can deliver the spell as if it had cast it. The familiar must be within 100 feet of you and uses its Reaction to deliver the spell.",
+
+  special:
+    "When the familiar drops to 0 Hit Points, it disappears. It reappears after you cast this spell again. As a Magic action, you can temporarily dismiss the familiar to a pocket dimension or dismiss it forever. While dismissed, you can use a Magic action to cause it to reappear in an unoccupied space within 30 feet of you. When it disappears, it leaves behind anything it was wearing or carrying.",
+
+  limitations:
+    "You can't have more than one familiar at a time. If you cast this spell while you already have a familiar, you instead cause it to adopt a new eligible form.",
+},
   { id: "find-steed", name: "Find Steed", level: 2, school: "Conjuration" },
   { id: "find-the-path", name: "Find the Path", level: 6, school: "Divination", concentration: true },
 {
@@ -1063,7 +1150,26 @@ export const spells: Spell[] = [
     "When cast with a higher-level spell slot, the damage increases by 1d6 for each slot level above 2.",
 },
   { id: "flesh-to-stone", name: "Flesh to Stone", level: 6, school: "Transmutation", concentration: true },
-  { id: "fog-cloud", name: "Fog Cloud", level: 1, school: "Conjuration", concentration: true },
+  {
+  id: "fog-cloud",
+  name: "Fog Cloud",
+  level: 1,
+  school: "Conjuration",
+  concentration: true,
+
+  castingTime: "Action",
+  range: "120 feet",
+  components: "V, S",
+  duration: "Up to 1 hour",
+  classes: ["druid", "ranger", "sorcerer", "wizard"],
+
+  description:
+    "You create a sphere of fog centered on a point within range.",
+  effects:
+    "The fog spreads around corners and heavily obscures its area in a 20-foot-radius sphere. It lasts for the duration or until a strong wind (such as one created by Gust of Wind) disperses it.",
+  higherLevel:
+    "The fog’s radius increases by 20 feet for each spell slot level above 1.",
+},
   { id: "foresight", name: "Foresight", level: 9, school: "Divination" },
   { id: "forbiddance", name: "Forbiddance", level: 6, school: "Abjuration", ritual: true },
   { id: "fount-of-moonlight", name: "Fount of Moonlight", level: 4, school: "Evocation", concentration: true },
@@ -1114,7 +1220,24 @@ export const spells: Spell[] = [
     "Uneaten berries disappear when the spell ends.",
 },
   { id: "grasping-vine", name: "Grasping Vine", level: 4, school: "Conjuration", concentration: true },
-  { id: "grease", name: "Grease", level: 1, school: "Conjuration" },
+  {
+  id: "grease",
+  name: "Grease",
+  level: 1,
+  school: "Conjuration",
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S, M (a bit of pork rind or butter)",
+  duration: "1 minute",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "Nonflammable grease covers the ground in a 10-foot square centered on a point within range.",
+  effects:
+    "The area becomes Difficult Terrain for the duration. When the grease appears, each creature standing in its area must succeed on a Dexterity saving throw or fall Prone. A creature that enters the area or ends its turn there must also succeed on that save or fall Prone.",
+  savingThrows: "Dexterity",
+},
   { id: "greater-restoration", name: "Greater Restoration", level: 5, school: "Abjuration" },
 {
     id: "guidance",
@@ -1494,7 +1617,23 @@ export const spells: Spell[] = [
     higherLevel:
       "You can target one additional creature for each spell slot level above 1.",
   },
-    { id: "mage-armor", name: "Mage Armor", level: 1, school: "Abjuration" },
+    {
+  id: "mage-armor",
+  name: "Mage Armor",
+  level: 1,
+  school: "Abjuration",
+
+  castingTime: "Action",
+  range: "Touch",
+  components: "V, S, M (a piece of cured leather)",
+  duration: "8 hours",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You touch a willing creature who isn't wearing armor.",
+  effects:
+    "Until the spell ends, the target’s base AC becomes 13 plus its Dexterity modifier. The spell ends early if the target dons armor.",
+},
   {
     id: "mage-hand",
     name: "Mage Hand",
@@ -1513,14 +1652,96 @@ export const spells: Spell[] = [
       "The hand can't attack, activate magic items, or carry more than 10 pounds.",
   },
     { id: "magic-circle", name: "Magic Circle", level: 3, school: "Abjuration" },
-  { id: "magic-missile", name: "Magic Missile", level: 1, school: "Evocation" },
-  { id: "magic-mouth", name: "Magic Mouth", level: 2, school: "Illusion", ritual: true },
-  { id: "magic-weapon", name: "Magic Weapon", level: 2, school: "Transmutation", concentration: true },
+  {
+  id: "magic-missile",
+  name: "Magic Missile",
+  level: 1,
+  school: "Evocation",
+
+  castingTime: "Action",
+  range: "120 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You create three glowing darts of magical force.",
+  effects:
+    "Each dart hits a creature of your choice that you can see within range. A dart deals 1d4 + 1 Force damage. The darts all strike simultaneously, and you can direct them to hit one creature or several.",
+  higherLevel:
+    "The spell creates one more dart for each spell slot level above 1.",
+},
+  {
+  id: "magic-mouth",
+  name: "Magic Mouth",
+  level: 2,
+  school: "Illusion",
+  ritual: true,
+
+  castingTime: "1 minute or Ritual",
+  range: "30 feet",
+  components: "V, S, M (jade dust worth 10+ GP, which the spell consumes)",
+  duration: "Until dispelled",
+  classes: ["bard", "wizard"],
+
+  description:
+    "You implant a message within an object in range that is uttered when a trigger condition is met.",
+
+  details:
+    "Choose an object that you can see and that isn’t being worn or carried by another creature. Then speak the message, which must be 25 words or fewer, though it can be delivered over as long as 10 minutes. Finally, determine the circumstance that will trigger the spell to deliver your message.",
+
+  triggers:
+    "The trigger can be as general or as detailed as you like, but it must be based on visual or audible conditions that occur within 30 feet of the object (such as a creature approaching or a sound occurring).",
+
+  effects:
+    "When the trigger occurs, a magical mouth appears on the object and recites the message in your voice and at the same volume you spoke. If the object has a mouth (or something like one), the message appears to come from it. The spell can either end after delivering the message or remain and repeat whenever the trigger occurs.",
+
+  special:
+    "The message can last up to 10 minutes, and the spell persists until dispelled unless configured to end after triggering.",
+},
+  {
+  id: "magic-weapon",
+  name: "Magic Weapon",
+  level: 2,
+  school: "Transmutation",
+  concentration: true,
+
+  castingTime: "Bonus Action",
+  range: "Touch",
+  components: "V, S",
+  duration: "1 hour",
+  classes: ["paladin", "ranger", "sorcerer", "wizard"],
+
+  description:
+    "You touch a nonmagical weapon and imbue it with magical power.",
+  effects:
+    "Until the spell ends, the weapon becomes a magic weapon with a +1 bonus to attack rolls and damage rolls. The spell ends early if you cast it again.",
+  higherLevel:
+    "The bonus increases to +2 with a level 3–5 spell slot and +3 with a level 6+ spell slot.",
+},
   { id: "mass-cure-wounds", name: "Mass Cure Wounds", level: 5, school: "Abjuration" },
   { id: "mass-heal", name: "Mass Heal", level: 9, school: "Abjuration" },
   { id: "mass-healing-word", name: "Mass Healing Word", level: 3, school: "Abjuration" },
   { id: "meld-into-stone", name: "Meld into Stone", level: 3, school: "Transmutation", ritual: true },
-  { id: "melfs-acid-arrow", name: "Melf's Acid Arrow", level: 2, school: "Evocation" },
+  {
+  id: "melfs-acid-arrow",
+  name: "Melf's Acid Arrow",
+  level: 2,
+  school: "Evocation",
+
+  castingTime: "Action",
+  range: "90 feet",
+  components: "V, S, M (powdered rhubarb leaf)",
+  duration: "Instantaneous",
+  classes: ["wizard"],
+
+  description:
+    "A shimmering green arrow streaks toward a target within range and bursts in a spray of acid. Make a ranged spell attack against the target.",
+  effects:
+    "On a hit, the target takes 4d4 Acid damage immediately and 2d4 Acid damage at the end of its next turn. On a miss, the arrow splashes the target with acid for half as much of the initial damage only.",
+  higherLevel:
+    "The damage (both initial and later) increases by 1d4 for each spell slot level above 2.",
+},
   {
     id: "mending",
     name: "Mending",
@@ -1795,7 +2016,25 @@ export const spells: Spell[] = [
   cantripUpgrade:
     "The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8).",
 },
-  { id: "ray-of-sickness", name: "Ray of Sickness", level: 1, school: "Necromancy" },
+  {
+  id: "ray-of-sickness",
+  name: "Ray of Sickness",
+  level: 1,
+  school: "Necromancy",
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You shoot a greenish ray at a creature within range. Make a ranged spell attack against the target.",
+  effects:
+    "On a hit, the target takes 2d8 Poison damage and has the Poisoned condition until the end of your next turn.",
+  higherLevel:
+    "The damage increases by 1d8 for each spell slot level above 1.",
+},
   { id: "reincarnate", name: "Reincarnate", level: 5, school: "Necromancy" },
   { id: "regenerate", name: "Regenerate", level: 7, school: "Transmutation" },
   { id: "remove-curse", name: "Remove Curse", level: 3, school: "Abjuration" },
@@ -1851,7 +2090,24 @@ export const spells: Spell[] = [
     higherLevel:
       "The damage increases by 1d8 for each spell slot level above 2.",
   },
-    { id: "shield", name: "Shield", level: 1, school: "Abjuration" },
+    {
+  id: "shield",
+  name: "Shield",
+  level: 1,
+  school: "Abjuration",
+
+  castingTime:
+    "Reaction, which you take when you are hit by an attack roll or targeted by the Magic Missile spell",
+  range: "Self",
+  components: "V, S",
+  duration: "1 round",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "An imperceptible barrier of magical force protects you.",
+  effects:
+    "Until the start of your next turn, you have a +5 bonus to AC, including against the triggering attack, and you take no damage from Magic Missile.",
+},
 {
   id: "shield-of-faith",
   name: "Shield of Faith",
@@ -2095,7 +2351,34 @@ export const spells: Spell[] = [
   higherLevel:
     "When cast with a higher-level spell slot, you can target one additional creature for each slot level above 1.",
 },
-  { id: "tensers-floating-disk", name: "Tenser's Floating Disk", level: 1, school: "Conjuration", ritual: true },
+  {
+  id: "tensers-floating-disk",
+  name: "Tenser's Floating Disk",
+  level: 1,
+  school: "Conjuration",
+  ritual: true,
+
+  castingTime: "Action or Ritual",
+  range: "30 feet",
+  components: "V, S, M (a drop of mercury)",
+  duration: "1 hour",
+  classes: ["wizard"],
+
+  description:
+    "This spell creates a circular, horizontal plane of force that floats 3 feet above the ground in an unoccupied space of your choice within range.",
+
+  details:
+    "The disk is 3 feet in diameter and 1 inch thick. It remains for the duration and can hold up to 500 pounds. If more weight is placed on it, the spell ends and everything on the disk falls to the ground.",
+
+  behavior:
+    "The disk is immobile while you are within 20 feet of it. If you move more than 20 feet away from it, the disk follows you so that it remains within 20 feet of you.",
+
+  limitations:
+    "The disk can move across uneven terrain, up or down stairs, slopes, and similar surfaces, but it can't cross an elevation change of 10 feet or more. For example, it can't move across a 10-foot-deep pit or leave such a pit if created at the bottom.",
+
+  endConditions:
+    "If you move more than 100 feet from the disk (typically because it can't move around an obstacle to follow you), the spell ends.",
+},
 {
     id: "thaumaturgy",
     name: "Thaumaturgy",
@@ -2317,10 +2600,57 @@ export const spells: Spell[] = [
   },
     { id: "water-breathing", name: "Water Breathing", level: 3, school: "Transmutation", ritual: true },
   { id: "water-walk", name: "Water Walk", level: 3, school: "Transmutation", ritual: true },
-  { id: "web", name: "Web", level: 2, school: "Conjuration", concentration: true },
+  {
+  id: "web",
+  name: "Web",
+  level: 2,
+  school: "Conjuration",
+  concentration: true,
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S, M (a bit of spiderweb)",
+  duration: "Up to 1 hour",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "You conjure a mass of sticky webbing at a point within range.",
+  effects:
+    "The webs fill a 20-foot cube for the duration. The webs are Difficult Terrain, and the area within them is lightly obscured.",
+  conditions:
+    "The first time a creature enters the webs on a turn or starts its turn there, it must succeed on a Dexterity saving throw or have the Restrained condition while in the webs or until it breaks free.",
+  savingThrows: "Dexterity",
+  interaction:
+    "A creature restrained by the webs can take an action to make a Strength (Athletics) check against your spell save DC. If it succeeds, it is no longer restrained.",
+  limitations:
+    "If the webs aren’t anchored between two solid masses or layered across a floor, wall, or ceiling, the web collapses on itself, and the spell ends at the start of your next turn. Webs layered over a flat surface have a depth of 5 feet.",
+  special:
+    "The webs are flammable. Any 5-foot cube of webs exposed to fire burns away in 1 round, dealing 2d4 Fire damage to any creature that starts its turn in the fire.",
+},
   { id: "wind-walk", name: "Wind Walk", level: 6, school: "Transmutation" },
   { id: "wind-wall", name: "Wind Wall", level: 3, school: "Evocation", concentration: true },
-  { id: "witch-bolt", name: "Witch Bolt", level: 1, school: "Evocation", concentration: true },
+  {
+  id: "witch-bolt",
+  name: "Witch Bolt",
+  level: 1,
+  school: "Evocation",
+  concentration: true,
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S, M (a twig struck by lightning)",
+  duration: "Up to 1 minute",
+  classes: ["sorcerer", "warlock", "wizard"],
+
+  description:
+    "A beam of crackling energy lances toward a creature within range, forming a sustained arc of lightning between you and the target.",
+  effects:
+    "Make a ranged spell attack against the target. On a hit, the target takes 2d12 Lightning damage. On each of your subsequent turns, you can use a Bonus Action to deal 1d12 Lightning damage to the target automatically, even if the first attack missed.",
+  limitations:
+    "The spell ends if the target is ever outside the spell’s range or if it has Total Cover from you.",
+  higherLevel:
+    "The initial damage increases by 1d12 for each spell slot level above 1.",
+},
   { id: "word-of-radiance", name: "Word of Radiance", level: 0, school: "Evocation" },
   { id: "word-of-recall", name: "Word of Recall", level: 6, school: "Conjuration" },
 {
@@ -2341,7 +2671,26 @@ export const spells: Spell[] = [
   higherLevel:
     "When cast with a higher-level spell slot, the damage increases by 1d6 for each slot level above 1.",
 },
-  { id: "zone-of-truth", name: "Zone of Truth", level: 2, school: "Enchantment" },
+  {
+  id: "zone-of-truth",
+  name: "Zone of Truth",
+  level: 2,
+  school: "Enchantment",
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S",
+  duration: "10 minutes",
+  classes: ["bard", "cleric", "paladin"],
+
+  description:
+    "You create a magical zone that guards against deception in a 15-foot-radius sphere centered on a point within range.",
+  effects:
+    "Until the spell ends, a creature that enters the area for the first time on a turn or starts its turn there must make a Charisma saving throw. On a failed save, a creature can’t speak a deliberate lie while in the radius. You know whether each creature succeeds or fails on this save.",
+  savingThrows: "Charisma",
+  details:
+    "An affected creature is aware of the spell and can avoid answering questions to which it would normally respond with a lie. Such a creature can be evasive yet must be truthful.",
+},
   {
   id: "yolandes-regal-presence",
   name: "Yolande's Regal Presence",
