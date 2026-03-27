@@ -785,6 +785,16 @@ export const items: Item[] = [
   { id: "forgery-kit", name: "Forgery Kit", category: "tool" },
   { id: "gamers-set", name: "Gaming Set", category: "tool" },
   { id: "musical-instrument", name: "Musical Instrument", category: "tool" },
+  {
+    id: "disguise-kit",
+    name: "Disguise Kit",
+    category: "tool",
+  },
+  {
+    id: "poisoners-kit",
+    name: "Poisoner's Kit",
+    category: "tool",
+  },
 
   // Artisan tools
   { id: "alchemists-supplies", name: "Alchemist's Supplies", category: "tool" },
@@ -804,6 +814,11 @@ export const items: Item[] = [
   { id: "tinkers-tools", name: "Tinker's Tools", category: "tool" },
   { id: "weavers-tools", name: "Weaver's Tools", category: "tool" },
   { id: "woodcarvers-tools", name: "Woodcarver's Tools", category: "tool" },
+  {
+    id: "cobblers-tools",
+    name: "Cobbler's Tools",
+    category: "tool",
+  },
 
   // === GEAR ===
   { id: "rope", name: "Rope", category: "gear" },
