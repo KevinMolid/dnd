@@ -26,7 +26,9 @@ import SpellPreviewCard, {
 type Props = {
   character: any;
   onClose: () => void;
-  onConfirm: (decisionsByLevel: Record<number, LevelUpDecision>) => void;
+  onConfirm: (
+    decisionsByLevel: Record<number, LevelUpDecision>,
+  ) => Promise<void>;
 };
 
 type CantripReplacement = {
@@ -264,6 +266,26 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     setPreviewSpell(spell);
   };
 
+  const toggleEvocationSavantSpellChoice = (
+    level: number,
+    spell: SpellSelection,
+    maxChoices: number,
+  ) => {
+    const current = (
+      getEffectiveDecisionForLevel(level).evocationSavantSpellChoices ?? []
+    ).slice();
+
+    const exists = current.some((s) => s.spellId === spell.spellId);
+
+    const next = exists
+      ? current.filter((s) => s.spellId !== spell.spellId)
+      : current.length < maxChoices
+        ? [...current, spell]
+        : current;
+
+    updateDecision(level, { evocationSavantSpellChoices: next });
+  };
+
   const toggleWizardSpellbookChoice = (
     level: number,
     spell: SpellSelection,
@@ -400,6 +422,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     });
   };
 
+  const isEvocationSavantStep = (step: any) =>
+    String(step.id).includes("evocation-savant") ||
+    String(step.choice?.id ?? "").includes("evocation-savant");
+
   const isLikelyFightingStyleStep = (step: any) => {
     const title = String(step.title ?? "").toLowerCase();
     const description = String(step.description ?? "").toLowerCase();
@@ -497,9 +523,9 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       }
     }
 
-    if (Array.isArray(character.choices?.wizardSpellbookChoices)) {
+    if (Array.isArray(character.choices?.spellbookChoices)) {
       for (const spell of character.choices
-        .wizardSpellbookChoices as SpellSelection[]) {
+        .spellbookChoices as SpellSelection[]) {
         if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
           spellSelections.push(spell);
         }
@@ -546,8 +572,16 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
         }
       }
 
-      if (Array.isArray(decision.wizardSpellbookChoices)) {
-        for (const spell of decision.wizardSpellbookChoices as SpellSelection[]) {
+      if (Array.isArray(decision.spellbookChoices)) {
+        for (const spell of decision.spellbookChoices as SpellSelection[]) {
+          if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
+            spellSelections.push(spell);
+          }
+        }
+      }
+
+      if (Array.isArray(decision.evocationSavantSpellChoices)) {
+        for (const spell of decision.evocationSavantSpellChoices as SpellSelection[]) {
           if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
             spellSelections.push(spell);
           }
@@ -717,6 +751,13 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       const requiredCount =
         typeof step.choice?.choose === "number" ? step.choice.choose : 2;
 
+      if (isEvocationSavantStep(step)) {
+        return (
+          Array.isArray(decision?.evocationSavantSpellChoices) &&
+          decision.evocationSavantSpellChoices.length >= requiredCount
+        );
+      }
+
       return (
         Array.isArray(decision?.spellbookChoices) &&
         decision.spellbookChoices.length >= requiredCount
@@ -836,13 +877,56 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                 );
 
               const filteredAvailableWizardSpellbookSpells =
-                availableStepLeveledSpells.filter(
-                  (spell) =>
+                availableStepLeveledSpells.filter((spell) => {
+                  const restrictions = step.choice?.restrictions ?? [];
+
+                  const requiresEvocation = restrictions.some((r: string) =>
+                    r.toLowerCase().includes("evocation"),
+                  );
+
+                  const requiresLevelOneOrTwo = restrictions.some((r: string) =>
+                    r.toLowerCase().includes("level 1 or 2"),
+                  );
+
+                  const maxLevelRestriction = restrictions.find((r: string) =>
+                    r.toLowerCase().includes("or lower"),
+                  );
+
+                  if (
+                    requiresEvocation &&
+                    String(spell.school).toLowerCase() !== "evocation"
+                  ) {
+                    return false;
+                  }
+
+                  if (
+                    requiresLevelOneOrTwo &&
+                    !(spell.level === 1 || spell.level === 2)
+                  ) {
+                    return false;
+                  }
+
+                  if (maxLevelRestriction) {
+                    const match =
+                      maxLevelRestriction.match(/level (\d+) or lower/i);
+                    if (match) {
+                      const maxLevel = Number(match[1]);
+                      if (spell.level > maxLevel) {
+                        return false;
+                      }
+                    }
+                  }
+
+                  return (
                     !knownSpellIdsBeforeStep.includes(spell.id) ||
                     (decision.spellbookChoices ?? []).some(
                       (selected) => selected.spellId === spell.id,
-                    ),
-                );
+                    ) ||
+                    (decision.evocationSavantSpellChoices ?? []).some(
+                      (selected) => selected.spellId === spell.id,
+                    )
+                  );
+                });
 
               return (
                 <div
@@ -1510,20 +1594,40 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                     handlePreviewSpell(
                                       toPreviewSpell(spell, spell),
                                     );
-                                    toggleWizardSpellbookChoice(
-                                      step.level,
-                                      {
-                                        spellId: spell.id,
-                                        level: spell.level as SpellLevel,
-                                      },
-                                      step.choice?.choose ?? 2,
-                                    );
+
+                                    if (isEvocationSavantStep(step)) {
+                                      toggleEvocationSavantSpellChoice(
+                                        step.level,
+                                        {
+                                          spellId: spell.id,
+                                          level: spell.level as SpellLevel,
+                                        },
+                                        step.choice?.choose ?? 1,
+                                      );
+                                    } else {
+                                      toggleWizardSpellbookChoice(
+                                        step.level,
+                                        {
+                                          spellId: spell.id,
+                                          level: spell.level as SpellLevel,
+                                        },
+                                        step.choice?.choose ?? 2,
+                                      );
+                                    }
                                   }}
                                   className={choiceButtonClass(
-                                    (decision.spellbookChoices ?? []).some(
-                                      (selected) =>
-                                        selected.spellId === spell.id,
-                                    ),
+                                    isEvocationSavantStep(step)
+                                      ? (
+                                          decision.evocationSavantSpellChoices ??
+                                          []
+                                        ).some(
+                                          (selected) =>
+                                            selected.spellId === spell.id,
+                                        )
+                                      : (decision.spellbookChoices ?? []).some(
+                                          (selected) =>
+                                            selected.spellId === spell.id,
+                                        ),
                                   )}
                                 >
                                   <SpellChoiceLabel

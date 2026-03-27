@@ -1189,6 +1189,7 @@ export type LevelUpDecision = {
 
   // Wizard
   scholarSkill?: SkillId;
+  evocationSavantSpellChoices?: SpellSelection[];
 };
 
 export type LevelUpDecisionsByLevel = Record<number, LevelUpDecision>;

@@ -630,6 +630,49 @@ const getSubclassSpellcastingChoiceSteps = (
   return steps;
 };
 
+const getHighestSpellLevelAvailable = (
+  rules: SpellcastingRules,
+  level: LevelNumber,
+): number => {
+  const slotTable = rules.slotTableId === "full-caster"
+    ? {
+        1: { 1: 2 },
+        2: { 1: 3 },
+        3: { 1: 4, 2: 2 },
+        4: { 1: 4, 2: 3 },
+        5: { 1: 4, 2: 3, 3: 2 },
+        6: { 1: 4, 2: 3, 3: 3 },
+        7: { 1: 4, 2: 3, 3: 3, 4: 1 },
+        8: { 1: 4, 2: 3, 3: 3, 4: 2 },
+        9: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 1 },
+        10: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 2 },
+        11: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1 },
+        12: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1 },
+        13: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1 },
+        14: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1 },
+        15: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1 },
+        16: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1 },
+        17: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 2, 6: 1, 7: 1, 8: 1, 9: 1 },
+        18: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 3, 6: 1, 7: 1, 8: 1, 9: 1 },
+        19: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 3, 6: 2, 7: 1, 8: 1, 9: 1 },
+        20: { 1: 4, 2: 3, 3: 3, 4: 3, 5: 3, 6: 2, 7: 2, 8: 1, 9: 1 },
+      }
+    : {};
+
+  const slots = slotTable[level] ?? {};
+  const spellLevels = Object.keys(slots).map(Number);
+  return spellLevels.length ? Math.max(...spellLevels) : 0;
+};
+
+const wizardGainsNewSpellSlotLevel = (
+  rules: SpellcastingRules,
+  level: LevelNumber,
+): boolean => {
+  const current = getHighestSpellLevelAvailable(rules, level);
+  const previous = level > 1 ? getHighestSpellLevelAvailable(rules, (level - 1) as LevelNumber) : 0;
+  return current > previous;
+};
+
 const getRoguePendingChoiceSteps = (
   character: CharacterSheetData,
   level: LevelNumber,
@@ -909,6 +952,10 @@ const getWizardPendingChoiceSteps = (
 
   const steps: PendingLevelUpStep[] = [];
   const decisions = character.choices?.levelUpDecisions?.[level];
+  const subclassId =
+    decisions?.subclassId ??
+    character.choices?.subclassId ??
+    character.choices?.levelUpDecisions?.[3]?.subclassId;
 
   if (level === 2 && !decisions?.scholarSkill) {
     const proficientSkills =
@@ -970,6 +1017,63 @@ const getWizardPendingChoiceSteps = (
         source: "spells",
       },
     });
+  }
+
+  if (subclassId === "evoker") {
+    const evocationChoices = decisions?.evocationSavantSpellChoices ?? [];
+
+    if (level === 3 && evocationChoices.length < 2) {
+      steps.push({
+        level,
+        type: "spellbook-choice",
+        id: "evoker-evocation-savant-3",
+        title: "Evocation Savant Spells",
+        description:
+          "Choose two Wizard spells from the Evocation school, each no higher than level 2, and add them to your spellbook for free.",
+        choice: {
+          id: "evoker-evocation-savant-choice-3",
+          level,
+          name: "Evocation Savant",
+          choose: 2,
+          source: "spells",
+          restrictions: [
+            "Must be an Evocation spell.",
+            "Must be level 1 or 2.",
+          ],
+        },
+      });
+    }
+
+    if (
+      level > 3 &&
+      wizardGainsNewSpellSlotLevel(classDef.spellcasting, level) &&
+      evocationChoices.length < 1
+    ) {
+      const maxSpellLevel = getHighestSpellLevelAvailable(
+        classDef.spellcasting,
+        level,
+      );
+
+      steps.push({
+        level,
+        type: "spellbook-choice",
+        id: `evoker-evocation-savant-${level}`,
+        title: "Evocation Savant Spell",
+        description:
+          "Choose one Wizard spell from the Evocation school to add to your spellbook for free.",
+        choice: {
+          id: `evoker-evocation-savant-choice-${level}`,
+          level,
+          name: "Evocation Savant",
+          choose: 1,
+          source: "spells",
+          restrictions: [
+            "Must be an Evocation spell.",
+            `Must be a spell of level ${maxSpellLevel} or lower.`,
+          ],
+        },
+      });
+    }
   }
 
   return steps;
