@@ -29,7 +29,6 @@ export type CharacterSpell = {
 
 export type CharacterItem = {
   id: string;
-  name: string;
   quantity: number;
   equipped?: boolean;
 };

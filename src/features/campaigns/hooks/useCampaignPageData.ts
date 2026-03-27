@@ -43,6 +43,10 @@ import type {
   LevelUpDecision,
 } from "../../../rulesets/dnd/dnd2024/types";
 
+import type { CharacterItem } from "../../../types/character";
+import { itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
+
+
 export type CampaignJournalPreview = {
   id: string;
   title: string;
@@ -86,6 +90,9 @@ export type CharacterDoc = {
   hp?: number;
 
   conditions?: string[];
+
+  gold?: number;
+  inventory?: CharacterItem[];
 
   pendingLevelUp?: {
     fromLevel: number;
@@ -134,6 +141,9 @@ export type CampaignCharacter = {
   currentHp?: number;
   maxHp?: number;
   conditions?: string[];
+
+  gold?: number;
+  inventory?: CharacterItem[];
 
   abilityScores?: Record<string, number>;
   pendingLevelUp?: {
@@ -371,6 +381,9 @@ export const useCampaignPageData = (campaignId?: string) => {
                 currentHp: hpData.currentHp,
                 maxHp: hpData.maxHp,
                 conditions: data.conditions ?? [],
+
+                gold: data.gold ?? 0,
+                inventory: data.inventory ?? [],
 
                 abilityScores: data.abilityScores,
                 pendingLevelUp: data.pendingLevelUp ?? null,
@@ -672,6 +685,100 @@ const handleLevelUp = useCallback(
     [updateCharacter],
   );
 
+  type RewardItemInput = {
+    itemId: string;
+    quantity: number;
+  };
+
+  type RewardPayload = {
+    characterIds: string[];
+    gold?: number;
+    items?: RewardItemInput[];
+  };
+
+const mergeInventoryItems = (
+  current: CharacterItem[],
+  incoming: { itemId: string; quantity: number }[],
+): CharacterItem[] => {
+  const result = [...current];
+
+  incoming.forEach(({ itemId, quantity }) => {
+    if (!itemId || quantity <= 0) return;
+
+    const itemDef = itemsById[itemId];
+    const isStackable = itemDef?.stackable ?? false;
+
+    if (isStackable) {
+      const existing = result.find((i) => i.id === itemId);
+
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        result.push({ id: itemId, quantity });
+      }
+    } else {
+      // Non-stackable → add separate entries
+      for (let i = 0; i < quantity; i++) {
+        result.push({ id: itemId, quantity: 1 });
+      }
+    }
+  });
+
+  return result;
+};
+
+const handleRewardCharacters = useCallback(
+  async ({ characterIds, gold = 0, items = [] }: RewardPayload) => {
+    if (!campaignId || !isGm) return;
+
+    const normalizedGold = Math.max(0, Math.floor(gold));
+    const normalizedItems = items
+      .map((item) => ({
+        itemId: item.itemId,
+        quantity: Math.max(0, Math.floor(item.quantity)),
+      }))
+      .filter((item) => item.itemId && item.quantity > 0);
+
+    if (characterIds.length === 0) return;
+    if (normalizedGold <= 0 && normalizedItems.length === 0) return;
+
+    try {
+      await Promise.all(
+        characterIds.map(async (characterId) => {
+          await runTransaction(db, async (transaction) => {
+            const characterRef = doc(db, "characters", characterId);
+            const characterSnap = await transaction.get(characterRef);
+
+            if (!characterSnap.exists()) {
+              throw new Error("Character not found.");
+            }
+
+            const data = characterSnap.data() as CharacterDoc;
+
+            if (data.campaignId !== campaignId) {
+              throw new Error("Character is no longer in this campaign.");
+            }
+
+            const nextGold = (data.gold ?? 0) + normalizedGold;
+            const nextInventory = mergeInventoryItems(
+              data.inventory ?? [],
+              normalizedItems,
+            );
+
+            transaction.update(characterRef, {
+              gold: nextGold,
+              inventory: nextInventory,
+            });
+          });
+        }),
+      );
+    } catch (error) {
+      console.error("Failed to reward characters:", error);
+    }
+  },
+  [campaignId, isGm],
+);
+
   return {
     user,
     pageState,
@@ -698,6 +805,7 @@ const handleLevelUp = useCallback(
     latestJournalEntry,
     latestJournalEntryLoading,
     handleSetCharacterActive,
+    handleRewardCharacters,
   };
 };
 

@@ -5,6 +5,7 @@ import InvitePlayersModal from "../components/InvitePlayersModal";
 import CreateHandoutModal from "../components/CreateHandoutModal";
 import LevelUpModal from "../components/levelUpModal";
 import AwardXpModal from "../components/awardXpModal";
+import RewardItemsModal from "../features/campaigns/components/RewardItemsModal";
 
 import CampaignHeader from "../features/campaigns/components/CampaignHeader";
 import CampaignMembersSection from "../features/campaigns/components/CampaignMembersSection";
@@ -39,11 +40,13 @@ const CampaignPage = () => {
     handleLevelUp,
     handleClaimCharacter,
     handleSetCharacterActive,
+    handleRewardCharacters,
   } = useCampaignPageData(campaignId);
 
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [createHandoutOpen, setCreateHandoutOpen] = useState(false);
   const [xpModalOpen, setXpModalOpen] = useState(false);
+  const [rewardItemsOpen, setRewardItemsOpen] = useState(false);
   const [levelUpCharacter, setLevelUpCharacter] =
     useState<CampaignCharacter | null>(null);
   const claimableCharacters = useMemo(
@@ -169,6 +172,12 @@ const CampaignPage = () => {
         member.displayName?.trim() || member.email?.trim() || "Unnamed player",
     }));
 
+  const rewardableCharacters = activeCampaignCharacters.map((character) => ({
+    id: character.id,
+    name: character.name,
+    ownerUid: character.ownerUid,
+  }));
+
   const awardXpCharacters = activeCampaignCharacters.map((character) => ({
     id: character.id,
     name: character.name,
@@ -193,6 +202,7 @@ const CampaignPage = () => {
                 campaignId={campaign.id}
                 isGm={isGm}
                 onCreateHandout={() => setCreateHandoutOpen(true)}
+                onRewardItems={() => setRewardItemsOpen(true)}
               />
             )}
 
@@ -267,6 +277,18 @@ const CampaignPage = () => {
           isOpen={xpModalOpen}
           onClose={() => setXpModalOpen(false)}
           characters={awardXpCharacters}
+        />
+      )}
+
+      {isGm && (
+        <RewardItemsModal
+          isOpen={rewardItemsOpen}
+          onClose={() => setRewardItemsOpen(false)}
+          characters={rewardableCharacters}
+          onConfirm={async (payload) => {
+            await handleRewardCharacters(payload);
+            setRewardItemsOpen(false);
+          }}
         />
       )}
 

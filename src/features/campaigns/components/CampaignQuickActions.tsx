@@ -4,12 +4,14 @@ type CampaignQuickActionsProps = {
   campaignId: string;
   isGm: boolean;
   onCreateHandout: () => void;
+  onRewardItems: () => void;
 };
 
 const CampaignQuickActions = ({
   campaignId,
   isGm,
   onCreateHandout,
+  onRewardItems,
 }: CampaignQuickActionsProps) => {
   return (
     <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
@@ -60,6 +62,13 @@ const CampaignQuickActions = ({
                 Create a new map and prepare player-visible content.
               </p>
             </Link>
+
+            <button
+              onClick={onRewardItems}
+              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+            >
+              Reward items
+            </button>
 
             <button
               type="button"
