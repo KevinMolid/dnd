@@ -1186,6 +1186,9 @@ export type LevelUpDecision = {
   circleOfTheLandType?: "arid" | "polar" | "temperate" | "tropical";
   primalOrder?: "magician" | "warden";
   elementalFuryOption?: "potent-spellcasting" | "primal-strike";
+
+  // Wizard
+  scholarSkill?: SkillId;
 };
 
 export type LevelUpDecisionsByLevel = Record<number, LevelUpDecision>;

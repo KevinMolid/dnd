@@ -905,12 +905,50 @@ const getWizardPendingChoiceSteps = (
   if (character.classId !== "wizard") return [];
 
   const classDef = getClassById("wizard");
-    if (!classDef?.spellcasting) return [];
+  if (!classDef?.spellcasting) return [];
 
   const steps: PendingLevelUpStep[] = [];
   const decisions = character.choices?.levelUpDecisions?.[level];
 
-  const spellbookChoicesRequired = getWizardSpellbookChoiceCountGrantedAtLevel(level);
+  if (level === 2 && !decisions?.scholarSkill) {
+    const proficientSkills =
+      character.derived?.skillProficiencies?.length
+        ? character.derived.skillProficiencies
+        : [];
+
+    const validScholarSkills = proficientSkills.filter((skill) =>
+      [
+        "arcana",
+        "history",
+        "investigation",
+        "medicine",
+        "nature",
+        "religion",
+      ].includes(skill),
+    );
+
+    if (validScholarSkills.length > 0) {
+      steps.push({
+        level,
+        type: "skill-choice",
+        id: "wizard-scholar-skill",
+        title: "Choose Scholar Skill",
+        description:
+          "Choose one skill in which you have proficiency: Arcana, History, Investigation, Medicine, Nature, or Religion. You gain Expertise in that skill.",
+        choice: {
+          id: "wizard-scholar-skill-choice",
+          level,
+          name: "Scholar",
+          choose: 1,
+          source: "skill-proficiencies",
+          options: validScholarSkills,
+        },
+      });
+    }
+  }
+
+  const spellbookChoicesRequired =
+    getWizardSpellbookChoiceCountGrantedAtLevel(level);
   const chosenSpellbookSpells = decisions?.spellbookChoices ?? [];
 
   if (

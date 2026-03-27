@@ -680,7 +680,13 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     }
 
     if (step.type === "skill-choice") {
-      return !!decision?.primalKnowledgeSkill;
+      const isWizardScholarStep =
+        step.id === "wizard-scholar-skill" ||
+        step.choice?.id === "wizard-scholar-skill-choice";
+
+      return isWizardScholarStep
+        ? !!decision?.scholarSkill
+        : !!decision?.primalKnowledgeSkill;
     }
 
     if (step.type === "class-feature-choice") {
@@ -1194,21 +1200,34 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                         {(
                           (step.choice?.options as Array<string>) ??
                           FALLBACK_SKILLS
-                        ).map((skill) => (
-                          <button
-                            key={skill}
-                            onClick={() =>
-                              updateDecision(step.level, {
-                                primalKnowledgeSkill: skill as SkillId,
-                              })
-                            }
-                            className={choiceButtonClass(
-                              decision.primalKnowledgeSkill === skill,
-                            )}
-                          >
-                            {formatLabel(skill)}
-                          </button>
-                        ))}
+                        ).map((skill) => {
+                          const isWizardScholarStep =
+                            step.id === "wizard-scholar-skill" ||
+                            step.choice?.id === "wizard-scholar-skill-choice";
+
+                          const isSelected = isWizardScholarStep
+                            ? decision.scholarSkill === skill
+                            : decision.primalKnowledgeSkill === skill;
+
+                          return (
+                            <button
+                              key={skill}
+                              onClick={() =>
+                                updateDecision(
+                                  step.level,
+                                  isWizardScholarStep
+                                    ? { scholarSkill: skill as SkillId }
+                                    : {
+                                        primalKnowledgeSkill: skill as SkillId,
+                                      },
+                                )
+                              }
+                              className={choiceButtonClass(isSelected)}
+                            >
+                              {formatLabel(skill)}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

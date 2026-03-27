@@ -353,6 +353,16 @@ const getFighterFightingStyleFeature = (
   sourceId: "fighter",
 });
 
+const getWizardScholarSkill = (
+  character: CharacterSheetData,
+): SkillId | null => {
+  if (character.classId !== "wizard") return null;
+
+  const scholarSkill = character.choices?.levelUpDecisions?.[2]?.scholarSkill;
+
+  return scholarSkill ?? null;
+};
+
 export const buildDerivedCharacterData = (
   character: CharacterSheetData,
 ): DerivedCharacterData => {
@@ -585,6 +595,13 @@ const derivedWithSubclassEffects = subclassDef
         )
       : derivedWithSubclassEffects;
 
+  const wizardScholarSkill = getWizardScholarSkill(character);
+
+  const finalExpertise = unique<SkillId | "thieves-tools">([
+    ...(rogueDerived.expertise ?? derivedWithSubclassEffects.expertise ?? []),
+    ...(wizardScholarSkill ? [wizardScholarSkill] : []),
+  ]);
+
   return {
     ...derivedWithSubclassEffects,
     ...rogueDerived,
@@ -594,7 +611,7 @@ const derivedWithSubclassEffects = subclassDef
     features: uniqueById(
       rogueDerived.features ?? derivedWithSubclassEffects.features,
     ),
-    expertise: rogueDerived.expertise ?? derivedWithSubclassEffects.expertise,
+    expertise: finalExpertise,
     weaponMasteries:
       rogueDerived.weaponMasteries ??
       derivedWithSubclassEffects.weaponMasteries,
