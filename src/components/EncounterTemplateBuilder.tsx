@@ -164,7 +164,7 @@ const EncounterTemplateBuilder = ({
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_1.1fr]">
+    <div className="flex flex-col gap-6">
       <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
         <div className="mb-4">
           <H3 className="mb-2">Monster Library</H3>

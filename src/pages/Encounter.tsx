@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "firebase/firestore";
 
 import Avatar from "../components/Avatar";
 import AwardXpModal from "../components/awardXpModal";
@@ -7,22 +17,21 @@ import Container from "../components/Container";
 import H1 from "../components/H1";
 import H3 from "../components/H3";
 import StatBlock from "../components/StatBlock";
+import { db } from "../firebase";
+import { useAuth } from "../context/AuthContext";
 import {
   useEncounter,
   type EncounterTemplate,
   type EncounterEntry,
   type EncounterPlayerInput,
 } from "../context/EncounterContext";
-
 import EncounterTemplateBuilder, {
   type EncounterTemplateDraft,
 } from "../components/EncounterTemplateBuilder";
-
 import useCampaignPageData, {
   ALL_CONDITIONS,
   type CampaignCharacter,
 } from "../features/campaigns/hooks/useCampaignPageData";
-
 import { getXpProgressWithinLevel } from "../rulesets/dnd/dnd2024/xpProgression";
 import { getCharacterArmorClassFromEquipment } from "../rulesets/dnd/dnd2024/getCharacterArmorClassFromEquipment";
 import { getCharacterHp } from "../rulesets/dnd/dnd2024/getCharacterHp";
@@ -125,14 +134,30 @@ const mapCharacterToEncounterPlayer = (
   };
 };
 
-type SavedEncounterTemplateUi = EncounterTemplate & {
+type CampaignEncounterTemplateRecord = EncounterTemplate & {
   id: string;
+  createdByUid?: string;
 };
 
-const TEMPLATE_STORAGE_KEY = "lmop-encounter-templates";
+const normalizeDraftToTemplate = (
+  draft: EncounterTemplateDraft,
+): EncounterTemplate => ({
+  name: draft.name.trim(),
+  monsters: draft.monsters.map((monster) => {
+    const trimmedCustomName = monster.customName?.trim();
+
+    return {
+      id: monster.id,
+      monsterId: monster.monsterId,
+      quantity: Math.max(1, monster.quantity),
+      ...(trimmedCustomName ? { customName: trimmedCustomName } : {}),
+    };
+  }),
+});
 
 const Encounter = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
+  const { user } = useAuth();
 
   const {
     campaignCharacters,
@@ -186,21 +211,10 @@ const Encounter = () => {
   >({});
   const [initiativeError, setInitiativeError] = useState<string | null>(null);
 
-  const [savedTemplates, setSavedTemplates] = useState<
-    SavedEncounterTemplateUi[]
-  >(() => {
-    try {
-      const raw = localStorage.getItem(TEMPLATE_STORAGE_KEY);
-      if (!raw) return [];
-
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
-
   const [isTemplateBuilderOpen, setIsTemplateBuilderOpen] = useState(false);
+  const [campaignTemplates, setCampaignTemplates] = useState<
+    CampaignEncounterTemplateRecord[]
+  >([]);
 
   useEffect(() => {
     if (!isInitiativeModalOpen) return;
@@ -227,15 +241,38 @@ const Encounter = () => {
   }, [activeEncounterId, savedEncounters]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(
-        TEMPLATE_STORAGE_KEY,
-        JSON.stringify(savedTemplates),
-      );
-    } catch (error) {
-      console.error("Failed to save encounter templates:", error);
-    }
-  }, [savedTemplates]);
+    if (!campaignId) return;
+
+    const templatesRef = collection(
+      db,
+      "campaigns",
+      campaignId,
+      "encounterTemplates",
+    );
+
+    const templatesQuery = query(templatesRef, orderBy("name"));
+
+    const unsubscribe = onSnapshot(templatesQuery, (snapshot) => {
+      const next = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data() as {
+          name?: string;
+          monsters?: EncounterTemplate["monsters"];
+          createdByUid?: string;
+        };
+
+        return {
+          id: docSnap.id,
+          name: data.name ?? "Untitled template",
+          monsters: Array.isArray(data.monsters) ? data.monsters : [],
+          createdByUid: data.createdByUid,
+        };
+      });
+
+      setCampaignTemplates(next);
+    });
+
+    return unsubscribe;
+  }, [campaignId]);
 
   const sortedEncounter = useMemo(() => {
     return [...encounter].sort((a, b) => {
@@ -305,39 +342,41 @@ const Encounter = () => {
     openInitiativeModal();
   };
 
-  const makeTemplateId = () =>
-    `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  const handleSaveTemplate = async (draft: EncounterTemplateDraft) => {
+    if (!campaignId || !user) return;
 
-  const handleSaveTemplate = (template: EncounterTemplateDraft) => {
-    const trimmedName = template.name.trim();
-    if (!trimmedName || template.monsters.length === 0) return;
+    const template = normalizeDraftToTemplate(draft);
+    if (!template.name || template.monsters.length === 0) return;
 
-    const nextTemplate: SavedEncounterTemplateUi = {
-      id: makeTemplateId(),
-      name: trimmedName,
-      monsters: template.monsters.map((monster) => ({
-        id: monster.id,
-        monsterId: monster.monsterId,
-        quantity: Math.max(1, monster.quantity),
-        customName: monster.customName?.trim() || undefined,
-      })),
-    };
+    await addDoc(
+      collection(db, "campaigns", campaignId, "encounterTemplates"),
+      {
+        name: template.name,
+        monsters: template.monsters,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdByUid: user.uid,
+        updatedByUid: user.uid,
+      },
+    );
 
-    setSavedTemplates((prev) => [...prev, nextTemplate]);
     setIsTemplateBuilderOpen(false);
-
-    loadEncounterTemplate(nextTemplate);
-    setEncounterName(nextTemplate.name);
-  };
-
-  const handleLoadTemplateToCombat = (template: SavedEncounterTemplateUi) => {
     loadEncounterTemplate(template);
     setEncounterName(template.name);
   };
 
-  const handleDeleteTemplate = (templateId: string) => {
-    setSavedTemplates((prev) =>
-      prev.filter((template) => template.id !== templateId),
+  const handleLoadTemplateToCombat = (
+    template: CampaignEncounterTemplateRecord,
+  ) => {
+    loadEncounterTemplate(template);
+    setEncounterName(template.name);
+  };
+
+  const handleDeleteTemplate = async (templateId: string) => {
+    if (!campaignId) return;
+
+    await deleteDoc(
+      doc(db, "campaigns", campaignId, "encounterTemplates", templateId),
     );
   };
 
@@ -720,10 +759,10 @@ const Encounter = () => {
               <div className="my-5 h-px bg-white/10" />
 
               <div className="mb-3">
-                <H3 className="mb-2">Encounter Templates</H3>
+                <H3 className="mb-2">Campaign Encounter Templates</H3>
                 <p className="text-sm text-neutral-400">
-                  Build monster groups with monster id, quantity, and optional
-                  custom names.
+                  Build reusable encounter templates stored in Firebase for this
+                  campaign.
                 </p>
               </div>
 
@@ -737,12 +776,12 @@ const Encounter = () => {
               )}
 
               <div className="space-y-2">
-                {savedTemplates.length === 0 ? (
+                {campaignTemplates.length === 0 ? (
                   <p className="text-sm text-neutral-400">
                     No encounter templates yet.
                   </p>
                 ) : (
-                  savedTemplates.map((template) => {
+                  campaignTemplates.map((template) => {
                     const totalMonsters = template.monsters.reduce(
                       (sum, monster) => sum + monster.quantity,
                       0,

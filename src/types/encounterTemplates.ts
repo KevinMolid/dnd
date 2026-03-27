@@ -1,3 +1,5 @@
+import type { Timestamp } from "firebase/firestore";
+
 export type EncounterTemplateMonster = {
   id: string;
   monsterId: string;
@@ -11,4 +13,20 @@ export type EncounterTemplate = {
   monsters: EncounterTemplateMonster[];
   createdAt: number;
   updatedAt: number;
+};
+
+export type EncounterTemplateMonsterRow = {
+  id: string;
+  monsterId: string;
+  quantity: number;
+  customName?: string;
+};
+
+export type CampaignEncounterTemplateDoc = {
+  name: string;
+  monsters: EncounterTemplateMonsterRow[];
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  createdByUid: string;
+  updatedByUid: string;
 };
