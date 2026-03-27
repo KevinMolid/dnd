@@ -617,6 +617,146 @@ export const items: Item[] = [
       acBonus: 2,
     },
   },
+  // === LIGHT ARMOR ===
+{
+  id: "padded-armor",
+  name: "Padded Armor",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "light",
+    baseAc: 11,
+    dexCap: null,
+    stealthDisadvantage: true,
+  },
+},
+{
+  id: "leather-armor",
+  name: "Leather Armor",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "light",
+    baseAc: 11,
+    dexCap: null,
+    stealthDisadvantage: false,
+  },
+},
+{
+  id: "studded-leather-armor",
+  name: "Studded Leather Armor",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "light",
+    baseAc: 12,
+    dexCap: null,
+    stealthDisadvantage: false,
+  },
+},
+
+// === MEDIUM ARMOR ===
+{
+  id: "hide-armor",
+  name: "Hide Armor",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "medium",
+    baseAc: 12,
+    dexCap: 2,
+    stealthDisadvantage: false,
+  },
+},
+{
+  id: "chain-shirt",
+  name: "Chain Shirt",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "medium",
+    baseAc: 13,
+    dexCap: 2,
+    stealthDisadvantage: false,
+  },
+},
+{
+  id: "scale-mail",
+  name: "Scale Mail",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "medium",
+    baseAc: 14,
+    dexCap: 2,
+    stealthDisadvantage: true,
+  },
+},
+{
+  id: "breastplate",
+  name: "Breastplate",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "medium",
+    baseAc: 14,
+    dexCap: 2,
+    stealthDisadvantage: false,
+  },
+},
+{
+  id: "half-plate",
+  name: "Half Plate",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "medium",
+    baseAc: 15,
+    dexCap: 2,
+    stealthDisadvantage: true,
+  },
+},
+
+// === HEAVY ARMOR ===
+{
+  id: "ring-mail",
+  name: "Ring Mail",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "heavy",
+    baseAc: 14,
+    dexCap: 0,
+    stealthDisadvantage: true,
+  },
+},
+{
+  id: "splint-armor",
+  name: "Splint Armor",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "heavy",
+    baseAc: 17,
+    dexCap: 0,
+    stealthDisadvantage: true,
+    strengthRequirement: 15,
+  },
+},
+{
+  id: "plate-armor",
+  name: "Plate Armor",
+  category: "armor",
+  equippable: { slots: ["body"] },
+  armor: {
+    armorCategory: "heavy",
+    baseAc: 18,
+    dexCap: 0,
+    stealthDisadvantage: true,
+    strengthRequirement: 15,
+  },
+},
+
 
   // === AMMUNITION ===
   { id: "arrow", name: "Arrow", category: "ammunition", stackable: true },
