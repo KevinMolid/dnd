@@ -16,3 +16,5 @@ export {
   wizardCantripChoicesByLevel,
   wizardSpellbookChoicesByLevel,
 } from "./wizardChoices";
+
+export { wizardSubclasses } from "./subclasses";
