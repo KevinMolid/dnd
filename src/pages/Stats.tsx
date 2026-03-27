@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Container from "../components/Container";
 import H1 from "../components/H1";
-import StatBlock, { type MonsterStatBlockProps } from "../components/StatBlock";
-import { monsters, monsterTypes } from "../data/monsters";
+import StatBlock from "../components/StatBlock";
+import {
+  monsters,
+  monsterTypes,
+  type MonsterDefinition,
+} from "../data/monsterCatalog";
 import { useEncounter } from "../context/EncounterContext";
 
 const Stats = () => {
@@ -46,7 +50,7 @@ const Stats = () => {
     });
   };
 
-  const toggleType = (type: string) => {
+  const toggleType = (type: MonsterDefinition["type"]) => {
     setSelectedTypes((prev) => {
       const next = new Set(prev);
 
@@ -66,7 +70,7 @@ const Stats = () => {
     const hasTypeFilter = selectedTypes.size > 0;
     const hasAnyFilter = hasSearch || hasTypeFilter;
 
-    return [...(monsters as MonsterStatBlockProps[])]
+    return [...monsters]
       .sort((a, b) => a.name.localeCompare(b.name))
       .filter((monster) => {
         const isLocked = lockedNames.has(monster.name);
@@ -132,7 +136,7 @@ const Stats = () => {
         <div className="flex flex-wrap gap-4">
           {visibleMonsters.map((monster) => (
             <StatBlock
-              key={monster.name}
+              key={monster.id}
               {...monster}
               isLocked={lockedNames.has(monster.name)}
               onToggleLock={() => toggleLock(monster.name)}

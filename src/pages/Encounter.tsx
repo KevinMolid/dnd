@@ -7,7 +7,11 @@ import Container from "../components/Container";
 import H1 from "../components/H1";
 import H3 from "../components/H3";
 import StatBlock from "../components/StatBlock";
-import { useEncounter } from "../context/EncounterContext";
+import {
+  useEncounter,
+  type EncounterEntry,
+  type EncounterPlayerInput,
+} from "../context/EncounterContext";
 import useCampaignPageData, {
   ALL_CONDITIONS,
   type CampaignCharacter,
@@ -17,18 +21,6 @@ import { getXpProgressWithinLevel } from "../rulesets/dnd/dnd2024/xpProgression"
 import { getCharacterArmorClassFromEquipment } from "../rulesets/dnd/dnd2024/getCharacterArmorClassFromEquipment";
 import { getCharacterHp } from "../rulesets/dnd/dnd2024/getCharacterHp";
 import type { CharacterEquipmentEntry } from "../rulesets/dnd/dnd2024/types";
-
-type EncounterPlayerInput = {
-  characterId?: string;
-  name: string;
-  maxHp: number;
-  currentHp?: number;
-  armorClass?: number;
-  initiativeBonus?: number;
-  level?: number;
-  classId?: string;
-  speciesId?: string;
-};
 
 const formatModifier = (value: number) =>
   value >= 0 ? `+${value}` : `${value}`;
@@ -309,7 +301,7 @@ const Encounter = () => {
   };
 
   const findCampaignCharacterForEntry = (
-    entry: (typeof encounter)[number],
+    entry: EncounterEntry,
   ): CampaignCharacter | undefined => {
     const snapshotId = entry.playerSnapshot?.characterId;
 
@@ -421,7 +413,7 @@ const Encounter = () => {
   const handleTurnOrderHpChange = async (
     entryId: string,
     nextHp: number,
-    entry: (typeof encounter)[number],
+    entry: EncounterEntry,
   ) => {
     const clampedHp = Math.max(0, Number.isFinite(nextHp) ? nextHp : 0);
 
@@ -440,16 +432,20 @@ const Encounter = () => {
     });
   };
 
-  const uniqueEncounterEntities = Array.from(
-    new Map(
-      encounter.map((entry) => [
-        `${entry.entityKind}-${entry.entityName}`,
-        {
-          entityKind: entry.entityKind,
-          entityName: entry.entityName,
-        },
-      ]),
-    ).values(),
+  const uniqueEncounterEntities = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          encounter.map((entry) => [
+            `${entry.entityKind}-${entry.entityName}`,
+            {
+              entityKind: entry.entityKind,
+              entityName: entry.entityName,
+            },
+          ]),
+        ).values(),
+      ),
+    [encounter],
   );
 
   const monsterStatBlocks = uniqueEncounterEntities
@@ -1137,7 +1133,7 @@ const Encounter = () => {
 
                 <div className="flex flex-wrap gap-4">
                   {monsterStatBlocks.map((entity) => (
-                    <StatBlock key={`${entity.name}`} {...entity} />
+                    <StatBlock key={entity.name} {...entity} />
                   ))}
                 </div>
               </div>
@@ -1154,7 +1150,6 @@ const Encounter = () => {
       {isInitiativeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-white/10 bg-zinc-950 p-5 shadow-2xl">
-            {" "}
             <div className="mb-5 flex items-start justify-between gap-4">
               <div>
                 <h2 className="text-xl font-semibold text-white">
@@ -1176,6 +1171,7 @@ const Encounter = () => {
                 Close
               </button>
             </div>
+
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {encounter
                 .filter((entry) => entry.entityKind === "player")
@@ -1261,11 +1257,13 @@ const Encounter = () => {
                   );
                 })}
             </div>
+
             {initiativeError && (
               <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
                 {initiativeError}
               </div>
             )}
+
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 onClick={() => {

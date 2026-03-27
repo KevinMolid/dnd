@@ -2,19 +2,30 @@ import Avatar from "./Avatar";
 import H3 from "./H3";
 import H4 from "./H4";
 
-type MonsterAbilityStats = {
-  str: number;
-  dex: number;
-  con: number;
-  int: number;
-  wis: number;
-  cha: number;
+type Stats = {
+  Str: number;
+  Dex: number;
+  Con: number;
+  Int: number;
+  Wis: number;
+  Cha: number;
 };
 
-type MonsterTextEntry = {
-  name: string;
-  text: string;
-};
+export type MonsterType =
+  | "Aberration"
+  | "Beast"
+  | "Celestial"
+  | "Construct"
+  | "Dragon"
+  | "Elemental"
+  | "Fey"
+  | "Fiend"
+  | "Giant"
+  | "Humanoid"
+  | "Monstrosity"
+  | "Ooze"
+  | "Plant"
+  | "Undead";
 
 type QuickRow = {
   label: string;
@@ -65,41 +76,24 @@ type SharedStatBlockProps = {
   onAddToEncounter?: () => void;
 };
 
-export type MonsterType =
-  | "Aberration"
-  | "Beast"
-  | "Celestial"
-  | "Construct"
-  | "Dragon"
-  | "Elemental"
-  | "Fey"
-  | "Fiend"
-  | "Giant"
-  | "Humanoid"
-  | "Monstrosity"
-  | "Ooze"
-  | "Plant"
-  | "Undead";
-
 export type MonsterStatBlockProps = SharedStatBlockProps & {
   variant?: "monster";
-  id?: string;
   type: MonsterType;
   description?: string;
   armorClass: number | string;
   armorClassNotes?: string;
-  hp: number;
+  HP: number;
   speed: string | number;
-  stats: MonsterAbilityStats;
+  stats: Stats;
   skills?: string;
   senses?: string;
   language?: string;
   challengeRating?: string;
   xp?: number | string;
-  traits?: MonsterTextEntry[];
-  actions?: MonsterTextEntry[];
-  bonusActions?: MonsterTextEntry[];
-  reactions?: MonsterTextEntry[];
+  traits?: React.ReactNode;
+  actions?: React.ReactNode;
+  bonusActions?: React.ReactNode;
+  reactions?: React.ReactNode;
 };
 
 export type PlayerStatBlockProps = SharedStatBlockProps & {
@@ -125,9 +119,6 @@ const getRowToneClass = (tone?: QuickRow["tone"]) => {
 
   return "border-white/10 bg-zinc-900/70 text-zinc-200";
 };
-
-const formatAbilityLabel = (key: keyof MonsterAbilityStats) =>
-  key.toUpperCase();
 
 const HeaderActions = ({
   isLocked = false,
@@ -307,19 +298,6 @@ const Header = ({
           onAddToEncounter={onAddToEncounter}
         />
       </div>
-    </div>
-  );
-};
-
-const EntryList = ({ entries }: { entries: MonsterTextEntry[] }) => {
-  return (
-    <div className="space-y-2 text-sm leading-5 text-zinc-300">
-      {entries.map((entry) => (
-        <p key={`${entry.name}-${entry.text}`}>
-          <span className="font-semibold text-white">{entry.name}.</span>{" "}
-          {entry.text}
-        </p>
-      ))}
     </div>
   );
 };
@@ -572,7 +550,7 @@ const StatBlock = (props: StatBlockProps) => {
     img,
     armorClass,
     armorClassNotes,
-    hp,
+    HP,
     speed,
     stats,
     skills,
@@ -588,15 +566,6 @@ const StatBlock = (props: StatBlockProps) => {
     onToggleLock,
     onAddToEncounter,
   } = props;
-
-  const abilityOrder: Array<keyof MonsterAbilityStats> = [
-    "str",
-    "dex",
-    "con",
-    "int",
-    "wis",
-    "cha",
-  ];
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
@@ -618,7 +587,7 @@ const StatBlock = (props: StatBlockProps) => {
             subValue={armorClassNotes}
             compact
           />
-          <StatPill label="HP" value={hp} accent compact />
+          <StatPill label="HP" value={HP} accent compact />
           <StatPill label="Speed" value={speed} compact />
           {challengeRating && (
             <StatPill
@@ -634,26 +603,22 @@ const StatBlock = (props: StatBlockProps) => {
 
         <Section title="Ability Scores" compact>
           <div className="grid grid-cols-3 gap-2 xl:grid-cols-6">
-            {abilityOrder.map((key) => {
-              const value = stats[key];
-
-              return (
-                <div
-                  key={key}
-                  className="rounded-xl border border-white/10 bg-zinc-900/70 p-2 text-center"
-                >
-                  <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    {formatAbilityLabel(key)}
-                  </p>
-                  <p className="mt-1 text-base font-bold leading-tight text-white">
-                    {value}
-                  </p>
-                  <p className="mt-0.5 text-[10px] text-zinc-400">
-                    {getModifier(value)}
-                  </p>
-                </div>
-              );
-            })}
+            {Object.entries(stats).map(([key, value]) => (
+              <div
+                key={key}
+                className="rounded-xl border border-white/10 bg-zinc-900/70 p-2 text-center"
+              >
+                <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  {key}
+                </p>
+                <p className="mt-1 text-base font-bold leading-tight text-white">
+                  {value}
+                </p>
+                <p className="mt-0.5 text-[10px] text-zinc-400">
+                  {getModifier(value)}
+                </p>
+              </div>
+            ))}
           </div>
         </Section>
 
@@ -687,38 +652,46 @@ const StatBlock = (props: StatBlockProps) => {
           </>
         )}
 
-        {traits && traits.length > 0 && (
+        {traits && (
           <>
             <Divider compact />
             <Section title="Traits" compact>
-              <EntryList entries={traits} />
+              <div className="space-y-1 text-sm leading-5 text-zinc-300">
+                {traits}
+              </div>
             </Section>
           </>
         )}
 
-        {actions && actions.length > 0 && (
+        {actions && (
           <>
             <Divider compact />
             <Section title="Actions" compact>
-              <EntryList entries={actions} />
+              <div className="space-y-1 text-sm leading-5 text-zinc-300">
+                {actions}
+              </div>
             </Section>
           </>
         )}
 
-        {bonusActions && bonusActions.length > 0 && (
+        {bonusActions && (
           <>
             <Divider compact />
             <Section title="Bonus Actions" compact>
-              <EntryList entries={bonusActions} />
+              <div className="space-y-1 text-sm leading-5 text-zinc-300">
+                {bonusActions}
+              </div>
             </Section>
           </>
         )}
 
-        {reactions && reactions.length > 0 && (
+        {reactions && (
           <>
             <Divider compact />
             <Section title="Reactions" compact>
-              <EntryList entries={reactions} />
+              <div className="space-y-1 text-sm leading-5 text-zinc-300">
+                {reactions}
+              </div>
             </Section>
           </>
         )}
