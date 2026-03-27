@@ -467,7 +467,25 @@ export const spells: Spell[] = [
   higherLevel:
     "When cast with a higher-level spell slot, you can target one additional creature for each slot level above 1.",
 },
-  { id: "chill-touch", name: "Chill Touch", level: 0, school: "Necromancy" },
+  {
+  id: "chill-touch",
+  name: "Chill Touch",
+  level: 0,
+  school: "Necromancy",
+
+  castingTime: "Action",
+  range: "Touch",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "warlock", "wizard"],
+
+  description:
+    "Channeling the chill of the grave, make a melee spell attack against a target within reach.",
+  effects:
+    "On a hit, the target takes 1d10 Necrotic damage, and it can't regain Hit Points until the end of your next turn.",
+  cantripUpgrade:
+    "The damage increases by 1d10 when you reach levels 5 (2d10), 11 (3d10), and 17 (4d10).",
+},
   { id: "chromatic-orb", name: "Chromatic Orb", level: 1, school: "Evocation" },
   { id: "circle-of-power", name: "Circle of Power", level: 5, school: "Abjuration", concentration: true },
   { id: "clairvoyance", name: "Clairvoyance", level: 3, school: "Divination", concentration: true },
@@ -810,7 +828,43 @@ export const spells: Spell[] = [
   { id: "druidcraft", name: "Druidcraft", level: 0, school: "Transmutation" },
   { id: "earthquake", name: "Earthquake", level: 8, school: "Transmutation", concentration: true },
   { id: "elemental-weapon", name: "Elemental Weapon", level: 3, school: "Transmutation", concentration: true },
-  { id: "elementalism", name: "Elementalism", level: 0, school: "Transmutation" },
+  {
+  id: "elementalism",
+  name: "Elementalism",
+  level: 0,
+  school: "Transmutation",
+
+  castingTime: "Action",
+  range: "30 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["druid", "sorcerer", "wizard"],
+
+  description:
+    "You exert control over the elements, creating one of the following effects within range.",
+  options: [
+    {
+      name: "Beckon Air",
+      text: "You create a breeze strong enough to ripple cloth, stir dust, rustle leaves, and close open doors and shutters, all in a 5-foot Cube. Doors and shutters being held open by someone or something aren't affected.",
+    },
+    {
+      name: "Beckon Earth",
+      text: "You create a thin shroud of dust or sand that covers surfaces in a 5-foot-square area, or you cause a single word to appear in your handwriting in a patch of dirt or sand.",
+    },
+    {
+      name: "Beckon Fire",
+      text: "You create a thin cloud of harmless embers and colored, scented smoke in a 5-foot Cube. You choose the color and scent, and the embers can light candles, torches, or lamps in that area. The smoke's scent lingers for 1 minute.",
+    },
+    {
+      name: "Beckon Water",
+      text: "You create a spray of cool mist that lightly dampens creatures and objects in a 5-foot Cube. Alternatively, you create 1 cup of clean water either in an open container or on a surface, and the water evaporates in 1 minute.",
+    },
+    {
+      name: "Sculpt Element",
+      text: "You cause dirt, sand, fire, smoke, mist, or water that can fit in a 1-foot Cube to assume a crude shape (such as that of a creature) for 1 hour.",
+    },
+  ],
+},
 {
   id: "enhance-ability",
   name: "Enhance Ability",
@@ -1505,7 +1559,26 @@ export const spells: Spell[] = [
     limitations:
       "Magical silence; 1 foot of stone, metal, or wood; or a thin sheet of lead blocks the spell.",
   },
-    { id: "mind-sliver", name: "Mind Sliver", level: 0, school: "Enchantment" },
+    {
+  id: "mind-sliver",
+  name: "Mind Sliver",
+  level: 0,
+  school: "Enchantment",
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V",
+  duration: "1 round",
+  classes: ["sorcerer", "warlock", "wizard"],
+
+  description:
+    "You try to temporarily sliver the mind of one creature you can see within range.",
+  effects:
+    "The target must succeed on an Intelligence saving throw or take 1d6 Psychic damage and subtract 1d4 from the next saving throw it makes before the end of your next turn.",
+  savingThrows: "Intelligence",
+  cantripUpgrade:
+    "The damage increases by 1d6 when you reach levels 5 (2d6), 11 (3d6), and 17 (4d6).",
+},
   { id: "mind-spike", name: "Mind Spike", level: 2, school: "Divination", concentration: true },
 {
     id: "minor-illusion",
@@ -1584,7 +1657,25 @@ export const spells: Spell[] = [
   { id: "planar-binding", name: "Planar Binding", level: 5, school: "Abjuration" },
   { id: "plane-shift", name: "Plane Shift", level: 7, school: "Conjuration" },
   { id: "plant-growth", name: "Plant Growth", level: 3, school: "Transmutation" },
-  { id: "poison-spray", name: "Poison Spray", level: 0, school: "Necromancy" },
+  {
+  id: "poison-spray",
+  name: "Poison Spray",
+  level: 0,
+  school: "Necromancy",
+
+  castingTime: "Action",
+  range: "30 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["druid", "sorcerer", "warlock", "wizard"],
+
+  description:
+    "You spray toxic mist at a creature within range. Make a ranged spell attack against the target.",
+  effects:
+    "On a hit, the target takes 1d12 Poison damage.",
+  cantripUpgrade:
+    "The damage increases by 1d12 when you reach levels 5 (2d12), 11 (3d12), and 17 (4d12).",
+},
   { id: "polymorph", name: "Polymorph", level: 4, school: "Transmutation", concentration: true },
   { id: "power-word-fortify", name: "Power Word Fortify", level: 7, school: "Enchantment" },
   { id: "power-word-heal", name: "Power Word Heal", level: 9, school: "Enchantment" },
@@ -1685,7 +1776,25 @@ export const spells: Spell[] = [
   },
   { id: "raise-dead", name: "Raise Dead", level: 5, school: "Necromancy" },
   { id: "ray-of-enfeeblement", name: "Ray of Enfeeblement", level: 2, school: "Necromancy", concentration: true },
-  { id: "ray-of-frost", name: "Ray of Frost", level: 0, school: "Evocation" },
+  {
+  id: "ray-of-frost",
+  name: "Ray of Frost",
+  level: 0,
+  school: "Evocation",
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["sorcerer", "wizard"],
+
+  description:
+    "A frigid beam of blue-white light streaks toward a creature within range. Make a ranged spell attack against the target.",
+  effects:
+    "On a hit, it takes 1d8 Cold damage, and its Speed is reduced by 10 feet until the start of your next turn.",
+  cantripUpgrade:
+    "The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8).",
+},
   { id: "ray-of-sickness", name: "Ray of Sickness", level: 1, school: "Necromancy" },
   { id: "reincarnate", name: "Reincarnate", level: 5, school: "Necromancy" },
   { id: "regenerate", name: "Regenerate", level: 7, school: "Transmutation" },
