@@ -628,22 +628,12 @@ const CampaignCharactersPage = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          <Link
+                          {isGm && <Link
                             to={`/characters/${character.id}`}
                             className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
                           >
                             Open
-                          </Link>
-
-                          {!isGm && isClaimable && (
-                            <button
-                              onClick={() => handleClaimCharacter(character.id)}
-                              disabled={busyCharacterId === character.id}
-                              className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-200 transition hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              Claim
-                            </button>
-                          )}
+                          </Link>}
 
                           {isGm && (
                             <>
@@ -695,13 +685,6 @@ const CampaignCharactersPage = () => {
           </section>
 
           <aside className="space-y-6">
-            <ClaimableCharactersSection
-              characters={claimableCharacters}
-              loading={campaignCharactersLoading}
-              isGm={isGm}
-              busyCharacterId={busyCharacterId}
-              onClaimCharacter={handleClaimCharacter}
-            />
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
               <h2 className="text-xl font-semibold text-white">
                 Your characters
@@ -858,6 +841,16 @@ const CampaignCharactersPage = () => {
 
                               <button
                                 onClick={() =>
+                                  handleMakeCharacterClaimable(character.id)
+                                }
+                                disabled={busyCharacterId === character.id}
+                                className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Make claimable
+                              </button>
+
+                              <button
+                                onClick={() =>
                                   handleRemoveFromCampaign(character.id)
                                 }
                                 disabled={busyCharacterId === character.id}
@@ -874,6 +867,14 @@ const CampaignCharactersPage = () => {
                 </>
               )}
             </section>
+
+            <ClaimableCharactersSection
+              characters={claimableCharacters}
+              loading={campaignCharactersLoading}
+              isGm={isGm}
+              busyCharacterId={busyCharacterId}
+              onClaimCharacter={handleClaimCharacter}
+            />
 
             <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
               <h2 className="text-xl font-semibold text-white">

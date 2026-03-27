@@ -29,7 +29,7 @@ const ClaimableCharactersSection = ({
           </p>
         </div>
 
-        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">
+        <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300 whitespace-nowrap">
           {characters.length} character{characters.length === 1 ? "" : "s"}
         </div>
       </div>
