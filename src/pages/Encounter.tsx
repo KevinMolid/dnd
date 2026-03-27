@@ -9,9 +9,15 @@ import H3 from "../components/H3";
 import StatBlock from "../components/StatBlock";
 import {
   useEncounter,
+  type EncounterTemplate,
   type EncounterEntry,
   type EncounterPlayerInput,
 } from "../context/EncounterContext";
+
+import EncounterTemplateBuilder, {
+  type EncounterTemplateDraft,
+} from "../components/EncounterTemplateBuilder";
+
 import useCampaignPageData, {
   ALL_CONDITIONS,
   type CampaignCharacter,
@@ -119,6 +125,12 @@ const mapCharacterToEncounterPlayer = (
   };
 };
 
+type SavedEncounterTemplateUi = EncounterTemplate & {
+  id: string;
+};
+
+const TEMPLATE_STORAGE_KEY = "lmop-encounter-templates";
+
 const Encounter = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
 
@@ -144,6 +156,7 @@ const Encounter = () => {
     createNewEncounter,
     saveCurrentEncounter,
     loadEncounter,
+    loadEncounterTemplate,
     deleteEncounter,
     getEntityByName,
     nextTurn,
@@ -173,6 +186,22 @@ const Encounter = () => {
   >({});
   const [initiativeError, setInitiativeError] = useState<string | null>(null);
 
+  const [savedTemplates, setSavedTemplates] = useState<
+    SavedEncounterTemplateUi[]
+  >(() => {
+    try {
+      const raw = localStorage.getItem(TEMPLATE_STORAGE_KEY);
+      if (!raw) return [];
+
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isTemplateBuilderOpen, setIsTemplateBuilderOpen] = useState(false);
+
   useEffect(() => {
     if (!isInitiativeModalOpen) return;
 
@@ -196,6 +225,17 @@ const Encounter = () => {
     const nextName = activeSavedEncounter?.name ?? "";
     setEncounterName((prev) => (prev === nextName ? prev : nextName));
   }, [activeEncounterId, savedEncounters]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        TEMPLATE_STORAGE_KEY,
+        JSON.stringify(savedTemplates),
+      );
+    } catch (error) {
+      console.error("Failed to save encounter templates:", error);
+    }
+  }, [savedTemplates]);
 
   const sortedEncounter = useMemo(() => {
     return [...encounter].sort((a, b) => {
@@ -263,6 +303,42 @@ const Encounter = () => {
     }
 
     openInitiativeModal();
+  };
+
+  const makeTemplateId = () =>
+    `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+  const handleSaveTemplate = (template: EncounterTemplateDraft) => {
+    const trimmedName = template.name.trim();
+    if (!trimmedName || template.monsters.length === 0) return;
+
+    const nextTemplate: SavedEncounterTemplateUi = {
+      id: makeTemplateId(),
+      name: trimmedName,
+      monsters: template.monsters.map((monster) => ({
+        id: monster.id,
+        monsterId: monster.monsterId,
+        quantity: Math.max(1, monster.quantity),
+        customName: monster.customName?.trim() || undefined,
+      })),
+    };
+
+    setSavedTemplates((prev) => [...prev, nextTemplate]);
+    setIsTemplateBuilderOpen(false);
+
+    loadEncounterTemplate(nextTemplate);
+    setEncounterName(nextTemplate.name);
+  };
+
+  const handleLoadTemplateToCombat = (template: SavedEncounterTemplateUi) => {
+    loadEncounterTemplate(template);
+    setEncounterName(template.name);
+  };
+
+  const handleDeleteTemplate = (templateId: string) => {
+    setSavedTemplates((prev) =>
+      prev.filter((template) => template.id !== templateId),
+    );
   };
 
   const handleSubmitPlayerInitiativeRolls = () => {
@@ -565,7 +641,17 @@ const Encounter = () => {
             </section>
 
             <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-              <H3 className="mb-3">Saved Encounters</H3>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <H3 className="mb-0">Saved Encounters</H3>
+
+                <button
+                  type="button"
+                  onClick={() => setIsTemplateBuilderOpen((prev) => !prev)}
+                  className="rounded-xl border border-violet-700 bg-violet-500/10 px-3 py-2 text-xs font-medium text-violet-300 transition hover:bg-violet-500/15"
+                >
+                  {isTemplateBuilderOpen ? "Close Builder" : "New Template"}
+                </button>
+              </div>
 
               <div className="mb-3 flex flex-col gap-2 sm:flex-row">
                 <input
@@ -628,6 +714,79 @@ const Encounter = () => {
                       </div>
                     </div>
                   ))
+                )}
+              </div>
+
+              <div className="my-5 h-px bg-white/10" />
+
+              <div className="mb-3">
+                <H3 className="mb-2">Encounter Templates</H3>
+                <p className="text-sm text-neutral-400">
+                  Build monster groups with monster id, quantity, and optional
+                  custom names.
+                </p>
+              </div>
+
+              {isTemplateBuilderOpen && (
+                <div className="mb-4 rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <EncounterTemplateBuilder
+                    onSave={handleSaveTemplate}
+                    onCancel={() => setIsTemplateBuilderOpen(false)}
+                  />
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {savedTemplates.length === 0 ? (
+                  <p className="text-sm text-neutral-400">
+                    No encounter templates yet.
+                  </p>
+                ) : (
+                  savedTemplates.map((template) => {
+                    const totalMonsters = template.monsters.reduce(
+                      (sum, monster) => sum + monster.quantity,
+                      0,
+                    );
+
+                    return (
+                      <div
+                        key={template.id}
+                        className="rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-neutral-100">
+                              {template.name}
+                            </p>
+                            <p className="mt-1 text-xs text-neutral-400">
+                              {totalMonsters} monsters •{" "}
+                              {template.monsters.length} rows
+                            </p>
+                          </div>
+
+                          <div className="flex shrink-0 gap-2">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleLoadTemplateToCombat(template)
+                              }
+                              className="rounded-lg border border-emerald-700 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-medium text-emerald-300"
+                            >
+                              Load to Combat
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTemplate(template.id)}
+                              className="rounded-lg border border-red-700 bg-red-500/10 px-2.5 py-1.5 text-xs font-medium text-red-300"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </section>

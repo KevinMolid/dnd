@@ -12,15 +12,27 @@ const STORAGE_KEY = "lmop-encounter";
 
 export type EncounterEntityKind = "monster" | "player";
 
-export type EncounterTemplateEntity = {
+export type EncounterTemplateMonster = {
+  id: string;
+  monsterId: string;
+  quantity: number;
+  customName?: string;
+};
+
+export type EncounterTemplate = {
+  name: string;
+  monsters: EncounterTemplateMonster[];
+};
+
+type LegacyEncounterTemplateEntity = {
   entityKind: EncounterEntityKind;
   entityName: string;
   count?: number;
 };
 
-export type EncounterTemplate = {
+type LegacyEncounterTemplate = {
   name: string;
-  entities: EncounterTemplateEntity[];
+  entities: LegacyEncounterTemplateEntity[];
 };
 
 export type EncounterPlayerInput = {
@@ -96,7 +108,9 @@ type EncounterContextType = {
   loadEncounter: (id: string) => void;
   deleteEncounter: (id: string) => void;
   renameEncounter: (id: string, name: string) => void;
-  loadEncounterTemplate: (template: EncounterTemplate) => void;
+  loadEncounterTemplate: (
+    template: EncounterTemplate | LegacyEncounterTemplate,
+  ) => void;
   getEntityByName: (
     entityKind: EncounterEntityKind,
     name: string,
@@ -317,6 +331,37 @@ const buildMonsterEncounterEntry = (
   };
 };
 
+const buildMonsterEncounterEntriesFromTemplateRow = (
+  previousEncounter: EncounterEntry[],
+  templateMonster: EncounterTemplateMonster,
+  monster: MonsterDefinition,
+): EncounterEntry[] => {
+  const entries: EncounterEntry[] = [];
+  const quantity = Math.max(1, templateMonster.quantity);
+  const baseName = templateMonster.customName?.trim() || monster.name;
+
+  for (let i = 0; i < quantity; i++) {
+    const instanceNumber = getNextInstanceNumber(
+      [...previousEncounter, ...entries],
+      "monster",
+      monster.name,
+    );
+
+    entries.push({
+      id: makeId(),
+      entityKind: "monster",
+      entityName: monster.name,
+      instanceNumber,
+      displayName: quantity > 1 ? `${baseName} ${i + 1}` : baseName,
+      currentHp: monster.hp,
+      maxHp: monster.hp,
+      initiative: "",
+    });
+  }
+
+  return entries;
+};
+
 const buildPlayerEncounterEntry = (
   previousEncounter: EncounterEntry[],
   player: EncounterPlayerInput,
@@ -351,6 +396,33 @@ const buildPlayerEncounterEntry = (
       classId: player.classId ?? null,
       speciesId: player.speciesId ?? null,
     },
+  };
+};
+
+const normalizeEncounterTemplate = (
+  template: EncounterTemplate | LegacyEncounterTemplate,
+): EncounterTemplate => {
+  if ("monsters" in template && Array.isArray(template.monsters)) {
+    return template;
+  }
+
+  const legacyTemplate = template as LegacyEncounterTemplate;
+
+  return {
+    name: legacyTemplate.name,
+    monsters: legacyTemplate.entities
+      .filter((entity) => entity.entityKind === "monster")
+      .map((entity, index) => {
+        const monster = monsters.find((m) => m.name === entity.entityName);
+
+        return {
+          id: `legacy-${index}-${entity.entityName}`,
+          monsterId: monster?.id ?? "",
+          quantity: Math.max(1, entity.count ?? 1),
+          customName: undefined,
+        };
+      })
+      .filter((row) => row.monsterId),
   };
 };
 
@@ -456,6 +528,10 @@ export const EncounterProvider = ({
     },
     [],
   );
+
+  const getMonsterById = useCallback((monsterId: string) => {
+    return monsters.find((monster) => monster.id === monsterId);
+  }, []);
 
   const rollInitiative = useCallback(() => {
     setEncounter((prev) =>
@@ -766,24 +842,21 @@ export const EncounterProvider = ({
   }, []);
 
   const loadEncounterTemplate = useCallback(
-    (template: EncounterTemplate) => {
+    (template: EncounterTemplate | LegacyEncounterTemplate) => {
+      const normalizedTemplate = normalizeEncounterTemplate(template);
       const nextEncounter: EncounterEntry[] = [];
 
-      template.entities.forEach((templateEntity) => {
-        const count = templateEntity.count ?? 1;
-
-        if (templateEntity.entityKind !== "monster") {
-          return;
-        }
-
-        const monster = getEntityByName("monster", templateEntity.entityName);
+      normalizedTemplate.monsters.forEach((templateMonster) => {
+        const monster = getMonsterById(templateMonster.monsterId);
         if (!monster) return;
 
-        for (let i = 0; i < count; i++) {
-          nextEncounter.push(
-            buildMonsterEncounterEntry(nextEncounter, monster),
-          );
-        }
+        nextEncounter.push(
+          ...buildMonsterEncounterEntriesFromTemplateRow(
+            nextEncounter,
+            templateMonster,
+            monster,
+          ),
+        );
       });
 
       const newId = makeId();
@@ -797,14 +870,14 @@ export const EncounterProvider = ({
         ...prev,
         {
           id: newId,
-          name: template.name.trim() || "Ny kamp",
+          name: normalizedTemplate.name.trim() || "Ny kamp",
           encounter: cloneEncounter(nextEncounter),
           currentTurnIndex: 0,
           currentRound: 1,
         },
       ]);
     },
-    [getEntityByName],
+    [getMonsterById],
   );
 
   const value = useMemo(
