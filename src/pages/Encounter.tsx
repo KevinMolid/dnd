@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import Avatar from "../components/Avatar";
@@ -174,10 +174,22 @@ const Encounter = () => {
   );
   const [isAwardXpModalOpen, setIsAwardXpModalOpen] = useState(false);
   const [isInitiativeModalOpen, setIsInitiativeModalOpen] = useState(false);
+  const firstInitiativeInputRef = useRef<HTMLInputElement | null>(null);
+  const [initiativeTouched, setInitiativeTouched] = useState(false);
   const [playerInitiativeRolls, setPlayerInitiativeRolls] = useState<
     Record<string, string>
   >({});
   const [initiativeError, setInitiativeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isInitiativeModalOpen) return;
+
+    const timeout = window.setTimeout(() => {
+      firstInitiativeInputRef.current?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [isInitiativeModalOpen]);
 
   useEffect(() => {
     if (!activeEncounterId) {
@@ -222,6 +234,16 @@ const Encounter = () => {
     );
   }, [campaignCharacters]);
 
+  const getInitiativeRollError = (entryId: string) => {
+    const rawValue = playerInitiativeRolls[entryId];
+
+    if (!initiativeTouched && !initiativeError) return false;
+    if (!rawValue) return true;
+
+    const parsed = Number(rawValue);
+    return !Number.isInteger(parsed) || parsed < 1 || parsed > 20;
+  };
+
   const openInitiativeModal = () => {
     const nextRolls: Record<string, string> = {};
 
@@ -252,6 +274,8 @@ const Encounter = () => {
   };
 
   const handleSubmitPlayerInitiativeRolls = () => {
+    setInitiativeTouched(true);
+
     const playerEntries = encounter.filter(
       (entry) => entry.entityKind === "player",
     );
@@ -280,7 +304,7 @@ const Encounter = () => {
     );
 
     setPlayerInitiativeRolls({});
-    setInitiativeError(null);
+    setInitiativeTouched(false);
     setIsInitiativeModalOpen(false);
   };
 
@@ -1152,10 +1176,10 @@ const Encounter = () => {
                 Close
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+            <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {encounter
                 .filter((entry) => entry.entityKind === "player")
-                .map((entry) => {
+                .map((entry, index) => {
                   const campaignCharacter =
                     findCampaignCharacterForEntry(entry);
                   const initiativeBonus = campaignCharacter
@@ -1168,6 +1192,8 @@ const Encounter = () => {
                     rawRoll !== "" && Number.isFinite(parsedRoll)
                       ? parsedRoll + initiativeBonus
                       : null;
+
+                  const hasError = getInitiativeRollError(entry.id);
 
                   return (
                     <div
@@ -1183,34 +1209,53 @@ const Encounter = () => {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={rawRoll}
-                          onChange={(e) =>
-                            setPlayerInitiativeRolls((prev) => ({
-                              ...prev,
-                              [entry.id]: e.target.value,
-                            }))
-                          }
-                          className="w-24 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
-                          placeholder="d20"
-                        />
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-3">
+                          <input
+                            ref={index === 0 ? firstInitiativeInputRef : null}
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={rawRoll}
+                            onChange={(e) =>
+                              setPlayerInitiativeRolls((prev) => ({
+                                ...prev,
+                                [entry.id]: e.target.value,
+                              }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSubmitPlayerInitiativeRolls();
+                              }
+                            }}
+                            className={`w-24 rounded-xl border px-3 py-2 text-white outline-none ${
+                              hasError
+                                ? "border-red-500/50 bg-red-500/10 focus:border-red-400"
+                                : "border-white/10 bg-zinc-900 focus:border-white/20"
+                            }`}
+                            placeholder="d20"
+                          />
 
-                        <div className="min-w-[84px] text-right text-sm text-zinc-300">
-                          {total !== null ? (
-                            <span>
-                              Total{" "}
-                              <span className="font-semibold text-white">
-                                {total}
+                          <div className="min-w-[84px] text-right text-sm text-zinc-300">
+                            {total !== null ? (
+                              <span>
+                                Total{" "}
+                                <span className="font-semibold text-white">
+                                  {total}
+                                </span>
                               </span>
-                            </span>
-                          ) : (
-                            <span className="text-zinc-500">No roll</span>
-                          )}
+                            ) : (
+                              <span className="text-zinc-500">No roll</span>
+                            )}
+                          </div>
                         </div>
+
+                        {hasError && (
+                          <div className="text-xs text-red-300">
+                            Enter a whole number from 1 to 20.
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
