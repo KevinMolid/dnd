@@ -114,6 +114,9 @@ type EncounterContextType = {
   previousTurn: () => void;
   resetTurns: () => void;
   rollInitiative: () => void;
+  rollInitiativeWithPlayerRolls: (
+    playerRollsByEntryId: Record<string, number>,
+  ) => void;
 };
 
 const EncounterContext = createContext<EncounterContextType | undefined>(
@@ -493,6 +496,42 @@ export const EncounterProvider = ({
     setCurrentRound(1);
   }, [getEntityByName]);
 
+  const rollInitiativeWithPlayerRolls = useCallback(
+    (playerRollsByEntryId: Record<string, number>) => {
+      setEncounter((prev) =>
+        prev.map((entry) => {
+          if (entry.entityKind === "player") {
+            const initiativeBonus = entry.playerSnapshot?.initiativeBonus ?? 0;
+            const manualRoll = playerRollsByEntryId[entry.id];
+
+            if (typeof manualRoll === "number") {
+              return {
+                ...entry,
+                initiative: manualRoll + initiativeBonus,
+              };
+            }
+
+            return entry;
+          }
+
+          const monster = getEntityByName("monster", entry.entityName);
+          if (!monster) return entry;
+
+          const autoRoll = Math.floor(Math.random() * 20) + 1;
+
+          return {
+            ...entry,
+            initiative: autoRoll + getMonsterInitiativeBonus(monster),
+          };
+        }),
+      );
+
+      setCurrentTurnIndex(0);
+      setCurrentRound(1);
+    },
+    [getEntityByName],
+  );
+
   const nextTurn = useCallback(() => {
     setCurrentTurnIndex((prev) => {
       const sorted = sortEncounterByInitiative(encounter);
@@ -805,6 +844,7 @@ export const EncounterProvider = ({
       previousTurn,
       resetTurns,
       rollInitiative,
+      rollInitiativeWithPlayerRolls,
     }),
     [
       encounter,
@@ -831,6 +871,7 @@ export const EncounterProvider = ({
       previousTurn,
       resetTurns,
       rollInitiative,
+      rollInitiativeWithPlayerRolls,
     ],
   );
 

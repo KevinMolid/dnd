@@ -19,6 +19,7 @@ import { getCharacterHp } from "../rulesets/dnd/dnd2024/getCharacterHp";
 import type { CharacterEquipmentEntry } from "../rulesets/dnd/dnd2024/types";
 
 type EncounterPlayerInput = {
+  characterId?: string;
   name: string;
   maxHp: number;
   currentHp?: number;
@@ -114,6 +115,7 @@ const mapCharacterToEncounterPlayer = (
   const liveHp = getLiveCharacterHp(character);
 
   return {
+    characterId: character.id,
     name: character.name,
     maxHp: liveHp.maxHp,
     currentHp: liveHp.currentHp,
@@ -156,6 +158,7 @@ const Encounter = () => {
     previousTurn,
     resetTurns,
     rollInitiative,
+    rollInitiativeWithPlayerRolls,
   } = useEncounter();
 
   const [encounterName, setEncounterName] = useState("");
@@ -170,6 +173,11 @@ const Encounter = () => {
     null,
   );
   const [isAwardXpModalOpen, setIsAwardXpModalOpen] = useState(false);
+  const [isInitiativeModalOpen, setIsInitiativeModalOpen] = useState(false);
+  const [playerInitiativeRolls, setPlayerInitiativeRolls] = useState<
+    Record<string, string>
+  >({});
+  const [initiativeError, setInitiativeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!activeEncounterId) {
@@ -213,6 +221,68 @@ const Encounter = () => {
       campaignCharacters.map((character) => [character.name, character]),
     );
   }, [campaignCharacters]);
+
+  const openInitiativeModal = () => {
+    const nextRolls: Record<string, string> = {};
+
+    encounter
+      .filter((entry) => entry.entityKind === "player")
+      .forEach((entry) => {
+        nextRolls[entry.id] = "";
+      });
+
+    setPlayerInitiativeRolls(nextRolls);
+    setInitiativeError(null);
+    setIsInitiativeModalOpen(true);
+  };
+
+  const handleStartEncounter = () => {
+    if (encounter.length === 0) return;
+
+    const playerEntries = encounter.filter(
+      (entry) => entry.entityKind === "player",
+    );
+
+    if (playerEntries.length === 0) {
+      rollInitiative();
+      return;
+    }
+
+    openInitiativeModal();
+  };
+
+  const handleSubmitPlayerInitiativeRolls = () => {
+    const playerEntries = encounter.filter(
+      (entry) => entry.entityKind === "player",
+    );
+
+    for (const entry of playerEntries) {
+      const rawValue = playerInitiativeRolls[entry.id];
+      const parsed = Number(rawValue);
+
+      if (!rawValue || !Number.isInteger(parsed) || parsed < 1 || parsed > 20) {
+        setInitiativeError(
+          "Enter a valid d20 roll between 1 and 20 for each player.",
+        );
+        return;
+      }
+    }
+
+    setInitiativeError(null);
+
+    rollInitiativeWithPlayerRolls(
+      Object.fromEntries(
+        playerEntries.map((entry) => [
+          entry.id,
+          Number(playerInitiativeRolls[entry.id]),
+        ]),
+      ),
+    );
+
+    setPlayerInitiativeRolls({});
+    setInitiativeError(null);
+    setIsInitiativeModalOpen(false);
+  };
 
   const findCampaignCharacterForEntry = (
     entry: (typeof encounter)[number],
@@ -575,7 +645,7 @@ const Encounter = () => {
                   )}
 
                   <button
-                    onClick={rollInitiative}
+                    onClick={handleStartEncounter}
                     className="rounded-xl border border-blue-700 bg-blue-500/10 px-3 py-2 text-sm font-medium text-blue-300"
                   >
                     Start Encounter
@@ -1056,6 +1126,122 @@ const Encounter = () => {
           </div>
         )}
       </div>
+
+      {isInitiativeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-3xl border border-white/10 bg-zinc-950 p-5 shadow-2xl">
+            {" "}
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-semibold text-white">
+                  Enter player initiative rolls
+                </h2>
+                <p className="mt-1 text-sm text-zinc-400">
+                  Enter the number each player rolled on the d20. Their
+                  initiative bonus will be added automatically.
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsInitiativeModalOpen(false);
+                  setInitiativeError(null);
+                }}
+                className="rounded-2xl border border-white/10 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"
+              >
+                Close
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+              {encounter
+                .filter((entry) => entry.entityKind === "player")
+                .map((entry) => {
+                  const campaignCharacter =
+                    findCampaignCharacterForEntry(entry);
+                  const initiativeBonus = campaignCharacter
+                    ? getEncounterInitiativeBonus(campaignCharacter)
+                    : (entry.playerSnapshot?.initiativeBonus ?? 0);
+
+                  const rawRoll = playerInitiativeRolls[entry.id] ?? "";
+                  const parsedRoll = Number(rawRoll);
+                  const total =
+                    rawRoll !== "" && Number.isFinite(parsedRoll)
+                      ? parsedRoll + initiativeBonus
+                      : null;
+
+                  return (
+                    <div
+                      key={entry.id}
+                      className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <div className="font-medium text-white">
+                          {entry.displayName}
+                        </div>
+                        <div className="text-sm text-zinc-400">
+                          Initiative bonus {formatModifier(initiativeBonus)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={rawRoll}
+                          onChange={(e) =>
+                            setPlayerInitiativeRolls((prev) => ({
+                              ...prev,
+                              [entry.id]: e.target.value,
+                            }))
+                          }
+                          className="w-24 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
+                          placeholder="d20"
+                        />
+
+                        <div className="min-w-[84px] text-right text-sm text-zinc-300">
+                          {total !== null ? (
+                            <span>
+                              Total{" "}
+                              <span className="font-semibold text-white">
+                                {total}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-zinc-500">No roll</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            {initiativeError && (
+              <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                {initiativeError}
+              </div>
+            )}
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+              <button
+                onClick={() => {
+                  setIsInitiativeModalOpen(false);
+                  setInitiativeError(null);
+                }}
+                className="rounded-2xl border border-white/10 px-4 py-2 text-zinc-300 hover:bg-white/5"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleSubmitPlayerInitiativeRolls}
+                className="rounded-2xl bg-white px-4 py-2 font-medium text-zinc-950 transition hover:bg-zinc-200"
+              >
+                Roll Remaining
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <AwardXpModal
         isOpen={isAwardXpModalOpen}
