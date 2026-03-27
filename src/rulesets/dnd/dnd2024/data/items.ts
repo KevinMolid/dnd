@@ -788,6 +788,18 @@ export const items: Item[] = [
   { id: "forgery-kit", name: "Forgery Kit", category: "tool" },
   { id: "gamers-set", name: "Gaming Set", category: "tool" },
   { id: "musical-instrument", name: "Musical Instrument", category: "tool" },
+  
+  // === MUSICAL INSTRUMENTS ===
+  { id: "bagpipes", name: "Bagpipes", category: "tool" },
+  { id: "drum", name: "Drum", category: "tool" },
+  { id: "dulcimer", name: "Dulcimer", category: "tool" },
+  { id: "flute", name: "Flute", category: "tool" },
+  { id: "horn", name: "Horn", category: "tool" },
+  { id: "lute", name: "Lute", category: "tool" },
+  { id: "lyre", name: "Lyre", category: "tool" },
+  { id: "pan-flute", name: "Pan Flute", category: "tool" },
+  { id: "shawm", name: "Shawm", category: "tool" },
+  { id: "viol", name: "Viol", category: "tool" },
   {
     id: "disguise-kit",
     name: "Disguise Kit",
