@@ -1171,6 +1171,7 @@ export type LevelUpDecision = {
 
   cantripChoices?: SpellId[];
   spellChoices?: SpellSelection[];
+  spellbookChoices?: SpellSelection[];
 
   cantripReplacements?: CantripReplacement[];
   spellReplacements?: SpellReplacement[];
@@ -1237,6 +1238,7 @@ export type CharacterChoices = {
   rogueWeaponMasteryChoices?: WeaponMasteryChoiceId[];
 
   preparedSpellIdsBySource?: Record<string, SpellId[]>;
+  spellbookChoices?: SpellSelection[];
 
   levelUpDecisions?: LevelUpDecisionsByLevel;
 };

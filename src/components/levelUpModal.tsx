@@ -264,6 +264,26 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     setPreviewSpell(spell);
   };
 
+  const toggleWizardSpellbookChoice = (
+    level: number,
+    spell: SpellSelection,
+    maxChoices: number,
+  ) => {
+    const current = (
+      getEffectiveDecisionForLevel(level).spellbookChoices ?? []
+    ).slice();
+
+    const exists = current.some((s) => s.spellId === spell.spellId);
+
+    const next = exists
+      ? current.filter((s) => s.spellId !== spell.spellId)
+      : current.length < maxChoices
+        ? [...current, spell]
+        : current;
+
+    updateDecision(level, { spellbookChoices: next });
+  };
+
   const toggleExpertise = (
     level: number,
     value: SkillId | "thieves-tools",
@@ -394,6 +414,10 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
   };
 
   const getSpellcastingRulesForStep = (step: any) => {
+    if (step.type === "spellbook-choice" && character.classId === "wizard") {
+      return activeClassSpellcasting;
+    }
+
     const source = step.choice?.source;
     const title = String(step.title ?? "").toLowerCase();
     const description = String(step.description ?? "").toLowerCase();
@@ -473,6 +497,15 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       }
     }
 
+    if (Array.isArray(character.choices?.wizardSpellbookChoices)) {
+      for (const spell of character.choices
+        .wizardSpellbookChoices as SpellSelection[]) {
+        if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
+          spellSelections.push(spell);
+        }
+      }
+    }
+
     if (Array.isArray(character.choices?.subclassCantripChoices)) {
       for (const spellId of character.choices
         .subclassCantripChoices as SpellId[]) {
@@ -507,6 +540,14 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
 
       if (Array.isArray(decision.spellChoices)) {
         for (const spell of decision.spellChoices as SpellSelection[]) {
+          if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
+            spellSelections.push(spell);
+          }
+        }
+      }
+
+      if (Array.isArray(decision.wizardSpellbookChoices)) {
+        for (const spell of decision.wizardSpellbookChoices as SpellSelection[]) {
           if (!spellSelections.some((s) => s.spellId === spell.spellId)) {
             spellSelections.push(spell);
           }
@@ -666,6 +707,16 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       );
     }
 
+    if (step.type === "spellbook-choice") {
+      const requiredCount =
+        typeof step.choice?.choose === "number" ? step.choice.choose : 2;
+
+      return (
+        Array.isArray(decision?.spellbookChoices) &&
+        decision.spellbookChoices.length >= requiredCount
+      );
+    }
+
     if (step.type === "cantrip-replacement") {
       const replacement =
         (decision.cantripReplacements?.[0] as CantripReplacement | undefined) ??
@@ -738,7 +789,8 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
               const availableStepCantrips = getAvailableCantripsForStep(step);
               const availableStepLeveledSpells =
                 step.type === "spell-choice" ||
-                step.type === "spell-replacement"
+                step.type === "spell-replacement" ||
+                step.type === "spellbook-choice"
                   ? getAvailableLeveledSpellsForStep(step)
                   : [];
 
@@ -775,6 +827,15 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                       (selected) => selected.spellId === spell.id,
                     ) ||
                     spell.id === spellReplacement.removeSpellId,
+                );
+
+              const filteredAvailableWizardSpellbookSpells =
+                availableStepLeveledSpells.filter(
+                  (spell) =>
+                    !knownSpellIdsBeforeStep.includes(spell.id) ||
+                    (decision.spellbookChoices ?? []).some(
+                      (selected) => selected.spellId === spell.id,
+                    ),
                 );
 
               return (
@@ -1368,6 +1429,91 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                                 />
                               </button>
                             ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {step.type === "spellbook-choice" && (
+                    <div>
+                      <p className="mb-2 text-sm text-zinc-400">
+                        Choose {step.choice?.choose ?? 2} spell
+                        {(step.choice?.choose ?? 2) > 1 ? "s" : ""} to add to
+                        your spellbook.
+                      </p>
+
+                      {knownSpellsBeforeStep.length > 0 && (
+                        <div className="mb-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                          <p className="mb-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                            Already in Spellbook
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {knownSpellsBeforeStep.map((spell) => (
+                              <span
+                                key={spell.spellId}
+                                className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300"
+                              >
+                                {getSpellById(spell.spellId)?.name ??
+                                  spell.spellId}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {!getSpellcastingRulesForStep(step) ? (
+                        <p className="text-sm text-zinc-500">
+                          No spellcasting rules found for this choice.
+                        </p>
+                      ) : (
+                        <>
+                          <div className="mb-4">
+                            <SpellPreviewCard spell={previewSpell} />
+                          </div>
+
+                          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                            {filteredAvailableWizardSpellbookSpells.map(
+                              (spell) => (
+                                <button
+                                  key={spell.id}
+                                  onMouseEnter={() =>
+                                    handlePreviewSpell(
+                                      toPreviewSpell(spell, spell),
+                                    )
+                                  }
+                                  onFocus={() =>
+                                    handlePreviewSpell(
+                                      toPreviewSpell(spell, spell),
+                                    )
+                                  }
+                                  onClick={() => {
+                                    handlePreviewSpell(
+                                      toPreviewSpell(spell, spell),
+                                    );
+                                    toggleWizardSpellbookChoice(
+                                      step.level,
+                                      {
+                                        spellId: spell.id,
+                                        level: spell.level as SpellLevel,
+                                      },
+                                      step.choice?.choose ?? 2,
+                                    );
+                                  }}
+                                  className={choiceButtonClass(
+                                    (decision.spellbookChoices ?? []).some(
+                                      (selected) =>
+                                        selected.spellId === spell.id,
+                                    ),
+                                  )}
+                                >
+                                  <SpellChoiceLabel
+                                    spell={spell}
+                                    subtitle={`Level ${spell.level} · ${spell.school}`}
+                                  />
+                                </button>
+                              ),
+                            )}
                           </div>
                         </>
                       )}

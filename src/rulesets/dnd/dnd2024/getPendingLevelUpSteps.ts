@@ -31,6 +31,7 @@ export type PendingLevelUpStepType =
   | "weapon-mastery-choice"
   | "cantrip-choice"
   | "spell-choice"
+  | "spellbook-choice"
   | "cantrip-replacement"
   | "spell-replacement"
   | "class-feature-choice"
@@ -202,6 +203,11 @@ const collectPriorSpellChoices = (
   return result;
 };
 
+const getWizardSpellbookChoiceCountGrantedAtLevel = (level: LevelNumber): number => {
+  if (level <= 1) return 0;
+  return 2;
+};
+
 const toFeatureRef = (
   feature: { id: string; name: string; level?: number; minLevel?: number },
   sourceId: string,
@@ -371,14 +377,23 @@ const getClassSpellcastingChoiceSteps = (
   rules: SpellcastingRules,
   level: LevelNumber,
   className: string,
+  classId?: string,
 ): PendingLevelUpStep[] => {
   const steps: PendingLevelUpStep[] = [];
   const decisions = character.choices?.levelUpDecisions?.[level];
 
-  const cantripChoicesRequired = getCantripChoiceCountGrantedAtLevel(rules, level);
+  const effectiveClassId = classId ?? rules.sourceId;
+
+  const cantripChoicesRequired = getCantripChoiceCountGrantedAtLevel(
+    rules,
+    level,
+  );
   const chosenCantrips = decisions?.cantripChoices ?? [];
 
-  if (cantripChoicesRequired > 0 && chosenCantrips.length < cantripChoicesRequired) {
+  if (
+    cantripChoicesRequired > 0 &&
+    chosenCantrips.length < cantripChoicesRequired
+  ) {
     steps.push({
       level,
       type: "cantrip-choice",
@@ -401,43 +416,54 @@ const getClassSpellcastingChoiceSteps = (
     });
   }
 
-  const spellChoicesRequired = getPreparedSpellChoiceCountGrantedAtLevel(rules, level);
-  const chosenSpells = decisions?.spellChoices ?? [];
-
-  if (spellChoicesRequired > 0 && chosenSpells.length < spellChoicesRequired) {
-    const spellLevel =
-      level === 1 || level === 3
-        ? rules.preparedSpells?.chooseAtStart?.spellLevel ?? 1
-        : undefined;
-
-    steps.push({
-      level,
-      type: "spell-choice",
-      id: `${rules.sourceId}-class-spells-${level}`,
-      title:
-        level === 1 || level === 3
-          ? `${className} Spells`
-          : "Choose Additional Spell",
-      description:
-        level === 1 || level === 3
-          ? `Choose ${spellChoicesRequired} level ${spellLevel} spell${spellChoicesRequired > 1 ? "s" : ""} for ${className}.`
-          : `Choose ${spellChoicesRequired} additional spell${spellChoicesRequired > 1 ? "s" : ""} for ${className}.`,
-      choice: {
-        id: `${rules.sourceId}-class-spell-choice-${level}`,
-        level,
-        name: `${className} Spell Choice`,
-        choose: spellChoicesRequired,
-        source: "spells",
-        restrictions:
-          spellLevel !== undefined
-            ? [`Must be a level ${spellLevel} spell.`]
-            : undefined,
-      },
-    });
-  }
-
   const priorCantrips = collectPriorCantripChoices(character, level);
   const priorSpells = collectPriorSpellChoices(character, level);
+
+  if (
+    effectiveClassId !== "wizard" &&
+    rules.preparedSpells
+  ) {
+    const spellChoicesRequired = getPreparedSpellChoiceCountGrantedAtLevel(
+      rules,
+      level,
+    );
+    const chosenSpells = decisions?.spellChoices ?? [];
+
+    if (
+      spellChoicesRequired > 0 &&
+      chosenSpells.length < spellChoicesRequired
+    ) {
+      const spellLevel =
+        level === 1 || level === 3
+          ? rules.preparedSpells.chooseAtStart?.spellLevel ?? 1
+          : undefined;
+
+      steps.push({
+        level,
+        type: "spell-choice",
+        id: `${rules.sourceId}-class-spells-${level}`,
+        title:
+          level === 1 || level === 3
+            ? `${className} Spells`
+            : "Choose Additional Spell",
+        description:
+          level === 1 || level === 3
+            ? `Choose ${spellChoicesRequired} level ${spellLevel} spell${spellChoicesRequired > 1 ? "s" : ""} for ${className}.`
+            : `Choose ${spellChoicesRequired} additional spell${spellChoicesRequired > 1 ? "s" : ""} for ${className}.`,
+        choice: {
+          id: `${rules.sourceId}-class-spell-choice-${level}`,
+          level,
+          name: `${className} Spell Choice`,
+          choose: spellChoicesRequired,
+          source: "spells",
+          restrictions:
+            spellLevel !== undefined
+              ? [`Must be a level ${spellLevel} spell.`]
+              : undefined,
+        },
+      });
+    }
+  }
 
   if (
     canReplaceCantripAtLevel(rules, level) &&
@@ -462,6 +488,7 @@ const getClassSpellcastingChoiceSteps = (
   }
 
   if (
+    effectiveClassId !== "wizard" &&
     canReplaceSpellAtLevel(rules, level) &&
     priorSpells.length > 0 &&
     !(decisions?.spellReplacements?.length)
@@ -871,6 +898,45 @@ const getBarbarianPendingChoiceSteps = (
   return steps;
 };
 
+const getWizardPendingChoiceSteps = (
+  character: CharacterSheetData,
+  level: LevelNumber,
+): PendingLevelUpStep[] => {
+  if (character.classId !== "wizard") return [];
+
+  const classDef = getClassById("wizard");
+    if (!classDef?.spellcasting) return [];
+
+  const steps: PendingLevelUpStep[] = [];
+  const decisions = character.choices?.levelUpDecisions?.[level];
+
+  const spellbookChoicesRequired = getWizardSpellbookChoiceCountGrantedAtLevel(level);
+  const chosenSpellbookSpells = decisions?.spellbookChoices ?? [];
+
+  if (
+    spellbookChoicesRequired > 0 &&
+    chosenSpellbookSpells.length < spellbookChoicesRequired
+  ) {
+    steps.push({
+      level,
+      type: "spellbook-choice",
+      id: `wizard-spellbook-${level}`,
+      title: "Add Spells to Spellbook",
+      description:
+        "Choose two Wizard spells to add to your spellbook. Each spell must be of a level for which you have spell slots.",
+      choice: {
+        id: `wizard-spellbook-choice-${level}`,
+        level,
+        name: "Wizard Spellbook",
+        choose: spellbookChoicesRequired,
+        source: "spells",
+      },
+    });
+  }
+
+  return steps;
+};
+
 export const getPendingLevelUpSteps = (
   character: CharacterSheetData,
   subclass?: CharacterSubclass | null,
@@ -971,6 +1037,7 @@ export const getPendingLevelUpSteps = (
           classDef.spellcasting,
           level,
           classDef.name,
+          classDef.id,
         ),
       );
     }
@@ -986,6 +1053,7 @@ export const getPendingLevelUpSteps = (
     steps.push(...getBardPendingChoiceSteps(character, level));
     steps.push(...getDruidPendingChoiceSteps(character, level, activeSubclass));
     steps.push(...getBarbarianPendingChoiceSteps(character, level));
+    steps.push(...getWizardPendingChoiceSteps(character, level));
   }
 
   return uniqueById(steps).sort((a, b) => {
