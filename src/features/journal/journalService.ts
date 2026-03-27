@@ -80,47 +80,127 @@ function mapJournalEntryDoc(
   };
 }
 
-function buildJournalQuery(campaignId: string, isGm: boolean) {
-  const baseRef = journalCollectionRef(campaignId);
+function buildGmJournalQuery(campaignId: string) {
+  return query(journalCollectionRef(campaignId), orderBy("updatedAt", "desc"));
+}
 
-  if (isGm) {
-    return query(baseRef, orderBy("updatedAt", "desc"));
-  }
-
+function buildAllPlayersJournalQuery(campaignId: string) {
   return query(
-    baseRef,
+    journalCollectionRef(campaignId),
     where("published", "==", true),
     where("visibility", "==", "allPlayers"),
     orderBy("updatedAt", "desc"),
   );
 }
 
+function buildSelectedPlayersJournalQuery(
+  campaignId: string,
+  currentPlayerId: string,
+) {
+  return query(
+    journalCollectionRef(campaignId),
+    where("published", "==", true),
+    where("visibility", "==", "selectedPlayers"),
+    where("visibleToPlayerIds", "array-contains", currentPlayerId),
+    orderBy("updatedAt", "desc"),
+  );
+}
+
 export function subscribeToJournalEntries(
   campaignId: string,
-  options: { isGm: boolean },
+  options: { isGm: boolean; currentPlayerId?: string | null },
   callback: (entries: JournalEntry[]) => void,
 ) {
-  const q = buildJournalQuery(campaignId, options.isGm);
+  if (options.isGm) {
+    const q = buildGmJournalQuery(campaignId);
 
-  return onSnapshot(q, (snapshot) => {
-    const entries = snapshot.docs.map((docSnap) =>
-      mapJournalEntryDoc(docSnap.id, docSnap.data()),
+    return onSnapshot(q, (snapshot) => {
+      const entries = snapshot.docs.map((docSnap) =>
+        mapJournalEntryDoc(docSnap.id, docSnap.data()),
+      );
+
+      callback(entries);
+    });
+  }
+
+  const unsubscribers: Array<() => void> = [];
+  let allPlayersEntries: JournalEntry[] = [];
+  let selectedEntries: JournalEntry[] = [];
+
+  const emit = () => {
+    const merged = [...allPlayersEntries, ...selectedEntries];
+    const deduped = Array.from(new Map(merged.map((entry) => [entry.id, entry])).values())
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+
+    callback(deduped);
+  };
+
+  const allPlayersQuery = buildAllPlayersJournalQuery(campaignId);
+  unsubscribers.push(
+    onSnapshot(allPlayersQuery, (snapshot) => {
+      allPlayersEntries = snapshot.docs.map((docSnap) =>
+        mapJournalEntryDoc(docSnap.id, docSnap.data()),
+      );
+      emit();
+    }),
+  );
+
+  if (options.currentPlayerId) {
+    const selectedPlayersQuery = buildSelectedPlayersJournalQuery(
+      campaignId,
+      options.currentPlayerId,
     );
 
-    callback(entries);
-  });
+    unsubscribers.push(
+      onSnapshot(selectedPlayersQuery, (snapshot) => {
+        selectedEntries = snapshot.docs.map((docSnap) =>
+          mapJournalEntryDoc(docSnap.id, docSnap.data()),
+        );
+        emit();
+      }),
+    );
+  }
+
+  return () => {
+    unsubscribers.forEach((unsubscribe) => unsubscribe());
+  };
 }
 
 export async function getJournalEntries(
   campaignId: string,
-  options: { isGm: boolean },
+  options: { isGm: boolean; currentPlayerId?: string | null },
 ): Promise<JournalEntry[]> {
-  const q = buildJournalQuery(campaignId, options.isGm);
-  const snapshot = await getDocs(q);
+  if (options.isGm) {
+    const snapshot = await getDocs(buildGmJournalQuery(campaignId));
 
-  return snapshot.docs.map((docSnap) =>
+    return snapshot.docs.map((docSnap) =>
+      mapJournalEntryDoc(docSnap.id, docSnap.data()),
+    );
+  }
+
+  const snapshots = await Promise.all([
+    getDocs(buildAllPlayersJournalQuery(campaignId)),
+    options.currentPlayerId
+      ? getDocs(
+          buildSelectedPlayersJournalQuery(campaignId, options.currentPlayerId),
+        )
+      : Promise.resolve(null),
+  ]);
+
+  const allPlayersEntries = snapshots[0].docs.map((docSnap) =>
     mapJournalEntryDoc(docSnap.id, docSnap.data()),
   );
+
+  const selectedEntries =
+    snapshots[1]?.docs.map((docSnap) =>
+      mapJournalEntryDoc(docSnap.id, docSnap.data()),
+    ) ?? [];
+
+  return Array.from(
+    new Map(
+      [...allPlayersEntries, ...selectedEntries].map((entry) => [entry.id, entry]),
+    ).values(),
+  ).sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export async function createJournalEntry(

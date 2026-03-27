@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, query } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
@@ -68,10 +68,8 @@ const CampaignJournalPage = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // TODO:
-  // Replace these once you connect journal visibility to your real campaign players/characters
-  const players: CampaignPlayer[] = [];
-  const currentPlayerId: string | null = null;
+  const [players, setPlayers] = useState<CampaignPlayer[]>([]);
+  const currentPlayerId: string | null = user?.uid ?? null;
 
   useEffect(() => {
     const loadCampaignAccess = async () => {
@@ -128,11 +126,39 @@ const CampaignJournalPage = () => {
   useEffect(() => {
     if (pageState !== "ready" || !campaignId) return;
 
+    const membersRef = collection(db, "campaigns", campaignId, "members");
+    const membersQuery = query(membersRef);
+
+    const unsubscribe = onSnapshot(membersQuery, (snapshot) => {
+      const nextPlayers: CampaignPlayer[] = snapshot.docs
+        .map((docSnap) => {
+          const data = docSnap.data() as CampaignMemberDoc;
+
+          if (data.role === "gm" || data.role === "co-gm") {
+            return null;
+          }
+
+          return {
+            id: docSnap.id, // uid
+            name: data.displayName || "Unknown player",
+          };
+        })
+        .filter((value): value is CampaignPlayer => Boolean(value));
+
+      setPlayers(nextPlayers);
+    });
+
+    return unsubscribe;
+  }, [campaignId, pageState]);
+
+  useEffect(() => {
+    if (pageState !== "ready" || !campaignId) return;
+
     setJournalLoading(true);
 
     const unsubscribe = subscribeToJournalEntries(
       campaignId,
-      { isGm },
+      { isGm, currentPlayerId },
       (nextEntries) => {
         setEntries(nextEntries);
         setJournalLoading(false);
@@ -140,7 +166,7 @@ const CampaignJournalPage = () => {
     );
 
     return unsubscribe;
-  }, [campaignId, pageState, isGm]);
+  }, [campaignId, pageState, isGm, currentPlayerId]);
 
   const visibleEntries = useMemo(() => {
     return entries.filter((entry) =>

@@ -149,7 +149,7 @@ export function validateJournalEntryForm(
 
   if (
     form.visibility === "selectedPlayers" &&
-    form.visibleToPlayerIds.length === 0
+    form.visibleToPlayerIds.filter(Boolean).length === 0
   ) {
     return "Select at least one player.";
   }
@@ -167,14 +167,12 @@ export function canReadJournalEntry(params: {
   if (isDm) return true;
   if (!entry.published) return false;
 
+  if (entry.visibility === "dm") return false;
   if (entry.visibility === "allPlayers") return true;
 
-  if (
-    entry.visibility === "selectedPlayers" &&
-    currentPlayerId &&
-    entry.visibleToPlayerIds.includes(currentPlayerId)
-  ) {
-    return true;
+  if (entry.visibility === "selectedPlayers") {
+    return !!currentPlayerId &&
+      entry.visibleToPlayerIds.includes(currentPlayerId);
   }
 
   return false;
