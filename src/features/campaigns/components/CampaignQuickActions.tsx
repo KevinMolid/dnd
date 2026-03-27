@@ -65,9 +65,14 @@ const CampaignQuickActions = ({
 
             <button
               onClick={onRewardItems}
-              className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 text-left transition hover:border-white/20 hover:bg-zinc-900"
             >
-              Reward items
+              <h3 className="text-base font-semibold text-white">
+                Reward items
+              </h3>
+              <p className="mt-2 text-sm text-zinc-400">
+                Search for items and award players with items or gold.
+              </p>
             </button>
 
             <button
