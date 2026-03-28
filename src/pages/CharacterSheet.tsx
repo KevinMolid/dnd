@@ -165,7 +165,8 @@ type CharacterSheetTab =
   | "combat"
   | "features"
   | "inventory"
-  | "spells";
+  | "spells"
+  | "notes";
 
 const sheetTabs: CharacterSheetTab[] = [
   "overview",
@@ -173,6 +174,7 @@ const sheetTabs: CharacterSheetTab[] = [
   "features",
   "inventory",
   "spells",
+  "notes",
 ];
 
 const sheetTabLabels: Record<CharacterSheetTab, string> = {
@@ -181,6 +183,7 @@ const sheetTabLabels: Record<CharacterSheetTab, string> = {
   features: "Features",
   inventory: "Inventory",
   spells: "Spells",
+  notes: "Notes",
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
@@ -1676,14 +1679,72 @@ const CharacterSheet = () => {
             </div>
           </SectionCard>
 
-          <SectionCard title="Notes">
-            {character.notes ? (
-              <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
-                {character.notes}
-              </p>
-            ) : (
-              <p className="text-sm text-zinc-500">No notes yet.</p>
-            )}
+          <SectionCard title="Ability Scores">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(Object.keys(derived.finalAbilityScores) as AbilityKey[]).map(
+                (key) => {
+                  const score = derived.finalAbilityScores[key];
+                  const mod = getAbilityModifier(score);
+                  const baseScore = character.abilityScores[key];
+                  const bonus = score - baseScore;
+
+                  return (
+                    <div
+                      key={key}
+                      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        {abilityLabels[key]}
+                      </p>
+                      <div className="mt-3 flex items-end justify-between">
+                        <p className="text-3xl font-bold text-white">{score}</p>
+                        <p className="text-lg font-semibold text-zinc-300">
+                          {formatModifier(mod)}
+                        </p>
+                      </div>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Base {baseScore}
+                        {bonus > 0 ? ` • +${bonus} background` : ""}
+                      </p>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          </SectionCard>
+
+          <SectionCard title="Skills">
+            <div className="grid gap-2">
+              {derived.skillRows.map((skill) => (
+                <div
+                  key={skill.id}
+                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-medium text-white">{skill.name}</p>
+                      <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                        {abilityLabels[skill.ability]}
+                      </span>
+                      {skill.proficient && (
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                          Proficient
+                        </span>
+                      )}
+                      {skill.expertise && (
+                        <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
+                          Expertise
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <p className="ml-4 text-sm font-semibold text-zinc-200">
+                    {formatModifier(skill.total)}
+                  </p>
+                </div>
+              ))}
+            </div>
           </SectionCard>
         </div>
 
@@ -1842,40 +1903,6 @@ const CharacterSheet = () => {
   const renderCombatTab = () => (
     <div className="grid gap-6 xl:grid-cols-3">
       <div className="space-y-6 xl:col-span-2">
-        <SectionCard title="Ability Scores">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {(Object.keys(derived.finalAbilityScores) as AbilityKey[]).map(
-              (key) => {
-                const score = derived.finalAbilityScores[key];
-                const mod = getAbilityModifier(score);
-                const baseScore = character.abilityScores[key];
-                const bonus = score - baseScore;
-
-                return (
-                  <div
-                    key={key}
-                    className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                  >
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                      {abilityLabels[key]}
-                    </p>
-                    <div className="mt-3 flex items-end justify-between">
-                      <p className="text-3xl font-bold text-white">{score}</p>
-                      <p className="text-lg font-semibold text-zinc-300">
-                        {formatModifier(mod)}
-                      </p>
-                    </div>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Base {baseScore}
-                      {bonus > 0 ? ` • +${bonus} background` : ""}
-                    </p>
-                  </div>
-                );
-              },
-            )}
-          </div>
-        </SectionCard>
-
         <SectionCard title="Combat">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
@@ -2047,40 +2074,6 @@ const CharacterSheet = () => {
                 </div>
               </div>
             )}
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Skills">
-          <div className="grid gap-2">
-            {derived.skillRows.map((skill) => (
-              <div
-                key={skill.id}
-                className="flex items-center justify-between rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-white">{skill.name}</p>
-                    <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
-                      {abilityLabels[skill.ability]}
-                    </span>
-                    {skill.proficient && (
-                      <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-                        Proficient
-                      </span>
-                    )}
-                    {skill.expertise && (
-                      <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
-                        Expertise
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <p className="ml-4 text-sm font-semibold text-zinc-200">
-                  {formatModifier(skill.total)}
-                </p>
-              </div>
-            ))}
           </div>
         </SectionCard>
 
@@ -2365,6 +2358,20 @@ const CharacterSheet = () => {
           </SectionCard>
         </div>
       </div>
+    </div>
+  );
+
+  const renderNotesTab = () => (
+    <div className="space-y-6">
+      <SectionCard title="Notes">
+        {character.notes ? (
+          <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
+            {character.notes}
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-500">No notes yet.</p>
+        )}
+      </SectionCard>
     </div>
   );
 
@@ -2792,6 +2799,7 @@ const CharacterSheet = () => {
         {activeTab === "features" && renderFeaturesTab()}
         {activeTab === "inventory" && renderInventoryTab()}
         {activeTab === "spells" && renderSpellsTab()}
+        {activeTab === "notes" && renderNotesTab()}
       </div>
     </div>
   );
