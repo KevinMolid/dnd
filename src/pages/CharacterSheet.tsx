@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
@@ -810,6 +810,7 @@ const getOrdinalSuffix = (value: number) => {
 
 const CharacterSheet = () => {
   const { characterId } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("overview");
@@ -827,6 +828,13 @@ const CharacterSheet = () => {
     feats: true,
     other: false,
   });
+
+  const navigationState = location.state as
+    | { from?: string; label?: string }
+    | undefined;
+
+  const backTo = navigationState?.from ?? "/";
+  const backLabel = navigationState?.label ?? "Back to home";
 
   useEffect(() => {
     const loadCharacter = async () => {
@@ -2702,9 +2710,11 @@ const CharacterSheet = () => {
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="mb-6">
-          <Link to={`/`} className="text-zinc-400 hover:text-white">
-            ← Back to campaign
-          </Link>
+          <div className="mb-6">
+            <Link to={backTo} className="text-zinc-400 hover:text-white">
+              ← {backLabel}
+            </Link>
+          </div>
         </div>
         <div className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-6 shadow-2xl sm:p-8">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500 mb-3">

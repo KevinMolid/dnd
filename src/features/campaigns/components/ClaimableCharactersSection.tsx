@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Avatar from "../../../components/Avatar";
 import type { CampaignCharacter } from "../hooks/useCampaignPageData";
 
@@ -17,6 +17,8 @@ const ClaimableCharactersSection = ({
   busyCharacterId = null,
   onClaimCharacter,
 }: ClaimableCharactersSectionProps) => {
+  const location = useLocation();
+
   return (
     <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
       <div className="mb-5 flex items-start justify-between gap-4">
@@ -108,6 +110,10 @@ const ClaimableCharactersSection = ({
                     {isGm && (
                       <Link
                         to={`/characters/${character.id}`}
+                        state={{
+                          from: `${location.pathname}${location.search}`,
+                          label: "Back to campaign",
+                        }}
                         className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
                       >
                         Open

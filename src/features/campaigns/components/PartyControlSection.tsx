@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import Avatar from "../../../components/Avatar";
 import { getXpProgressWithinLevel } from "../../../rulesets/dnd/dnd2024/xpProgression";
@@ -39,6 +39,7 @@ const PartyControlSection = ({
   onUpdateCharacterXp,
   onToggleCondition,
 }: PartyControlSectionProps) => {
+  const location = useLocation();
   const [expandedCharacterId, setExpandedCharacterId] = useState<string | null>(
     null,
   );
@@ -239,6 +240,10 @@ const PartyControlSection = ({
                       {canOpenCharacter && (
                         <Link
                           to={`/characters/${character.id}`}
+                          state={{
+                            from: `${location.pathname}${location.search}`,
+                            label: "Back to campaign",
+                          }}
                           className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white"
                         >
                           Open
