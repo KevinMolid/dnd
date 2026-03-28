@@ -45,9 +45,12 @@ const CampaignMembersSection = ({
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 flex items-center gap-3">
                   <Avatar
-                    name={member.displayName || member.email || member.uid}
-                    src={member.imageUrl || ""}
+                    name={
+                      member.displayName?.trim() || member.email || member.uid
+                    }
+                    src={member.imageUrl?.trim() || ""}
                     size="md"
+                    shape="circle"
                   />
 
                   <div className="min-w-0">

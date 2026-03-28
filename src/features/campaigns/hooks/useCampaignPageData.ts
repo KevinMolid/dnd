@@ -114,6 +114,7 @@ export type CharacterDoc = {
 export type AppUserDoc = {
   displayName?: string;
   email?: string;
+  imageUrl?: string;
 };
 
 export type CampaignCharacter = {
@@ -432,10 +433,15 @@ export const useCampaignPageData = (campaignId?: string) => {
       (snapshot) => {
         const nextMembers = snapshot.docs.map((docSnap) => {
           const member = docSnap.data() as CampaignMemberDoc;
+          const uid = docSnap.id;
+          const userDoc = usersById[uid];
 
           return {
             ...member,
-            uid: docSnap.id,
+            uid,
+            displayName: member.displayName ?? userDoc?.displayName ?? "",
+            email: member.email ?? userDoc?.email ?? "",
+            imageUrl: userDoc?.imageUrl ?? "",
           };
         });
 
@@ -450,7 +456,7 @@ export const useCampaignPageData = (campaignId?: string) => {
     );
 
     return () => unsub();
-  }, [campaignId, pageState]);
+  }, [campaignId, pageState, usersById]);
 
   const isGm = membership?.role === "gm" || membership?.role === "co-gm";
 
