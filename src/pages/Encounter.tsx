@@ -37,6 +37,8 @@ import { getCharacterArmorClassFromEquipment } from "../rulesets/dnd/dnd2024/get
 import { getCharacterHp } from "../rulesets/dnd/dnd2024/getCharacterHp";
 import type { CharacterEquipmentEntry } from "../rulesets/dnd/dnd2024/types";
 
+import QuickAdd from "../components/QuickAdd";
+
 const formatModifier = (value: number) =>
   value >= 0 ? `+${value}` : `${value}`;
 
@@ -176,6 +178,7 @@ const Encounter = () => {
     addPlayerToEncounter,
     removeEntityFromEncounter,
     updateEntityHp,
+    updateEntityInitiative,
     renameEntity,
     clearEncounter,
     createNewEncounter,
@@ -623,61 +626,65 @@ const Encounter = () => {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-            <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <H3 className="mb-0">Campaign Characters</H3>
+            <div className="flex flex-col gap-4">
+              <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <H3 className="mb-0">Campaign Characters</H3>
 
-                {campaignCharacters.length > 0 && (
-                  <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={areAllPlayersInEncounter}
-                      onChange={toggleAllPlayers}
-                    />
-                    <span className="font-medium text-white">All</span>
-                  </label>
-                )}
-              </div>
-
-              {campaignCharactersLoading ? (
-                <p className="text-sm text-neutral-400">
-                  Loading campaign characters...
-                </p>
-              ) : campaignCharacters.length === 0 ? (
-                <p className="text-sm text-neutral-400">
-                  No characters found for this campaign.
-                </p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {campaignCharacters.map((character) => {
-                    const isChecked = isPlayerInEncounter(character.name);
-
-                    return (
-                      <button
-                        key={character.id}
-                        type="button"
-                        onClick={() => togglePlayerInEncounter(character)}
-                        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition ${
-                          isChecked
-                            ? "border-white/20 bg-white/15 text-white"
-                            : "border-white/10 bg-white/5 text-white hover:bg-white/10"
-                        }`}
-                      >
-                        <Avatar
-                          name={character.name}
-                          src={character.imageUrl}
-                          size="sm"
-                        />
-
-                        <div>
-                          <div className="font-medium">{character.name}</div>
-                        </div>
-                      </button>
-                    );
-                  })}
+                  {campaignCharacters.length > 0 && (
+                    <label className="flex cursor-pointer items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={areAllPlayersInEncounter}
+                        onChange={toggleAllPlayers}
+                      />
+                      <span className="font-medium text-white">All</span>
+                    </label>
+                  )}
                 </div>
-              )}
-            </section>
+
+                {campaignCharactersLoading ? (
+                  <p className="text-sm text-neutral-400">
+                    Loading campaign characters...
+                  </p>
+                ) : campaignCharacters.length === 0 ? (
+                  <p className="text-sm text-neutral-400">
+                    No characters found for this campaign.
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {campaignCharacters.map((character) => {
+                      const isChecked = isPlayerInEncounter(character.name);
+
+                      return (
+                        <button
+                          key={character.id}
+                          type="button"
+                          onClick={() => togglePlayerInEncounter(character)}
+                          className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition ${
+                            isChecked
+                              ? "border-white/20 bg-white/15 text-white"
+                              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                          }`}
+                        >
+                          <Avatar
+                            name={character.name}
+                            src={character.imageUrl}
+                            size="sm"
+                          />
+
+                          <div>
+                            <div className="font-medium">{character.name}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+
+              <QuickAdd />
+            </div>
 
             <section className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
@@ -943,9 +950,19 @@ const Encounter = () => {
                           isActive ? "bg-white/10" : "bg-transparent"
                         }`}
                       >
-                        <div className="text-sm font-semibold text-white">
-                          {entry.initiative === "" ? "—" : entry.initiative}
-                        </div>
+                        <input
+                          type="number"
+                          value={entry.initiative}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            updateEntityInitiative(
+                              entry.id,
+                              value === "" ? "" : Number(value),
+                            );
+                          }}
+                          className="w-20 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm font-semibold text-white outline-none transition focus:border-yellow-600"
+                          placeholder="—"
+                        />
 
                         <div className="flex justify-center">
                           <Avatar
