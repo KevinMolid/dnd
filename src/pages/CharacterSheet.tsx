@@ -2592,30 +2592,35 @@ const CharacterSheet = () => {
                       </span>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {group.spells.map((spell) => {
                         const usageLabel = formatSpellUsage(spell.usage);
 
                         return (
-                          <div key={`tiefling-${spell.spellId}`}>
+                          <div
+                            key={`tiefling-${spell.spellId}`}
+                            className="min-w-0"
+                          >
                             <SpellTooltip spell={spell}>
-                              <div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                                <div>
-                                  <p className="font-medium text-white">
-                                    {spell.name}
-                                  </p>
-                                  {spell.school && (
-                                    <p className="mt-1 text-sm text-zinc-500">
-                                      {spell.school}
+                              <div className="min-w-0 rounded-xl border border-white/10 bg-zinc-900/70 p-3 sm:rounded-2xl sm:p-4">
+                                <div className="flex min-w-0 items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="break-words font-medium text-white">
+                                      {spell.name}
                                     </p>
+                                    {spell.school && (
+                                      <p className="mt-1 text-sm text-zinc-500">
+                                        {spell.school}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {usageLabel && (
+                                    <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-medium text-emerald-300 sm:px-3 sm:text-xs">
+                                      {usageLabel}
+                                    </span>
                                   )}
                                 </div>
-
-                                {usageLabel && (
-                                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-                                    {usageLabel}
-                                  </span>
-                                )}
                               </div>
                             </SpellTooltip>
                           </div>
