@@ -348,12 +348,18 @@ const StatCard = ({
   subValue?: string;
 }) => {
   return (
-    <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+    <div className="rounded-xl border border-white/10 bg-zinc-900/70 p-3 sm:rounded-2xl sm:p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500 sm:text-xs">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-bold text-white">{value}</p>
-      {subValue && <p className="mt-1 text-sm text-zinc-400">{subValue}</p>}
+
+      <p className="mt-1 text-lg font-bold text-white sm:mt-2 sm:text-2xl">
+        {value}
+      </p>
+
+      {subValue && (
+        <p className="text-xs text-zinc-400 sm:mt-1 sm:text-sm">{subValue}</p>
+      )}
     </div>
   );
 };
@@ -1680,7 +1686,7 @@ const CharacterSheet = () => {
           </SectionCard>
 
           <SectionCard title="Ability Scores">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(Object.keys(derived.finalAbilityScores) as AbilityKey[]).map(
                 (key) => {
                   const score = derived.finalAbilityScores[key];
@@ -1691,14 +1697,16 @@ const CharacterSheet = () => {
                   return (
                     <div
                       key={key}
-                      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                      className="rounded-xl border border-white/10 bg-zinc-900/70 p-3 sm:rounded-2xl sm:p-4"
                     >
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
                         {abilityLabels[key]}
                       </p>
                       <div className="mt-3 flex items-end justify-between">
-                        <p className="text-3xl font-bold text-white">{score}</p>
-                        <p className="text-lg font-semibold text-zinc-300">
+                        <p className="text-xl font-bold text-white sm:text-3xl">
+                          {score}
+                        </p>
+                        <p className="text-sm font-semibold text-zinc-300 sm:text-lg">
                           {formatModifier(mod)}
                         </p>
                       </div>
@@ -2748,7 +2756,7 @@ const CharacterSheet = () => {
           </div>
         </div>
 
-        <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
           <StatCard
             label="HP"
             value={`${derived.currentHp}/${derived.maxHp}`}
