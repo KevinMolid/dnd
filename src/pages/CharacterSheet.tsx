@@ -2688,20 +2688,24 @@ const CharacterSheet = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mb-6">
+          <Link to={`/`} className="text-zinc-400 hover:text-white">
+            ← Back to campaign
+          </Link>
+        </div>
         <div className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-6 shadow-2xl sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500 mb-3">
+            Character Sheet
+          </p>
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="flex items-center gap-4">
-              <div className="flex gap-6 items-center">
+              <div className="flex gap-6">
                 <Avatar
                   name={character.name}
                   src={character.imageUrl}
                   size="xl"
                 />
                 <div>
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                    Character Sheet
-                  </p>
-
                   <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
                     {character.name}
                   </h1>
@@ -2734,13 +2738,6 @@ const CharacterSheet = () => {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <Link
-                to="/"
-                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Back home
-              </Link>
-
               <Link
                 to={`/characters/${characterId}/edit`}
                 className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
