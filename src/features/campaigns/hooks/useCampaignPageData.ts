@@ -67,6 +67,14 @@ export type CampaignPageState =
   | "forbidden"
   | "error";
 
+type CharacterMoney = {
+  cp?: number;
+  sp?: number;
+  ep?: number;
+  gp?: number;
+  pp?: number;
+};
+
 type CampaignCharacterStatus = "inactive" | "active";
 
 export type CharacterDoc = {
@@ -91,7 +99,7 @@ export type CharacterDoc = {
 
   conditions?: string[];
 
-  gold?: number;
+  money?: CharacterMoney;
   equipment?: CharacterEquipmentItem[];
 
   pendingLevelUp?: {
@@ -143,7 +151,13 @@ export type CampaignCharacter = {
   maxHp?: number;
   conditions?: string[];
 
-  gold?: number;
+  money?: {
+    cp: number;
+    sp: number;
+    ep: number;
+    gp: number;
+    pp: number;
+  };
   equipment?: CharacterEquipmentItem[];
 
   abilityScores?: Record<string, number>;
@@ -227,6 +241,14 @@ const buildPendingLevelUp = (
     toLevel: derivedLevel,
   };
 };
+
+const normalizeMoney = (money?: CharacterMoney) => ({
+  cp: Math.max(0, Math.floor(money?.cp ?? 0)),
+  sp: Math.max(0, Math.floor(money?.sp ?? 0)),
+  ep: Math.max(0, Math.floor(money?.ep ?? 0)),
+  gp: Math.max(0, Math.floor(money?.gp ?? 0)),
+  pp: Math.max(0, Math.floor(money?.pp ?? 0)),
+});
 
 export const useCampaignPageData = (campaignId?: string) => {
   const { user } = useAuth();
@@ -383,7 +405,7 @@ export const useCampaignPageData = (campaignId?: string) => {
                 maxHp: hpData.maxHp,
                 conditions: data.conditions ?? [],
 
-                gold: data.gold ?? 0,
+                money: normalizeMoney(data.money),
                 equipment: data.equipment ?? [],
 
                 abilityScores: data.abilityScores,
@@ -696,9 +718,17 @@ const handleLevelUp = useCallback(
     quantity: number;
   };
 
-  type RewardPayload = {
+type RewardMoneyInput = {
+  cp?: number;
+  sp?: number;
+  ep?: number;
+  gp?: number;
+  pp?: number;
+};
+
+type RewardPayload = {
   characterIds: string[];
-  gold?: number;
+  money?: RewardMoneyInput;
   items?: RewardItemInput[];
 };
 
@@ -770,10 +800,11 @@ const mergeEquipmentItems = (
 };
 
 const handleRewardCharacters = useCallback(
-  async ({ characterIds, gold = 0, items = [] }: RewardPayload) => {
+  async ({ characterIds, money, items = [] }: RewardPayload) => {
     if (!campaignId || !isGm) return;
 
-    const normalizedGold = Math.max(0, Math.floor(gold));
+    const normalizedMoney = normalizeMoney(money);
+
     const normalizedItems = items
       .map((item) => ({
         itemId: item.itemId,
@@ -781,8 +812,12 @@ const handleRewardCharacters = useCallback(
       }))
       .filter((item) => item.itemId && item.quantity > 0);
 
+    const hasMoney = Object.values(normalizedMoney).some(
+      (amount) => amount > 0,
+    );
+
     if (characterIds.length === 0) return;
-    if (normalizedGold <= 0 && normalizedItems.length === 0) return;
+    if (!hasMoney && normalizedItems.length === 0) return;
 
     try {
       await Promise.all(
@@ -801,14 +836,23 @@ const handleRewardCharacters = useCallback(
               throw new Error("Character is no longer in this campaign.");
             }
 
-            const nextGold = (data.gold ?? 0) + normalizedGold;
+            const currentMoney = normalizeMoney(data.money);
+
+            const nextMoney = {
+              cp: currentMoney.cp + normalizedMoney.cp,
+              sp: currentMoney.sp + normalizedMoney.sp,
+              ep: currentMoney.ep + normalizedMoney.ep,
+              gp: currentMoney.gp + normalizedMoney.gp,
+              pp: currentMoney.pp + normalizedMoney.pp,
+            };
+
             const nextEquipment = mergeEquipmentItems(
               data.equipment ?? [],
               normalizedItems,
             );
 
             transaction.update(characterRef, {
-              gold: nextGold,
+              money: nextMoney,
               equipment: nextEquipment,
             });
           });
