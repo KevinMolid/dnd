@@ -2078,7 +2078,7 @@ const CharacterSheet = () => {
 
                   <div className="flex items-center justify-between">
                     <span>Area</span>
-                    <span className="font-semibold">Cone or Line</span>
+                    <span className="font-semibold">15 ft cone or 30x5 ft Line</span>
                   </div>
 
                   <div className="flex items-center justify-between">
