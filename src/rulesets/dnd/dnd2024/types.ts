@@ -968,6 +968,13 @@ export type EquippableConfig = {
   allowedWieldModes?: WieldMode[];
 };
 
+export type ItemContent = {
+  itemId?: string;
+  name: string;
+  quantity: number;
+  notes?: string;
+};
+
 export type Item = {
   id: string;
   name: string;
@@ -976,6 +983,9 @@ export type Item = {
 
   weight?: number;
   cost?: Partial<Record<Currency, number>>;
+
+  description?: string;
+  contents?: ItemContent[];
 
   equippable?: EquippableConfig;
 

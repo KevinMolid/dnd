@@ -851,7 +851,24 @@ export const items: Item[] = [
   // === CONTAINERS ===
   { id: "pouch", name: "Pouch", category: "container" },
   { id: "quiver", name: "Quiver", category: "container" },
-  { id: "priests-pack", name: "Priest's Pack", category: "container" },
+  {
+    id: "priests-pack",
+    name: "Priest's Pack",
+    category: "container",
+    weight: 29,
+    cost: { gp: 33 },
+    description:
+      "A pack containing essential supplies for a traveling priest or cleric, including sacred items and basic provisions.",
+    contents: [
+      { itemId: "backpack", name: "Backpack", quantity: 1 },
+      { itemId: "blanket", name: "Blanket", quantity: 1 },
+      { itemId: "holy-water", name: "Holy Water", quantity: 1 },
+      { itemId: "lamp", name: "Lamp", quantity: 1 },
+      { itemId: "rations", name: "Rations", quantity: 7, notes: "7 days" },
+      { itemId: "robe", name: "Robe", quantity: 1 },
+      { itemId: "tinderbox", name: "Tinderbox", quantity: 1 },
+    ],
+  },
 
   // === CONSUMABLES ===
   { id: "oil", name: "Oil (flask)", category: "consumable", stackable: true },
@@ -895,11 +912,49 @@ export const items: Item[] = [
 { id: "glass-bottle", name: "Glass Bottle", category: "container" },
 { id: "bucket", name: "Bucket", category: "container" },
 
-{ id: "burglars-pack", name: "Burglar's Pack", category: "container" },
+{
+  id: "burglars-pack",
+  name: "Burglar's Pack",
+  category: "container",
+  description:
+    "A pack containing common tools and supplies useful for infiltration and adventuring.",
+  contents: [
+    { itemId: "backpack", name: "Backpack", quantity: 1 },
+    { name: "Bag of 1,000 ball bearings", quantity: 1 },
+    { name: "String", quantity: 1, notes: "10 feet" },
+    { itemId: "bell", name: "Bell", quantity: 1 },
+    { itemId: "candle", name: "Candle", quantity: 5 },
+    { itemId: "crowbar", name: "Crowbar", quantity: 1 },
+    { itemId: "hammer", name: "Hammer", quantity: 1 },
+    { itemId: "piton", name: "Piton", quantity: 10 },
+    { itemId: "hooded-lantern", name: "Hooded Lantern", quantity: 1 },
+    { itemId: "oil", name: "Flask of Oil", quantity: 2 },
+    { itemId: "rations", name: "Rations", quantity: 5, notes: "5 days" },
+    { itemId: "tinderbox", name: "Tinderbox", quantity: 1 },
+    { itemId: "waterskin", name: "Waterskin", quantity: 1 },
+    { itemId: "hempen-rope", name: "Hempen Rope", quantity: 1, notes: "50 feet" },
+  ],
+},
 { id: "diplomats-pack", name: "Diplomat's Pack", category: "container" },
 { id: "dungeoneers-pack", name: "Dungeoneer's Pack", category: "container" },
 { id: "entertainers-pack", name: "Entertainer's Pack", category: "container" },
-{ id: "explorers-pack", name: "Explorer's Pack", category: "container" },
+{
+  id: "explorers-pack",
+  name: "Explorer's Pack",
+  category: "container",
+  description:
+    "A pack containing essential gear for travel, survival, and extended journeys into the wild.",
+  contents: [
+    { itemId: "backpack", name: "Backpack", quantity: 1 },
+    { itemId: "bedroll", name: "Bedroll", quantity: 1 },
+    { itemId: "mess-kit", name: "Mess Kit", quantity: 1 },
+    { itemId: "tinderbox", name: "Tinderbox", quantity: 1 },
+    { itemId: "torch", name: "Torch", quantity: 10 },
+    { itemId: "rations", name: "Rations", quantity: 10, notes: "10 days" },
+    { itemId: "waterskin", name: "Waterskin", quantity: 1 },
+    { itemId: "hempen-rope", name: "Hempen Rope", quantity: 1, notes: "50 feet" },
+  ],
+},
 { id: "scholars-pack", name: "Scholar's Pack", category: "container" },
 
 { id: "caltrops", name: "Caltrops", category: "gear", stackable: true },
