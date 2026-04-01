@@ -176,6 +176,9 @@ export const getEquippedWeaponAttacks = ({
       const damageModifier =
         (includeAbilityModInDamage ? abilityMod : 0) + magicDamageBonus;
 
+            const isThrownAttack = mode.key === "thrown";
+      const isRangedAttack = isRangedWeapon(weapon);
+
       attacks.push({
         instanceId:
           mode.key === "thrown"
@@ -190,11 +193,14 @@ export const getEquippedWeaponAttacks = ({
           twoHanded: mode.twoHanded,
           damageModifier,
         }),
-        range: mode.key === "thrown" ? weapon.range : undefined,
+        range:
+          weapon.range && (isThrownAttack || isRangedAttack)
+            ? weapon.range
+            : undefined,
         properties: weapon.properties,
         mastery: weapon.mastery,
         isOffHand,
-        isThrown: mode.key === "thrown",
+        isThrown: isThrownAttack,
         isTwoHanded: mode.twoHanded,
       });
     }
