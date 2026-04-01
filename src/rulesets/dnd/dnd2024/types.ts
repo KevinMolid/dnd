@@ -993,6 +993,11 @@ export type Item = {
   weapon?: WeaponData;
   armor?: ArmorData;
   shield?: ShieldData;
+
+  attackBonus?: number;
+  damageBonus?: number;
+  acBonus?: number;
+  magical?: boolean;
 };
 
 export type EquipmentSlotId =

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { itemsById, items } from "../../../rulesets/dnd/dnd2024/data/items";
+import { itemsById, allItems } from "../../../rulesets/dnd/dnd2024/data/items";
 
 type CharacterOption = {
   id: string;
@@ -66,7 +66,7 @@ const RewardItemsModal = ({
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    const sorted = [...items].sort((a, b) => a.name.localeCompare(b.name));
+    const sorted = [...allItems].sort((a, b) => a.name.localeCompare(b.name));
 
     if (!query) {
       return sorted.slice(0, 50);

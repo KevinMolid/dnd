@@ -1,5 +1,103 @@
 import type { Item } from "../types";
 
+export const createMagicWeaponVariant = (
+  baseItem: Item,
+  bonus: 1 | 2,
+): Item => {
+  if (!baseItem.weapon) {
+    throw new Error(`Item ${baseItem.id} is not a weapon.`);
+  }
+
+  return {
+    ...baseItem,
+    id: `${baseItem.id}-plus-${bonus}`,
+    name: `${baseItem.name} +${bonus}`,
+    magical: true,
+    attackBonus: bonus,
+    damageBonus: bonus,
+    description: baseItem.description
+      ? `${baseItem.description} This is a magical weapon that grants a +${bonus} bonus to attack and damage rolls made with it.`
+      : `A magical weapon that grants a +${bonus} bonus to attack and damage rolls made with it.`,
+  };
+};
+
+export const createMagicArmorVariant = (
+  baseItem: Item,
+  bonus: 1 | 2,
+): Item => {
+  if (!baseItem.armor && !baseItem.shield) {
+    throw new Error(`Item ${baseItem.id} is not armor or a shield.`);
+  }
+
+  return {
+    ...baseItem,
+    id: `${baseItem.id}-plus-${bonus}`,
+    name: `${baseItem.name} +${bonus}`,
+    magical: true,
+    acBonus: bonus,
+    description: baseItem.description
+      ? `${baseItem.description} This is magical equipment that grants a +${bonus} bonus to AC while equipped.`
+      : `Magical equipment that grants a +${bonus} bonus to AC while equipped.`,
+  };
+};
+
+export const magicWeaponBaseIds = [
+  "dagger",
+  "shortsword",
+  "longsword",
+  "scimitar",
+  "rapier",
+  "shortbow",
+  "light-crossbow",
+  "sling",
+  "quarterstaff",
+  "spear",
+  "sickle",
+  "javelin",
+  "club",
+  "greatclub",
+  "handaxe",
+  "light-hammer",
+  "mace",
+  "dart",
+  "battleaxe",
+  "flail",
+  "glaive",
+  "greataxe",
+  "greatsword",
+  "halberd",
+  "lance",
+  "maul",
+  "morningstar",
+  "pike",
+  "trident",
+  "warhammer",
+  "war-pick",
+  "whip",
+  "blowgun",
+  "hand-crossbow",
+  "heavy-crossbow",
+  "longbow",
+  "musket",
+  "pistol",
+] as const;
+
+const magicArmorBaseIds = [
+  "shield",
+  "padded-armor",
+  "leather-armor",
+  "studded-leather-armor",
+  "hide-armor",
+  "chain-shirt",
+  "scale-mail",
+  "breastplate",
+  "half-plate",
+  "ring-mail",
+  "chain-mail",
+  "splint-armor",
+  "plate-armor",
+] as const;
+
 export const items: Item[] = [
   // === WEAPONS ===
   {
@@ -782,8 +880,16 @@ export const items: Item[] = [
     id: "cartographers-tools",
     name: "Cartographer's Tools",
     category: "tool",
+    description:
+      "Includes parchment, inks, quills, rulers, and measuring instruments. Used to create maps and charts. You can add your proficiency bonus to checks related to navigation, geography, and map-making.",
   },
-  { id: "herbalism-kit", name: "Herbalism Kit", category: "tool" },
+  {
+    id: "herbalism-kit",
+    name: "Herbalism Kit",
+    category: "tool",
+    description:
+      "This kit includes tools for identifying plants and creating herbal remedies. Proficiency with the herbalism kit allows you to add your proficiency bonus to checks to identify plants, create potions, and treat wounds. It is required to craft Potions of Healing.",
+  },
   { id: "navigators-tools", name: "Navigator's Tools", category: "tool" },
   { id: "forgery-kit", name: "Forgery Kit", category: "tool" },
   { id: "gamers-set", name: "Gaming Set", category: "tool" },
@@ -895,7 +1001,13 @@ export const items: Item[] = [
   { id: "parchment", name: "Parchment", category: "consumable", stackable: true },
 
   // === CLOTHING ===
-  { id: "travelers-clothes", name: "Traveler's Clothes", category: "clothing" },
+  {
+    id: "travelers-clothes",
+    name: "Traveler's Clothes",
+    category: "adventuring-gear",
+    description:
+      "A set of sturdy, practical clothes suited for travel. Includes boots, a cloak, and durable garments designed to withstand long journeys and varying weather conditions.",
+  },
   { id: "fine-clothes", name: "Fine Clothes", category: "clothing" },
   { id: "costume", name: "Costume", category: "clothing" },
   { id: "robe", name: "Robe", category: "clothing" },
@@ -1024,7 +1136,6 @@ export const items: Item[] = [
 { id: "climbers-kit", name: "Climber's Kit", category: "gear" },
 
 { id: "component-pouch", name: "Component Pouch", category: "gear" },
-{ id: "costume", name: "Costume", category: "clothing" }, // (already exists, skip if duplicate)
 
 { id: "druidic-focus", name: "Druidic Focus", category: "gear" },
 
@@ -1074,6 +1185,15 @@ export const items: Item[] = [
     "You regain 2d4 + 2 hit points when you drink this potion. Drinking or administering it takes an action.",
 },
 
+{
+  id: "potion-of-invisibility",
+  name: "Potion of Invisibility",
+  category: "consumable",
+  stackable: true,
+  description:
+    "When you drink this potion, you become invisible for 1 hour. Anything you are wearing or carrying is invisible with you. The effect ends early if you attack or cast a spell.",
+},
+
 { id: "portable-ram", name: "Portable Ram", category: "gear" },
 
 { id: "rations", name: "Rations", category: "consumable", stackable: true },
@@ -1100,6 +1220,28 @@ export const items: Item[] = [
 { id: "waterskin", name: "Waterskin", category: "container" },
 ];
 
+const baseItemsById = Object.fromEntries(items.map((item) => [item.id, item]));
+
+const magicItems: Item[] = [
+  ...magicWeaponBaseIds.flatMap((id) => {
+    const baseItem = baseItemsById[id];
+    if (!baseItem) return [];
+    return [
+      createMagicWeaponVariant(baseItem, 1),
+      createMagicWeaponVariant(baseItem, 2),
+    ];
+  }),
+  ...magicArmorBaseIds.flatMap((id) => {
+    const baseItem = baseItemsById[id];
+    if (!baseItem) return [];
+    return [
+      createMagicArmorVariant(baseItem, 1),
+      createMagicArmorVariant(baseItem, 2),
+    ];
+  }),
+];
+
+export const allItems: Item[] = [...items, ...magicItems];
 export const itemsById = Object.fromEntries(
-  items.map((item) => [item.id, item]),
+  allItems.map((item) => [item.id, item]),
 ) as Record<string, Item>;
