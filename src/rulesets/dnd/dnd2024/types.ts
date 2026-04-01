@@ -889,6 +889,7 @@ export type ItemCategory =
   | "clothing"
   | "consumable"
   | "holy-symbol"
+  | "adventuring-gear"
   | "misc";
 
 export type DamageDie = {

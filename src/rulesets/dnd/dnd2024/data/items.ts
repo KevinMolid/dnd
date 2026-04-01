@@ -837,7 +837,13 @@ export const items: Item[] = [
 
   // === GEAR ===
   { id: "rope", name: "Rope", category: "gear" },
-  { id: "crowbar", name: "Crowbar", category: "gear" },
+  {
+    id: "crowbar",
+    name: "Crowbar",
+    category: "adventuring-gear",
+    description:
+      "Using a crowbar grants advantage on Strength checks where the crowbar’s leverage can be applied.",
+  },
   { id: "shovel", name: "Shovel", category: "gear" },
   { id: "iron-pot", name: "Iron Pot", category: "gear" },
   { id: "bedroll", name: "Bedroll", category: "gear" },
@@ -871,8 +877,20 @@ export const items: Item[] = [
   },
 
   // === CONSUMABLES ===
-  { id: "oil", name: "Oil (flask)", category: "consumable", stackable: true },
-  { id: "healers-kit", name: "Healer's Kit", category: "consumable" },
+  {
+    id: "oil",
+    name: "Oil (flask)",
+    category: "consumable",
+    description:
+      "As an action, you can splash oil onto a creature within 5 feet or throw it up to 20 feet. On a hit, the target is covered in oil. If the target takes fire damage before the oil dries (1 minute), it takes an extra 5 fire damage.",
+  },
+  {
+    id: "healers-kit",
+    name: "Healer's Kit",
+    category: "adventuring-gear",
+    description:
+      "This kit has 10 uses. As an action, you can expend one use to stabilize a creature that has 0 hit points, without needing to make a Medicine check.",
+  },
   { id: "perfume", name: "Perfume", category: "consumable" },
   { id: "parchment", name: "Parchment", category: "consumable", stackable: true },
 
@@ -894,22 +912,53 @@ export const items: Item[] = [
 
   // Adventuring Gear
   // === ADDITIONAL GEAR ===
-{ id: "acid", name: "Acid (vial)", category: "consumable", stackable: true },
-{ id: "alchemists-fire", name: "Alchemist's Fire", category: "consumable", stackable: true },
+{
+  id: "acid",
+  name: "Acid (vial)",
+  category: "consumable",
+  description:
+    "As an action, you can splash this vial onto a creature within 5 feet or throw it up to 20 feet. Make a ranged attack roll. On a hit, the target takes 2d6 acid damage.",
+},
+{
+  id: "alchemists-fire",
+  name: "Alchemist's Fire",
+  category: "consumable",
+  description:
+    "As an action, you can throw this flask up to 20 feet. On a hit, the target takes 1d4 fire damage at the start of each of its turns. A creature can end this damage by using its action to make a DC 10 Dexterity check to extinguish the flames.",
+},
 { id: "antitoxin", name: "Antitoxin", category: "consumable" },
 
 { id: "arcane-focus", name: "Arcane Focus", category: "gear" },
 
 { id: "backpack", name: "Backpack", category: "container" },
-{ id: "ball-bearings", name: "Ball Bearings", category: "gear", stackable: true },
+{
+  id: "ball-bearings",
+  name: "Ball Bearings (1,000)",
+  category: "adventuring-gear",
+  description:
+    "As an action, you can spread these over a 10-foot square. A creature moving through the area must succeed on a DC 10 Dexterity saving throw or fall prone.",
+},
 { id: "barrel", name: "Barrel", category: "container" },
 { id: "basket", name: "Basket", category: "container" },
 
-{ id: "bell", name: "Bell", category: "gear" },
+{
+  id: "bell",
+  name: "Bell",
+  category: "adventuring-gear",
+  description:
+    "A small metal bell that can be attached to a string or object to create an audible alert when disturbed.",
+},
 { id: "blanket", name: "Blanket", category: "gear" },
 { id: "block-and-tackle", name: "Block and Tackle", category: "gear" },
 
 { id: "glass-bottle", name: "Glass Bottle", category: "container" },
+{
+  id: "hammer",
+  name: "Hammer",
+  category: "adventuring-gear",
+  description:
+    "A basic tool used for driving pitons, breaking objects, or light construction work.",
+},
 { id: "bucket", name: "Bucket", category: "container" },
 
 {
@@ -957,7 +1006,13 @@ export const items: Item[] = [
 },
 { id: "scholars-pack", name: "Scholar's Pack", category: "container" },
 
-{ id: "caltrops", name: "Caltrops", category: "gear", stackable: true },
+{
+  id: "caltrops",
+  name: "Caltrops (20)",
+  category: "adventuring-gear",
+  description:
+    "As an action, you can spread these over a 5-foot square. A creature moving through the area must succeed on a DC 15 Dexterity saving throw or stop moving and take 1 piercing damage. Until it regains at least 1 hit point, its walking speed is reduced by 10 feet.",
+},
 { id: "candle", name: "Candle", category: "consumable", stackable: true },
 
 { id: "crossbow-bolt-case", name: "Crossbow Bolt Case", category: "container" },
@@ -974,9 +1029,20 @@ export const items: Item[] = [
 { id: "druidic-focus", name: "Druidic Focus", category: "gear" },
 
 { id: "flask", name: "Flask", category: "container" },
-{ id: "grappling-hook", name: "Grappling Hook", category: "gear" },
-
-{ id: "holy-water", name: "Holy Water", category: "consumable" },
+{
+  id: "grappling-hook",
+  name: "Grappling Hook",
+  category: "adventuring-gear",
+  description:
+    "You can use a grappling hook with rope to climb surfaces, secure lines, or retrieve objects at a distance. The DM may call for an Athletics check to use effectively.",
+},
+{
+  id: "holy-water",
+  name: "Holy Water",
+  category: "consumable",
+  description:
+    "As an action, you can splash this water onto a creature within 5 feet or throw it up to 20 feet. Against undead or fiends, it deals 2d6 radiant damage.",
+},
 { id: "hunting-trap", name: "Hunting Trap", category: "gear" },
 
 { id: "ink", name: "Ink", category: "consumable", stackable: true },
@@ -1000,7 +1066,13 @@ export const items: Item[] = [
 
 { id: "pole", name: "Pole", category: "gear" },
 
-{ id: "potion-of-healing", name: "Potion of Healing", category: "consumable", stackable: true },
+{
+  id: "potion-of-healing",
+  name: "Potion of Healing",
+  category: "consumable",
+  description:
+    "You regain 2d4 + 2 hit points when you drink this potion. Drinking or administering it takes an action.",
+},
 
 { id: "portable-ram", name: "Portable Ram", category: "gear" },
 

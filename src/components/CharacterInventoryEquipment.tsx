@@ -15,6 +15,8 @@ import type {
   WieldMode,
 } from "../rulesets/dnd/dnd2024/types";
 
+import ItemTooltip from "./ItemTooltip";
+
 type Props = {
   equipment: CharacterEquipmentEntry[];
   onChange: (nextEquipment: CharacterEquipmentEntry[]) => void;
@@ -147,32 +149,62 @@ const CharacterInventoryEquipment = ({ equipment, onChange }: Props) => {
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-medium text-white">{itemName}</p>
+                        {itemDef ? (
+                          <ItemTooltip item={itemDef}>
+                            <div className="min-w-0 cursor-pointer rounded-xl transition hover:bg-white/5">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-medium text-white">{itemName}</p>
 
-                          <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
-                            x{item.quantity}
-                          </span>
+                                <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                                  x{item.quantity}
+                                </span>
 
-                          {itemDef?.category && (
-                            <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
-                              {formatLabel(itemDef.category)}
-                            </span>
-                          )}
+                                {itemDef.category && (
+                                  <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                                    {formatLabel(itemDef.category)}
+                                  </span>
+                                )}
 
-                          {isEquipped && (
-                            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-                              Equipped
-                            </span>
-                          )}
-                        </div>
+                                {isEquipped && (
+                                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                                    Equipped
+                                  </span>
+                                )}
+                              </div>
 
-                        {isEquipped && (
-                          <p className="mt-2 text-sm text-zinc-400">
-                            {equippedSlots
-                              .map((slot) => equipmentSlotLabels[slot])
-                              .join(" • ")}
-                          </p>
+                              {isEquipped && (
+                                <p className="mt-2 text-sm text-zinc-400">
+                                  {equippedSlots
+                                    .map((slot) => equipmentSlotLabels[slot])
+                                    .join(" • ")}
+                                </p>
+                              )}
+                            </div>
+                          </ItemTooltip>
+                        ) : (
+                          <>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium text-white">{itemName}</p>
+
+                              <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+                                x{item.quantity}
+                              </span>
+
+                              {isEquipped && (
+                                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                                  Equipped
+                                </span>
+                              )}
+                            </div>
+
+                            {isEquipped && (
+                              <p className="mt-2 text-sm text-zinc-400">
+                                {equippedSlots
+                                  .map((slot) => equipmentSlotLabels[slot])
+                                  .join(" • ")}
+                              </p>
+                            )}
+                          </>
                         )}
                       </div>
 
