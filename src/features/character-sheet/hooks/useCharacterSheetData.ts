@@ -21,7 +21,6 @@ import { applyLevelUpDecision } from "../../../rulesets/dnd/dnd2024/applyLevelUp
 import type {
   AbilityKey,
   SkillId,
-  LanguageId,
   LevelNumber,
   CharacterSpell,
   SpellId,
