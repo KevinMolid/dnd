@@ -200,8 +200,9 @@ export const items: Item[] = [
     name: "Shortbow",
     category: "weapon",
     equippable: {
-      slots: ["main-hand", "off-hand"],
       allowedWieldModes: ["two-handed"],
+      slotProfile: "ranged-weapon",
+      slots: [],
     },
     weapon: {
       weaponKind: "simple-ranged",
@@ -219,8 +220,9 @@ export const items: Item[] = [
     name: "Light Crossbow",
     category: "weapon",
     equippable: {
-      slots: ["main-hand", "off-hand"],
       allowedWieldModes: ["two-handed"],
+      slotProfile: "ranged-weapon",
+      slots: [],
     },
     weapon: {
       weaponKind: "simple-ranged",
@@ -625,7 +627,11 @@ export const items: Item[] = [
   id: "hand-crossbow",
   name: "Hand Crossbow",
   category: "weapon",
-  equippable: { slots: ["main-hand", "off-hand"], allowedWieldModes: ["main-hand", "off-hand"] },
+  equippable: {
+    allowedWieldModes: ["main-hand", "off-hand"],
+    slotProfile: "ranged-weapon",
+    slots: [],
+  },
   weapon: {
     weaponKind: "martial-ranged",
     damage: { dice: { count: 1, die: 6 }, damageType: "piercing" },
@@ -638,7 +644,11 @@ export const items: Item[] = [
   id: "heavy-crossbow",
   name: "Heavy Crossbow",
   category: "weapon",
-  equippable: { slots: ["main-hand"], allowedWieldModes: ["two-handed"] },
+  equippable: {
+    allowedWieldModes: ["two-handed"],
+    slotProfile: "ranged-weapon",
+    slots: [],
+  },
   weapon: {
     weaponKind: "martial-ranged",
     damage: { dice: { count: 1, die: 10 }, damageType: "piercing" },
@@ -651,7 +661,11 @@ export const items: Item[] = [
   id: "longbow",
   name: "Longbow",
   category: "weapon",
-  equippable: { slots: ["main-hand"], allowedWieldModes: ["two-handed"] },
+  equippable: {
+      allowedWieldModes: ["two-handed"],
+      slotProfile: "ranged-weapon",
+      slots: [],
+    },
   weapon: {
     weaponKind: "martial-ranged",
     damage: { dice: { count: 1, die: 8 }, damageType: "piercing" },

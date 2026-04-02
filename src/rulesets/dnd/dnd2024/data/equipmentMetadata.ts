@@ -12,6 +12,8 @@ export const equipmentSlotOrder: EquipmentSlotId[] = [
   "ring-right",
   "main-hand",
   "off-hand",
+  "ranged-main-hand",
+  "ranged-off-hand",
 ];
 
 export const equipmentSlotLabels: Record<EquipmentSlotId, string> = {
@@ -26,4 +28,6 @@ export const equipmentSlotLabels: Record<EquipmentSlotId, string> = {
   "ring-right": "Ring (Right)",
   "main-hand": "Main Hand",
   "off-hand": "Off Hand",
+  "ranged-main-hand": "Ranged Main Hand",
+  "ranged-off-hand": "Ranged Off Hand",
 };

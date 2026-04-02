@@ -964,9 +964,26 @@ export type ShieldData = {
   acBonus: number;
 };
 
+export type EquippableSlotProfile = "default" | "ranged-weapon";
+
 export type EquippableConfig = {
+  /**
+   * Used for items that occupy fixed slots (armor, rings, etc.)
+   * Ignored when using allowedWieldModes (weapons)
+   */
   slots: EquipmentSlotId[];
+
+  /**
+   * Used for items that can be wielded in different ways (weapons)
+   */
   allowedWieldModes?: WieldMode[];
+
+  /**
+   * Determines which slot group is used for wielding:
+   * - "default" → main-hand / off-hand
+   * - "ranged-weapon" → ranged-main-hand / ranged-off-hand
+   */
+  slotProfile?: EquippableSlotProfile;
 };
 
 export type ItemContent = {
@@ -1011,7 +1028,9 @@ export type EquipmentSlotId =
   | "ring-left"
   | "ring-right"
   | "main-hand"
-  | "off-hand";
+  | "off-hand"
+  | "ranged-main-hand"
+  | "ranged-off-hand";
 
 export type WieldMode = "main-hand" | "off-hand" | "two-handed";
 
