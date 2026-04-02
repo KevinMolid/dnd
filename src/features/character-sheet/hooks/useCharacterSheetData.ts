@@ -81,6 +81,8 @@ import {
   getTraitResistances,
 } from "../utils/traitHelpers";
 
+import { getCombatFeatures } from "../utils/combatFeatureHelpers";
+
 export const useCharacterSheetData = (
   characterId?: string,
 ): CharacterSheetDataHookResult => {
@@ -745,6 +747,20 @@ export const useCharacterSheetData = (
       ...levelUpFeatTraits,
     ]);
 
+    const combatFeatures = getCombatFeatures(
+      dedupeTraits([
+        ...speciesTraits,
+        ...classTraits,
+        ...subclassTraits,
+        ...backgroundTraits,
+        ...featTraits,
+      ]),
+      {
+        level: character.level,
+        rogueSneakAttack,
+      },
+    );
+
     const allTraits = getAllCharacterTraits(character as any);
 
     const groupedTraitCandidates: TraitGroup[] = [
@@ -842,6 +858,7 @@ export const useCharacterSheetData = (
       expertise,
       equippedWeaponAttacks,
       genericAttackBonuses,
+      combatFeatures,
       rogueSneakAttack,
       xp,
       xpProgress,

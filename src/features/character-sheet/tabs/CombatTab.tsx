@@ -1,13 +1,8 @@
 import type { CharacterDoc, CharacterSheetDerived } from "../types";
 import SectionCard from "../components/SectionCard";
 import AttackModePill from "../components/AttackModePill";
-import {
-  abilityLabels,
-} from "../utils/characterSheetConstants";
-import {
-  formatLabel,
-  formatModifier,
-} from "../utils/characterSheetHelpers";
+import { abilityLabels } from "../utils/characterSheetConstants";
+import { formatLabel, formatModifier } from "../utils/characterSheetHelpers";
 
 import type { AbilityKey } from "../../../rulesets/dnd/dnd2024/types";
 
@@ -22,181 +17,167 @@ const CombatTab = ({ derived }: CombatTabProps) => {
       <div className="space-y-6 xl:col-span-2">
         <SectionCard title="Combat">
           <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-              <p className="text-sm font-semibold text-zinc-200">
-                Equipped Attacks
-              </p>
+            <div className="space-y-4 self-start">
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Equipped Attacks
+                </p>
 
-              {derived.equippedWeaponAttacks.length > 0 ? (
-                <div className="mt-3 space-y-3">
-                  {derived.equippedWeaponAttacks.map((attack) => (
-                    <div
-                      key={attack.instanceId}
-                      className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="font-medium text-white">
-                              {attack.name}
+                {derived.equippedWeaponAttacks.length > 0 ? (
+                  <div className="mt-3 space-y-3">
+                    {derived.equippedWeaponAttacks.map((attack) => (
+                      <div
+                        key={attack.instanceId}
+                        className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-medium text-white">{attack.name}</p>
+
+                              {attack.isOffHand && (
+                                <AttackModePill tone="offhand">Off-Hand</AttackModePill>
+                              )}
+
+                              {attack.isThrown && (
+                                <AttackModePill tone="thrown">Thrown</AttackModePill>
+                              )}
+
+                              {attack.isTwoHanded && (
+                                <AttackModePill tone="twohanded">
+                                  Two-Handed
+                                </AttackModePill>
+                              )}
+                            </div>
+
+                            <p className="mt-1 text-xs text-zinc-500">
+                              {attack.properties.map(formatLabel).join(" • ")}
                             </p>
-
-                            {attack.isOffHand && (
-                              <AttackModePill tone="offhand">
-                                Off-Hand
-                              </AttackModePill>
-                            )}
-
-                            {attack.isThrown && (
-                              <AttackModePill tone="thrown">
-                                Thrown
-                              </AttackModePill>
-                            )}
-
-                            {attack.isTwoHanded && (
-                              <AttackModePill tone="twohanded">
-                                Two-Handed
-                              </AttackModePill>
-                            )}
                           </div>
 
-                          <p className="mt-1 text-xs text-zinc-500">
-                            {attack.properties.map(formatLabel).join(" • ")}
-                          </p>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold text-zinc-200">
+                              {formatModifier(attack.attackBonus)} to hit
+                            </p>
+                            <p className="mt-1 text-xs text-zinc-400">{attack.damage}</p>
+                          </div>
                         </div>
 
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-zinc-200">
-                            {formatModifier(attack.attackBonus)} to hit
-                          </p>
-                          <p className="mt-1 text-xs text-zinc-400">
-                            {attack.damage}
-                          </p>
+                        <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
+                          <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
+                            Uses {abilityLabels[attack.ability as AbilityKey]}
+                          </span>
+
+                          {attack.mastery && (
+                            <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
+                              Mastery: {formatLabel(attack.mastery)}
+                            </span>
+                          )}
+
+                          {attack.range && (
+                            <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
+                              Range {attack.range.normal}
+                              {attack.range.long ? ` / ${attack.range.long}` : ""} ft
+                            </span>
+                          )}
                         </div>
                       </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-zinc-500">
+                    No weapons are currently equipped.
+                  </p>
+                )}
+              </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-400">
-                        <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
-                          Uses {abilityLabels[attack.ability as AbilityKey]}
-                        </span>
+              {derived.dragonbornAncestryName && derived.dragonbornDamageType && (
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                    Breath Weapon
+                  </p>
 
-                        {attack.mastery && (
-                          <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
-                            Mastery: {formatLabel(attack.mastery)}
-                          </span>
-                        )}
-
-                        {attack.range && (
-                          <span className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1">
-                            Range {attack.range.normal}
-                            {attack.range.long
-                              ? ` / ${attack.range.long}`
-                              : ""}{" "}
-                            ft
-                          </span>
-                        )}
-                      </div>
+                  <div className="mt-3 space-y-2 text-sm text-zinc-300">
+                    <div className="flex items-center justify-between">
+                      <span>Damage</span>
+                      <span className="font-semibold">
+                        {derived.dragonbornBreathWeaponDamage}{" "}
+                        {formatLabel(derived.dragonbornDamageType)}
+                      </span>
                     </div>
-                  ))}
+
+                    <div className="flex items-center justify-between">
+                      <span>Save DC</span>
+                      <span className="font-semibold">
+                        {derived.dragonbornBreathWeaponDc}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span>Area</span>
+                      <span className="font-semibold">15 ft cone or 30x5 ft Line</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <span>Uses</span>
+                      <span className="font-semibold">
+                        {derived.proficiencyBonus} / Long Rest
+                      </span>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <p className="mt-3 text-sm text-zinc-500">
-                  No weapons are currently equipped.
-                </p>
+              )}
+
+              {derived.resistances.length > 0 && (
+                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                  <p className="text-sm font-semibold text-zinc-200">Resistances</p>
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {derived.resistances.map((resistance) => (
+                      <span
+                        key={resistance}
+                        className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-300"
+                      >
+                        {formatLabel(resistance)} Resistance
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-              <p className="text-sm font-semibold text-zinc-200">
-                Class Combat Features
-              </p>
+            <div className="space-y-4 self-start">
+              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  Combat Features
+                </p>
 
-              <div className="mt-3 space-y-2 text-sm text-zinc-300">
-                {derived.rogueSneakAttack && (
-                  <div className="flex items-center justify-between">
-                    <span>Sneak Attack</span>
-                    <span className="font-semibold">
-                      {derived.rogueSneakAttack}
-                    </span>
+                {derived.combatFeatures.length > 0 && (
+                  <div className="mt-3 space-y-3">
+                    {derived.combatFeatures.map((feature) => (
+                      <div
+                        key={feature.id}
+                        className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <p className="font-medium text-white">{feature.name}</p>
+
+                          {feature.value && (
+                            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-300">
+                              {feature.value}
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 text-sm leading-6 text-zinc-300">
+                          {feature.summary}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 )}
-
-                <div className="flex items-center justify-between">
-                  <span>Initiative</span>
-                  <span className="font-semibold">
-                    {formatModifier(derived.initiativeBonus)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span>Armor Class</span>
-                  <span className="font-semibold">{derived.armorClass}</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span>Speed</span>
-                  <span className="font-semibold">{derived.speed} ft</span>
-                </div>
               </div>
             </div>
-
-            {derived.resistances.length > 0 && (
-              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                <p className="text-sm font-semibold text-zinc-200">
-                  Resistances
-                </p>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {derived.resistances.map((resistance) => (
-                    <span
-                      key={resistance}
-                      className="rounded-full border border-orange-500/20 bg-orange-500/10 px-3 py-1 text-xs font-medium text-orange-300"
-                    >
-                      {formatLabel(resistance)} Resistance
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {derived.dragonbornAncestryName && derived.dragonbornDamageType && (
-              <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                <p className="text-sm font-semibold text-zinc-200">
-                  Breath Weapon
-                </p>
-
-                <div className="mt-3 space-y-2 text-sm text-zinc-300">
-                  <div className="flex items-center justify-between">
-                    <span>Damage</span>
-                    <span className="font-semibold">
-                      {derived.dragonbornBreathWeaponDamage}{" "}
-                      {formatLabel(derived.dragonbornDamageType)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span>Save DC</span>
-                    <span className="font-semibold">
-                      {derived.dragonbornBreathWeaponDc}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span>Area</span>
-                    <span className="font-semibold">
-                      15 ft cone or 30x5 ft Line
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span>Uses</span>
-                    <span className="font-semibold">
-                      {derived.proficiencyBonus} / Long Rest
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </SectionCard>
 

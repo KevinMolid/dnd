@@ -96,6 +96,12 @@ export type CharacterSheetDerived = {
     finesseOrRanged: number;
     unarmed: number;
   };
+  combatFeatures: Array<{
+    id: string;
+    name: string;
+    summary: string;
+    value?: string | null;
+  }>;
   rogueSneakAttack: string | null;
   xp: number;
   xpProgress: {
@@ -152,7 +158,9 @@ export type CharacterSheetDataHookResult = {
   campaignItemsById: Record<string, CampaignItem>;
   derived: CharacterSheetDerived | null;
   setError: React.Dispatch<React.SetStateAction<string>>;
-  handleEquipmentChange: (nextEquipment: CharacterEquipmentEntry[]) => Promise<void>;
+  handleEquipmentChange: (
+    nextEquipment: CharacterEquipmentEntry[],
+  ) => Promise<void>;
   handleApplyDecision: (level: number, decision: ApplyDecisionInput) => void;
   handleCompleteLevelUp: () => void;
 };
