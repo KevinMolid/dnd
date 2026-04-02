@@ -234,39 +234,20 @@ const CharacterSheet = () => {
     </div>
   );
 
-  const renderInventoryTab = () => (
-    <div className="space-y-6">
-      <CharacterInventoryEquipment
-        equipment={character.equipment ?? []}
-        onChange={handleEquipmentChange}
-        campaignItemsById={campaignItemsById}
-      />
+  const renderInventoryTab = () => {
+    const moneyCp = derived.moneyCp ?? character.moneyCp ?? 0;
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <div className="xl:col-span-2" />
-
-        <div className="space-y-6">
-          <SectionCard title="Money">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
-              {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
-                <div
-                  key={currency}
-                  className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    {currency.toUpperCase()}
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">
-                    {derived.money[currency] ?? 0}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-        </div>
+    return (
+      <div className="space-y-6">
+        <CharacterInventoryEquipment
+          equipment={character.equipment ?? []}
+          onChange={handleEquipmentChange}
+          campaignItemsById={campaignItemsById}
+          moneyCp={moneyCp}
+        />
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderNotesTab = () => (
     <div className="space-y-6">

@@ -23,6 +23,7 @@ export type CharacterDoc = CharacterSheetData & {
   languages?: string[];
   subclassId?: string | null;
   money?: Money;
+  moneyCp?: any;
   equipment?: CharacterEquipmentEntry[];
 };
 
@@ -144,6 +145,7 @@ export type CharacterSheetDerived = {
     spells: any[];
   }>;
   money: Money;
+  moneyCp: any;
   dragonbornAncestryId: string | null;
   dragonbornAncestryName: string | null;
   dragonbornDamageType: string | null;

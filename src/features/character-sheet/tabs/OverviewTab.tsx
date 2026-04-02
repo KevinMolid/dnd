@@ -176,24 +176,6 @@ const OverviewTab = ({ character, derived }: OverviewTabProps) => {
             </div>
           </SectionCard>
 
-          <SectionCard title="Money">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
-              {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
-                <div
-                  key={currency}
-                  className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                    {currency.toUpperCase()}
-                  </p>
-                  <p className="mt-2 text-lg font-semibold text-white">
-                    {derived.money[currency] ?? 0}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </SectionCard>
-
           <SectionCard title="Tools">
             {derived.toolProficiencies.length > 0 ? (
               <div className="grid gap-3">

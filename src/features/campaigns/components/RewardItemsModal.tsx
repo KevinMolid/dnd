@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { allItems, itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
+import { moneyBreakdownToCopper } from "../../../rulesets/dnd/dnd2024/money";
 import type { CampaignItem } from "../../../rulesets/dnd/dnd2024/types";
 
 type CharacterOption = {
@@ -24,9 +25,7 @@ type SelectedRewardItem =
 type RewardMoney = {
   cp: number;
   sp: number;
-  ep: number;
   gp: number;
-  pp: number;
 };
 
 type RewardItemsModalProps = {
@@ -39,9 +38,7 @@ type RewardItemsModalProps = {
     money: {
       cp: number;
       sp: number;
-      ep: number;
       gp: number;
-      pp: number;
     };
     items: (
       | { source: "base"; itemId: string; quantity: number }
@@ -98,15 +95,11 @@ const RewardItemsModal = ({
   const [money, setMoney] = useState<{
     cp: string;
     sp: string;
-    ep: string;
     gp: string;
-    pp: string;
   }>({
     cp: "0",
     sp: "0",
-    ep: "0",
     gp: "0",
-    pp: "0",
   });
   const [selectedItems, setSelectedItems] = useState<SelectedRewardItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -119,9 +112,7 @@ const RewardItemsModal = ({
     setMoney({
       cp: "0",
       sp: "0",
-      ep: "0",
       gp: "0",
-      pp: "0",
     });
     setSelectedItems([]);
     setSubmitting(false);
@@ -307,9 +298,7 @@ const RewardItemsModal = ({
   const normalizeMoney = (): RewardMoney => ({
     cp: Math.max(0, Math.floor(Number(money.cp) || 0)),
     sp: Math.max(0, Math.floor(Number(money.sp) || 0)),
-    ep: Math.max(0, Math.floor(Number(money.ep) || 0)),
     gp: Math.max(0, Math.floor(Number(money.gp) || 0)),
-    pp: Math.max(0, Math.floor(Number(money.pp) || 0)),
   });
 
   const handleSubmit = async () => {
@@ -334,7 +323,8 @@ const RewardItemsModal = ({
         item.source === "base" ? !!item.itemId : !!item.campaignItemId,
       );
 
-    const hasMoney = Object.values(normalizedMoney).some((amount) => amount > 0);
+    const rewardMoneyCp = moneyBreakdownToCopper(normalizedMoney);
+    const hasMoney = rewardMoneyCp > 0;
 
     if (
       selectedCharacterIds.length === 0 ||
@@ -357,9 +347,7 @@ const RewardItemsModal = ({
       setMoney({
         cp: "0",
         sp: "0",
-        ep: "0",
         gp: "0",
-        pp: "0",
       });
       setSelectedItems([]);
     } finally {
@@ -368,7 +356,8 @@ const RewardItemsModal = ({
   };
 
   const normalizedMoney = normalizeMoney();
-  const hasMoney = Object.values(normalizedMoney).some((amount) => amount > 0);
+  const rewardMoneyCp = moneyBreakdownToCopper(normalizedMoney);
+  const hasMoney = rewardMoneyCp > 0;
 
   const canSubmit =
     selectedCharacterIds.length > 0 &&
@@ -473,7 +462,10 @@ const RewardItemsModal = ({
                         onClick={() =>
                           item.source === "base"
                             ? addBaseItem(item.id)
-                            : addCampaignItem(item.campaignItemId, item.baseItemId)
+                            : addCampaignItem(
+                                item.campaignItemId,
+                                item.baseItemId,
+                              )
                         }
                         className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
                       >
@@ -526,16 +518,16 @@ const RewardItemsModal = ({
                   Currency to add to each selected character
                 </h3>
 
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   <label className="block">
                     <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                      CP
+                      GP
                     </span>
                     <input
                       type="number"
                       min={0}
-                      value={money.cp}
-                      onChange={(event) => updateMoney("cp", event.target.value)}
+                      value={money.gp}
+                      onChange={(event) => updateMoney("gp", event.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
                     />
                   </label>
@@ -555,39 +547,13 @@ const RewardItemsModal = ({
 
                   <label className="block">
                     <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                      EP
+                      CP
                     </span>
                     <input
                       type="number"
                       min={0}
-                      value={money.ep}
-                      onChange={(event) => updateMoney("ep", event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
-                    />
-                  </label>
-
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                      GP
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={money.gp}
-                      onChange={(event) => updateMoney("gp", event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
-                    />
-                  </label>
-
-                  <label className="block sm:col-span-2">
-                    <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400">
-                      PP
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={money.pp}
-                      onChange={(event) => updateMoney("pp", event.target.value)}
+                      value={money.cp}
+                      onChange={(event) => updateMoney("cp", event.target.value)}
                       className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
                     />
                   </label>
@@ -625,7 +591,8 @@ const RewardItemsModal = ({
                     const itemName =
                       entry.source === "base"
                         ? (baseItem?.name ?? entry.itemId)
-                        : ((campaignItem?.name ?? baseItem?.name) ?? entry.campaignItemId);
+                        : ((campaignItem?.name ?? baseItem?.name) ??
+                          entry.campaignItemId);
 
                     const category =
                       entry.source === "base"
@@ -716,9 +683,8 @@ const RewardItemsModal = ({
                 </p>
                 <p className="mt-1">
                   <span className="font-semibold text-white">Money each:</span>{" "}
-                  {normalizedMoney.cp} CP, {normalizedMoney.sp} SP,{" "}
-                  {normalizedMoney.ep} EP, {normalizedMoney.gp} GP,{" "}
-                  {normalizedMoney.pp} PP
+                  {normalizedMoney.gp} GP, {normalizedMoney.sp} SP,{" "}
+                  {normalizedMoney.cp} CP
                 </p>
                 <p className="mt-1">
                   <span className="font-semibold text-white">Item types:</span>{" "}

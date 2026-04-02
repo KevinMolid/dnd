@@ -23,6 +23,11 @@ import {
   recalculateMaxHp,
 } from "../../../rulesets/dnd/dnd2024/getCharacterHp";
 import { getLevelFromXp } from "../../../rulesets/dnd/dnd2024/xpProgression";
+import {
+  getCharacterMoneyCp,
+  moneyBreakdownToCopper,
+  normalizeCopper,
+} from "../../../rulesets/dnd/dnd2024/money";
 
 import { subscribeToJournalEntries } from "../../journal/journalService";
 
@@ -67,15 +72,15 @@ export type CampaignPageState =
   | "forbidden"
   | "error";
 
-type CharacterMoney = {
+type CampaignCharacterStatus = "inactive" | "active";
+
+type LegacyCharacterMoney = {
   cp?: number;
   sp?: number;
   ep?: number;
   gp?: number;
   pp?: number;
 };
-
-type CampaignCharacterStatus = "inactive" | "active";
 
 export type CharacterDoc = {
   ownerUid: string | null;
@@ -99,7 +104,10 @@ export type CharacterDoc = {
 
   conditions?: string[];
 
-  money?: CharacterMoney;
+  moneyCp?: number;
+  money?: LegacyCharacterMoney;
+  gold?: number;
+
   equipment?: CharacterEquipmentEntry[];
 
   pendingLevelUp?: {
@@ -151,13 +159,7 @@ export type CampaignCharacter = {
   maxHp?: number;
   conditions?: string[];
 
-  money?: {
-    cp: number;
-    sp: number;
-    ep: number;
-    gp: number;
-    pp: number;
-  };
+  moneyCp?: number;
   equipment?: CharacterEquipmentEntry[];
 
   abilityScores?: Record<string, number>;
@@ -242,14 +244,6 @@ const buildPendingLevelUp = (
   };
 };
 
-const normalizeMoney = (money?: CharacterMoney) => ({
-  cp: Math.max(0, Math.floor(money?.cp ?? 0)),
-  sp: Math.max(0, Math.floor(money?.sp ?? 0)),
-  ep: Math.max(0, Math.floor(money?.ep ?? 0)),
-  gp: Math.max(0, Math.floor(money?.gp ?? 0)),
-  pp: Math.max(0, Math.floor(money?.pp ?? 0)),
-});
-
 type RewardBaseItemInput = {
   source: "base";
   itemId: string;
@@ -268,9 +262,7 @@ type RewardItemInput = RewardBaseItemInput | RewardCampaignItemInput;
 type RewardMoneyInput = {
   cp?: number;
   sp?: number;
-  ep?: number;
   gp?: number;
-  pp?: number;
 };
 
 type RewardPayload = {
@@ -278,6 +270,12 @@ type RewardPayload = {
   money?: RewardMoneyInput;
   items?: RewardItemInput[];
 };
+
+const normalizeRewardMoneyInput = (money?: RewardMoneyInput) => ({
+  cp: Math.max(0, Math.floor(money?.cp ?? 0)),
+  sp: Math.max(0, Math.floor(money?.sp ?? 0)),
+  gp: Math.max(0, Math.floor(money?.gp ?? 0)),
+});
 
 const getRewardItemInstanceBaseId = (item: RewardItemInput) =>
   item.source === "base" ? item.itemId : item.campaignItemId;
@@ -553,6 +551,7 @@ export const useCampaignPageData = (campaignId?: string) => {
                 !!data.pendingLevelUp || derivedLevel > currentLevel;
 
               const hpData = getCharacterHp(data as never);
+              const moneyCp = getCharacterMoneyCp(data);
 
               return {
                 id: characterSnap.id,
@@ -577,7 +576,7 @@ export const useCampaignPageData = (campaignId?: string) => {
                 maxHp: hpData.maxHp,
                 conditions: data.conditions ?? [],
 
-                money: normalizeMoney(data.money),
+                moneyCp,
                 equipment: data.equipment ?? [],
 
                 abilityScores: data.abilityScores,
@@ -897,7 +896,8 @@ export const useCampaignPageData = (campaignId?: string) => {
     async ({ characterIds, money, items = [] }: RewardPayload) => {
       if (!campaignId || !isGm) return;
 
-      const normalizedMoney = normalizeMoney(money);
+      const normalizedMoney = normalizeRewardMoneyInput(money);
+      const rewardMoneyCp = moneyBreakdownToCopper(normalizedMoney);
 
       const normalizedItems = items
         .map((item) =>
@@ -920,12 +920,8 @@ export const useCampaignPageData = (campaignId?: string) => {
             : item.campaignItemId && item.baseItemId && item.quantity > 0,
         );
 
-      const hasMoney = Object.values(normalizedMoney).some(
-        (amount) => amount > 0,
-      );
-
       if (characterIds.length === 0) return;
-      if (!hasMoney && normalizedItems.length === 0) return;
+      if (rewardMoneyCp <= 0 && normalizedItems.length === 0) return;
 
       try {
         await Promise.all(
@@ -944,15 +940,10 @@ export const useCampaignPageData = (campaignId?: string) => {
                 throw new Error("Character is no longer in this campaign.");
               }
 
-              const currentMoney = normalizeMoney(data.money);
-
-              const nextMoney = {
-                cp: currentMoney.cp + normalizedMoney.cp,
-                sp: currentMoney.sp + normalizedMoney.sp,
-                ep: currentMoney.ep + normalizedMoney.ep,
-                gp: currentMoney.gp + normalizedMoney.gp,
-                pp: currentMoney.pp + normalizedMoney.pp,
-              };
+              const currentMoneyCp = getCharacterMoneyCp(data);
+              const nextMoneyCp = normalizeCopper(
+                currentMoneyCp + rewardMoneyCp,
+              );
 
               const nextEquipment = mergeEquipmentItems(
                 data.equipment ?? [],
@@ -960,7 +951,7 @@ export const useCampaignPageData = (campaignId?: string) => {
               );
 
               transaction.update(characterRef, {
-                money: nextMoney,
+                moneyCp: nextMoneyCp,
                 equipment: nextEquipment,
               });
             });

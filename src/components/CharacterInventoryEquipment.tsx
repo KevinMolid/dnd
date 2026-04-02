@@ -8,6 +8,7 @@ import {
   getOccupiedSlotsForEquip,
   isItemEquippable,
 } from "../rulesets/dnd/dnd2024/getEquipmentRules";
+import { copperToMoneyBreakdown } from "../rulesets/dnd/dnd2024/money";
 import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 import type {
   CampaignItem,
@@ -22,6 +23,7 @@ type Props = {
   equipment: CharacterEquipmentEntry[];
   onChange: (nextEquipment: CharacterEquipmentEntry[]) => void;
   campaignItemsById?: Record<string, CampaignItem>;
+  moneyCp?: number;
 };
 
 const formatLabel = (value: string) =>
@@ -73,7 +75,10 @@ const CharacterInventoryEquipment = ({
   equipment,
   onChange,
   campaignItemsById = {},
+  moneyCp = 0,
 }: Props) => {
+  const money = useMemo(() => copperToMoneyBreakdown(moneyCp), [moneyCp]);
+
   const normalizedEquipment = useMemo(
     () => equipment.map(normalizeEntry),
     [equipment],
@@ -323,6 +328,31 @@ const CharacterInventoryEquipment = ({
       </div>
 
       <div className="space-y-6">
+        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
+          <h2 className="mb-5 text-xl font-semibold text-white sm:text-2xl">
+            Money
+          </h2>
+
+          <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5">
+            <div className="flex flex-wrap items-end gap-3 text-sm font-semibold text-white">
+              <span className="inline-flex items-center gap-2">
+                <span>{money.gp}</span>
+                <span className="h-3 w-3 rounded-full bg-yellow-400/90" />
+              </span>
+
+              <span className="inline-flex items-center gap-2">
+                <span>{money.sp}</span>
+                <span className="h-3 w-3 rounded-full bg-zinc-300/90" />
+              </span>
+
+              <span className="inline-flex items-center gap-2">
+                <span>{money.cp}</span>
+                <span className="h-3 w-3 rounded-full bg-amber-600/90" />
+              </span>
+            </div>
+          </div>
+        </section>
+
         <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
           <h2 className="mb-5 text-xl font-semibold text-white sm:text-2xl">
             Equipped Slots
