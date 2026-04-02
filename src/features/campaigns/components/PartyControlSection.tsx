@@ -103,6 +103,14 @@ const PartyControlSection = ({
               (character.ownerUid !== null &&
                 currentUserId === character.ownerUid);
 
+            const xpProgressLabel =
+              xpData.nextLevelXp !== null
+                ? `XP ${Math.max(
+                    0,
+                    (character.xp ?? 0) - xpData.currentLevelXp,
+                  )}/${xpData.nextLevelXp - xpData.currentLevelXp}`
+                : "XP Max level";
+
             return (
               <div
                 key={character.id}
@@ -163,22 +171,12 @@ const PartyControlSection = ({
                               : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
                         }`}
                       >
-                        HP {hp}/{maxHp}
+                        <i className="fa-solid fa-heart"></i> {hp}/{maxHp}
                       </span>
 
                       <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-300">
-                        XP {character.xp ?? 0}
+                        {xpProgressLabel}
                       </span>
-
-                      {xpData.nextLevelXp !== null ? (
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-zinc-400">
-                          {xpData.neededXp} to next
-                        </span>
-                      ) : (
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-zinc-400">
-                          Max level
-                        </span>
-                      )}
                     </div>
 
                     <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
@@ -219,9 +217,8 @@ const PartyControlSection = ({
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-zinc-500">
-                          No conditions
-                        </span>
+                        <>
+                        </>
                       )}
 
                       {isGm && (
