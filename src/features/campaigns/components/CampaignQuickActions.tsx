@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { type ReactNode } from "react";
 
 type CampaignQuickActionsProps = {
   campaignId: string;
@@ -8,148 +9,127 @@ type CampaignQuickActionsProps = {
   onCreateCustomItem: () => void;
 };
 
+type QuickActionCardProps = {
+  title: string;
+  description: string;
+  children: ReactNode;
+};
+
+const QuickActionCard = ({
+  description,
+  children,
+}: QuickActionCardProps) => {
+  return (
+    <div className="group relative min-w-0">
+      {children}
+
+      <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-56 -translate-x-1/2 rounded-xl border border-white/10 bg-zinc-950/95 p-3 text-xs text-zinc-300 shadow-2xl group-hover:block">
+        {description}
+      </div>
+    </div>
+  );
+};
+
+const baseActionClassName =
+  "inline-flex min-w-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-zinc-900";
+
 const CampaignQuickActions = ({
   campaignId,
   isGm,
-  onCreateHandout,
   onRewardItems,
   onCreateCustomItem,
 }: CampaignQuickActionsProps) => {
   return (
     <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-white sm:text-2xl">
             Quick actions
           </h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Jump into the parts of the campaign you are most likely to use.
+            Fast access to common campaign tools.
           </p>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="flex flex-wrap gap-2">
         {isGm ? (
           <>
-            <Link
-              to={`/campaigns/${campaignId}/session`}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+            <QuickActionCard
+              title="Rewards"
+              description="Search for items and award players with items or gold."
             >
-              <h3 className="text-base font-semibold text-white">
-                Run session
-              </h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Open the campaign in a focused GM-friendly session view.
-              </p>
-            </Link>
+              <button
+                type="button"
+                onClick={onRewardItems}
+                className={baseActionClassName}
+              >
+                <i className="fa-solid fa-trophy mr-2"></i> Rewards
+              </button>
+            </QuickActionCard>
 
-            <Link
-              to={`/campaigns/${campaignId}/members`}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+            <QuickActionCard
+              title="Custom item"
+              description="Choose a base item and create a campaign-specific version with custom flavor text."
             >
-              <h3 className="text-base font-semibold text-white">
-                Manage players
-              </h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Invite users, review members, and control roles.
-              </p>
-            </Link>
-
-            <Link
-              to={`/campaigns/${campaignId}/maps/new`}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
-            >
-              <h3 className="text-base font-semibold text-white">Add map</h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Create a new map and prepare player-visible content.
-              </p>
-            </Link>
-
-            <button
-              type="button"
-              onClick={onRewardItems}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 text-left transition hover:border-white/20 hover:bg-zinc-900"
-            >
-              <h3 className="text-base font-semibold text-white">
-                Reward items
-              </h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Search for items and award players with items or gold.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              onClick={onCreateCustomItem}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 text-left transition hover:border-white/20 hover:bg-zinc-900"
-            >
-              <h3 className="text-base font-semibold text-white">
-                Create custom item
-              </h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Choose a base item and create a campaign-specific version with
-                custom flavor text.
-              </p>
-            </button>
-
-            <button
-              type="button"
-              onClick={onCreateHandout}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 text-left transition hover:border-white/20 hover:bg-zinc-900"
-            >
-              <h3 className="text-base font-semibold text-white">
-                Create handout
-              </h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Add lore, clues, notes, or revealable documents.
-              </p>
-            </button>
+              <button
+                type="button"
+                onClick={onCreateCustomItem}
+                className={baseActionClassName}
+              >
+                <i className="fa-solid fa-plus mr-2"></i> Custom item
+              </button>
+            </QuickActionCard>
           </>
         ) : (
           <>
-            <Link
-              to={`/campaigns/${campaignId}/characters`}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+            <QuickActionCard
+              title="Character"
+              description="Open the character you are using in this campaign."
             >
-              <h3 className="text-base font-semibold text-white">
-                My character
-              </h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Open the character you are using in this campaign.
-              </p>
-            </Link>
+              <Link
+                to={`/campaigns/${campaignId}/characters`}
+                className={baseActionClassName}
+              >
+                Character
+              </Link>
+            </QuickActionCard>
 
-            <Link
-              to={`/campaigns/${campaignId}/journal`}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+            <QuickActionCard
+              title="Journal"
+              description="Review revealed notes, summaries, and campaign events."
             >
-              <h3 className="text-base font-semibold text-white">
-                Party journal
-              </h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Review revealed notes, summaries, and campaign events.
-              </p>
-            </Link>
+              <Link
+                to={`/campaigns/${campaignId}/journal`}
+                className={baseActionClassName}
+              >
+                Journal
+              </Link>
+            </QuickActionCard>
 
-            <Link
-              to={`/campaigns/${campaignId}/maps`}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+            <QuickActionCard
+              title="Maps"
+              description="See the maps and locations the GM has revealed."
             >
-              <h3 className="text-base font-semibold text-white">World map</h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                See the maps and locations the GM has revealed.
-              </p>
-            </Link>
+              <Link
+                to={`/campaigns/${campaignId}/maps`}
+                className={baseActionClassName}
+              >
+                Maps
+              </Link>
+            </QuickActionCard>
 
-            <Link
-              to={`/campaigns/${campaignId}/handouts`}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+            <QuickActionCard
+              title="Handouts"
+              description="Open letters, clues, lore, and other shared information."
             >
-              <h3 className="text-base font-semibold text-white">Handouts</h3>
-              <p className="mt-2 text-sm text-zinc-400">
-                Open letters, clues, lore, and other shared information.
-              </p>
-            </Link>
+              <Link
+                to={`/campaigns/${campaignId}/handouts`}
+                className={baseActionClassName}
+              >
+                Handouts
+              </Link>
+            </QuickActionCard>
           </>
         )}
       </div>
