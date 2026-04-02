@@ -180,7 +180,9 @@ const CombatTab = ({ derived }: CombatTabProps) => {
             </div>
           </div>
         </SectionCard>
+      </div>
 
+      <div className="space-y-6">
         <SectionCard title="Saving Throws">
           <div className="grid gap-3 sm:grid-cols-2">
             {derived.saveRows.map((save) => (
@@ -204,10 +206,6 @@ const CombatTab = ({ derived }: CombatTabProps) => {
             ))}
           </div>
         </SectionCard>
-      </div>
-
-      <div className="space-y-6">
-        
       </div>
     </div>
   );
