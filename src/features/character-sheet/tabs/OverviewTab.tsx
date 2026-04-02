@@ -20,44 +20,6 @@ const OverviewTab = ({ character, derived }: OverviewTabProps) => {
     <div className="space-y-6">
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="space-y-6 xl:col-span-2">
-          <SectionCard title="Progression">
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between text-sm text-zinc-400">
-                  <span>XP</span>
-                  <span>
-                    {derived.xp} / {derived.xpProgress.nextLevelXp ?? "MAX"}
-                  </span>
-                </div>
-
-                <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-800">
-                  <div
-                    className="h-full bg-white"
-                    style={{
-                      width: `${derived.xpProgress.progressPercent}%`,
-                    }}
-                  />
-                </div>
-
-                <div className="mt-2 flex justify-between text-xs text-zinc-500">
-                  <span>Level {derived.xpProgress.level}</span>
-                  <span>
-                    {derived.xpProgress.nextLevelXp === null
-                      ? "Max level reached"
-                      : `${derived.xpProgress.progressXp}/${derived.xpProgress.neededXp} XP this level`}
-                  </span>
-                </div>
-              </div>
-
-              {character.pendingLevelUp && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
-                  Level up available! ({character.pendingLevelUp.fromLevel} →{" "}
-                  {character.pendingLevelUp.toLevel})
-                </div>
-              )}
-            </div>
-          </SectionCard>
-
           <SectionCard title="Ability Scores">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {(Object.keys(derived.finalAbilityScores) as AbilityKey[]).map(
@@ -130,72 +92,6 @@ const OverviewTab = ({ character, derived }: OverviewTabProps) => {
         </div>
 
         <div className="space-y-6">
-          <SectionCard title="Character Info">
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Species
-                </dt>
-                <dd className="mt-1 text-sm text-zinc-200">
-                  {derived.speciesName}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Class
-                </dt>
-                <dd className="mt-1 text-sm text-zinc-200">
-                  {derived.className}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Subclass
-                </dt>
-                <dd className="mt-1 text-sm text-zinc-200">
-                  {derived.subclassName ?? "None"}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Background
-                </dt>
-                <dd className="mt-1 text-sm text-zinc-200">
-                  {derived.backgroundName}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Origin Feat
-                </dt>
-                <dd className="mt-1 text-sm text-zinc-200">
-                  {derived.featName ?? "None"}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Alignment
-                </dt>
-                <dd className="mt-1 text-sm text-zinc-200">
-                  {character.alignment || "—"}
-                </dd>
-              </div>
-
-              <div>
-                <dt className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                  Campaign
-                </dt>
-                <dd className="mt-1 text-sm text-zinc-200">
-                  {character.campaignId || "Not assigned"}
-                </dd>
-              </div>
-            </dl>
-          </SectionCard>
 
           {derived.dragonbornAncestryName && derived.dragonbornDamageType && (
             <SectionCard title="Dragonborn Traits">
@@ -242,6 +138,44 @@ const OverviewTab = ({ character, derived }: OverviewTabProps) => {
             </SectionCard>
           )}
 
+          <SectionCard title="Progression">
+            <div className="space-y-4">
+              <div>
+                <div className="flex justify-between text-sm text-zinc-400">
+                  <span>XP</span>
+                  <span>
+                    {derived.xp} / {derived.xpProgress.nextLevelXp ?? "MAX"}
+                  </span>
+                </div>
+
+                <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-zinc-800">
+                  <div
+                    className="h-full bg-blue-400"
+                    style={{
+                      width: `${derived.xpProgress.progressPercent}%`,
+                    }}
+                  />
+                </div>
+
+                <div className="mt-2 flex justify-between text-xs text-zinc-500">
+                  <span>Level {derived.xpProgress.level}</span>
+                  <span>
+                    {derived.xpProgress.nextLevelXp === null
+                      ? "Max level reached"
+                      : `${derived.xpProgress.progressXp}/${derived.xpProgress.neededXp} XP this level`}
+                  </span>
+                </div>
+              </div>
+
+              {character.pendingLevelUp && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-300">
+                  Level up available! ({character.pendingLevelUp.fromLevel} →{" "}
+                  {character.pendingLevelUp.toLevel})
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
           <SectionCard title="Money">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 xl:grid-cols-2">
               {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
@@ -258,6 +192,57 @@ const OverviewTab = ({ character, derived }: OverviewTabProps) => {
                 </div>
               ))}
             </div>
+          </SectionCard>
+
+          <SectionCard title="Tools">
+            {derived.toolProficiencies.length > 0 ? (
+              <div className="grid gap-3">
+                {derived.toolProficiencies.map((tool) => {
+                  const expertiseApplies = derived.expertise.includes(
+                    tool as any,
+                  );
+
+                  return (
+                    <div
+                      key={tool}
+                      className="rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-white">
+                            {formatLabel(tool)}
+                          </p>
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
+                            Proficient
+                          </span>
+                          {expertiseApplies && (
+                            <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-blue-300">
+                              Expertise
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="text-sm text-zinc-300">
+                          +PB
+                          {expertiseApplies
+                            ? ` + doubled proficiency (${formatModifier(
+                                derived.proficiencyBonus * 2,
+                              )})`
+                            : ` (${formatModifier(derived.proficiencyBonus)})`}
+                        </p>
+                      </div>
+
+                      <p className="mt-2 text-xs text-zinc-500">
+                        Tool checks use a relevant ability chosen by the DM or
+                        situation, plus your proficiency bonus if proficient.
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-zinc-500">No tool proficiencies yet.</p>
+            )}
           </SectionCard>
 
           <SectionCard title="Languages">
