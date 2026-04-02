@@ -1,11 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  addDoc,
+  collection,
+  onSnapshot,
+  serverTimestamp,
+} from "firebase/firestore";
 
+import { db } from "../firebase";
 import InvitePlayersModal from "../components/InvitePlayersModal";
 import CreateHandoutModal from "../components/CreateHandoutModal";
 import LevelUpModal from "../components/levelUpModal";
 import AwardXpModal from "../components/awardXpModal";
 import RewardItemsModal from "../features/campaigns/components/RewardItemsModal";
+import CreateCampaignItemModal from "../features/campaigns/components/CreateCampaignItemModal";
 
 import CampaignHeader from "../features/campaigns/components/CampaignHeader";
 import CampaignMembersSection from "../features/campaigns/components/CampaignMembersSection";
@@ -17,6 +25,10 @@ import InactiveOwnedCharactersSection from "../features/campaigns/components/Ina
 import useCampaignPageData, {
   type CampaignCharacter,
 } from "../features/campaigns/hooks/useCampaignPageData";
+import type {
+  CampaignItem,
+  CampaignItemOverride,
+} from "../rulesets/dnd/dnd2024/types";
 
 const CampaignPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -47,8 +59,45 @@ const CampaignPage = () => {
   const [createHandoutOpen, setCreateHandoutOpen] = useState(false);
   const [xpModalOpen, setXpModalOpen] = useState(false);
   const [rewardItemsOpen, setRewardItemsOpen] = useState(false);
+  const [createCustomItemOpen, setCreateCustomItemOpen] = useState(false);
+  const [creatingCustomItem, setCreatingCustomItem] = useState(false);
+  const [createCustomItemError, setCreateCustomItemError] = useState("");
   const [levelUpCharacter, setLevelUpCharacter] =
     useState<CampaignCharacter | null>(null);
+  const [campaignItemsById, setCampaignItemsById] = useState<
+    Record<string, CampaignItem>
+  >({});
+
+  useEffect(() => {
+    if (!campaignId || pageState !== "ready") {
+      setCampaignItemsById({});
+      return;
+    }
+
+    const unsub = onSnapshot(
+      collection(db, "campaigns", campaignId, "items"),
+      (snapshot) => {
+        const next = Object.fromEntries(
+          snapshot.docs.map((docSnap) => [
+            docSnap.id,
+            {
+              id: docSnap.id,
+              ...(docSnap.data() as Omit<CampaignItem, "id">),
+            },
+          ]),
+        ) as Record<string, CampaignItem>;
+
+        setCampaignItemsById(next);
+      },
+      (error) => {
+        console.error("Failed to load campaign items:", error);
+        setCampaignItemsById({});
+      },
+    );
+
+    return () => unsub();
+  }, [campaignId, pageState]);
+
   const claimableCharacters = useMemo(
     () => campaignCharacters.filter((character) => character.ownerUid === null),
     [campaignCharacters],
@@ -71,6 +120,51 @@ const CampaignPage = () => {
       ),
     [campaignCharacters, user?.uid],
   );
+
+  const handleCreateCampaignItem = async (payload: {
+    baseItemId: string;
+    name?: string;
+    shortDescription?: string;
+    description?: string;
+    gmNotes?: string;
+    imageUrl?: string;
+    overrides?: CampaignItemOverride;
+  }) => {
+    if (!campaignId || !user?.uid) {
+      throw new Error("Missing campaign or user.");
+    }
+
+    setCreateCustomItemError("");
+    setCreatingCustomItem(true);
+
+    try {
+      await addDoc(collection(db, "campaigns", campaignId, "items"), {
+        campaignId,
+        baseItemId: payload.baseItemId,
+        ...(payload.name ? { name: payload.name } : {}),
+        ...(payload.shortDescription
+          ? { shortDescription: payload.shortDescription }
+          : {}),
+        ...(payload.description ? { description: payload.description } : {}),
+        ...(payload.gmNotes ? { gmNotes: payload.gmNotes } : {}),
+        ...(payload.imageUrl ? { imageUrl: payload.imageUrl } : {}),
+        ...(payload.overrides ? { overrides: payload.overrides } : {}),
+        createdByUid: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setCreateCustomItemOpen(false);
+    } catch (error: any) {
+      console.error(error);
+      setCreateCustomItemError(
+        error?.message || "Failed to create custom item.",
+      );
+      throw error;
+    } finally {
+      setCreatingCustomItem(false);
+    }
+  };
 
   if (pageState === "loading") {
     return (
@@ -195,6 +289,12 @@ const CampaignPage = () => {
           onOpenSettings={() => navigate(`/campaigns/${campaign.id}/settings`)}
         />
 
+        {createCustomItemError && (
+          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {createCustomItemError}
+          </div>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="space-y-6">
             {isGm && (
@@ -203,6 +303,10 @@ const CampaignPage = () => {
                 isGm={isGm}
                 onCreateHandout={() => setCreateHandoutOpen(true)}
                 onRewardItems={() => setRewardItemsOpen(true)}
+                onCreateCustomItem={() => {
+                  setCreateCustomItemError("");
+                  setCreateCustomItemOpen(true);
+                }}
               />
             )}
 
@@ -285,10 +389,23 @@ const CampaignPage = () => {
           isOpen={rewardItemsOpen}
           onClose={() => setRewardItemsOpen(false)}
           characters={rewardableCharacters}
+          campaignItemsById={campaignItemsById}
           onConfirm={async (payload) => {
             await handleRewardCharacters(payload);
             setRewardItemsOpen(false);
           }}
+        />
+      )}
+
+      {isGm && (
+        <CreateCampaignItemModal
+          isOpen={createCustomItemOpen}
+          onClose={() => {
+            if (!creatingCustomItem) {
+              setCreateCustomItemOpen(false);
+            }
+          }}
+          onConfirm={handleCreateCampaignItem}
         />
       )}
 

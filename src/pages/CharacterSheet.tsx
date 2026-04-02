@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -27,6 +27,7 @@ import type {
   LevelNumber,
   CharacterSpell,
   SpellId,
+  CampaignItem,
 } from "../rulesets/dnd/dnd2024/types";
 
 import {
@@ -245,6 +246,9 @@ const allSkills: SkillId[] = [
   "stealth",
   "survival",
 ];
+
+const getRulesItemIdFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
+  entry.source === "campaign" ? entry.baseItemId : entry.itemId;
 
 const formatLabel = (value: string) =>
   value
@@ -817,6 +821,9 @@ const CharacterSheet = () => {
   const [character, setCharacter] = useState<CharacterDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [campaignItemsById, setCampaignItemsById] = useState<
+    Record<string, CampaignItem>
+  >({});
 
   const [openTraitGroups, setOpenTraitGroups] = useState<
     Record<TraitGroupKey, boolean>
@@ -853,12 +860,34 @@ const CharacterSheet = () => {
         if (!snap.exists()) {
           setError("Character not found.");
           setCharacter(null);
+          setCampaignItemsById({});
           setLoading(false);
           return;
         }
 
         const data = snap.data() as CharacterDoc;
         setCharacter(data);
+
+        if (data.campaignId) {
+          const campaignItemsSnap = await getDocs(
+            collection(db, "campaigns", data.campaignId, "items"),
+          );
+
+          const nextCampaignItemsById = Object.fromEntries(
+            campaignItemsSnap.docs.map((docSnap) => {
+              const campaignItem = {
+                id: docSnap.id,
+                ...docSnap.data(),
+              } as CampaignItem;
+
+              return [campaignItem.id, campaignItem];
+            }),
+          ) as Record<string, CampaignItem>;
+
+          setCampaignItemsById(nextCampaignItemsById);
+        } else {
+          setCampaignItemsById({});
+        }
       } catch (err: any) {
         console.error(err);
         setError(err?.message || "Failed to load character.");
@@ -1043,28 +1072,28 @@ const CharacterSheet = () => {
       abilityScores: finalAbilityScores,
       proficiencyBonus,
       proficientWeaponIds: equipment
-        .map((entry) => entry.itemId)
-        .filter((itemId) => {
-          const weaponProficiencies =
-            character.derived?.weaponProficiencies ??
-            classDef?.weaponProficiencies ??
-            [];
+      .map(getRulesItemIdFromEquipmentEntry)
+      .filter((itemId) => {
+        const weaponProficiencies =
+          character.derived?.weaponProficiencies ??
+          classDef?.weaponProficiencies ??
+          [];
 
-          const item = itemsById[itemId];
-          if (!item?.weapon) return false;
+        const item = itemsById[itemId];
+        if (!item?.weapon) return false;
 
-          const kind = item.weapon.weaponKind;
+        const kind = item.weapon.weaponKind;
 
-          if (kind.startsWith("simple")) {
-            return weaponProficiencies.includes("simple-weapons");
-          }
+        if (kind.startsWith("simple")) {
+          return weaponProficiencies.includes("simple-weapons");
+        }
 
-          if (kind.startsWith("martial")) {
-            return weaponProficiencies.includes("martial-weapons");
-          }
+        if (kind.startsWith("martial")) {
+          return weaponProficiencies.includes("martial-weapons");
+        }
 
-          return false;
-        }),
+        return false;
+      }),
     }).filter(
       (attack): attack is NonNullable<typeof attack> => attack !== null,
     );
@@ -2349,6 +2378,7 @@ const CharacterSheet = () => {
       <CharacterInventoryEquipment
         equipment={character.equipment ?? []}
         onChange={handleEquipmentChange}
+        campaignItemsById={campaignItemsById}
       />
 
       <div className="grid gap-6 xl:grid-cols-3">

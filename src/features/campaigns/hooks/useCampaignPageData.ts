@@ -13,7 +13,10 @@ import {
 
 import { useAuth } from "../../../context/AuthContext";
 import { db } from "../../../firebase";
-import { classesById, speciesById } from "../../../rulesets/dnd/dnd2024/helpers";
+import {
+  classesById,
+  speciesById,
+} from "../../../rulesets/dnd/dnd2024/helpers";
 import { applyLevelUpDecision } from "../../../rulesets/dnd/dnd2024/applyLevelUpDecision";
 import {
   getCharacterHp,
@@ -21,9 +24,7 @@ import {
 } from "../../../rulesets/dnd/dnd2024/getCharacterHp";
 import { getLevelFromXp } from "../../../rulesets/dnd/dnd2024/xpProgression";
 
-import {
-  subscribeToJournalEntries,
-} from "../../journal/journalService";
+import { subscribeToJournalEntries } from "../../journal/journalService";
 
 import {
   canReadJournalEntry,
@@ -38,14 +39,13 @@ import type {
 
 import type {
   CharacterChoices,
+  CharacterEquipmentEntry,
   CharacterSheetData,
   LevelUpDecisionsByLevel,
   LevelUpDecision,
 } from "../../../rulesets/dnd/dnd2024/types";
 
-import type { CharacterEquipmentItem  } from "../../../types/character";
 import { itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
-
 
 export type CampaignJournalPreview = {
   id: string;
@@ -100,7 +100,7 @@ export type CharacterDoc = {
   conditions?: string[];
 
   money?: CharacterMoney;
-  equipment?: CharacterEquipmentItem[];
+  equipment?: CharacterEquipmentEntry[];
 
   pendingLevelUp?: {
     fromLevel: number;
@@ -158,7 +158,7 @@ export type CampaignCharacter = {
     gp: number;
     pp: number;
   };
-  equipment?: CharacterEquipmentItem[];
+  equipment?: CharacterEquipmentEntry[];
 
   abilityScores?: Record<string, number>;
   pendingLevelUp?: {
@@ -249,6 +249,178 @@ const normalizeMoney = (money?: CharacterMoney) => ({
   gp: Math.max(0, Math.floor(money?.gp ?? 0)),
   pp: Math.max(0, Math.floor(money?.pp ?? 0)),
 });
+
+type RewardBaseItemInput = {
+  source: "base";
+  itemId: string;
+  quantity: number;
+};
+
+type RewardCampaignItemInput = {
+  source: "campaign";
+  campaignItemId: string;
+  baseItemId: string;
+  quantity: number;
+};
+
+type RewardItemInput = RewardBaseItemInput | RewardCampaignItemInput;
+
+type RewardMoneyInput = {
+  cp?: number;
+  sp?: number;
+  ep?: number;
+  gp?: number;
+  pp?: number;
+};
+
+type RewardPayload = {
+  characterIds: string[];
+  money?: RewardMoneyInput;
+  items?: RewardItemInput[];
+};
+
+const getRewardItemInstanceBaseId = (item: RewardItemInput) =>
+  item.source === "base" ? item.itemId : item.campaignItemId;
+
+const getRewardItemDisplayName = (item: RewardItemInput) => {
+  if (item.source === "base") {
+    return itemsById[item.itemId]?.name ?? item.itemId;
+  }
+
+  return itemsById[item.baseItemId]?.name ?? item.campaignItemId;
+};
+
+const createEquipmentInstanceId = (
+  baseId: string,
+  existing: CharacterEquipmentEntry[],
+) => {
+  const usedIds = new Set(existing.map((item) => item.instanceId));
+  let nextNumber = 1;
+
+  while (usedIds.has(`${baseId}__${nextNumber}`)) {
+    nextNumber += 1;
+  }
+
+  return `${baseId}__${nextNumber}`;
+};
+
+const isUnequippedStackableBaseEntry = (
+  entry: CharacterEquipmentEntry,
+  itemId: string,
+) =>
+  (entry.source === "base" || entry.source === undefined) &&
+  entry.itemId === itemId &&
+  !entry.equipped &&
+  (entry.equippedSlots?.length ?? 0) === 0 &&
+  !entry.wieldMode;
+
+const isUnequippedStackableCampaignEntry = (
+  entry: CharacterEquipmentEntry,
+  campaignItemId: string,
+) =>
+  entry.source === "campaign" &&
+  entry.campaignItemId === campaignItemId &&
+  !entry.equipped &&
+  (entry.equippedSlots?.length ?? 0) === 0 &&
+  !entry.wieldMode;
+
+const mergeEquipmentItems = (
+  current: CharacterEquipmentEntry[],
+  incoming: RewardItemInput[],
+): CharacterEquipmentEntry[] => {
+  const result: CharacterEquipmentEntry[] = [...current];
+
+  incoming.forEach((incomingItem) => {
+    const quantity = Math.max(0, Math.floor(incomingItem.quantity));
+    if (quantity <= 0) return;
+
+    const baseItemId =
+      incomingItem.source === "base"
+        ? incomingItem.itemId
+        : incomingItem.baseItemId;
+
+    const baseItemDef = itemsById[baseItemId];
+    const itemName =
+      incomingItem.source === "base"
+        ? baseItemDef?.name ?? incomingItem.itemId
+        : baseItemDef?.name ?? incomingItem.campaignItemId;
+    const isStackable = baseItemDef?.stackable === true;
+
+    if (isStackable) {
+      const existing =
+        incomingItem.source === "base"
+          ? result.find((entry) =>
+              isUnequippedStackableBaseEntry(entry, incomingItem.itemId),
+            )
+          : result.find((entry) =>
+              isUnequippedStackableCampaignEntry(
+                entry,
+                incomingItem.campaignItemId,
+              ),
+            );
+
+      if (existing) {
+        existing.quantity += quantity;
+      } else if (incomingItem.source === "base") {
+        result.push({
+          instanceId: createEquipmentInstanceId(incomingItem.itemId, result),
+          source: "base",
+          itemId: incomingItem.itemId,
+          name: itemName,
+          quantity,
+          equipped: false,
+          equippedSlots: [],
+        });
+      } else {
+        result.push({
+          instanceId: createEquipmentInstanceId(
+            incomingItem.campaignItemId,
+            result,
+          ),
+          source: "campaign",
+          campaignItemId: incomingItem.campaignItemId,
+          baseItemId: incomingItem.baseItemId,
+          name: itemName,
+          quantity,
+          equipped: false,
+          equippedSlots: [],
+        });
+      }
+
+      return;
+    }
+
+    for (let i = 0; i < quantity; i += 1) {
+      if (incomingItem.source === "base") {
+        result.push({
+          instanceId: createEquipmentInstanceId(incomingItem.itemId, result),
+          source: "base",
+          itemId: incomingItem.itemId,
+          name: itemName,
+          quantity: 1,
+          equipped: false,
+          equippedSlots: [],
+        });
+      } else {
+        result.push({
+          instanceId: createEquipmentInstanceId(
+            incomingItem.campaignItemId,
+            result,
+          ),
+          source: "campaign",
+          campaignItemId: incomingItem.campaignItemId,
+          baseItemId: incomingItem.baseItemId,
+          name: itemName,
+          quantity: 1,
+          equipped: false,
+          equippedSlots: [],
+        });
+      }
+    }
+  });
+
+  return result.sort((a, b) => a.name.localeCompare(b.name));
+};
 
 export const useCampaignPageData = (campaignId?: string) => {
   const { user } = useAuth();
@@ -369,7 +541,7 @@ export const useCampaignPageData = (campaignId?: string) => {
           const nextCharacters = await Promise.all(
             snapshot.docs.map(async (characterSnap) => {
               const data = characterSnap.data() as CharacterDoc;
-              const owner = data.ownerUid ? usersById[data.ownerUid] : undefined;;
+              const owner = data.ownerUid ? usersById[data.ownerUid] : undefined;
 
               const ownerName = owner?.displayName ?? "";
               const ownerEmail = owner?.email ?? "";
@@ -482,7 +654,7 @@ export const useCampaignPageData = (campaignId?: string) => {
 
   const isGm = membership?.role === "gm" || membership?.role === "co-gm";
 
-    useEffect(() => {
+  useEffect(() => {
     if (pageState !== "ready" || !campaignId) {
       setLatestJournalEntry(null);
       setLatestJournalEntryLoading(false);
@@ -494,42 +666,44 @@ export const useCampaignPageData = (campaignId?: string) => {
     const currentPlayerId: string | null = null;
 
     const unsubscribe = subscribeToJournalEntries(
-  campaignId,
-  { isGm },
-  (entries) => {
-    const visibleEntries = entries.filter((entry) =>
-      canReadJournalEntry({
-        entry,
-        isDm: isGm,
-        currentPlayerId,
-      }),
+      campaignId,
+      { isGm },
+      (entries) => {
+        const visibleEntries = entries.filter((entry) =>
+          canReadJournalEntry({
+            entry,
+            isDm: isGm,
+            currentPlayerId,
+          }),
+        );
+
+        if (visibleEntries.length === 0) {
+          setLatestJournalEntry(null);
+          setLatestJournalEntryLoading(false);
+          return;
+        }
+
+        const sorted = [...visibleEntries].sort(
+          (a, b) => b.updatedAt - a.updatedAt,
+        );
+        const latest = sorted[0];
+
+        setLatestJournalEntry({
+          id: latest.id,
+          title: latest.title,
+          content: latest.content,
+          createdByName: latest.createdByName,
+          updatedAt: latest.updatedAt,
+          sessionNumber: latest.sessionNumber ?? null,
+          sessionDate: latest.sessionDate ?? null,
+          type: latest.type,
+          pinned: latest.pinned,
+          published: latest.published,
+        });
+
+        setLatestJournalEntryLoading(false);
+      },
     );
-
-    if (visibleEntries.length === 0) {
-      setLatestJournalEntry(null);
-      setLatestJournalEntryLoading(false);
-      return;
-    }
-
-    const sorted = [...visibleEntries].sort((a, b) => b.updatedAt - a.updatedAt);
-    const latest = sorted[0];
-
-    setLatestJournalEntry({
-      id: latest.id,
-      title: latest.title,
-      content: latest.content,
-      createdByName: latest.createdByName,
-      updatedAt: latest.updatedAt,
-      sessionNumber: latest.sessionNumber ?? null,
-      sessionDate: latest.sessionDate ?? null,
-      type: latest.type,
-      pinned: latest.pinned,
-      published: latest.published,
-    });
-
-    setLatestJournalEntryLoading(false);
-  },
-);
 
     return unsubscribe;
   }, [campaignId, pageState, isGm]);
@@ -544,7 +718,7 @@ export const useCampaignPageData = (campaignId?: string) => {
       try {
         await updateDoc(
           doc(db, "characters", id),
-          updates as UpdateData<CharacterDoc>
+          updates as UpdateData<CharacterDoc>,
         );
       } catch (error) {
         console.error("Failed to update character:", error);
@@ -584,80 +758,86 @@ export const useCampaignPageData = (campaignId?: string) => {
     [updateCharacter],
   );
 
-const handleLevelUp = useCallback(
-  async (
-    character: CampaignCharacter,
-    decisionsByLevel: LevelUpDecisionsByLevel,
-  ) => {
-    try {
-      if (!character.pendingLevelUp) {
-        console.error("No pending level up found.");
-        return;
-      }
+  const handleLevelUp = useCallback(
+    async (
+      character: CampaignCharacter,
+      decisionsByLevel: LevelUpDecisionsByLevel,
+    ) => {
+      try {
+        if (!character.pendingLevelUp) {
+          console.error("No pending level up found.");
+          return;
+        }
 
-      let updated = structuredClone(character) as unknown as CharacterSheetData;
+        let updated = structuredClone(
+          character,
+        ) as unknown as CharacterSheetData;
 
-      const cleanedIncomingDecisions = removeUndefinedDeep(
-        decisionsByLevel,
+        const cleanedIncomingDecisions = removeUndefinedDeep(
+          decisionsByLevel,
         ) as LevelUpDecisionsByLevel;
 
         const mergedLevelUpDecisions = removeUndefinedDeep({
-        ...(updated.choices?.levelUpDecisions ?? {}),
-        ...cleanedIncomingDecisions,
+          ...(updated.choices?.levelUpDecisions ?? {}),
+          ...cleanedIncomingDecisions,
         }) as LevelUpDecisionsByLevel;
 
         updated = {
-        ...updated,
-        choices: removeUndefinedDeep({
+          ...updated,
+          choices: removeUndefinedDeep({
             ...(updated.choices ?? {}),
             levelUpDecisions: mergedLevelUpDecisions,
-        }) as CharacterChoices,
+          }) as CharacterChoices,
         };
 
-      for (const [levelKey, decision] of Object.entries(cleanedIncomingDecisions)) {
-        updated = applyLevelUpDecision(
+        for (const [levelKey, decision] of Object.entries(
+          cleanedIncomingDecisions,
+        )) {
+          updated = applyLevelUpDecision(
             updated,
             Number(levelKey),
             decision as LevelUpDecision,
-        );
+          );
         }
 
-      const oldHp = getCharacterHp(character as never);
-      const nextLevel = character.pendingLevelUp.toLevel;
+        const oldHp = getCharacterHp(character as never);
+        const nextLevel = character.pendingLevelUp.toLevel;
 
-      updated = {
-        ...updated,
-        level: nextLevel,
-        pendingLevelUp: null,
-      };
+        updated = {
+          ...updated,
+          level: nextLevel,
+          pendingLevelUp: null,
+        };
 
-      const newMaxHp = recalculateMaxHp(updated as never);
-      const hpGain = Math.max(0, newMaxHp - oldHp.maxHp);
-      const newCurrentHp = Math.min(newMaxHp, oldHp.currentHp + hpGain);
+        const newMaxHp = recalculateMaxHp(updated as never);
+        const hpGain = Math.max(0, newMaxHp - oldHp.maxHp);
+        const newCurrentHp = Math.min(newMaxHp, oldHp.currentHp + hpGain);
 
-      const payload = removeUndefinedDeep({
-        level: nextLevel,
-        maxHp: newMaxHp,
-        currentHp: newCurrentHp,
-        pendingLevelUp: null,
-        choices: updated.choices ?? {},
-        subclassId: updated.subclassId ?? null,
-      });
+        const payload = removeUndefinedDeep({
+          level: nextLevel,
+          maxHp: newMaxHp,
+          currentHp: newCurrentHp,
+          pendingLevelUp: null,
+          choices: updated.choices ?? {},
+          subclassId: updated.subclassId ?? null,
+        });
 
-      await updateDoc(doc(db, "characters", character.id), payload);
-    } catch (error) {
-      console.error("Level up failed:", error);
-    }
-  },
-  [],
-);
+        await updateDoc(doc(db, "characters", character.id), payload);
+      } catch (error) {
+        console.error("Level up failed:", error);
+      }
+    },
+    [],
+  );
 
   const handleApplyXp = useCallback(
     async (updates: { id: string; xp: number }[]) => {
       try {
         await Promise.all(
           updates.map(async (entry) => {
-            const character = campaignCharacters.find((c) => c.id === entry.id);
+            const character = campaignCharacters.find(
+              (c) => c.id === entry.id,
+            );
             if (!character) return;
 
             await updateCharacterXp(character, entry.xp);
@@ -670,7 +850,7 @@ const handleLevelUp = useCallback(
     [campaignCharacters, updateCharacterXp],
   );
 
-    const handleClaimCharacter = useCallback(
+  const handleClaimCharacter = useCallback(
     async (characterId: string) => {
       if (!user || !campaignId) return;
 
@@ -704,7 +884,7 @@ const handleLevelUp = useCallback(
     [campaignId, user],
   );
 
-    const handleSetCharacterActive = useCallback(
+  const handleSetCharacterActive = useCallback(
     async (characterId: string) => {
       await updateCharacter(characterId, {
         campaignStatus: "active",
@@ -713,157 +893,85 @@ const handleLevelUp = useCallback(
     [updateCharacter],
   );
 
-  type RewardItemInput = {
-    itemId: string;
-    quantity: number;
-  };
+  const handleRewardCharacters = useCallback(
+    async ({ characterIds, money, items = [] }: RewardPayload) => {
+      if (!campaignId || !isGm) return;
 
-type RewardMoneyInput = {
-  cp?: number;
-  sp?: number;
-  ep?: number;
-  gp?: number;
-  pp?: number;
-};
+      const normalizedMoney = normalizeMoney(money);
 
-type RewardPayload = {
-  characterIds: string[];
-  money?: RewardMoneyInput;
-  items?: RewardItemInput[];
-};
+      const normalizedItems = items
+        .map((item) =>
+          item.source === "base"
+            ? {
+                source: "base" as const,
+                itemId: item.itemId,
+                quantity: Math.max(0, Math.floor(item.quantity)),
+              }
+            : {
+                source: "campaign" as const,
+                campaignItemId: item.campaignItemId,
+                baseItemId: item.baseItemId,
+                quantity: Math.max(0, Math.floor(item.quantity)),
+              },
+        )
+        .filter((item) =>
+          item.source === "base"
+            ? item.itemId && item.quantity > 0
+            : item.campaignItemId && item.baseItemId && item.quantity > 0,
+        );
 
-const createEquipmentInstanceId = (
-  itemId: string,
-  existing: CharacterEquipmentItem[],
-) => {
-  const usedIds = new Set(existing.map((item) => item.instanceId));
-  let nextNumber = 1;
-
-  while (usedIds.has(`${itemId}__${nextNumber}`)) {
-    nextNumber += 1;
-  }
-
-  return `${itemId}__${nextNumber}`;
-};
-
-const mergeEquipmentItems = (
-  current: CharacterEquipmentItem[],
-  incoming: { itemId: string; quantity: number }[],
-): CharacterEquipmentItem[] => {
-  const result = [...current];
-
-  incoming.forEach(({ itemId, quantity }) => {
-    if (!itemId || quantity <= 0) return;
-
-    const itemDef = itemsById[itemId];
-    const itemName = itemDef?.name ?? itemId;
-    const isStackable = itemDef?.stackable === true;
-
-    if (isStackable) {
-      const existing = result.find(
-        (item) =>
-          item.itemId === itemId &&
-          !item.equipped &&
-          (item.equippedSlots?.length ?? 0) === 0 &&
-          !item.wieldMode,
+      const hasMoney = Object.values(normalizedMoney).some(
+        (amount) => amount > 0,
       );
 
-      if (existing) {
-        existing.quantity += quantity;
-      } else {
-        result.push({
-          instanceId: createEquipmentInstanceId(itemId, result),
-          itemId,
-          name: itemName,
-          quantity,
-          equipped: false,
-          equippedSlots: [],
-        });
-      }
+      if (characterIds.length === 0) return;
+      if (!hasMoney && normalizedItems.length === 0) return;
 
-      return;
-    }
+      try {
+        await Promise.all(
+          characterIds.map(async (characterId) => {
+            await runTransaction(db, async (transaction) => {
+              const characterRef = doc(db, "characters", characterId);
+              const characterSnap = await transaction.get(characterRef);
 
-    for (let i = 0; i < quantity; i += 1) {
-      result.push({
-        instanceId: createEquipmentInstanceId(itemId, result),
-        itemId,
-        name: itemName,
-        quantity: 1,
-        equipped: false,
-        equippedSlots: [],
-      });
-    }
-  });
+              if (!characterSnap.exists()) {
+                throw new Error("Character not found.");
+              }
 
-  return result.sort((a, b) => a.name.localeCompare(b.name));
-};
+              const data = characterSnap.data() as CharacterDoc;
 
-const handleRewardCharacters = useCallback(
-  async ({ characterIds, money, items = [] }: RewardPayload) => {
-    if (!campaignId || !isGm) return;
+              if (data.campaignId !== campaignId) {
+                throw new Error("Character is no longer in this campaign.");
+              }
 
-    const normalizedMoney = normalizeMoney(money);
+              const currentMoney = normalizeMoney(data.money);
 
-    const normalizedItems = items
-      .map((item) => ({
-        itemId: item.itemId,
-        quantity: Math.max(0, Math.floor(item.quantity)),
-      }))
-      .filter((item) => item.itemId && item.quantity > 0);
+              const nextMoney = {
+                cp: currentMoney.cp + normalizedMoney.cp,
+                sp: currentMoney.sp + normalizedMoney.sp,
+                ep: currentMoney.ep + normalizedMoney.ep,
+                gp: currentMoney.gp + normalizedMoney.gp,
+                pp: currentMoney.pp + normalizedMoney.pp,
+              };
 
-    const hasMoney = Object.values(normalizedMoney).some(
-      (amount) => amount > 0,
-    );
+              const nextEquipment = mergeEquipmentItems(
+                data.equipment ?? [],
+                normalizedItems,
+              );
 
-    if (characterIds.length === 0) return;
-    if (!hasMoney && normalizedItems.length === 0) return;
-
-    try {
-      await Promise.all(
-        characterIds.map(async (characterId) => {
-          await runTransaction(db, async (transaction) => {
-            const characterRef = doc(db, "characters", characterId);
-            const characterSnap = await transaction.get(characterRef);
-
-            if (!characterSnap.exists()) {
-              throw new Error("Character not found.");
-            }
-
-            const data = characterSnap.data() as CharacterDoc;
-
-            if (data.campaignId !== campaignId) {
-              throw new Error("Character is no longer in this campaign.");
-            }
-
-            const currentMoney = normalizeMoney(data.money);
-
-            const nextMoney = {
-              cp: currentMoney.cp + normalizedMoney.cp,
-              sp: currentMoney.sp + normalizedMoney.sp,
-              ep: currentMoney.ep + normalizedMoney.ep,
-              gp: currentMoney.gp + normalizedMoney.gp,
-              pp: currentMoney.pp + normalizedMoney.pp,
-            };
-
-            const nextEquipment = mergeEquipmentItems(
-              data.equipment ?? [],
-              normalizedItems,
-            );
-
-            transaction.update(characterRef, {
-              money: nextMoney,
-              equipment: nextEquipment,
+              transaction.update(characterRef, {
+                money: nextMoney,
+                equipment: nextEquipment,
+              });
             });
-          });
-        }),
-      );
-    } catch (error) {
-      console.error("Failed to reward characters:", error);
-    }
-  },
-  [campaignId, isGm],
-);
+          }),
+        );
+      } catch (error) {
+        console.error("Failed to reward characters:", error);
+      }
+    },
+    [campaignId, isGm],
+  );
 
   return {
     user,
@@ -892,6 +1000,9 @@ const handleRewardCharacters = useCallback(
     latestJournalEntryLoading,
     handleSetCharacterActive,
     handleRewardCharacters,
+
+    getRewardItemDisplayName,
+    getRewardItemInstanceBaseId,
   };
 };
 

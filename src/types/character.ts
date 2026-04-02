@@ -33,15 +33,35 @@ export type CharacterItem = {
   equipped?: boolean;
 };
 
-export type CharacterEquipmentItem = {
-  instanceId: string;
-  itemId: string;
-  name: string;
-  quantity: number;
-  equipped: boolean;
-  equippedSlots: string[];
-  wieldMode?: string;
-};
+export type CharacterEquipmentItem =
+  | {
+      instanceId: string;
+      source?: "base";
+      itemId: string;
+      campaignItemId?: never;
+      baseItemId?: never;
+      name: string;
+      quantity: number;
+      equipped: boolean;
+      equippedSlots: string[];
+      wieldMode?: string;
+      attackBonus?: number;
+      damageBonus?: number;
+    }
+  | {
+      instanceId: string;
+      source: "campaign";
+      itemId?: never;
+      campaignItemId: string;
+      baseItemId: string;
+      name: string;
+      quantity: number;
+      equipped: boolean;
+      equippedSlots: string[];
+      wieldMode?: string;
+      attackBonus?: number;
+      damageBonus?: number;
+    };
 
 export type CharacterDoc = {
   ownerUid: string;
@@ -81,7 +101,7 @@ export type CharacterDoc = {
     spells: CharacterSpell[];
   };
 
-  equipment?: CharacterItem[];
+  equipment?: CharacterEquipmentItem[];
 
   createdAt?: unknown;
   updatedAt?: unknown;

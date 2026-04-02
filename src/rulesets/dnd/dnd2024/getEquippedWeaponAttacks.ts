@@ -2,8 +2,16 @@ import { itemsById } from "./data/items";
 import type {
   AbilityKey,
   CharacterEquipmentEntry,
+  EquipmentSlotId,
   WeaponData,
 } from "./types";
+
+const WEAPON_EQUIP_SLOTS: EquipmentSlotId[] = [
+  "main-hand",
+  "off-hand",
+  "ranged-main-hand",
+  "ranged-off-hand",
+];
 
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
 
@@ -13,7 +21,9 @@ const formatSignedModifier = (value: number) => {
 };
 
 const getSelectedDamageData = (weapon: WeaponData, twoHanded: boolean) => {
-  return twoHanded && weapon.versatileDamage ? weapon.versatileDamage : weapon.damage;
+  return twoHanded && weapon.versatileDamage
+    ? weapon.versatileDamage
+    : weapon.damage;
 };
 
 const formatDamageString = ({
@@ -39,6 +49,42 @@ const isRangedWeapon = (weapon: WeaponData) =>
 const hasProperty = (weapon: WeaponData, property: string) =>
   weapon.properties.includes(property as (typeof weapon.properties)[number]);
 
+const getRulesItemIdFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
+  entry.source === "campaign" ? entry.baseItemId : entry.itemId;
+
+const getDisplayItemIdFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
+  entry.source === "campaign" ? entry.campaignItemId : entry.itemId;
+
+const getDisplayNameFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
+  entry.name;
+
+const isWeaponEquipped = (entry: CharacterEquipmentEntry) => {
+  const equippedSlots = entry.equippedSlots ?? [];
+  return equippedSlots.some((slot) => WEAPON_EQUIP_SLOTS.includes(slot));
+};
+
+const isOffHandEquipped = (entry: CharacterEquipmentEntry) => {
+  const equippedSlots = entry.equippedSlots ?? [];
+
+  return (
+    entry.wieldMode === "off-hand" ||
+    equippedSlots.includes("off-hand") ||
+    equippedSlots.includes("ranged-off-hand")
+  );
+};
+
+const isTwoHandedEquipped = (entry: CharacterEquipmentEntry) => {
+  const equippedSlots = entry.equippedSlots ?? [];
+
+  return (
+    entry.wieldMode === "two-handed" ||
+    (equippedSlots.includes("main-hand") &&
+      equippedSlots.includes("off-hand")) ||
+    (equippedSlots.includes("ranged-main-hand") &&
+      equippedSlots.includes("ranged-off-hand"))
+  );
+};
+
 const getAttackAbility = ({
   weapon,
   abilityScores,
@@ -56,7 +102,6 @@ const getAttackAbility = ({
     return abilityScores.dex > abilityScores.str ? "dex" : "str";
   }
 
-  // Thrown melee weapons still use STR by default.
   return "str";
 };
 
@@ -67,7 +112,6 @@ const getThrownAttackAbility = ({
   weapon: WeaponData;
   abilityScores: Record<AbilityKey, number>;
 }): AbilityKey => {
-  // Thrown uses the same ability as the melee attack unless a special rule says otherwise.
   if (hasProperty(weapon, "finesse")) {
     return abilityScores.dex > abilityScores.str ? "dex" : "str";
   }
@@ -82,9 +126,7 @@ const getAttackModes = ({
   entry: CharacterEquipmentEntry;
   weapon: WeaponData;
 }) => {
-  const isTwoHandedEquipped =
-    entry.wieldMode === "two-handed" ||
-    (entry.equippedSlots?.length ?? 0) >= 2;
+  const twoHanded = isTwoHandedEquipped(entry);
 
   const modes: Array<{
     key: "melee" | "thrown";
@@ -94,8 +136,8 @@ const getAttackModes = ({
     {
       key: "melee",
       labelSuffix:
-        weapon.versatileDamage && isTwoHandedEquipped ? "(Two-Handed)" : undefined,
-      twoHanded: isTwoHandedEquipped,
+        weapon.versatileDamage && twoHanded ? "(Two-Handed)" : undefined,
+      twoHanded,
     },
   ];
 
@@ -139,20 +181,25 @@ export const getEquippedWeaponAttacks = ({
   const attacks: EquippedWeaponAttack[] = [];
 
   for (const entry of equipment) {
-    if ((entry.equippedSlots?.length ?? 0) === 0) continue;
+    if (!isWeaponEquipped(entry)) continue;
 
-    const item = itemsById[entry.itemId];
+    const rulesItemId = getRulesItemIdFromEquipmentEntry(entry);
+    const displayItemId = getDisplayItemIdFromEquipmentEntry(entry);
+
+    const item = itemsById[rulesItemId];
     if (!item?.weapon) continue;
 
     const weapon = item.weapon;
-    const proficient = proficientWeaponIds?.includes(entry.itemId) ?? true;
+    const proficient = proficientWeaponIds?.includes(rulesItemId) ?? true;
 
     const isOffHand =
-      entry.wieldMode === "off-hand" && hasProperty(weapon, "light");
+      isOffHandEquipped(entry) &&
+      (hasProperty(weapon, "light") || entry.wieldMode === "off-hand");
 
-    // Assumed per-item magic / custom bonuses stored on the equipment entry.
-    const magicAttackBonus = entry.attackBonus ?? 0;
-    const magicDamageBonus = entry.damageBonus ?? 0;
+    const magicAttackBonus =
+      (item.attackBonus ?? 0) + (entry.attackBonus ?? 0);
+    const magicDamageBonus =
+      (item.damageBonus ?? 0) + (entry.damageBonus ?? 0);
 
     const modes = getAttackModes({ entry, weapon });
 
@@ -169,14 +216,12 @@ export const getEquippedWeaponAttacks = ({
         (proficient ? proficiencyBonus : 0) +
         magicAttackBonus;
 
-      // Off-hand bonus attacks do not add ability mod to damage by default.
-      // If you later add a flag like entry.addAbilityModToOffHandDamage, you can plug it in here.
       const includeAbilityModInDamage = !isOffHand;
 
       const damageModifier =
         (includeAbilityModInDamage ? abilityMod : 0) + magicDamageBonus;
 
-            const isThrownAttack = mode.key === "thrown";
+      const isThrownAttack = mode.key === "thrown";
       const isRangedAttack = isRangedWeapon(weapon);
 
       attacks.push({
@@ -184,8 +229,8 @@ export const getEquippedWeaponAttacks = ({
           mode.key === "thrown"
             ? `${entry.instanceId}-thrown`
             : `${entry.instanceId}-melee`,
-        itemId: entry.itemId,
-        name: item.name,
+        itemId: displayItemId,
+        name: getDisplayNameFromEquipmentEntry(entry) || item.name,
         ability,
         attackBonus,
         damage: formatDamageString({

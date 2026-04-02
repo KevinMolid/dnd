@@ -967,22 +967,8 @@ export type ShieldData = {
 export type EquippableSlotProfile = "default" | "ranged-weapon";
 
 export type EquippableConfig = {
-  /**
-   * Used for items that occupy fixed slots (armor, rings, etc.)
-   * Ignored when using allowedWieldModes (weapons)
-   */
   slots: EquipmentSlotId[];
-
-  /**
-   * Used for items that can be wielded in different ways (weapons)
-   */
   allowedWieldModes?: WieldMode[];
-
-  /**
-   * Determines which slot group is used for wielding:
-   * - "default" → main-hand / off-hand
-   * - "ranged-weapon" → ranged-main-hand / ranged-off-hand
-   */
   slotProfile?: EquippableSlotProfile;
 };
 
@@ -1034,16 +1020,80 @@ export type EquipmentSlotId =
 
 export type WieldMode = "main-hand" | "off-hand" | "two-handed";
 
-export type CharacterEquipmentEntry = {
-  instanceId: string;
-  itemId: string;
-  name: string;
-  quantity: number;
-  equipped?: boolean;
-  equippedSlots?: EquipmentSlotId[];
-  wieldMode?: WieldMode;
-  attackBonus?: number;
-  damageBonus?: number;
+export type CharacterEquipmentEntry =
+  | {
+      instanceId: string;
+      source?: "base";
+      itemId: string;
+      campaignItemId?: never;
+      baseItemId?: never;
+      name: string;
+      quantity: number;
+      equipped?: boolean;
+      equippedSlots?: EquipmentSlotId[];
+      wieldMode?: WieldMode;
+      attackBonus?: number;
+      damageBonus?: number;
+    }
+  | {
+      instanceId: string;
+      source: "campaign";
+      itemId?: never;
+      campaignItemId: string;
+      baseItemId: string;
+      name: string;
+      quantity: number;
+      equipped?: boolean;
+      equippedSlots?: EquipmentSlotId[];
+      wieldMode?: WieldMode;
+      attackBonus?: number;
+      damageBonus?: number;
+    };
+
+export type CampaignItemOverride = Partial<
+  Pick<
+    Item,
+    | "name"
+    | "description"
+    | "weight"
+    | "cost"
+    | "equippable"
+    | "weapon"
+    | "armor"
+    | "shield"
+    | "attackBonus"
+    | "damageBonus"
+    | "acBonus"
+    | "magical"
+  >
+>;
+
+export type CampaignItem = {
+  id: string;
+  campaignId: string;
+  baseItemId: string;
+
+  /**
+   * Optional custom display name. Falls back to the base item name.
+   */
+  name?: string;
+
+  /**
+   * Extra campaign-specific flavor text shown before/alongside base item info.
+   */
+  shortDescription?: string;
+  description?: string;
+  gmNotes?: string;
+  imageUrl?: string;
+
+  /**
+   * Only store fields that differ from the base item.
+   */
+  overrides?: CampaignItemOverride;
+
+  createdByUid: string;
+  createdAt?: unknown;
+  updatedAt?: unknown;
 };
 
 export type EquipmentItemGrant = {

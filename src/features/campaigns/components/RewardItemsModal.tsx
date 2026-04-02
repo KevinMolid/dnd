@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { itemsById, allItems } from "../../../rulesets/dnd/dnd2024/data/items";
+import { useEffect, useMemo, useState } from "react";
+import { allItems, itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
+import type { CampaignItem } from "../../../rulesets/dnd/dnd2024/types";
 
 type CharacterOption = {
   id: string;
@@ -7,10 +8,18 @@ type CharacterOption = {
   ownerUid?: string | null;
 };
 
-type SelectedRewardItem = {
-  itemId: string;
-  quantity: number;
-};
+type SelectedRewardItem =
+  | {
+      source: "base";
+      itemId: string;
+      quantity: number;
+    }
+  | {
+      source: "campaign";
+      campaignItemId: string;
+      baseItemId: string;
+      quantity: number;
+    };
 
 type RewardMoney = {
   cp: number;
@@ -24,23 +33,62 @@ type RewardItemsModalProps = {
   isOpen: boolean;
   onClose: () => void;
   characters: CharacterOption[];
+  campaignItemsById?: Record<string, CampaignItem>;
   onConfirm: (payload: {
-  characterIds: string[];
-  money: {
-    cp: number;
-    sp: number;
-    ep: number;
-    gp: number;
-    pp: number;
-  };
-  items: { itemId: string; quantity: number }[];
-}) => Promise<void>;
+    characterIds: string[];
+    money: {
+      cp: number;
+      sp: number;
+      ep: number;
+      gp: number;
+      pp: number;
+    };
+    items: (
+      | { source: "base"; itemId: string; quantity: number }
+      | {
+          source: "campaign";
+          campaignItemId: string;
+          baseItemId: string;
+          quantity: number;
+        }
+    )[];
+  }) => Promise<void>;
 };
+
+type SearchableRewardItem =
+  | {
+      source: "base";
+      id: string;
+      name: string;
+      category: string;
+      stackable?: boolean;
+      magical?: boolean;
+      baseItemId: string;
+      shortDescription?: string;
+    }
+  | {
+      source: "campaign";
+      id: string;
+      name: string;
+      category: string;
+      stackable?: boolean;
+      magical?: boolean;
+      baseItemId: string;
+      campaignItemId: string;
+      shortDescription?: string;
+    };
+
+const formatLabel = (value: string) =>
+  value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 
 const RewardItemsModal = ({
   isOpen,
   onClose,
   characters,
+  campaignItemsById = {},
   onConfirm,
 }: RewardItemsModalProps) => {
   const [search, setSearch] = useState("");
@@ -63,25 +111,77 @@ const RewardItemsModal = ({
   const [selectedItems, setSelectedItems] = useState<SelectedRewardItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setSearch("");
+    setSelectedCharacterIds([]);
+    setMoney({
+      cp: "0",
+      sp: "0",
+      ep: "0",
+      gp: "0",
+      pp: "0",
+    });
+    setSelectedItems([]);
+    setSubmitting(false);
+  }, [isOpen]);
+
+  const searchableItems = useMemo<SearchableRewardItem[]>(() => {
+    const baseItems: SearchableRewardItem[] = [...allItems].map((item) => ({
+      source: "base",
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      stackable: item.stackable,
+      magical: item.magical,
+      baseItemId: item.id,
+    }));
+
+    const campaignItems: SearchableRewardItem[] = Object.values(
+      campaignItemsById,
+    ).flatMap((campaignItem) => {
+      const baseItem = itemsById[campaignItem.baseItemId];
+      if (!baseItem) return [];
+
+      return [
+        {
+          source: "campaign" as const,
+          id: campaignItem.id,
+          campaignItemId: campaignItem.id,
+          baseItemId: campaignItem.baseItemId,
+          name: campaignItem.name ?? baseItem.name,
+          category: baseItem.category,
+          stackable: baseItem.stackable,
+          magical: campaignItem.overrides?.magical ?? baseItem.magical,
+          shortDescription: campaignItem.shortDescription,
+        },
+      ];
+    });
+
+    return [...campaignItems, ...baseItems].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [campaignItemsById]);
+
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    const sorted = [...allItems].sort((a, b) => a.name.localeCompare(b.name));
-
     if (!query) {
-      return sorted.slice(0, 50);
+      return searchableItems.slice(0, 75);
     }
 
-    return sorted
+    return searchableItems
       .filter((item) => {
         const idMatch = item.id.toLowerCase().includes(query);
         const nameMatch = item.name.toLowerCase().includes(query);
         const categoryMatch = item.category.toLowerCase().includes(query);
+        const baseItemMatch = item.baseItemId.toLowerCase().includes(query);
 
-        return idMatch || nameMatch || categoryMatch;
+        return idMatch || nameMatch || categoryMatch || baseItemMatch;
       })
-      .slice(0, 50);
-  }, [search]);
+      .slice(0, 75);
+  }, [search, searchableItems]);
 
   if (!isOpen) return null;
 
@@ -93,35 +193,107 @@ const RewardItemsModal = ({
     );
   };
 
-  const addItem = (itemId: string) => {
+  const addBaseItem = (itemId: string) => {
     setSelectedItems((current) => {
-      const existing = current.find((item) => item.itemId === itemId);
+      const existing = current.find(
+        (item) => item.source === "base" && item.itemId === itemId,
+      );
 
       if (existing) {
         return current.map((item) =>
-          item.itemId === itemId
+          item.source === "base" && item.itemId === itemId
             ? { ...item, quantity: item.quantity + 1 }
             : item,
         );
       }
 
-      return [...current, { itemId, quantity: 1 }];
+      return [...current, { source: "base", itemId, quantity: 1 }];
     });
   };
 
-  const updateItemQuantity = (itemId: string, quantity: number) => {
+  const addCampaignItem = (campaignItemId: string, baseItemId: string) => {
+    setSelectedItems((current) => {
+      const existing = current.find(
+        (item) =>
+          item.source === "campaign" && item.campaignItemId === campaignItemId,
+      );
+
+      if (existing) {
+        return current.map((item) =>
+          item.source === "campaign" && item.campaignItemId === campaignItemId
+            ? { ...item, quantity: item.quantity + 1 }
+            : item,
+        );
+      }
+
+      return [
+        ...current,
+        {
+          source: "campaign",
+          campaignItemId,
+          baseItemId,
+          quantity: 1,
+        },
+      ];
+    });
+  };
+
+  const updateItemQuantity = (
+    target:
+      | { source: "base"; itemId: string }
+      | { source: "campaign"; campaignItemId: string },
+    quantity: number,
+  ) => {
     const nextQuantity = Math.max(1, Math.floor(quantity) || 1);
 
     setSelectedItems((current) =>
-      current.map((item) =>
-        item.itemId === itemId ? { ...item, quantity: nextQuantity } : item,
-      ),
+      current.map((item) => {
+        if (
+          target.source === "base" &&
+          item.source === "base" &&
+          item.itemId === target.itemId
+        ) {
+          return { ...item, quantity: nextQuantity };
+        }
+
+        if (
+          target.source === "campaign" &&
+          item.source === "campaign" &&
+          item.campaignItemId === target.campaignItemId
+        ) {
+          return { ...item, quantity: nextQuantity };
+        }
+
+        return item;
+      }),
     );
   };
 
-  const removeItem = (itemId: string) => {
+  const removeItem = (
+    target:
+      | { source: "base"; itemId: string }
+      | { source: "campaign"; campaignItemId: string },
+  ) => {
     setSelectedItems((current) =>
-      current.filter((item) => item.itemId !== itemId),
+      current.filter((item) => {
+        if (
+          target.source === "base" &&
+          item.source === "base" &&
+          item.itemId === target.itemId
+        ) {
+          return false;
+        }
+
+        if (
+          target.source === "campaign" &&
+          item.source === "campaign" &&
+          item.campaignItemId === target.campaignItemId
+        ) {
+          return false;
+        }
+
+        return true;
+      }),
     );
   };
 
@@ -144,11 +316,23 @@ const RewardItemsModal = ({
     const normalizedMoney = normalizeMoney();
 
     const normalizedItems = selectedItems
-      .map((item) => ({
-        itemId: item.itemId,
-        quantity: Math.max(1, Math.floor(item.quantity) || 1),
-      }))
-      .filter((item) => !!item.itemId);
+      .map((item) =>
+        item.source === "base"
+          ? {
+              source: "base" as const,
+              itemId: item.itemId,
+              quantity: Math.max(1, Math.floor(item.quantity) || 1),
+            }
+          : {
+              source: "campaign" as const,
+              campaignItemId: item.campaignItemId,
+              baseItemId: item.baseItemId,
+              quantity: Math.max(1, Math.floor(item.quantity) || 1),
+            },
+      )
+      .filter((item) =>
+        item.source === "base" ? !!item.itemId : !!item.campaignItemId,
+      );
 
     const hasMoney = Object.values(normalizedMoney).some((amount) => amount > 0);
 
@@ -198,8 +382,8 @@ const RewardItemsModal = ({
           <div>
             <h2 className="text-xl font-semibold text-white">Reward items</h2>
             <p className="mt-1 text-sm text-zinc-400">
-              Search for items, choose quantities, and reward currency and items
-              to players in this campaign.
+              Search for base items or campaign items, choose quantities, and
+              reward currency and items to players in this campaign.
             </p>
           </div>
 
@@ -223,7 +407,7 @@ const RewardItemsModal = ({
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by name, id, or category..."
+                  placeholder="Search by name, id, category, or base item..."
                   className="w-full bg-transparent text-sm text-white outline-none placeholder:text-zinc-500"
                 />
               </div>
@@ -232,26 +416,50 @@ const RewardItemsModal = ({
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <div className="grid gap-3">
                 {filteredItems.map((item) => {
-                  const alreadySelected = selectedItems.find(
-                    (entry) => entry.itemId === item.id,
+                  const alreadySelected = selectedItems.find((entry) =>
+                    item.source === "base"
+                      ? entry.source === "base" && entry.itemId === item.id
+                      : entry.source === "campaign" &&
+                        entry.campaignItemId === item.campaignItemId,
                   );
 
                   return (
                     <div
-                      key={item.id}
+                      key={`${item.source}-${item.id}`}
                       className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-white">
                           {item.name}
                         </p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+
+                        {item.shortDescription && (
+                          <p className="mt-1 text-sm text-zinc-400">
+                            {item.shortDescription}
+                          </p>
+                        )}
+
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
                           <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
-                            {item.category}
+                            {formatLabel(item.category)}
                           </span>
+
                           <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
                             {item.id}
                           </span>
+
+                          {item.source === "campaign" && (
+                            <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-violet-300">
+                              Campaign Item
+                            </span>
+                          )}
+
+                          {item.source === "campaign" && (
+                            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
+                              Base: {item.baseItemId}
+                            </span>
+                          )}
+
                           {item.stackable ? (
                             <span className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-2 py-1 text-emerald-300">
                               Stackable
@@ -262,7 +470,11 @@ const RewardItemsModal = ({
 
                       <button
                         type="button"
-                        onClick={() => addItem(item.id)}
+                        onClick={() =>
+                          item.source === "base"
+                            ? addBaseItem(item.id)
+                            : addCampaignItem(item.campaignItemId, item.baseItemId)
+                        }
                         className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
                       >
                         <span className="text-sm leading-none">+</span>
@@ -400,20 +612,53 @@ const RewardItemsModal = ({
                   ) : null}
 
                   {selectedItems.map((entry) => {
-                    const item = itemsById[entry.itemId];
+                    const baseItem =
+                      entry.source === "base"
+                        ? itemsById[entry.itemId]
+                        : itemsById[entry.baseItemId];
+
+                    const campaignItem =
+                      entry.source === "campaign"
+                        ? campaignItemsById[entry.campaignItemId]
+                        : null;
+
+                    const itemName =
+                      entry.source === "base"
+                        ? (baseItem?.name ?? entry.itemId)
+                        : ((campaignItem?.name ?? baseItem?.name) ?? entry.campaignItemId);
+
+                    const category =
+                      entry.source === "base"
+                        ? (baseItem?.category ?? "unknown")
+                        : (baseItem?.category ?? "unknown");
+
+                    const rowKey =
+                      entry.source === "base"
+                        ? `base-${entry.itemId}`
+                        : `campaign-${entry.campaignItemId}`;
 
                     return (
                       <div
-                        key={entry.itemId}
+                        key={rowKey}
                         className="grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:grid-cols-[1fr_110px_auto]"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-white">
-                            {item?.name ?? entry.itemId}
+                            {itemName}
                           </p>
+
                           <p className="mt-1 text-xs text-zinc-400">
-                            {item?.category ?? "unknown"} · {entry.itemId}
+                            {formatLabel(category)} ·{" "}
+                            {entry.source === "base"
+                              ? entry.itemId
+                              : entry.campaignItemId}
                           </p>
+
+                          {entry.source === "campaign" && (
+                            <p className="mt-1 text-xs text-violet-300">
+                              Campaign item · Base: {entry.baseItemId}
+                            </p>
+                          )}
                         </div>
 
                         <input
@@ -422,7 +667,15 @@ const RewardItemsModal = ({
                           value={entry.quantity}
                           onChange={(event) =>
                             updateItemQuantity(
-                              entry.itemId,
+                              entry.source === "base"
+                                ? {
+                                    source: "base",
+                                    itemId: entry.itemId,
+                                  }
+                                : {
+                                    source: "campaign",
+                                    campaignItemId: entry.campaignItemId,
+                                  },
                               Number(event.target.value),
                             )
                           }
@@ -431,7 +684,19 @@ const RewardItemsModal = ({
 
                         <button
                           type="button"
-                          onClick={() => removeItem(entry.itemId)}
+                          onClick={() =>
+                            removeItem(
+                              entry.source === "base"
+                                ? {
+                                    source: "base",
+                                    itemId: entry.itemId,
+                                  }
+                                : {
+                                    source: "campaign",
+                                    campaignItemId: entry.campaignItemId,
+                                  },
+                            )
+                          }
                           className="inline-flex items-center justify-center rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-3 text-sm text-red-200 transition hover:bg-red-500/20"
                         >
                           <span className="text-sm leading-none">✕</span>
