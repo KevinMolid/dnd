@@ -299,6 +299,8 @@ export const useCharacterSheetData = (
 
     const equippedArmorClass = getCharacterArmorClassFromEquipment({
       dexterityScore: finalAbilityScores.dex,
+      constitutionScore: finalAbilityScores.con,
+      classId: character.classId,
       equipment,
     });
 

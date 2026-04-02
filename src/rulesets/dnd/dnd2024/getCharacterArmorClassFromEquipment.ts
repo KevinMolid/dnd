@@ -8,12 +8,17 @@ const getRulesItemIdFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
 
 export const getCharacterArmorClassFromEquipment = ({
   dexterityScore,
+  constitutionScore,
+  classId,
   equipment,
 }: {
   dexterityScore: number;
+  constitutionScore?: number;
+  classId?: string | null;
   equipment: CharacterEquipmentEntry[];
 }): number => {
   const dexMod = getAbilityModifier(dexterityScore);
+  const conMod = getAbilityModifier(constitutionScore ?? 10);
 
   const equippedItems = equipment.filter(
     (entry) => (entry.equippedSlots?.length ?? 0) > 0,
@@ -29,9 +34,14 @@ export const getCharacterArmorClassFromEquipment = ({
     return !!item?.shield;
   });
 
+  const isBarbarian = classId === "barbarian";
+  const isUnarmored = !armorEntry;
+
   let ac = 10 + dexMod;
 
-  if (armorEntry) {
+  if (isBarbarian && isUnarmored) {
+    ac = 10 + dexMod + conMod;
+  } else if (armorEntry) {
     const armorItem = itemsById[getRulesItemIdFromEquipmentEntry(armorEntry)];
     const armor = armorItem?.armor;
 
