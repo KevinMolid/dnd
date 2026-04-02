@@ -3,6 +3,9 @@ import type { CharacterEquipmentEntry } from "./types";
 
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
 
+const getRulesItemIdFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
+  entry.source === "campaign" ? entry.baseItemId : entry.itemId;
+
 export const getCharacterArmorClassFromEquipment = ({
   dexterityScore,
   equipment,
@@ -17,19 +20,21 @@ export const getCharacterArmorClassFromEquipment = ({
   );
 
   const armorEntry = equippedItems.find((entry) => {
-    const item = itemsById[entry.itemId];
+    const item = itemsById[getRulesItemIdFromEquipmentEntry(entry)];
     return !!item?.armor;
   });
 
   const shieldEntries = equippedItems.filter((entry) => {
-    const item = itemsById[entry.itemId];
+    const item = itemsById[getRulesItemIdFromEquipmentEntry(entry)];
     return !!item?.shield;
   });
 
   let ac = 10 + dexMod;
 
   if (armorEntry) {
-    const armor = itemsById[armorEntry.itemId]?.armor;
+    const armorItem = itemsById[getRulesItemIdFromEquipmentEntry(armorEntry)];
+    const armor = armorItem?.armor;
+
     if (armor) {
       const dexContribution =
         armor.dexCap === undefined || armor.dexCap === null
@@ -38,13 +43,21 @@ export const getCharacterArmorClassFromEquipment = ({
 
       ac = armor.baseAc + dexContribution;
     }
+
+    ac += armorItem?.acBonus ?? 0;
+    ac += armorEntry.acBonus ?? 0;
   }
 
   for (const shieldEntry of shieldEntries) {
-    const shield = itemsById[shieldEntry.itemId]?.shield;
+    const shieldItem = itemsById[getRulesItemIdFromEquipmentEntry(shieldEntry)];
+    const shield = shieldItem?.shield;
+
     if (shield) {
       ac += shield.acBonus;
     }
+
+    ac += shieldItem?.acBonus ?? 0;
+    ac += shieldEntry.acBonus ?? 0;
   }
 
   return ac;

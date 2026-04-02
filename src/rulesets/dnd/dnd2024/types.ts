@@ -1034,6 +1034,7 @@ export type CharacterEquipmentEntry =
       wieldMode?: WieldMode;
       attackBonus?: number;
       damageBonus?: number;
+      acBonus?: number;
     }
   | {
       instanceId: string;
@@ -1048,6 +1049,7 @@ export type CharacterEquipmentEntry =
       wieldMode?: WieldMode;
       attackBonus?: number;
       damageBonus?: number;
+      acBonus?: number;
     };
 
 export type CampaignItemOverride = Partial<
