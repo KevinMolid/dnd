@@ -479,14 +479,8 @@ const CampaignJournalPage = () => {
               </h1>
 
               <p className="mt-3 text-sm leading-6 text-zinc-400 sm:text-base">
-                Keep track of sessions, lore, quests, and player-visible notes.
+                Keep track of sessions, lore, quests, and notes.
               </p>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300">
-              {isGm
-                ? "You can create, edit, publish, and control visibility."
-                : "You can read the entries that have been revealed to you."}
             </div>
           </div>
         </section>
