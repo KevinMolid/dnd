@@ -42,13 +42,21 @@ import QuickAdd from "../components/QuickAdd";
 const formatModifier = (value: number) =>
   value >= 0 ? `+${value}` : `${value}`;
 
+const characterHasAlertFeat = (character: CampaignCharacter) => {
+  if (character.originFeatId === "alert") return true;
+
+  const levelUpDecisions = character.choices?.levelUpDecisions ?? {};
+
+  return Object.values(levelUpDecisions).some(
+    (decision: any) => decision?.featId === "alert",
+  );
+};
+
 const getEncounterInitiativeBonus = (character: CampaignCharacter) => {
   const dex = character.abilityScores?.dex;
-  if (typeof dex === "number") {
-    return Math.floor((dex - 10) / 2);
-  }
+  const dexMod = typeof dex === "number" ? Math.floor((dex - 10) / 2) : 0;
 
-  return 0;
+  return dexMod + (characterHasAlertFeat(character) ? 5 : 0);
 };
 
 const getEncounterArmorClass = (character: CampaignCharacter) => {
@@ -1391,8 +1399,7 @@ const Encounter = () => {
               {encounter
                 .filter((entry) => entry.entityKind === "player")
                 .map((entry, index) => {
-                  const campaignCharacter =
-                    findCampaignCharacterForEntry(entry);
+                  const campaignCharacter = findCampaignCharacterForEntry(entry);
                   const initiativeBonus = campaignCharacter
                     ? getEncounterInitiativeBonus(campaignCharacter)
                     : (entry.playerSnapshot?.initiativeBonus ?? 0);

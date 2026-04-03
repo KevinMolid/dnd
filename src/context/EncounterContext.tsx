@@ -308,6 +308,11 @@ const getMonsterInitiativeBonus = (monster: MonsterDefinition) => {
   return Math.floor((monster.stats.dex - 10) / 2);
 };
 
+const getPlayerInitiativeBonus = (entry: EncounterEntry) => {
+  if (entry.entityKind !== "player") return 0;
+  return entry.playerSnapshot?.initiativeBonus ?? 0;
+};
+
 const buildMonsterEncounterEntry = (
   previousEncounter: EncounterEntry[],
   monster: MonsterDefinition,
@@ -539,11 +544,9 @@ export const EncounterProvider = ({
         const roll = Math.floor(Math.random() * 20) + 1;
 
         if (entry.entityKind === "player") {
-          const initiativeBonus = entry.playerSnapshot?.initiativeBonus ?? 0;
-
           return {
             ...entry,
-            initiative: roll + initiativeBonus,
+            initiative: roll + getPlayerInitiativeBonus(entry),
           };
         }
 
@@ -566,13 +569,12 @@ export const EncounterProvider = ({
       setEncounter((prev) =>
         prev.map((entry) => {
           if (entry.entityKind === "player") {
-            const initiativeBonus = entry.playerSnapshot?.initiativeBonus ?? 0;
             const manualRoll = playerRollsByEntryId[entry.id];
 
             if (typeof manualRoll === "number") {
               return {
                 ...entry,
-                initiative: manualRoll + initiativeBonus,
+                initiative: manualRoll + getPlayerInitiativeBonus(entry),
               };
             }
 

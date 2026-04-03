@@ -14,6 +14,7 @@ import {
 import { useAuth } from "../../../context/AuthContext";
 import { db } from "../../../firebase";
 import {
+  backgroundsById,
   classesById,
   speciesById,
 } from "../../../rulesets/dnd/dnd2024/helpers";
@@ -49,6 +50,8 @@ import type {
   LevelUpDecisionsByLevel,
   LevelUpDecision,
 } from "../../../rulesets/dnd/dnd2024/types";
+
+import { applyBackgroundBonuses } from "../../character-sheet/utils/characterSheetHelpers";
 
 import { itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
 
@@ -95,6 +98,8 @@ export type CharacterDoc = {
 
   classId: string;
   speciesId: string;
+  backgroundId?: string;
+  originFeatId?: string | null;
 
   abilityScores?: Record<string, number>;
 
@@ -168,6 +173,7 @@ export type CampaignCharacter = {
     toLevel: number;
   } | null;
   choices?: CharacterChoices;
+  originFeatId?: string | null;
   derived?: CharacterDoc["derived"];
   subclassId?: string | null;
 };
@@ -553,6 +559,23 @@ export const useCampaignPageData = (campaignId?: string) => {
               const hpData = getCharacterHp(data as never);
               const moneyCp = getCharacterMoneyCp(data);
 
+              const background = data.backgroundId
+                ? backgroundsById[data.backgroundId]
+                : undefined;
+
+              const finalAbilityScores = applyBackgroundBonuses(
+                data.abilityScores ?? {
+                  str: 10,
+                  dex: 10,
+                  con: 10,
+                  int: 10,
+                  wis: 10,
+                  cha: 10,
+                },
+                data.choices?.backgroundAbilityBonuses,
+                background?.abilityOptions ?? [],
+              );
+
               return {
                 id: characterSnap.id,
                 ownerUid: data.ownerUid ?? null,
@@ -579,9 +602,10 @@ export const useCampaignPageData = (campaignId?: string) => {
                 moneyCp,
                 equipment: data.equipment ?? [],
 
-                abilityScores: data.abilityScores,
+                abilityScores: finalAbilityScores,
                 pendingLevelUp: data.pendingLevelUp ?? null,
                 choices: data.choices ?? {},
+                originFeatId: data.originFeatId ?? null,
                 derived: data.derived ?? {},
                 subclassId: data.subclassId ?? null,
 
