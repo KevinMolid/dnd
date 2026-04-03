@@ -55,6 +55,8 @@ import { applyBackgroundBonuses } from "../../character-sheet/utils/characterShe
 
 import { itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
 
+import { addLogEntry } from "../utils/campaignLog";
+
 export type CampaignJournalPreview = {
   id: string;
   title: string;
@@ -948,9 +950,9 @@ export const useCampaignPageData = (campaignId?: string) => {
       if (rewardMoneyCp <= 0 && normalizedItems.length === 0) return;
 
       try {
-        await Promise.all(
+        const rewardResults = await Promise.all(
           characterIds.map(async (characterId) => {
-            await runTransaction(db, async (transaction) => {
+            return runTransaction(db, async (transaction) => {
               const characterRef = doc(db, "characters", characterId);
               const characterSnap = await transaction.get(characterRef);
 
@@ -965,9 +967,7 @@ export const useCampaignPageData = (campaignId?: string) => {
               }
 
               const currentMoneyCp = getCharacterMoneyCp(data);
-              const nextMoneyCp = normalizeCopper(
-                currentMoneyCp + rewardMoneyCp,
-              );
+              const nextMoneyCp = normalizeCopper(currentMoneyCp + rewardMoneyCp);
 
               const nextEquipment = mergeEquipmentItems(
                 data.equipment ?? [],
@@ -978,14 +978,104 @@ export const useCampaignPageData = (campaignId?: string) => {
                 moneyCp: nextMoneyCp,
                 equipment: nextEquipment,
               });
+
+              return {
+                characterId,
+                characterName: data.name,
+                previousMoneyCp: currentMoneyCp,
+                nextMoneyCp,
+                rewardedMoney: normalizedMoney,
+                rewardedMoneyCp: rewardMoneyCp,
+                rewardedItems: normalizedItems.map((item) =>
+                  item.source === "base"
+                    ? {
+                        source: "base" as const,
+                        itemId: item.itemId,
+                        quantity: item.quantity,
+                        displayName: getRewardItemDisplayName(item),
+                      }
+                    : {
+                        source: "campaign" as const,
+                        campaignItemId: item.campaignItemId,
+                        baseItemId: item.baseItemId,
+                        quantity: item.quantity,
+                        displayName: getRewardItemDisplayName(item),
+                      },
+                ),
+              };
             });
+          }),
+        );
+
+        await Promise.all(
+          rewardResults.flatMap((result) => {
+            const logPromises: Promise<void>[] = [];
+
+            if (result.rewardedMoneyCp > 0) {
+              logPromises.push(
+                addLogEntry({
+                  campaignId,
+                  type: "gold_received",
+                  createdByUid: user?.uid ?? null,
+                  characterId: result.characterId,
+                  characterName: result.characterName,
+                  payload: {
+                    cp: result.rewardedMoney.cp,
+                    sp: result.rewardedMoney.sp,
+                    gp: result.rewardedMoney.gp,
+                    amountCp: result.rewardedMoneyCp,
+                    previousMoneyCp: result.previousMoneyCp,
+                    nextMoneyCp: result.nextMoneyCp,
+                  },
+                }),
+              );
+            }
+
+            result.rewardedItems.forEach((item) => {
+              if (item.source === "base") {
+                logPromises.push(
+                  addLogEntry({
+                    campaignId,
+                    type: "item_received",
+                    createdByUid: user?.uid ?? null,
+                    characterId: result.characterId,
+                    characterName: result.characterName,
+                    payload: {
+                      source: "base",
+                      itemId: item.itemId,
+                      itemName: item.displayName,
+                      quantity: item.quantity,
+                    },
+                  }),
+                );
+              } else {
+                logPromises.push(
+                  addLogEntry({
+                    campaignId,
+                    type: "item_received",
+                    createdByUid: user?.uid ?? null,
+                    characterId: result.characterId,
+                    characterName: result.characterName,
+                    payload: {
+                      source: "campaign",
+                      campaignItemId: item.campaignItemId,
+                      baseItemId: item.baseItemId,
+                      itemName: item.displayName,
+                      quantity: item.quantity,
+                    },
+                  }),
+                );
+              }
+            });
+
+            return logPromises;
           }),
         );
       } catch (error) {
         console.error("Failed to reward characters:", error);
       }
     },
-    [campaignId, isGm],
+    [campaignId, isGm, user],
   );
 
   return {
