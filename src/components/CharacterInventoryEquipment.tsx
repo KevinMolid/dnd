@@ -311,9 +311,8 @@ const CharacterInventoryEquipment = ({
                             )}
                           </>
                         ) : (
-                          <span className="rounded-xl py-2 text-xs text-zinc-500">
-                            Not equippable
-                          </span>
+                          <>
+                          </>
                         )}
                       </div>
                     </div>
@@ -335,19 +334,19 @@ const CharacterInventoryEquipment = ({
 
           <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5">
             <div className="flex flex-wrap items-end gap-3 text-sm font-semibold text-white">
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1">
                 <span>{money.gp}</span>
-                <span className="h-3 w-3 rounded-full bg-yellow-400/90" />
+                <span className="text-yellow-400">GP</span>
               </span>
 
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1">
                 <span>{money.sp}</span>
-                <span className="h-3 w-3 rounded-full bg-zinc-300/90" />
+                <span className="text-zinc-300">SP</span>
               </span>
 
-              <span className="inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1">
                 <span>{money.cp}</span>
-                <span className="h-3 w-3 rounded-full bg-amber-600/90" />
+                <span className="text-amber-600">CP</span>
               </span>
             </div>
           </div>
