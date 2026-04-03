@@ -65,6 +65,7 @@ export type CharacterSheetDerived = {
   subclassName: string | null;
   proficiencyBonus: number;
   initiativeBonus: number;
+  initiativeBreakdown: string;
   passivePerception: number;
   armorClass: number;
   speed: number;

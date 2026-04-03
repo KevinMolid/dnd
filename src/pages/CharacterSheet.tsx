@@ -603,6 +603,7 @@ const CharacterSheet = () => {
           <StatCard
             label="Initiative"
             value={formatModifier(derived.initiativeBonus)}
+            subValue={derived.initiativeBreakdown}
           />
           <StatCard label="Speed" value={`${derived.speed} ft`} />
           <StatCard

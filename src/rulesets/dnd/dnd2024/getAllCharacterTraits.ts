@@ -32,6 +32,11 @@ type CharacterLike = Pick<
   }>;
 };
 
+type LevelUpDecisionLike = {
+  featId?: string;
+  subclassId?: string;
+};
+
 export function getAllCharacterTraits(character: CharacterLike): Trait[] {
   const allTraits: Trait[] = [];
 
@@ -112,14 +117,27 @@ export function getAllCharacterTraits(character: CharacterLike): Trait[] {
   return dedupeTraits(allTraits);
 }
 
+export function getCharacterTraitById(
+  character: CharacterLike,
+  traitId: string,
+): Trait | undefined {
+  return getAllCharacterTraits(character).find((trait) => trait.id === traitId);
+}
+
+export function characterHasTrait(
+  character: CharacterLike,
+  traitId: string,
+): boolean {
+  return getAllCharacterTraits(character).some((trait) => trait.id === traitId);
+}
+
 function getCharacterClassEntries(character: CharacterLike) {
   if (Array.isArray(character.classes) && character.classes.length > 0) {
     return character.classes;
   }
 
   const baseSubclassId =
-    character.choices?.subclassId ??
-    findFirstChosenSubclassId(character);
+    character.choices?.subclassId ?? findFirstChosenSubclassId(character);
 
   return [
     {
@@ -130,22 +148,25 @@ function getCharacterClassEntries(character: CharacterLike) {
   ];
 }
 
-function getLevelUpDecisions(character: CharacterLike) {
-  return character.choices?.levelUpDecisions ?? {};
+function getLevelUpDecisions(
+  character: CharacterLike,
+): Record<string, LevelUpDecisionLike> {
+  return (character.choices?.levelUpDecisions ??
+    {}) as Record<string, LevelUpDecisionLike>;
 }
 
 function getLevelUpFeatIds(character: CharacterLike): string[] {
   const decisions = getLevelUpDecisions(character);
 
   return Object.values(decisions)
-    .map((decision: any) => decision?.featId)
+    .map((decision) => decision?.featId)
     .filter((featId): featId is string => typeof featId === "string");
 }
 
 function findFirstChosenSubclassId(character: CharacterLike): string | null {
   const decisions = getLevelUpDecisions(character);
 
-  for (const decision of Object.values(decisions) as any[]) {
+  for (const decision of Object.values(decisions)) {
     if (typeof decision?.subclassId === "string") {
       return decision.subclassId;
     }
@@ -170,7 +191,7 @@ function getSubclassIdsForClassEntry(
   if (!character.classes || character.classes.length === 0) {
     const decisions = getLevelUpDecisions(character);
 
-    for (const decision of Object.values(decisions) as any[]) {
+    for (const decision of Object.values(decisions)) {
       if (typeof decision?.subclassId === "string") {
         subclassIds.add(decision.subclassId);
       }

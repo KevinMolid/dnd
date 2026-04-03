@@ -36,7 +36,10 @@ import {
 } from "../../../rulesets/dnd/dnd2024/data/spells/helpers";
 
 import { getCharacterHp } from "../../../rulesets/dnd/dnd2024/getCharacterHp";
-import { getAllCharacterTraits } from "../../../rulesets/dnd/dnd2024/getAllCharacterTraits";
+import {
+  getAllCharacterTraits,
+  characterHasTrait,
+} from "../../../rulesets/dnd/dnd2024/getAllCharacterTraits";
 import { getSpeciesTraits } from "../../../rulesets/dnd/dnd2024/getSpeciesTraits";
 import { getSpeciesGrantedFeatIds } from "../../../rulesets/dnd/dnd2024/getSpeciesGrantedFeatIds";
 import { getCharacterArmorClassFromEquipment } from "../../../rulesets/dnd/dnd2024/getCharacterArmorClassFromEquipment";
@@ -763,6 +766,14 @@ export const useCharacterSheetData = (
     );
 
     const allTraits = getAllCharacterTraits(character as any);
+    const hasAlert = characterHasTrait(character as any, "alert");
+    const alertInitiativeBonus = hasAlert ? 5 : 0;
+    const initiativeBonus = dexMod + alertInitiativeBonus;
+    const initiativeBreakdownParts = [
+      `${dexMod >= 0 ? `+${dexMod}` : dexMod} DEX`,
+      ...(alertInitiativeBonus > 0 ? [`+${alertInitiativeBonus} Alert`] : []),
+    ];
+    const initiativeBreakdown = `${initiativeBreakdownParts.join(" ")}`;
 
     const groupedTraitCandidates: TraitGroup[] = [
       {
@@ -836,7 +847,8 @@ export const useCharacterSheetData = (
         : null,
       subclassName: subclassDef?.name ?? null,
       proficiencyBonus,
-      initiativeBonus: dexMod,
+      initiativeBonus,
+      initiativeBreakdown,
       passivePerception:
         character.derived?.stats?.passivePerception ?? 10 + wisMod,
       armorClass: equippedArmorClass,
