@@ -82,6 +82,7 @@ import {
 } from "../utils/traitHelpers";
 
 import { getCombatFeatures } from "../utils/combatFeatureHelpers";
+import { getCharacterMoneyCp } from "../../../rulesets/dnd/dnd2024/money";
 
 export const useCharacterSheetData = (
   characterId?: string,
@@ -811,6 +812,8 @@ export const useCharacterSheetData = (
       (trait) => !groupedTraitIds.has(trait.id),
     );
 
+    const moneyCp = getCharacterMoneyCp(character);
+
     if (otherTraits.length > 0) {
       groupedTraits.push({
         key: "other",
@@ -895,6 +898,7 @@ export const useCharacterSheetData = (
         gp: character.money?.gp ?? 0,
         pp: character.money?.pp ?? 0,
       },
+      moneyCp,
       dragonbornAncestryId,
       dragonbornAncestryName: dragonbornAncestry?.name ?? null,
       dragonbornDamageType: dragonbornAncestry?.damageType ?? null,
