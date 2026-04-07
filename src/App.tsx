@@ -22,6 +22,8 @@ import CampaignMapsPage from "./pages/CampaignMapsPage";
 import CampaignJournalPage from "./pages/CampaignJournalPage";
 import HandoutsPage from "./pages/HandoutsPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
+import NPCsPage from "./pages/NPCsPage";
+import NpcDetailPage from "./pages/NpcDetailPage";
 
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
@@ -87,6 +89,12 @@ function App() {
           <Route
             path="/campaigns/:campaignId/handouts"
             element={<HandoutsPage />}
+          />
+          <Route path="/campaigns/:campaignId/npcs" element={<NPCsPage />} />
+
+          <Route
+            path="/campaigns/:campaignId/npcs/:npcId"
+            element={<NpcDetailPage />}
           />
         </Routes>
       </main>
