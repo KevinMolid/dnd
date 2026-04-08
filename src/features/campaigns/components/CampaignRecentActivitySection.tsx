@@ -26,7 +26,7 @@ const CampaignRecentActivitySection = ({
 
         <Link
           to={`/campaigns/${campaignId}/journal`}
-          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white"
+          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
         >
           Open journal
         </Link>

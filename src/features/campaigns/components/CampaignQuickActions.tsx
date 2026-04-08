@@ -15,10 +15,7 @@ type QuickActionCardProps = {
   children: ReactNode;
 };
 
-const QuickActionCard = ({
-  description,
-  children,
-}: QuickActionCardProps) => {
+const QuickActionCard = ({ description, children }: QuickActionCardProps) => {
   return (
     <div className="group relative min-w-0">
       {children}
@@ -31,7 +28,7 @@ const QuickActionCard = ({
 };
 
 const baseActionClassName =
-  "inline-flex min-w-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-zinc-900";
+  "shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600";
 
 const CampaignQuickActions = ({
   campaignId,
@@ -64,7 +61,7 @@ const CampaignQuickActions = ({
                 onClick={onRewardItems}
                 className={baseActionClassName}
               >
-                <i className="fa-solid fa-trophy mr-2"></i> Rewards
+                <i className="fa-solid fa-trophy"></i> Give items
               </button>
             </QuickActionCard>
 
@@ -77,7 +74,7 @@ const CampaignQuickActions = ({
                 onClick={onCreateCustomItem}
                 className={baseActionClassName}
               >
-                <i className="fa-solid fa-plus mr-2"></i> Custom item
+                <i className="fa-solid fa-plus"></i> Create item
               </button>
             </QuickActionCard>
           </>

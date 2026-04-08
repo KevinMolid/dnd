@@ -79,7 +79,7 @@ const CampaignMembersSection = ({
       {isGm && (
         <button
           onClick={onInvitePlayers}
-          className="mt-5 w-full rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+          className="mt-5 w-full rounded-2xl bg-cyan-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-600"
         >
           Invite players
         </button>

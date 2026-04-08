@@ -233,7 +233,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
               <button
                 type="button"
                 onClick={onOpenSignup}
-                className="rounded-xl bg-cyan-400 px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-cyan-300"
+                className="rounded-xl bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-600"
               >
                 Sign up
               </button>

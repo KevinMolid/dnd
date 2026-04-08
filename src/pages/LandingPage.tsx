@@ -67,7 +67,7 @@ function LandingPage({ onOpenLogin, onOpenSignup }: LandingPageProps) {
               <button
                 type="button"
                 onClick={onOpenSignup}
-                className="w-full rounded-2xl bg-cyan-400 px-6 py-3 text-base font-bold text-zinc-950 transition hover:bg-cyan-300 sm:w-auto"
+                className="w-full rounded-2xl bg-cyan-700 px-6 py-3 text-base font-bold text-white transition hover:bg-cyan-600 sm:w-auto"
               >
                 Start shaping your campaign
               </button>
@@ -90,7 +90,7 @@ function LandingPage({ onOpenLogin, onOpenSignup }: LandingPageProps) {
                 key={feature.title}
                 className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_40px_rgba(0,0,0,0.25)] backdrop-blur"
               >
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/15 text-cyan-300">
+                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-700/20 text-cyan-400">
                   {feature.icon}
                 </div>
 
@@ -139,7 +139,7 @@ function LandingPage({ onOpenLogin, onOpenSignup }: LandingPageProps) {
                       key={item}
                       className="flex items-start gap-3 rounded-2xl bg-white/5 p-3"
                     >
-                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-400 text-sm font-bold text-zinc-950">
+                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-700/50 text-sm font-bold text-cyan-400">
                         ✓
                       </span>
                       <span className="text-sm leading-6 text-zinc-200">
@@ -152,7 +152,7 @@ function LandingPage({ onOpenLogin, onOpenSignup }: LandingPageProps) {
                 <button
                   type="button"
                   onClick={onOpenSignup}
-                  className="mt-6 w-full rounded-2xl bg-cyan-400 px-5 py-3 text-sm font-bold text-zinc-950 transition hover:bg-cyan-500"
+                  className="mt-6 w-full rounded-2xl bg-cyan-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-cyan-600"
                 >
                   Create Free Account
                 </button>

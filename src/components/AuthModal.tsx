@@ -87,7 +87,7 @@ function AuthModal({
               onClick={() => onSwitchMode("login")}
               className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
                 mode === "login"
-                  ? "bg-white text-zinc-950"
+                  ? "bg-white/10 text-white"
                   : "text-zinc-300 hover:bg-white/5 hover:text-white"
               }`}
             >
@@ -99,7 +99,7 @@ function AuthModal({
               onClick={() => onSwitchMode("signup")}
               className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
                 mode === "signup"
-                  ? "bg-white text-zinc-950"
+                  ? "bg-white/10 text-white"
                   : "text-zinc-300 hover:bg-white/5 hover:text-white"
               }`}
             >

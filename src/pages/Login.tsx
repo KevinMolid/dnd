@@ -133,7 +133,7 @@ const Login = ({ mode = "login", onSuccess }: LoginProps) => {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-xl bg-cyan-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-cyan-600 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {submitting
             ? isRegister

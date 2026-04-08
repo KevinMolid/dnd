@@ -274,9 +274,9 @@ const Home = () => {
 
               <Link
                 to="/campaigns/new"
-                className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
               >
-                New campaign
+                <i className="fa-solid fa-plus"></i> Create campaign
               </Link>
             </div>
 
@@ -325,18 +325,18 @@ const Home = () => {
                       <div className="flex gap-2">
                         <Link
                           to={`/campaigns/${campaign.id}`}
-                          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
                         >
-                          Open
+                          Continue
                         </Link>
 
                         {(campaign.role === "gm" ||
                           campaign.role === "co-gm") && (
                           <Link
                             to={`/campaigns/${campaign.id}/settings`}
-                            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                            className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-400 transition hover:bg-white/10"
                           >
-                            Settings
+                            <i className="fa-solid fa-gear"></i>
                           </Link>
                         )}
                       </div>
@@ -360,9 +360,9 @@ const Home = () => {
 
               <Link
                 to="/characters/new"
-                className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
               >
-                New character
+                <i className="fa-solid fa-plus"></i> Create character
               </Link>
             </div>
 
@@ -415,27 +415,25 @@ const Home = () => {
                       <div className="flex flex-wrap gap-2">
                         <Link
                           to={`/characters/${character.id}`}
-                          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
                         >
                           Open
                         </Link>
 
                         <Link
                           to={`/characters/${character.id}/edit`}
-                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-400 transition hover:bg-white/10"
                         >
-                          Edit
+                          <i className="fa-solid fa-pen-to-square"></i>
                         </Link>
 
                         <button
                           type="button"
                           onClick={() => handleDeleteCharacter(character)}
                           disabled={deletingCharacterId === character.id}
-                          className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                          className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-zinc-400 transition hover:bg-white/10"
                         >
-                          {deletingCharacterId === character.id
-                            ? "Deleting..."
-                            : "Delete"}
+                          <i className="fa-solid fa-trash"></i>
                         </button>
                       </div>
                     </div>
@@ -453,7 +451,7 @@ const Home = () => {
           onClick={() => setDeleteBlockedCharacter(null)}
         >
           <div
-            className="w-full max-w-md rounded-3xl border border-yellow-500/20 bg-zinc-950 p-6 shadow-2xl"
+            className="w-full max-w-md rounded-3xl border border-white/20 bg-zinc-900 p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4">
@@ -479,7 +477,7 @@ const Home = () => {
               <button
                 type="button"
                 onClick={() => setDeleteBlockedCharacter(null)}
-                className="rounded-2xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
               >
                 Close
               </button>
