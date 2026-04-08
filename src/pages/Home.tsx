@@ -80,7 +80,7 @@ const getRoleBadgeClass = (role: CampaignRole) => {
 };
 
 const Home = () => {
-  const { appUser, user } = useAuth();
+  const { user } = useAuth();
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [campaignsLoading, setCampaignsLoading] = useState(true);
@@ -260,35 +260,6 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">
-        <section className="mb-8 rounded-3xl border border-green-200/15 bg-gradient-to-br from-green-600/15 to-white/3 p-6 shadow-2xl sm:mb-10 sm:p-8">
-          <div className="max-w-3xl">
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
-              Welcome{appUser?.displayName ? `, ${appUser.displayName}` : ""}
-            </h1>
-
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-green-100/80 sm:text-base">
-              Build campaigns, manage characters, and give players access only
-              to what they should see.
-            </p>
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <Link
-                to="/campaigns/new"
-                className="rounded-2xl bg-white px-5 py-3 text-center text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Start new campaign
-              </Link>
-
-              <Link
-                to="/characters/new"
-                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Create character
-              </Link>
-            </div>
-          </div>
-        </section>
-
         <div className="grid gap-6 lg:grid-cols-2">
           <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
             <div className="mb-5 flex items-start justify-between gap-4">
