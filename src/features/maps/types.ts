@@ -15,6 +15,10 @@ export type CampaignMapRoom = {
   id: number;
   name: string;
   markers: { x: number; y: number }[];
+  pin?: {
+  x: number;
+  y: number;
+};
   readAloud?: string;
   description?: string[];
   developments?: string[];

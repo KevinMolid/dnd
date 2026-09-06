@@ -52,31 +52,21 @@ const CampaignQuickActions = ({
       <div className="flex flex-wrap gap-2">
         {isGm ? (
           <>
-            <QuickActionCard
-              title="Rewards"
-              description="Search for items and award players with items or gold."
+            <button
+              type="button"
+              onClick={onRewardItems}
+              className={baseActionClassName}
             >
-              <button
-                type="button"
-                onClick={onRewardItems}
-                className={baseActionClassName}
-              >
-                <i className="fa-solid fa-trophy"></i> Give items
-              </button>
-            </QuickActionCard>
+              <i className="fa-solid fa-trophy"></i> Award items
+            </button>
 
-            <QuickActionCard
-              title="Custom item"
-              description="Choose a base item and create a campaign-specific version with custom flavor text."
+            <button
+              type="button"
+              onClick={onCreateCustomItem}
+              className={baseActionClassName}
             >
-              <button
-                type="button"
-                onClick={onCreateCustomItem}
-                className={baseActionClassName}
-              >
-                <i className="fa-solid fa-plus"></i> Create item
-              </button>
-            </QuickActionCard>
+              <i className="fa-solid fa-plus"></i> Create item
+            </button>
           </>
         ) : (
           <>

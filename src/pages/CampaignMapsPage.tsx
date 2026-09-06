@@ -94,9 +94,9 @@ const CampaignMapsPage = () => {
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(true)}
-                className="rounded-2xl bg-white px-5 py-3 text-center text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
               >
-                New map
+                <i className="fa-solid fa-plus"></i> Add map
               </button>
             </div>
           </div>
@@ -112,14 +112,6 @@ const CampaignMapsPage = () => {
                 Select a map to open it, or edit its rooms, notes, and markers.
               </p>
             </div>
-
-            <button
-              type="button"
-              onClick={() => setIsCreateModalOpen(true)}
-              className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-            >
-              Add map
-            </button>
           </div>
 
           {loading ? (
@@ -180,7 +172,7 @@ const CampaignMapsPage = () => {
                       <button
                         type="button"
                         onClick={() => setSelectedMapId(map.id)}
-                        className="flex-1 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                        className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
                       >
                         Open
                       </button>
@@ -188,7 +180,7 @@ const CampaignMapsPage = () => {
                       <button
                         type="button"
                         onClick={() => setEditingMapId(map.id)}
-                        className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                        className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
                       >
                         Edit
                       </button>
@@ -227,7 +219,6 @@ const CampaignMapsPage = () => {
           onClose={() => setIsCreateModalOpen(false)}
           onCreate={handleCreateMap}
           defaultImageUrl={DEFAULT_IMAGE_URL}
-          defaultOrder={maps.length}
         />
       )}
     </div>
