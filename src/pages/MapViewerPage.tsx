@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import MapViewer from "../components/MapViewer";
+import MapEditorModal from "../components/MapEditorModal";
 import { useCampaignMaps } from "../features/maps/useCampaignMaps";
 
 const MapViewerPage = () => {
@@ -11,6 +13,15 @@ const MapViewerPage = () => {
   const navigate = useNavigate();
 
   const { maps, loading } = useCampaignMaps(campaignId ?? null);
+
+  /*
+   * undefined = editor closed
+   * null      = editor open on Overview
+   * number    = editor open on that area
+   */
+  const [editingRoomId, setEditingRoomId] = useState<number | null | undefined>(
+    undefined,
+  );
 
   if (!campaignId || !mapId) {
     return (
@@ -55,16 +66,28 @@ const MapViewerPage = () => {
   }
 
   return (
-    <MapViewer
-      campaignId={campaignId}
-      map={map}
-      onClose={() => navigate(`/campaigns/${campaignId}/maps`)}
-      players={[]}
-      onGiveItemToPlayer={() => {}}
-      onGiveItemToParty={() => {}}
-      onGiveMoneyToPlayer={() => {}}
-      onGiveMoneyToParty={() => {}}
-    />
+    <>
+      <MapViewer
+        campaignId={campaignId}
+        map={map}
+        onClose={() => navigate(`/campaigns/${campaignId}/maps`)}
+        onEdit={(roomId) => setEditingRoomId(roomId)}
+        players={[]}
+        onGiveItemToPlayer={() => {}}
+        onGiveItemToParty={() => {}}
+        onGiveMoneyToPlayer={() => {}}
+        onGiveMoneyToParty={() => {}}
+      />
+
+      {editingRoomId !== undefined && (
+        <MapEditorModal
+          campaignId={campaignId}
+          map={map}
+          initialSelectedRoomId={editingRoomId}
+          onClose={() => setEditingRoomId(undefined)}
+        />
+      )}
+    </>
   );
 };
 

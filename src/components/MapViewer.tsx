@@ -21,6 +21,7 @@ type MapViewerProps = {
   campaignId: string;
   map: CampaignMap | null;
   onClose: () => void;
+  onEdit: (roomId: number | null) => void;
   players: PlayerCharacter[];
   onGiveItemToPlayer: (itemId: string, playerName: string) => void;
   onGiveItemToParty: (itemId: string) => void;
@@ -239,6 +240,7 @@ const MapViewer = ({
   campaignId,
   map,
   onClose,
+  onEdit,
   players,
   onGiveItemToPlayer,
   onGiveItemToParty,
@@ -1054,6 +1056,15 @@ const MapViewer = ({
                 <i className="fa-solid fa-map" />
                 Overview
               </button>
+
+              <button
+                type="button"
+                onClick={() => onEdit(selectedRoomId)}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+              >
+                <i className="fa-solid fa-pen" />
+                Edit
+              </button>
             </div>
 
             <div className="space-y-5">
@@ -1342,7 +1353,7 @@ const MapViewer = ({
                         Read aloud
                       </div>
 
-                      <p className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-3 text-sm leading-6 text-yellow-50">
+                      <p className="whitespace-pre-wrap rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-3 text-sm leading-6 text-yellow-50">
                         {mapData.readAloud}
                       </p>
                     </section>
@@ -1437,7 +1448,7 @@ const MapViewer = ({
                         Read aloud
                       </div>
 
-                      <p className="rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-3 text-sm leading-6 text-yellow-50">
+                      <p className="whitespace-pre-wrap rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-3 text-sm leading-6 text-yellow-50">
                         {selectedRoom.readAloud}
                       </p>
                     </section>

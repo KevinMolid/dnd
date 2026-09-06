@@ -14,6 +14,7 @@ type Props = {
   campaignId: string;
   map: CampaignMap;
   onClose: () => void;
+  initialSelectedRoomId?: number | null;
 };
 
 type MapPoint = {
@@ -223,10 +224,23 @@ const textAreaClass =
 
 const labelClass = "mb-2 block text-sm font-medium text-white/85";
 
-const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
+const MapEditorModal = ({
+  campaignId,
+  map,
+  onClose,
+  initialSelectedRoomId = null,
+}: Props) => {
   const [title, setTitle] = useState(map.title);
 
   const [imageUrl, setImageUrl] = useState(map.imageUrl);
+
+  const [overviewDescriptionText, setOverviewDescriptionText] = useState(
+    toMultilineText(map.generalDescription),
+  );
+
+  const [overviewReadAloud, setOverviewReadAloud] = useState(
+    map.readAloud ?? "",
+  );
 
   const [environmentEffects, setEnvironmentEffects] = useState<
     EnvironmentEffect[]
@@ -237,7 +251,11 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
   );
 
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(
-    map.rooms[0]?.id ?? null,
+    initialSelectedRoomId,
+  );
+
+  const [expandedEffectIds, setExpandedEffectIds] = useState<Set<string>>(
+    new Set(),
   );
 
   const [isSaving, setIsSaving] = useState(false);
@@ -249,17 +267,25 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
   useEffect(() => {
     setTitle(map.title);
     setImageUrl(map.imageUrl);
+    setOverviewDescriptionText(toMultilineText(map.generalDescription));
+    setOverviewReadAloud(map.readAloud ?? "");
 
     setEnvironmentEffects(map.environmentEffects ?? []);
+    setExpandedEffectIds(new Set());
 
     const nextRooms = map.rooms.map(roomToEditable).sort((a, b) => a.id - b.id);
 
     setRooms(nextRooms);
 
-    setSelectedRoomId(nextRooms[0]?.id ?? null);
+    setSelectedRoomId(
+      initialSelectedRoomId !== null &&
+        nextRooms.some((room) => room.id === initialSelectedRoomId)
+        ? initialSelectedRoomId
+        : null,
+    );
 
     setError(null);
-  }, [map]);
+  }, [map, initialSelectedRoomId]);
 
   const selectedRoom = useMemo(
     () => rooms.find((room) => room.id === selectedRoomId) ?? null,
@@ -298,10 +324,31 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
    */
 
   const addEnvironmentEffect = () => {
-    setEnvironmentEffects((prev) => [
-      ...prev,
-      createDefaultEffect(prev.map((effect) => effect.id)),
-    ]);
+    setEnvironmentEffects((prev) => {
+      const newEffect = createDefaultEffect(prev.map((effect) => effect.id));
+
+      setExpandedEffectIds((expanded) => {
+        const next = new Set(expanded);
+        next.add(newEffect.id);
+        return next;
+      });
+
+      return [...prev, newEffect];
+    });
+  };
+
+  const toggleEnvironmentEffect = (effectId: string) => {
+    setExpandedEffectIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(effectId)) {
+        next.delete(effectId);
+      } else {
+        next.add(effectId);
+      }
+
+      return next;
+    });
   };
 
   const updateEnvironmentEffect = (
@@ -342,6 +389,12 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
     setEnvironmentEffects((prev) =>
       prev.filter((effect) => effect.id !== effectId),
     );
+
+    setExpandedEffectIds((prev) => {
+      const next = new Set(prev);
+      next.delete(effectId);
+      return next;
+    });
   };
 
   const addEnvironmentLevel = (effectId: string) => {
@@ -720,6 +773,10 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
         rooms: normalizedRooms,
 
         environmentEffects,
+
+        generalDescription: parseStringLines(overviewDescriptionText),
+
+        readAloud: overviewReadAloud.trim(),
       });
 
       onClose();
@@ -866,222 +923,263 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
                     dynamic system such as fog, corruption, weather, or danger.
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {environmentEffects.map((effect) => (
-                      <div
-                        key={effect.id}
-                        className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                      >
-                        <div className="mb-4 flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <label className={labelClass}>Effect name</label>
+                  <div className="space-y-2">
+                    {environmentEffects.map((effect) => {
+                      const isExpanded = expandedEffectIds.has(effect.id);
 
-                            <input
-                              value={effect.name}
-                              onChange={(e) =>
-                                renameEnvironmentEffect(
-                                  effect.id,
-                                  e.target.value,
-                                )
-                              }
-                              className={inputClass}
-                              placeholder="Fog"
-                            />
-
-                            <div className="mt-1 text-xs text-white/40">
-                              ID: {effect.id}
-                            </div>
-                          </div>
-
+                      return (
+                        <div
+                          key={effect.id}
+                          className="overflow-hidden rounded-2xl border border-white/10 bg-white/5"
+                        >
                           <button
                             type="button"
-                            onClick={() => deleteEnvironmentEffect(effect.id)}
-                            className="mt-7 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
-                            title="Delete environment effect"
+                            onClick={() => toggleEnvironmentEffect(effect.id)}
+                            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5"
                           >
-                            <i className="fa-solid fa-trash" />
+                            <span className="truncate text-sm font-semibold text-white">
+                              {effect.name || "Untitled environment"}
+                            </span>
+
+                            <i
+                              className={`fa-solid fa-chevron-down shrink-0 text-xs text-white/40 transition-transform ${
+                                isExpanded ? "rotate-180" : ""
+                              }`}
+                            />
                           </button>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className={labelClass}>Die sides</label>
+                          {isExpanded && (
+                            <div className="border-t border-white/10 p-4">
+                              <div className="mb-4 flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <label className={labelClass}>
+                                    Effect name
+                                  </label>
 
-                            <input
-                              type="number"
-                              min={2}
-                              value={effect.diceSides}
-                              onChange={(e) =>
-                                updateEnvironmentEffect(effect.id, {
-                                  diceSides: Math.max(
-                                    2,
-                                    Number(e.target.value) || 2,
-                                  ),
-                                })
-                              }
-                              className={inputClass}
-                            />
-                          </div>
+                                  <input
+                                    value={effect.name}
+                                    onChange={(e) =>
+                                      renameEnvironmentEffect(
+                                        effect.id,
+                                        e.target.value,
+                                      )
+                                    }
+                                    className={inputClass}
+                                    placeholder="Fog"
+                                  />
 
-                          <div>
-                            <label className={labelClass}>
-                              Max change / roll
-                            </label>
+                                  <div className="mt-1 text-xs text-white/40">
+                                    ID: {effect.id}
+                                  </div>
+                                </div>
 
-                            <input
-                              type="number"
-                              min={0}
-                              value={effect.maxChangePerRoll}
-                              onChange={(e) =>
-                                updateEnvironmentEffect(effect.id, {
-                                  maxChangePerRoll: Math.max(
-                                    0,
-                                    Number(e.target.value) || 0,
-                                  ),
-                                })
-                              }
-                              className={inputClass}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mt-4">
-                          <div className="mb-2 flex items-center justify-between gap-2">
-                            <div>
-                              <div className="text-sm font-medium text-white/85">
-                                Levels and roll ranges
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    deleteEnvironmentEffect(effect.id)
+                                  }
+                                  className="mt-7 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+                                  title="Delete environment effect"
+                                >
+                                  <i className="fa-solid fa-trash" />
+                                </button>
                               </div>
 
-                              <div className="text-xs text-white/45">
-                                Each level gets a target range on the d
-                                {effect.diceSides}.
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className={labelClass}>
+                                    Die sides
+                                  </label>
+
+                                  <input
+                                    type="number"
+                                    min={2}
+                                    value={effect.diceSides}
+                                    onChange={(e) =>
+                                      updateEnvironmentEffect(effect.id, {
+                                        diceSides: Math.max(
+                                          2,
+                                          Number(e.target.value) || 2,
+                                        ),
+                                      })
+                                    }
+                                    className={inputClass}
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className={labelClass}>
+                                    Max change / roll
+                                  </label>
+
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={effect.maxChangePerRoll}
+                                    onChange={(e) =>
+                                      updateEnvironmentEffect(effect.id, {
+                                        maxChangePerRoll: Math.max(
+                                          0,
+                                          Number(e.target.value) || 0,
+                                        ),
+                                      })
+                                    }
+                                    className={inputClass}
+                                  />
+                                </div>
                               </div>
-                            </div>
 
-                            <button
-                              type="button"
-                              onClick={() => addEnvironmentLevel(effect.id)}
-                              className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
-                            >
-                              <i className="fa-solid fa-plus" /> Level
-                            </button>
-                          </div>
-
-                          <div className="space-y-2">
-                            {effect.levels
-                              .slice()
-                              .sort((a, b) => a.value - b.value)
-                              .map((level) => {
-                                const range = effect.rollRanges.find(
-                                  (item) => item.targetLevel === level.value,
-                                );
-
-                                return (
-                                  <div
-                                    key={level.value}
-                                    className="rounded-xl border border-white/10 bg-zinc-950/50 p-3"
-                                  >
-                                    <div className="mb-2 flex items-center justify-between gap-2">
-                                      <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                                        Level {level.value}
-                                      </div>
-
-                                      <button
-                                        type="button"
-                                        disabled={effect.levels.length <= 1}
-                                        onClick={() =>
-                                          removeEnvironmentLevel(
-                                            effect.id,
-                                            level.value,
-                                          )
-                                        }
-                                        className="rounded-md px-2 py-1 text-xs text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-30"
-                                      >
-                                        Remove
-                                      </button>
+                              <div className="mt-4">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                  <div>
+                                    <div className="text-sm font-medium text-white/85">
+                                      Levels and roll ranges
                                     </div>
 
-                                    <input
-                                      value={level.name}
-                                      onChange={(e) =>
-                                        updateEnvironmentLevel(
-                                          effect.id,
-                                          level.value,
-                                          {
-                                            name: e.target.value,
-                                          },
-                                        )
-                                      }
-                                      className={inputClass}
-                                      placeholder={`Level ${level.value}`}
-                                    />
-
-                                    <div className="mt-2 grid grid-cols-2 gap-2">
-                                      <div>
-                                        <label className="mb-1 block text-xs text-white/50">
-                                          Roll min
-                                        </label>
-
-                                        <input
-                                          type="number"
-                                          min={1}
-                                          max={effect.diceSides}
-                                          value={range?.min ?? 1}
-                                          onChange={(e) =>
-                                            updateRollRange(
-                                              effect.id,
-                                              level.value,
-                                              {
-                                                min: Math.max(
-                                                  1,
-                                                  Math.min(
-                                                    effect.diceSides,
-                                                    Number(e.target.value) || 1,
-                                                  ),
-                                                ),
-                                              },
-                                            )
-                                          }
-                                          className={inputClass}
-                                        />
-                                      </div>
-
-                                      <div>
-                                        <label className="mb-1 block text-xs text-white/50">
-                                          Roll max
-                                        </label>
-
-                                        <input
-                                          type="number"
-                                          min={1}
-                                          max={effect.diceSides}
-                                          value={range?.max ?? effect.diceSides}
-                                          onChange={(e) =>
-                                            updateRollRange(
-                                              effect.id,
-                                              level.value,
-                                              {
-                                                max: Math.max(
-                                                  1,
-                                                  Math.min(
-                                                    effect.diceSides,
-                                                    Number(e.target.value) || 1,
-                                                  ),
-                                                ),
-                                              },
-                                            )
-                                          }
-                                          className={inputClass}
-                                        />
-                                      </div>
+                                    <div className="text-xs text-white/45">
+                                      Each level gets a target range on the d
+                                      {effect.diceSides}.
                                     </div>
                                   </div>
-                                );
-                              })}
-                          </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      addEnvironmentLevel(effect.id)
+                                    }
+                                    className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
+                                  >
+                                    <i className="fa-solid fa-plus" /> Level
+                                  </button>
+                                </div>
+
+                                <div className="space-y-2">
+                                  {effect.levels
+                                    .slice()
+                                    .sort((a, b) => a.value - b.value)
+                                    .map((level) => {
+                                      const range = effect.rollRanges.find(
+                                        (item) =>
+                                          item.targetLevel === level.value,
+                                      );
+
+                                      return (
+                                        <div
+                                          key={level.value}
+                                          className="rounded-xl border border-white/10 bg-zinc-950/50 p-3"
+                                        >
+                                          <div className="mb-2 flex items-center justify-between gap-2">
+                                            <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                                              Level {level.value}
+                                            </div>
+
+                                            <button
+                                              type="button"
+                                              disabled={
+                                                effect.levels.length <= 1
+                                              }
+                                              onClick={() =>
+                                                removeEnvironmentLevel(
+                                                  effect.id,
+                                                  level.value,
+                                                )
+                                              }
+                                              className="rounded-md px-2 py-1 text-xs text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-30"
+                                            >
+                                              Remove
+                                            </button>
+                                          </div>
+
+                                          <input
+                                            value={level.name}
+                                            onChange={(e) =>
+                                              updateEnvironmentLevel(
+                                                effect.id,
+                                                level.value,
+                                                {
+                                                  name: e.target.value,
+                                                },
+                                              )
+                                            }
+                                            className={inputClass}
+                                            placeholder={`Level ${level.value}`}
+                                          />
+
+                                          <div className="mt-2 grid grid-cols-2 gap-2">
+                                            <div>
+                                              <label className="mb-1 block text-xs text-white/50">
+                                                Roll min
+                                              </label>
+
+                                              <input
+                                                type="number"
+                                                min={1}
+                                                max={effect.diceSides}
+                                                value={range?.min ?? 1}
+                                                onChange={(e) =>
+                                                  updateRollRange(
+                                                    effect.id,
+                                                    level.value,
+                                                    {
+                                                      min: Math.max(
+                                                        1,
+                                                        Math.min(
+                                                          effect.diceSides,
+                                                          Number(
+                                                            e.target.value,
+                                                          ) || 1,
+                                                        ),
+                                                      ),
+                                                    },
+                                                  )
+                                                }
+                                                className={inputClass}
+                                              />
+                                            </div>
+
+                                            <div>
+                                              <label className="mb-1 block text-xs text-white/50">
+                                                Roll max
+                                              </label>
+
+                                              <input
+                                                type="number"
+                                                min={1}
+                                                max={effect.diceSides}
+                                                value={
+                                                  range?.max ?? effect.diceSides
+                                                }
+                                                onChange={(e) =>
+                                                  updateRollRange(
+                                                    effect.id,
+                                                    level.value,
+                                                    {
+                                                      max: Math.max(
+                                                        1,
+                                                        Math.min(
+                                                          effect.diceSides,
+                                                          Number(
+                                                            e.target.value,
+                                                          ) || 1,
+                                                        ),
+                                                      ),
+                                                    },
+                                                  )
+                                                }
+                                                className={inputClass}
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </section>
@@ -1103,6 +1201,24 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
                 </div>
 
                 <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRoomId(null)}
+                    className={`w-full rounded-2xl border p-3 text-left transition ${
+                      selectedRoomId === null
+                        ? "border-white/25 bg-white/10"
+                        : "border-white/10 bg-white/5 hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="text-sm font-semibold text-white">
+                      Overview
+                    </div>
+
+                    <div className="mt-1 text-xs text-white/55">
+                      General map description and read-aloud text
+                    </div>
+                  </button>
+
                   {rooms.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-white/55">
                       No areas yet.
@@ -1144,7 +1260,9 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
           <section className="min-h-0 overflow-auto border-b border-white/10 bg-zinc-900 xl:border-b-0 xl:border-r">
             {imageUrl ? (
               <div
-                className="relative w-full cursor-crosshair bg-black"
+                className={`relative w-full bg-black ${
+                  selectedRoom ? "cursor-crosshair" : "cursor-default"
+                }`}
                 onClick={handleMapClick}
               >
                 <img
@@ -1284,8 +1402,52 @@ const MapEditorModal = ({ campaignId, map, onClose }: Props) => {
           {/* Right sidebar */}
           <aside className="min-h-0 overflow-auto bg-zinc-950 p-4">
             {!selectedRoom ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-5 text-sm text-white/55">
-                Select an area to edit it.
+              <div className="space-y-5">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                    Overview
+                  </div>
+
+                  <h3 className="mt-1 text-lg font-bold text-white">
+                    General map information
+                  </h3>
+
+                  <p className="mt-1 text-sm text-white/55">
+                    Edit information shown when no specific area is selected.
+                    While Overview is selected, clicking the map will not add
+                    polygon points.
+                  </p>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Read aloud</label>
+
+                  <textarea
+                    value={overviewReadAloud}
+                    onChange={(e) => setOverviewReadAloud(e.target.value)}
+                    className={textAreaClass}
+                    placeholder="Optional text to read when introducing the map..."
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass}>
+                    General description (one paragraph per line)
+                  </label>
+
+                  <textarea
+                    value={overviewDescriptionText}
+                    onChange={(e) => setOverviewDescriptionText(e.target.value)}
+                    className={textAreaClass}
+                    placeholder="General notes or description for the whole map..."
+                  />
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white/60">
+                  Select an area from the left sidebar or click one of its
+                  numbered pins on the map to edit that area. Select Overview
+                  again to return here.
+                </div>
               </div>
             ) : (
               <div className="space-y-5">
