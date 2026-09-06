@@ -21,6 +21,7 @@ import CampaignMembersPage from "./pages/CampaignMembersPage";
 import CampaignCharactersPage from "./pages/CampaignCharactersPage";
 import CampaignSettingsPage from "./pages/CampaignSettingsPage";
 import CampaignMapsPage from "./pages/CampaignMapsPage";
+import MapViewerPage from "./pages/MapViewerPage";
 import CampaignJournalPage from "./pages/CampaignJournalPage";
 import HandoutsPage from "./pages/HandoutsPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
@@ -117,6 +118,10 @@ function App() {
               <Route
                 path="/campaigns/:campaignId/maps"
                 element={<CampaignMapsPage />}
+              />
+              <Route
+                path="/campaigns/:campaignId/maps/:mapId"
+                element={<MapViewerPage />}
               />
               <Route
                 path="/campaigns/:campaignId/journal"

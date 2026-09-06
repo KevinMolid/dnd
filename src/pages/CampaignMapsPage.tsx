@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import MapViewer from "../components/MapViewer";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import MapEditorModal from "../components/MapEditorModal";
 import CreateMapModal from "./CreateMapModal";
 import { useAuth } from "../context/AuthContext";
@@ -12,29 +11,33 @@ const DEFAULT_IMAGE_URL =
   "https://i.etsystatic.com/18388031/r/il/056bd0/6063210018/il_1080xN.6063210018_a4k1.jpg";
 
 const CampaignMapsPage = () => {
-  const { campaignId } = useParams<{ campaignId: string }>();
+  const { campaignId } = useParams<{
+    campaignId: string;
+  }>();
+
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const { maps, loading } = useCampaignMaps(campaignId ?? null);
 
-  const [selectedMapId, setSelectedMapId] = useState<string | null>(null);
   const [editingMapId, setEditingMapId] = useState<string | null>(null);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const selectedMap = useMemo(
-    () => maps.find((map) => map.id === selectedMapId) ?? null,
-    [maps, selectedMapId],
-  );
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const editingMap = useMemo(
     () => maps.find((map) => map.id === editingMapId) ?? null,
     [maps, editingMapId],
   );
 
+  const openMap = (mapId: string) => {
+    if (!campaignId) return;
+
+    navigate(`/campaigns/${campaignId}/maps/${mapId}`);
+  };
+
   const handleCreateMap = async (values: {
     title: string;
     imageUrl: string;
-    order?: number;
   }) => {
     if (!campaignId || !user) {
       throw new Error("Missing campaign or user.");
@@ -45,7 +48,7 @@ const CampaignMapsPage = () => {
       createdByUid: user.uid,
       title: values.title,
       imageUrl: values.imageUrl,
-      order: values.order ?? maps.length,
+      order: maps.length,
     });
   };
 
@@ -85,8 +88,8 @@ const CampaignMapsPage = () => {
               </h1>
 
               <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
-                Open maps in viewer mode, edit rooms and markers, or create new
-                maps for this campaign.
+                Open maps in viewer mode, edit areas and environment settings,
+                or create new maps for this campaign.
               </p>
             </div>
 
@@ -96,7 +99,7 @@ const CampaignMapsPage = () => {
                 onClick={() => setIsCreateModalOpen(true)}
                 className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
               >
-                <i className="fa-solid fa-plus"></i> Add map
+                <i className="fa-solid fa-plus" /> Add map
               </button>
             </div>
           </div>
@@ -110,7 +113,8 @@ const CampaignMapsPage = () => {
               </h2>
 
               <p className="mt-1 text-sm text-zinc-400">
-                Select a map to open it, or edit its rooms, notes, and markers.
+                Select a map to open it, or edit its areas, notes, and
+                environment settings.
               </p>
             </div>
           </div>
@@ -124,7 +128,7 @@ const CampaignMapsPage = () => {
               <p className="text-sm text-zinc-300">No maps yet.</p>
 
               <p className="mt-2 text-sm text-zinc-500">
-                Create your first map to start adding rooms and markers.
+                Create your first map to start adding areas.
               </p>
             </div>
           ) : (
@@ -136,7 +140,7 @@ const CampaignMapsPage = () => {
                 >
                   <button
                     type="button"
-                    onClick={() => setSelectedMapId(map.id)}
+                    onClick={() => openMap(map.id)}
                     className="block w-full cursor-pointer overflow-hidden bg-black text-left"
                     title={`Open ${map.title}`}
                   >
@@ -151,24 +155,14 @@ const CampaignMapsPage = () => {
                   </button>
 
                   <div className="space-y-3 p-4">
-                    <div className="flex justify-between">
-                      <div className="flex justify-between gap-2">
-                        <div className="text-base font-semibold text-white">
-                          {map.title}
-                        </div>
-
-                        <div className="mt-1 text-sm text-white/55">
-                          {map.rooms?.length ?? 0} areas
-                        </div>
+                    <div>
+                      <div className="text-base font-semibold text-white">
+                        {map.title}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setEditingMapId(map.id)}
-                        className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-                      >
-                        Edit
-                      </button>
+                      <div className="mt-1 text-sm text-white/55">
+                        {map.rooms?.length ?? 0} areas
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -187,6 +181,24 @@ const CampaignMapsPage = () => {
                         </span>
                       )}
                     </div>
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => openMap(map.id)}
+                        className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
+                      >
+                        Open
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditingMapId(map.id)}
+                        className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -194,19 +206,6 @@ const CampaignMapsPage = () => {
           )}
         </section>
       </div>
-
-      {selectedMap && (
-        <MapViewer
-          campaignId={campaignId}
-          map={selectedMap}
-          onClose={() => setSelectedMapId(null)}
-          players={[]}
-          onGiveItemToPlayer={() => {}}
-          onGiveItemToParty={() => {}}
-          onGiveMoneyToPlayer={() => {}}
-          onGiveMoneyToParty={() => {}}
-        />
-      )}
 
       {editingMap && (
         <MapEditorModal
