@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 
+import CustomCharacterSheet from "./CustomCharacterSheet";
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
 import SpellTooltip from "../components/SpellTooltip";
 
@@ -19,9 +20,7 @@ import TraitGroupSection from "../features/character-sheet/components/TraitGroup
 import OverviewTab from "../features/character-sheet/tabs/OverviewTab";
 import CombatTab from "../features/character-sheet/tabs/CombatTab";
 
-import {
-  abilityFullLabels,
-} from "../features/character-sheet/utils/characterSheetConstants";
+import { abilityFullLabels } from "../features/character-sheet/utils/characterSheetConstants";
 import {
   formatModifier,
   formatSpellUsage,
@@ -78,7 +77,7 @@ const CharacterSheet = () => {
     );
   }
 
-  if (error || !character || !derived) {
+  if (error || !character) {
     return (
       <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-100">
         <div className="mx-auto max-w-7xl">
@@ -92,6 +91,31 @@ const CharacterSheet = () => {
           >
             Back home
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (character.buildMode === "custom") {
+    return (
+      <CustomCharacterSheet
+        characterId={characterId}
+        character={character as any}
+        backTo={backTo}
+        backLabel={backLabel}
+        campaignItemsById={campaignItemsById}
+        handleEquipmentChange={handleEquipmentChange}
+      />
+    );
+  }
+
+  if (!derived) {
+    return (
+      <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-100">
+        <div className="mx-auto max-w-7xl">
+          <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-300">
+            Could not derive character data.
+          </div>
         </div>
       </div>
     );

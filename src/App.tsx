@@ -12,7 +12,7 @@ import Encounter from "./pages/Encounter";
 import Quests from "./pages/Quests";
 import Login from "./pages/Login";
 import LandingPage from "./pages/LandingPage";
-import NewCharacter from "./pages/NewCharacter";
+import NewCharacter from "./pages/NewCharacter.tsx";
 import CharacterSheet from "./pages/CharacterSheet";
 import NewCampaign from "./pages/NewCampaign";
 import CampaignPage from "./pages/CampaignPage";

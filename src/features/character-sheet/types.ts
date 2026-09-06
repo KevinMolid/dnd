@@ -10,7 +10,32 @@ import type {
 import type { CharacterSheetData } from "../../rulesets/dnd/dnd2024/types";
 import type { CharacterEquipmentEntry } from "../../rulesets/dnd/dnd2024/types";
 
+export type CharacterBuildMode = "guided-dnd-2024" | "custom";
+
+export type CustomCharacterTrait = {
+  id: string;
+  name: string;
+  source?: string;
+  description?: string;
+};
+
+export type CustomCharacterStats = {
+  armorClass?: number;
+  currentHp?: number;
+  maxHp?: number;
+  speed?: number;
+  proficiencyBonus?: number;
+};
+
 export type CharacterDoc = CharacterSheetData & {
+  buildMode?: CharacterBuildMode;
+
+  className?: string;
+  speciesName?: string;
+  backgroundName?: string;
+
+  customStats?: CustomCharacterStats;
+  customTraits?: CustomCharacterTrait[];
   maxHp?: number;
   currentHp?: number;
   armorClass?: number;

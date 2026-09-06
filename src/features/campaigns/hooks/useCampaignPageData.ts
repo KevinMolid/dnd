@@ -87,7 +87,33 @@ type LegacyCharacterMoney = {
   pp?: number;
 };
 
+export type CharacterBuildMode = "guided-dnd-2024" | "custom";
+
+export type CustomCharacterTrait = {
+  id: string;
+  name: string;
+  source?: string;
+  description?: string;
+};
+
+export type CustomCharacterStats = {
+  armorClass?: number;
+  currentHp?: number;
+  maxHp?: number;
+  speed?: number;
+  proficiencyBonus?: number;
+};
+
 export type CharacterDoc = {
+
+  buildMode?: CharacterBuildMode;
+
+  className?: string;
+  speciesName?: string;
+  backgroundName?: string;
+
+  customStats?: CustomCharacterStats;
+  customTraits?: CustomCharacterTrait[];
   ownerUid: string | null;
   createdByUid: string | null;
   campaignId: string | null;
