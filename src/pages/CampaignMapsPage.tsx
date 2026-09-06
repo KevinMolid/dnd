@@ -108,6 +108,7 @@ const CampaignMapsPage = () => {
               <h2 className="text-xl font-semibold text-white sm:text-2xl">
                 Maps
               </h2>
+
               <p className="mt-1 text-sm text-zinc-400">
                 Select a map to open it, or edit its rooms, notes, and markers.
               </p>
@@ -121,6 +122,7 @@ const CampaignMapsPage = () => {
           ) : maps.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
               <p className="text-sm text-zinc-300">No maps yet.</p>
+
               <p className="mt-2 text-sm text-zinc-500">
                 Create your first map to start adding rooms and markers.
               </p>
@@ -132,23 +134,41 @@ const CampaignMapsPage = () => {
                   key={map.id}
                   className="group overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 text-left transition hover:border-white/20 hover:bg-zinc-800"
                 >
-                  <div className="aspect-[16/10] overflow-hidden bg-black">
-                    <img
-                      src={map.imageUrl}
-                      alt={map.title}
-                      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-                      draggable={false}
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMapId(map.id)}
+                    className="block w-full cursor-pointer overflow-hidden bg-black text-left"
+                    title={`Open ${map.title}`}
+                  >
+                    <div className="aspect-[16/10] overflow-hidden">
+                      <img
+                        src={map.imageUrl}
+                        alt={map.title}
+                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                        draggable={false}
+                      />
+                    </div>
+                  </button>
 
                   <div className="space-y-3 p-4">
-                    <div>
-                      <div className="text-base font-semibold text-white">
-                        {map.title}
+                    <div className="flex justify-between">
+                      <div className="flex justify-between gap-2">
+                        <div className="text-base font-semibold text-white">
+                          {map.title}
+                        </div>
+
+                        <div className="mt-1 text-sm text-white/55">
+                          {map.rooms?.length ?? 0} areas
+                        </div>
                       </div>
-                      <div className="mt-1 text-sm text-white/55">
-                        {map.rooms?.length ?? 0} areas
-                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditingMapId(map.id)}
+                        className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                      >
+                        Edit
+                      </button>
                     </div>
 
                     <div className="flex flex-wrap gap-2">
@@ -166,24 +186,6 @@ const CampaignMapsPage = () => {
                           +{(map.rooms?.length ?? 0) - 4} more
                         </span>
                       )}
-                    </div>
-
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedMapId(map.id)}
-                        className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
-                      >
-                        Open
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setEditingMapId(map.id)}
-                        className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-                      >
-                        Edit
-                      </button>
                     </div>
                   </div>
                 </div>
