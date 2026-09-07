@@ -17,27 +17,48 @@ import { useAuth } from "../context/AuthContext";
 type CampaignNpc = {
   id: string;
   campaignId?: string;
+
+  // Identity
   name: string;
   species?: string;
+  occupation?: string;
   role?: string;
   imageUrl?: string;
-
   imageCropX?: number;
   imageCropY?: number;
 
+  // Public
   publicDescription?: string;
-  physicalDescription?: string;
-  alignment?: string;
 
+  // Roleplay
   personality?: string[];
   voice?: string;
-  quirks?: string[];
+  mannerisms?: string[];
 
-  motivation?: string;
-  goals?: string[];
+  // Drive
+  wants?: string;
+  fears?: string;
 
-  secret?: string;
-  truth?: string;
+  // Knowledge
+  knows?: string[];
+  doesntKnow?: string[];
+
+  // Deception
+  claims?: string[];
+  secretTruth?: string;
+
+  // Reactions
+  reactions?: string[];
+
+  // Gameplay
+  location?: string;
+  relationships?: string[];
+  clues?: string[];
+  statBlock?: string;
+  itemsLoot?: string[];
+
+  // GM
+  quickReference?: string;
   notes?: string;
 
   createdByUid?: string;
@@ -46,44 +67,68 @@ type CampaignNpc = {
 type NpcFormState = {
   name: string;
   species: string;
+  occupation: string;
   role: string;
   imageUrl: string;
 
   publicDescription: string;
-  physicalDescription: string;
-  alignment: string;
 
   personality: string;
   voice: string;
-  quirks: string;
+  mannerisms: string;
 
-  motivation: string;
-  goals: string;
+  wants: string;
+  fears: string;
 
-  secret: string;
-  truth: string;
+  knows: string;
+  doesntKnow: string;
+
+  claims: string;
+  secretTruth: string;
+
+  reactions: string;
+
+  location: string;
+  relationships: string;
+  clues: string;
+  statBlock: string;
+  itemsLoot: string;
+
+  quickReference: string;
   notes: string;
 };
 
 const createEmptyNpcForm = (): NpcFormState => ({
   name: "",
   species: "",
+  occupation: "",
   role: "",
   imageUrl: "",
 
   publicDescription: "",
-  physicalDescription: "",
-  alignment: "",
 
   personality: "",
   voice: "",
-  quirks: "",
+  mannerisms: "",
 
-  motivation: "",
-  goals: "",
+  wants: "",
+  fears: "",
 
-  secret: "",
-  truth: "",
+  knows: "",
+  doesntKnow: "",
+
+  claims: "",
+  secretTruth: "",
+
+  reactions: "",
+
+  location: "",
+  relationships: "",
+  clues: "",
+  statBlock: "",
+  itemsLoot: "",
+
+  quickReference: "",
   notes: "",
 });
 
@@ -92,6 +137,38 @@ const parseList = (value: string): string[] =>
     .split(/\n|,/g)
     .map((part) => part.trim())
     .filter(Boolean);
+
+const inputClass =
+  "rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
+
+const textAreaClass =
+  "rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
+
+const Section = ({
+  title,
+  children,
+  tone = "default",
+}: {
+  title: string;
+  children: React.ReactNode;
+  tone?: "default" | "amber" | "violet";
+}) => {
+  const toneClass =
+    tone === "amber"
+      ? "border-amber-500/20 bg-amber-500/5"
+      : tone === "violet"
+        ? "border-violet-500/20 bg-violet-500/5"
+        : "border-white/10 bg-black/10";
+
+  return (
+    <div className={`rounded-2xl border p-4 ${toneClass}`}>
+      <h3 className="mb-4 text-base font-semibold uppercase tracking-wide text-white">
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+};
 
 export default function NPCsPage() {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -113,6 +190,7 @@ export default function NPCsPage() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const next: CampaignNpc[] = snapshot.docs.map((docSnap) => {
         const data = docSnap.data() as Omit<CampaignNpc, "id">;
+
         return {
           id: docSnap.id,
           ...data,
@@ -137,13 +215,17 @@ export default function NPCsPage() {
   );
 
   const updateField = (key: keyof NpcFormState, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
   };
 
   const handleCreateNpc = async () => {
     if (!campaignId || !user) return;
 
     const trimmedName = form.name.trim();
+
     if (!trimmedName) {
       setError("Name is required.");
       return;
@@ -155,27 +237,48 @@ export default function NPCsPage() {
     try {
       await addDoc(collection(db, "campaigns", campaignId, "npcs"), {
         campaignId,
+
+        // Identity
         name: trimmedName,
         species: form.species.trim(),
+        occupation: form.occupation.trim(),
         role: form.role.trim(),
         imageUrl: form.imageUrl.trim(),
-
         imageCropX: 50,
         imageCropY: 50,
 
+        // Public
         publicDescription: form.publicDescription.trim(),
-        physicalDescription: form.physicalDescription.trim(),
-        alignment: form.alignment.trim(),
 
+        // Roleplay
         personality: parseList(form.personality),
         voice: form.voice.trim(),
-        quirks: parseList(form.quirks),
+        mannerisms: parseList(form.mannerisms),
 
-        motivation: form.motivation.trim(),
-        goals: parseList(form.goals),
+        // Drive
+        wants: form.wants.trim(),
+        fears: form.fears.trim(),
 
-        secret: form.secret.trim(),
-        truth: form.truth.trim(),
+        // Knowledge
+        knows: parseList(form.knows),
+        doesntKnow: parseList(form.doesntKnow),
+
+        // Deception
+        claims: parseList(form.claims),
+        secretTruth: form.secretTruth.trim(),
+
+        // Reactions
+        reactions: parseList(form.reactions),
+
+        // Gameplay
+        location: form.location.trim(),
+        relationships: parseList(form.relationships),
+        clues: parseList(form.clues),
+        statBlock: form.statBlock.trim(),
+        itemsLoot: parseList(form.itemsLoot),
+
+        // GM
+        quickReference: form.quickReference.trim(),
         notes: form.notes.trim(),
 
         createdAt: serverTimestamp(),
@@ -205,7 +308,9 @@ export default function NPCsPage() {
               ← Back to campaign
             </Link>
           </div>
+
           <H1>NPCs</H1>
+
           <p className="mt-2 text-sm text-zinc-400">
             Create and manage non-player characters for this campaign.
           </p>
@@ -226,17 +331,14 @@ export default function NPCsPage() {
       {showCreateForm && (
         <section className="mb-6 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
           <h2 className="mb-2 text-lg font-semibold text-white">New NPC</h2>
+
           <p className="mb-5 text-sm text-zinc-400">
-            Focus on the traits that make the NPC easy to run at the table: who
-            they are, how they feel, what they want, and what they hide.
+            Occupation / Title and Public Description are safe for players. Role
+            and everything below Public are GM information.
           </p>
 
           <div className="space-y-6">
-            <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-              <h3 className="mb-4 text-base font-semibold text-white">
-                Identity
-              </h3>
-
+            <Section title="Identity">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="flex flex-col gap-2">
                   <span className="text-sm font-medium text-zinc-300">
@@ -245,8 +347,8 @@ export default function NPCsPage() {
                   <input
                     value={form.name}
                     onChange={(e) => updateField("name", e.target.value)}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="Isolde Marr"
+                    className={inputClass}
+                    placeholder="Elias"
                   />
                 </label>
 
@@ -257,8 +359,20 @@ export default function NPCsPage() {
                   <input
                     value={form.species}
                     onChange={(e) => updateField("species", e.target.value)}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
+                    className={inputClass}
                     placeholder="Human"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Occupation / Title
+                  </span>
+                  <input
+                    value={form.occupation}
+                    onChange={(e) => updateField("occupation", e.target.value)}
+                    className={inputClass}
+                    placeholder="Wanderer, innkeeper, priest..."
                   />
                 </label>
 
@@ -269,21 +383,10 @@ export default function NPCsPage() {
                   <input
                     value={form.role}
                     onChange={(e) => updateField("role", e.target.value)}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="Innkeeper"
+                    className={inputClass}
+                    placeholder="Main antagonist / false ally"
                   />
-                </label>
-
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Alignment
-                  </span>
-                  <input
-                    value={form.alignment}
-                    onChange={(e) => updateField("alignment", e.target.value)}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="Neutral Good"
-                  />
+                  <span className="text-xs text-zinc-500">GM-only.</span>
                 </label>
 
                 <label className="flex flex-col gap-2 md:col-span-2">
@@ -293,56 +396,31 @@ export default function NPCsPage() {
                   <input
                     value={form.imageUrl}
                     onChange={(e) => updateField("imageUrl", e.target.value)}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
+                    className={inputClass}
                     placeholder="https://..."
                   />
                 </label>
               </div>
-            </div>
+            </Section>
 
-            <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-              <h3 className="mb-4 text-base font-semibold text-white">
-                Public / player-facing
-              </h3>
+            <Section title="Public">
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Description
+                </span>
+                <textarea
+                  value={form.publicDescription}
+                  onChange={(e) =>
+                    updateField("publicDescription", e.target.value)
+                  }
+                  rows={5}
+                  className={textAreaClass}
+                  placeholder="What the players can safely see, hear, or know..."
+                />
+              </label>
+            </Section>
 
-              <div className="grid gap-4">
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Public description
-                  </span>
-                  <textarea
-                    value={form.publicDescription}
-                    onChange={(e) =>
-                      updateField("publicDescription", e.target.value)
-                    }
-                    rows={3}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="What the players immediately see or can easily learn..."
-                  />
-                </label>
-
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Physical characterization
-                  </span>
-                  <textarea
-                    value={form.physicalDescription}
-                    onChange={(e) =>
-                      updateField("physicalDescription", e.target.value)
-                    }
-                    rows={3}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="Tall, tired eyes, stained gloves, always smells faintly of smoke..."
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-              <h3 className="mb-4 text-base font-semibold text-white">
-                Roleplay core
-              </h3>
-
+            <Section title="Roleplay">
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="flex flex-col gap-2 md:col-span-2">
                   <span className="text-sm font-medium text-zinc-300">
@@ -351,9 +429,9 @@ export default function NPCsPage() {
                   <textarea
                     value={form.personality}
                     onChange={(e) => updateField("personality", e.target.value)}
-                    rows={3}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder={`nervous\npolite\nevasive`}
+                    rows={4}
+                    className={textAreaClass}
+                    placeholder={`Warm\nHumble\nPatient`}
                   />
                   <span className="text-xs text-zinc-500">
                     One per line. Commas also work.
@@ -367,113 +445,228 @@ export default function NPCsPage() {
                   <textarea
                     value={form.voice}
                     onChange={(e) => updateField("voice", e.target.value)}
-                    rows={3}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="Quiet, hesitant, avoids eye contact, speaks in short sentences..."
-                  />
-                </label>
-
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Quirks
-                  </span>
-                  <textarea
-                    value={form.quirks}
-                    onChange={(e) => updateField("quirks", e.target.value)}
-                    rows={3}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder={`fidgets with ring\nrepeats questions\nnever says names first`}
-                  />
-                  <span className="text-xs text-zinc-500">
-                    One per line. Commas also work.
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-              <h3 className="mb-4 text-base font-semibold text-white">
-                Motivation and goals
-              </h3>
-
-              <div className="grid gap-4">
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Motivation
-                  </span>
-                  <textarea
-                    value={form.motivation}
-                    onChange={(e) => updateField("motivation", e.target.value)}
-                    rows={3}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="Protect her son at all costs. Keep suspicion away from the cellar."
-                  />
-                </label>
-
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Goals
-                  </span>
-                  <textarea
-                    value={form.goals}
-                    onChange={(e) => updateField("goals", e.target.value)}
-                    rows={3}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder={`keep the inn running\navoid the hunter\nhide the body`}
-                  />
-                  <span className="text-xs text-zinc-500">
-                    One per line. Commas also work.
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-              <h3 className="mb-4 text-base font-semibold text-white">
-                Hidden truth
-              </h3>
-
-              <div className="grid gap-4">
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Secret
-                  </span>
-                  <textarea
-                    value={form.secret}
-                    onChange={(e) => updateField("secret", e.target.value)}
-                    rows={3}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="She knows exactly what happened that night, but will deny it."
-                  />
-                </label>
-
-                <label className="flex flex-col gap-2">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Truth
-                  </span>
-                  <textarea
-                    value={form.truth}
-                    onChange={(e) => updateField("truth", e.target.value)}
                     rows={4}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="What is actually going on with this NPC beneath the surface?"
+                    className={textAreaClass}
+                    placeholder="Soft voice. Listens before answering."
                   />
                 </label>
 
                 <label className="flex flex-col gap-2">
                   <span className="text-sm font-medium text-zinc-300">
-                    GM notes
+                    Mannerisms
+                  </span>
+                  <textarea
+                    value={form.mannerisms}
+                    onChange={(e) => updateField("mannerisms", e.target.value)}
+                    rows={4}
+                    className={textAreaClass}
+                    placeholder={`Holds eye contact too long\nSmiles after difficult questions`}
+                  />
+                </label>
+              </div>
+            </Section>
+
+            <Section title="Drive">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Wants
+                  </span>
+                  <textarea
+                    value={form.wants}
+                    onChange={(e) => updateField("wants", e.target.value)}
+                    rows={4}
+                    className={textAreaClass}
+                    placeholder="Get the players to collect the artifacts."
+                  />
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Fears
+                  </span>
+                  <textarea
+                    value={form.fears}
+                    onChange={(e) => updateField("fears", e.target.value)}
+                    rows={4}
+                    className={textAreaClass}
+                    placeholder="That they discover the truth about the mark / well."
+                  />
+                </label>
+              </div>
+            </Section>
+
+            <Section title="Knowledge">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Knows
+                  </span>
+                  <textarea
+                    value={form.knows}
+                    onChange={(e) => updateField("knows", e.target.value)}
+                    rows={5}
+                    className={textAreaClass}
+                  />
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Doesn&apos;t Know
+                  </span>
+                  <textarea
+                    value={form.doesntKnow}
+                    onChange={(e) => updateField("doesntKnow", e.target.value)}
+                    rows={5}
+                    className={textAreaClass}
+                  />
+                </label>
+              </div>
+            </Section>
+
+            <Section title="Deception" tone="amber">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Claims
+                  </span>
+                  <textarea
+                    value={form.claims}
+                    onChange={(e) => updateField("claims", e.target.value)}
+                    rows={5}
+                    className={textAreaClass}
+                    placeholder={`Silas is a tyrant\nThe White Gate kills anyone who enters`}
+                  />
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Secret / Truth
+                  </span>
+                  <textarea
+                    value={form.secretTruth}
+                    onChange={(e) => updateField("secretTruth", e.target.value)}
+                    rows={5}
+                    className={textAreaClass}
+                    placeholder="The artifacts will free him."
+                  />
+                </label>
+              </div>
+            </Section>
+
+            <Section title="Reactions">
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-zinc-300">
+                  Triggers / Reactions
+                </span>
+                <textarea
+                  value={form.reactions}
+                  onChange={(e) => updateField("reactions", e.target.value)}
+                  rows={6}
+                  className={textAreaClass}
+                  placeholder={`If Silas is mentioned, becomes tense\nIf challenged, acts hurt rather than angry`}
+                />
+              </label>
+            </Section>
+
+            <Section title="Gameplay">
+              <div className="space-y-4">
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Location
+                  </span>
+                  <input
+                    value={form.location}
+                    onChange={(e) => updateField("location", e.target.value)}
+                    className={inputClass}
+                    placeholder="Inn, village, Black Tower..."
+                  />
+                </label>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-zinc-300">
+                      Relationships
+                    </span>
+                    <textarea
+                      value={form.relationships}
+                      onChange={(e) =>
+                        updateField("relationships", e.target.value)
+                      }
+                      rows={5}
+                      className={textAreaClass}
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-zinc-300">
+                      Clues
+                    </span>
+                    <textarea
+                      value={form.clues}
+                      onChange={(e) => updateField("clues", e.target.value)}
+                      rows={5}
+                      className={textAreaClass}
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-zinc-300">
+                      Stat Block
+                    </span>
+                    <textarea
+                      value={form.statBlock}
+                      onChange={(e) => updateField("statBlock", e.target.value)}
+                      rows={5}
+                      className={textAreaClass}
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm font-medium text-zinc-300">
+                      Items / Loot
+                    </span>
+                    <textarea
+                      value={form.itemsLoot}
+                      onChange={(e) => updateField("itemsLoot", e.target.value)}
+                      rows={5}
+                      className={textAreaClass}
+                      placeholder="Optional"
+                    />
+                  </label>
+                </div>
+              </div>
+            </Section>
+
+            <Section title="GM" tone="violet">
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Quick Reference
+                  </span>
+                  <textarea
+                    value={form.quickReference}
+                    onChange={(e) =>
+                      updateField("quickReference", e.target.value)
+                    }
+                    rows={6}
+                    className={textAreaClass}
+                  />
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Notes
                   </span>
                   <textarea
                     value={form.notes}
                     onChange={(e) => updateField("notes", e.target.value)}
-                    rows={5}
-                    className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500"
-                    placeholder="Extra prep notes, scene ideas, reveals, encounter use, relationships..."
+                    rows={6}
+                    className={textAreaClass}
                   />
                 </label>
               </div>
-            </div>
+            </Section>
           </div>
 
           {error ? <p className="mt-4 text-sm text-rose-400">{error}</p> : null}
@@ -535,50 +728,50 @@ export default function NPCsPage() {
                 ) : null}
 
                 <div className="p-4">
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="text-lg font-semibold text-white">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <h2 className="truncate text-lg font-semibold text-white">
                         {npc.name || "Unnamed NPC"}
                       </h2>
-                      <p className="text-sm text-zinc-400">
-                        {[npc.species, npc.role].filter(Boolean).join(" • ") ||
-                          "—"}
+
+                      <p className="mt-1 truncate text-sm italic text-zinc-400">
+                        {[npc.species, npc.occupation]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
                       </p>
                     </div>
                   </div>
 
-                  {npc.personality && npc.personality.length > 0 ? (
-                    <p className="mb-2 text-sm text-zinc-300">
-                      <span className="font-medium text-zinc-200">
-                        Personality:
-                      </span>{" "}
-                      {npc.personality.join(", ")}
-                    </p>
-                  ) : null}
+                  <div className="mt-4 space-y-2 text-sm leading-5">
+                    {npc.role ? (
+                      <p className="text-zinc-300">
+                        <span className="font-semibold text-white">Role:</span>{" "}
+                        {npc.role}
+                      </p>
+                    ) : null}
 
-                  {npc.motivation ? (
-                    <p className="mb-2 text-sm leading-6 text-zinc-300">
-                      <span className="font-medium text-zinc-200">
-                        Motivation:
-                      </span>{" "}
-                      {npc.motivation}
-                    </p>
-                  ) : npc.publicDescription ? (
-                    <p className="mb-2 text-sm leading-6 text-zinc-300">
-                      {npc.publicDescription}
-                    </p>
-                  ) : (
-                    <p className="mb-2 text-sm italic text-zinc-500">
-                      No summary yet.
-                    </p>
-                  )}
+                    {npc.personality && npc.personality.length > 0 ? (
+                      <p className="text-zinc-300">
+                        <span className="font-semibold text-white">
+                          🎭 Play:
+                        </span>{" "}
+                        {npc.personality.slice(0, 3).join(" · ")}
+                      </p>
+                    ) : null}
 
-                  {npc.voice ? (
-                    <p className="text-xs text-zinc-500">
-                      <span className="font-medium text-zinc-400">Voice:</span>{" "}
-                      {npc.voice}
-                    </p>
-                  ) : null}
+                    {npc.wants ? (
+                      <p className="line-clamp-2 text-zinc-300">
+                        <span className="font-semibold text-white">
+                          🎯 Wants:
+                        </span>{" "}
+                        {npc.wants}
+                      </p>
+                    ) : npc.quickReference ? (
+                      <p className="line-clamp-2 whitespace-pre-wrap text-zinc-400">
+                        {npc.quickReference}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               </Link>
             ))}
