@@ -27,6 +27,7 @@ import HandoutsPage from "./pages/HandoutsPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 import NPCsPage from "./pages/NPCsPage";
 import NpcDetailPage from "./pages/NpcDetailPage";
+import MonstersPage from "./pages/MonstersPage";
 import EditCharacter from "./pages/editCharacter";
 
 import { useMemo, useState } from "react";
@@ -142,6 +143,11 @@ function App() {
               <Route
                 path="/campaigns/:campaignId/npcs/:npcId"
                 element={<NpcDetailPage />}
+              />
+
+              <Route
+                path="/campaigns/:campaignId/monsters"
+                element={<MonstersPage />}
               />
             </Routes>
           )}

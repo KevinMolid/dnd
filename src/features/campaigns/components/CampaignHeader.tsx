@@ -174,6 +174,15 @@ const CampaignHeader = ({
                   >
                     NPCs
                   </NavLink>
+
+                  <NavLink
+                    to={`/campaigns/${campaign.id}/monsters`}
+                    className={({ isActive }) =>
+                      `${tabBaseClass} ${isActive ? tabActiveClass : tabInactiveClass}`
+                    }
+                  >
+                    Monsters
+                  </NavLink>
                 </>
               )}
             </div>
