@@ -60,3 +60,174 @@ html {
 .workspace-scrollbar:hover::-webkit-scrollbar-thumb {
   background: rgba(161, 161, 170, 0.55);
 }
+
+/* -------------------------------------------------------
+   Workspace notes / Tiptap
+------------------------------------------------------- */
+
+.workspace-note-editor {
+  min-height: 100%;
+  padding: 0.75rem;
+  outline: none;
+  color: rgb(228 228 231);
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.workspace-note-editor p {
+  margin: 0 0 0.5rem;
+}
+
+.workspace-note-editor p:last-child {
+  margin-bottom: 0;
+}
+
+.workspace-note-editor strong {
+  font-weight: 700;
+  color: rgb(250 250 250);
+}
+
+.workspace-note-editor em {
+  font-style: italic;
+}
+
+.workspace-note-editor u {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* -------------------------------------------------------
+   Entity mentions
+------------------------------------------------------- */
+
+.entity-mention {
+  display: inline;
+  border-radius: 0.3rem;
+  padding: 0.05rem 0.3rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.entity-mention--player {
+  background: rgba(16, 185, 129, 0.12);
+  color: rgb(110 231 183);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+}
+
+.entity-mention--monster {
+  background: rgba(245, 158, 11, 0.12);
+  color: rgb(252 211 77);
+  border: 1px solid rgba(245, 158, 11, 0.18);
+  cursor: pointer;
+}
+
+.entity-mention--monster:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.entity-mention--npc {
+  background: rgba(168, 85, 247, 0.12);
+  color: rgb(216 180 254);
+  border: 1px solid rgba(168, 85, 247, 0.18);
+}
+
+/* -------------------------------------------------------
+   Entity autocomplete popup
+------------------------------------------------------- */
+
+.entity-suggestion-popup {
+  z-index: 9999;
+  width: min(320px, calc(100vw - 24px));
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  background: rgb(24 24 27);
+  padding: 0.25rem;
+  box-shadow:
+    0 20px 25px -5px rgba(0, 0, 0, 0.4),
+    0 8px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+.entity-suggestion-item {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  padding: 0.5rem;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+}
+
+.entity-suggestion-item:hover,
+.entity-suggestion-item[data-selected="true"] {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.entity-suggestion-badge {
+  display: flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.entity-suggestion-badge--player {
+  background: rgba(16, 185, 129, 0.14);
+  color: rgb(110 231 183);
+}
+
+.entity-suggestion-badge--monster {
+  background: rgba(245, 158, 11, 0.14);
+  color: rgb(252 211 77);
+}
+
+.entity-suggestion-badge--npc {
+  background: rgba(168, 85, 247, 0.14);
+  color: rgb(216 180 254);
+}
+
+.entity-suggestion-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.entity-suggestion-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgb(244 244 245);
+}
+
+.entity-suggestion-meta {
+  margin-top: 0.1rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.625rem;
+  color: rgb(113 113 122);
+}
+
+.entity-suggestion-empty {
+  padding: 0.75rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgb(113 113 122);
+}

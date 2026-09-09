@@ -9,24 +9,17 @@ export type MonsterModuleMode =
   | "follow";
 
 export type WorkspaceModuleConfig = {
-  /**
-   * Used by Monster modules in pinned mode.
-   *
-   * Example:
-   * default:shadow
-   * campaign:abc123
+  /*
+   * Monster module
    */
   selectedMonsterKey?: string;
 
-  /**
-   * pinned:
-   * Always show selectedMonsterKey.
-   *
-   * follow:
-   * Show the monster currently selected
-   * elsewhere in the workspace.
-   */
   monsterMode?: MonsterModuleMode;
+
+  /*
+   * Notes module
+   */
+  noteContent?: string;
 };
 
 export type WorkspaceModule = {
@@ -44,8 +37,14 @@ export type WorkspaceModuleRenderProps = {
 
   campaignId: string;
 
+  editing: boolean;
+
   updateModule: (
     moduleId: string,
     changes: Partial<WorkspaceModule>,
+  ) => void;
+
+  removeModule: (
+    moduleId: string,
   ) => void;
 };

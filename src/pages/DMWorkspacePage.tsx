@@ -157,38 +157,44 @@ function WorkspaceModuleCard({
 
   const ModuleComponent = definition.component;
 
+  const showHeader = definition.showHeader !== false;
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-xl">
-      <div
-        className={`workspace-drag-handle flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.03] px-3 ${
-          editing ? "cursor-grab active:cursor-grabbing" : ""
-        }`}
-      >
-        <div className="flex min-w-0 items-center gap-2">
-          <i className={`${definition.icon} text-sm text-emerald-400`} />
+      {showHeader ? (
+        <div
+          className={`workspace-drag-handle flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.03] px-3 ${
+            editing ? "cursor-grab active:cursor-grabbing" : ""
+          }`}
+        >
+          <div className="flex min-w-0 items-center gap-2">
+            <i className={`${definition.icon} text-sm text-emerald-400`} />
 
-          <span className="truncate text-sm font-semibold text-zinc-100">
-            {module.title}
-          </span>
+            <span className="truncate text-sm font-semibold text-zinc-100">
+              {module.title}
+            </span>
+          </div>
+
+          {editing ? (
+            <button
+              type="button"
+              title="Remove module"
+              onClick={() => onRemove(module.id)}
+              className="workspace-no-drag flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
+            >
+              <i className="fa-solid fa-xmark" />
+            </button>
+          ) : null}
         </div>
-
-        {editing ? (
-          <button
-            type="button"
-            title="Remove module"
-            onClick={() => onRemove(module.id)}
-            className="workspace-no-drag flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
-          >
-            <i className="fa-solid fa-xmark" />
-          </button>
-        ) : null}
-      </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-hidden">
         <ModuleComponent
           module={module}
           campaignId={campaignId}
+          editing={editing}
           updateModule={onUpdate}
+          removeModule={onRemove}
         />
       </div>
     </div>

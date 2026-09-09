@@ -3,7 +3,6 @@ import type {
 } from "react";
 
 import MonsterWorkspaceModule from "./modules/MonsterWorkspaceModule";
-
 import EncounterWorkspaceModule from "./modules/EncounterWorkspaceModule";
 
 import {
@@ -31,6 +30,8 @@ export type ModuleDefinition = {
   minW: number;
   minH: number;
 
+  showHeader?: boolean;
+
   component: ComponentType<WorkspaceModuleRenderProps>;
 };
 
@@ -54,6 +55,8 @@ export const MODULE_REGISTRY: Record<
     minW: 3,
     minH: 4,
 
+    showHeader: true,
+
     component: MapWorkspaceModule,
   },
 
@@ -73,8 +76,9 @@ export const MODULE_REGISTRY: Record<
     minW: 3,
     minH: 6,
 
-    component:
-      EncounterWorkspaceModule,
+    showHeader: true,
+
+    component: EncounterWorkspaceModule,
   },
 
   monster: {
@@ -93,6 +97,8 @@ export const MODULE_REGISTRY: Record<
     minW: 2,
     minH: 6,
 
+    showHeader: true,
+
     component: MonsterWorkspaceModule,
   },
 
@@ -104,14 +110,15 @@ export const MODULE_REGISTRY: Record<
     description:
       "Quick notes during the session.",
 
-    icon:
-      "fa-solid fa-note-sticky",
+    icon: "fa-solid fa-note-sticky",
 
     defaultW: 4,
     defaultH: 6,
 
     minW: 2,
     minH: 3,
+
+    showHeader: false,
 
     component: NotesWorkspaceModule,
   },
