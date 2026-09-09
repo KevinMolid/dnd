@@ -77,7 +77,7 @@ export function NotesWorkspaceModule({
 
   const { npcs } = useNpcLibrary(campaignId);
 
-  const { selectEntity } = useWorkspace();
+  const { selectEntity, selectCharacter } = useWorkspace();
 
   const mentionItems = useMemo<EntityMentionItem[]>(
     () => [
@@ -298,6 +298,12 @@ export function NotesWorkspaceModule({
 
         npcId: entityKey,
       });
+
+      return;
+    }
+
+    if (entityType === "player") {
+      selectCharacter(entityKey);
     }
   };
 

@@ -8,6 +8,8 @@ import MonsterWorkspaceModule from "./modules/MonsterWorkspaceModule";
 
 import NpcWorkspaceModule from "./modules/NpcWorkspaceModule";
 
+import CharacterWorkspaceModule from "./modules/CharacterWorkspaceModule";
+
 import MapWorkspaceModule from "./modules/MapWorkspaceModule";
 
 import {
@@ -36,10 +38,6 @@ export type ModuleDefinition = {
 
   minH: number;
 
-  /**
-   * false means the module renders its own
-   * title/drag header.
-   */
   showHeader?: boolean;
 
   component:
@@ -58,12 +56,15 @@ export const MODULE_REGISTRY: Record<
     description:
       "Keep an interactive campaign map visible during play.",
 
-    icon: "fa-solid fa-map",
+    icon:
+      "fa-solid fa-map",
 
     defaultW: 7,
+
     defaultH: 10,
 
     minW: 3,
+
     minH: 5,
 
     showHeader: true,
@@ -80,12 +81,15 @@ export const MODULE_REGISTRY: Record<
     description:
       "Run initiative, turns and combat.",
 
-    icon: "fa-solid fa-swords",
+    icon:
+      "fa-solid fa-swords",
 
     defaultW: 5,
+
     defaultH: 12,
 
     minW: 3,
+
     minH: 6,
 
     showHeader: true,
@@ -107,9 +111,11 @@ export const MODULE_REGISTRY: Record<
       "fa-solid fa-dragon",
 
     defaultW: 3,
+
     defaultH: 13,
 
     minW: 2,
+
     minH: 6,
 
     showHeader: true,
@@ -130,15 +136,42 @@ export const MODULE_REGISTRY: Record<
       "fa-solid fa-user",
 
     defaultW: 4,
+
     defaultH: 10,
 
     minW: 2,
+
     minH: 5,
 
     showHeader: true,
 
     component:
       NpcWorkspaceModule,
+  },
+
+  character: {
+    type: "character",
+
+    title: "Character",
+
+    description:
+      "Keep player character stats, HP, conditions and equipment visible.",
+
+    icon:
+      "fa-solid fa-user-shield",
+
+    defaultW: 4,
+
+    defaultH: 10,
+
+    minW: 2,
+
+    minH: 5,
+
+    showHeader: true,
+
+    component:
+      CharacterWorkspaceModule,
   },
 
   notes: {
@@ -153,9 +186,11 @@ export const MODULE_REGISTRY: Record<
       "fa-solid fa-note-sticky",
 
     defaultW: 4,
+
     defaultH: 6,
 
     minW: 2,
+
     minH: 3,
 
     showHeader: false,

@@ -3,6 +3,7 @@ export type WorkspaceModuleType =
   | "encounter"
   | "monster"
   | "npc"
+  | "character"
   | "notes";
 
 export type MonsterModuleMode =
@@ -10,6 +11,10 @@ export type MonsterModuleMode =
   | "follow";
 
 export type NpcModuleMode =
+  | "pinned"
+  | "follow";
+
+export type CharacterModuleMode =
   | "pinned"
   | "follow";
 
@@ -29,6 +34,13 @@ export type WorkspaceModuleConfig = {
   npcMode?: NpcModuleMode;
 
   /*
+   * Character module
+   */
+  selectedCharacterId?: string;
+
+  characterMode?: CharacterModuleMode;
+
+  /*
    * Notes module
    */
   noteContent?: string;
@@ -44,10 +56,6 @@ export type WorkspaceModuleConfig = {
    */
   selectedRoomId?: number | null;
 
-  /**
-   * Selected environment effect for this
-   * particular Map module.
-   */
   mapEnvironmentEffectId?: string;
 };
 

@@ -12,16 +12,8 @@ export type WorkspaceMonsterEncounterStatus = "active" | "up-next" | "manual";
 export type WorkspaceSelectedMonster = {
   type: "monster";
 
-  /**
-   * Examples:
-   * default:goblin
-   * campaign:abc123
-   */
   monsterKey: string;
 
-  /**
-   * Specific encounter instance, when relevant.
-   */
   encounterEntryId?: string;
 
   encounterStatus?: WorkspaceMonsterEncounterStatus;
@@ -38,12 +30,31 @@ export type WorkspaceSelectedEntity =
   | WorkspaceSelectedNpc
   | null;
 
-/**
- * Location is deliberately separate from selectedEntity.
- *
- * The party can remain at a location while the DM
- * inspects monsters, NPCs, characters, etc.
- */
+export type WorkspaceCharacterEncounterStatus = "active" | "up-next" | "manual";
+
+export type WorkspaceSelectedCharacter = {
+  characterId: string;
+
+  /**
+   * Specific encounter row when the selection
+   * originated from the encounter tracker.
+   */
+  encounterEntryId?: string;
+
+  /**
+   * active:
+   * This player currently has the turn.
+   *
+   * up-next:
+   * A monster currently has the turn and this
+   * is the next player in initiative.
+   *
+   * manual:
+   * DM manually clicked this player.
+   */
+  encounterStatus?: WorkspaceCharacterEncounterStatus;
+};
+
 export type WorkspaceActiveLocation = {
   mapId: string;
 
@@ -54,14 +65,35 @@ export type WorkspaceActiveLocation = {
   roomName: string;
 };
 
+type SelectCharacterOptions = {
+  encounterEntryId?: string;
+
+  encounterStatus?: WorkspaceCharacterEncounterStatus;
+};
+
 type WorkspaceContextValue = {
   selectedEntity: WorkspaceSelectedEntity;
 
   activeLocation: WorkspaceActiveLocation | null;
 
+  selectedCharacter: WorkspaceSelectedCharacter | null;
+
+  /**
+   * Convenience property kept for modules that only
+   * care about which character is selected.
+   */
+  selectedCharacterId: string | null;
+
   selectEntity: (entity: WorkspaceSelectedEntity) => void;
 
   clearSelection: () => void;
+
+  selectCharacter: (
+    characterId: string | null,
+    options?: SelectCharacterOptions,
+  ) => void;
+
+  clearCharacterSelection: () => void;
 
   setActiveLocation: (location: WorkspaceActiveLocation | null) => void;
 
@@ -76,13 +108,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [selectedEntity, setSelectedEntity] =
     useState<WorkspaceSelectedEntity>(null);
 
+  const [selectedCharacter, setSelectedCharacter] =
+    useState<WorkspaceSelectedCharacter | null>(null);
+
   const [activeLocation, setActiveLocationState] =
     useState<WorkspaceActiveLocation | null>(null);
 
   /*
-   * These callbacks stay stable so modules that
-   * react to workspace selection don't constantly
-   * retrigger effects.
+   * These callbacks deliberately stay stable.
+   *
+   * Encounter auto-follow effects depend on that
+   * so manual selections are not immediately
+   * overwritten by callback identity changes.
    */
   const selectEntity = useCallback((entity: WorkspaceSelectedEntity) => {
     setSelectedEntity(entity);
@@ -90,6 +127,29 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const clearSelection = useCallback(() => {
     setSelectedEntity(null);
+  }, []);
+
+  const selectCharacter = useCallback(
+    (characterId: string | null, options?: SelectCharacterOptions) => {
+      if (!characterId) {
+        setSelectedCharacter(null);
+
+        return;
+      }
+
+      setSelectedCharacter({
+        characterId,
+
+        encounterEntryId: options?.encounterEntryId,
+
+        encounterStatus: options?.encounterStatus,
+      });
+    },
+    [],
+  );
+
+  const clearCharacterSelection = useCallback(() => {
+    setSelectedCharacter(null);
   }, []);
 
   const setActiveLocation = useCallback(
@@ -103,15 +163,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setActiveLocationState(null);
   }, []);
 
+  const selectedCharacterId = selectedCharacter?.characterId ?? null;
+
   const value = useMemo<WorkspaceContextValue>(
     () => ({
       selectedEntity,
 
       activeLocation,
 
+      selectedCharacter,
+
+      selectedCharacterId,
+
       selectEntity,
 
       clearSelection,
+
+      selectCharacter,
+
+      clearCharacterSelection,
 
       setActiveLocation,
 
@@ -120,8 +190,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [
       selectedEntity,
       activeLocation,
+      selectedCharacter,
+      selectedCharacterId,
       selectEntity,
       clearSelection,
+      selectCharacter,
+      clearCharacterSelection,
       setActiveLocation,
       clearActiveLocation,
     ],

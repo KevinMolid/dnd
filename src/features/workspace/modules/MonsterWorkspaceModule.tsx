@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
 
+import { useNavigate } from "react-router-dom";
+
 import MonsterStatBlock from "../../../components/monsters/MonsterStatBlock";
 
 import useMonsterLibrary from "../../../hooks/useMonsterLibrary";
@@ -16,15 +18,15 @@ export default function MonsterWorkspaceModule({
   campaignId,
   updateModule,
 }: WorkspaceModuleRenderProps) {
+  const navigate = useNavigate();
+
   const { allMonsters, loading, error } = useMonsterLibrary(campaignId);
 
-  const { selectedEntity } = useWorkspace();
+  const { selectedEntity, selectEntity } = useWorkspace();
 
   const [search, setSearch] = useState("");
 
   const [showSelector, setShowSelector] = useState(false);
-
-  const [showModeMenu, setShowModeMenu] = useState(false);
 
   const mode: MonsterModuleMode = module.config?.monsterMode ?? "pinned";
 
@@ -55,7 +57,19 @@ export default function MonsterWorkspaceModule({
     );
   }, [allMonsters, selectedEntity]);
 
-  const displayedMonster = mode === "follow" ? followedMonster : pinnedMonster;
+  /*
+   * Follow prefers the workspace selection.
+   *
+   * If there temporarily isn't one, retain the
+   * last monster the module knew about rather
+   * than unnecessarily blanking the module.
+   */
+  const displayedMonster =
+    mode === "follow" ? (followedMonster ?? pinnedMonster) : pinnedMonster;
+
+  const displayedMonsterKey = displayedMonster
+    ? `${displayedMonster.source}:${displayedMonster.id}`
+    : undefined;
 
   const filteredMonsters = useMemo(() => {
     const value = search.trim().toLowerCase();
@@ -73,88 +87,139 @@ export default function MonsterWorkspaceModule({
   }, [allMonsters, search]);
 
   const followStatus =
-    selectedEntity?.type === "monster"
+    mode === "follow" && selectedEntity?.type === "monster"
       ? selectedEntity.encounterStatus
       : undefined;
 
-  const followStatusLabel =
-    followStatus === "active"
-      ? "ACTIVE"
-      : followStatus === "up-next"
-        ? "UP NEXT"
-        : followStatus === "manual"
-          ? "INSPECTING"
-          : "FOLLOWING";
-
-  const followStatusClass =
-    followStatus === "active"
-      ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
-      : followStatus === "up-next"
-        ? "border-sky-500/20 bg-sky-500/10 text-sky-300"
-        : followStatus === "manual"
-          ? "border-violet-500/20 bg-violet-500/10 text-violet-300"
-          : "border-white/10 bg-white/5 text-zinc-400";
-
-  const setMode = (nextMode: MonsterModuleMode) => {
-    updateModule(module.id, {
-      /*
-       * Keep the module title generic.
-       *
-       * The actual monster is already obvious
-       * inside the stat block.
-       */
-      title: "Monster Stat Block",
-
-      config: {
-        ...module.config,
-
-        monsterMode: nextMode,
-      },
-    });
-
-    setShowModeMenu(false);
-
-    if (nextMode === "follow") {
-      setShowSelector(false);
-    } else if (!module.config?.selectedMonsterKey) {
-      setShowSelector(true);
+  const getStatusBadge = () => {
+    if (mode === "pinned") {
+      return {
+        text: "PINNED",
+        className: "border-amber-500/20 bg-amber-500/10 text-amber-300",
+      };
     }
+
+    if (followStatus === "active") {
+      return {
+        text: "CURRENT TURN",
+        className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
+      };
+    }
+
+    if (followStatus === "up-next") {
+      return {
+        text: "UP NEXT",
+
+        className: "border-sky-500/20 bg-sky-500/10 text-sky-300",
+      };
+    }
+
+    if (followStatus === "manual") {
+      return {
+        text: "INSPECTING",
+
+        className: "border-violet-500/20 bg-violet-500/10 text-violet-300",
+      };
+    }
+
+    return {
+      text: "FOLLOW",
+
+      className: "border-sky-500/15 bg-sky-500/[0.07] text-sky-300",
+    };
   };
 
-  const selectMonster = (monsterKey: string) => {
+  const statusBadge = getStatusBadge();
+
+  /*
+   * IMPORTANT:
+   *
+   * Follow -> Pin must freeze the monster that is
+   * currently visible.
+   *
+   * It must NOT merely switch mode and then discover
+   * that no pinnedMonster exists.
+   */
+  const setMode = (nextMode: MonsterModuleMode) => {
+    if (nextMode === "pinned") {
+      updateModule(module.id, {
+        title: "Monster Stat Block",
+
+        config: {
+          ...module.config,
+
+          monsterMode: "pinned",
+
+          selectedMonsterKey:
+            displayedMonsterKey ?? module.config?.selectedMonsterKey,
+        },
+      });
+
+      setShowSelector(false);
+
+      return;
+    }
+
     updateModule(module.id, {
       title: "Monster Stat Block",
 
       config: {
         ...module.config,
 
-        monsterMode: "pinned",
-
-        selectedMonsterKey: monsterKey,
+        monsterMode: "follow",
       },
     });
 
     setShowSelector(false);
-
-    setSearch("");
   };
 
-  const clearPinnedMonster = () => {
-    updateModule(module.id, {
-      title: "Monster Stat Block",
+  /*
+   * Browser selection behaves differently based
+   * on the current mode.
+   *
+   * Pinned:
+   * replace the pinned monster.
+   *
+   * Follow:
+   * create a manual workspace selection and remain
+   * in Follow mode, matching Character behavior.
+   */
+  const selectMonster = (monsterKey: string) => {
+    if (mode === "pinned") {
+      updateModule(module.id, {
+        title: "Monster Stat Block",
 
-      config: {
-        ...module.config,
+        config: {
+          ...module.config,
 
-        monsterMode: "pinned",
+          monsterMode: "pinned",
 
-        selectedMonsterKey: undefined,
-      },
-    });
+          selectedMonsterKey: monsterKey,
+        },
+      });
+    } else {
+      updateModule(module.id, {
+        title: "Monster Stat Block",
+
+        config: {
+          ...module.config,
+
+          selectedMonsterKey: monsterKey,
+        },
+      });
+
+      selectEntity({
+        type: "monster",
+
+        monsterKey,
+
+        encounterStatus: "manual",
+      });
+    }
+
+    setShowSelector(false);
 
     setSearch("");
-
-    setShowSelector(true);
   };
 
   if (loading) {
@@ -169,258 +234,246 @@ export default function MonsterWorkspaceModule({
     return <div className="p-4 text-sm text-rose-400">{error}</div>;
   }
 
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      {/* Compact toolbar */}
-
-      <div className="workspace-no-drag relative flex h-9 shrink-0 items-center gap-2 border-b border-white/10 bg-black/20 px-2">
-        {/* Follow status */}
-
-        {mode === "follow" ? (
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            {followedMonster ? (
-              <>
-                <span
-                  className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] ${followStatusClass}`}
-                >
-                  {followStatusLabel}
-                </span>
-
-                <span className="truncate text-[10px] font-medium text-zinc-400">
-                  {followedMonster.name}
-                </span>
-              </>
-            ) : (
-              <span className="truncate text-[10px] text-zinc-500">
-                Waiting for encounter monster
-              </span>
-            )}
-          </div>
-        ) : (
-          <div className="min-w-0 flex-1">
-            <span className="truncate text-[10px] text-zinc-500">
-              {pinnedMonster
-                ? `Pinned · ${pinnedMonster.name}`
-                : "No monster pinned"}
-            </span>
-          </div>
-        )}
-
-        {/* Pinned controls */}
-
-        {mode === "pinned" && pinnedMonster ? (
+  /*
+   * Selector/browser.
+   *
+   * The toolbar intentionally remains visually
+   * consistent with the Character module.
+   */
+  if (showSelector) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="workspace-no-drag flex h-10 shrink-0 items-center gap-1.5 border-b border-white/10 bg-black/20 px-2">
           <button
             type="button"
-            onClick={clearPinnedMonster}
-            title="Clear pinned monster"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
+            onClick={() => setShowSelector(false)}
+            title="Back to monster"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
           >
-            <i className="fa-solid fa-xmark" />
+            <i className="fa-solid fa-arrow-left text-[9px]" />
           </button>
-        ) : null}
 
-        {mode === "pinned" ? (
-          <button
-            type="button"
-            onClick={() => setShowSelector((current) => !current)}
-            title="Choose monster"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 text-zinc-400 transition hover:bg-white/10 hover:text-white"
-          >
-            <i className="fa-solid fa-magnifying-glass" />
-          </button>
-        ) : null}
+          <div className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-200">
+            Choose Monster
+          </div>
 
-        {/* Mode button */}
-
-        <div className="relative">
-          <button
-            type="button"
-            onClick={() => setShowModeMenu((current) => !current)}
-            title={mode === "follow" ? "Following encounter" : "Pinned monster"}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border transition ${
-              mode === "follow"
-                ? "border-sky-500/20 bg-sky-500/10 text-sky-300 hover:bg-sky-500/15"
-                : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <i
-              className={`fa-solid ${
-                mode === "follow" ? "fa-crosshairs" : "fa-thumbtack"
+          <div className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5">
+            <button
+              type="button"
+              onClick={() => setMode("pinned")}
+              title="Pin current monster"
+              className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] transition ${
+                mode === "pinned"
+                  ? "bg-amber-500/15 text-amber-300"
+                  : "text-zinc-600 hover:text-zinc-300"
               }`}
-            />
+            >
+              <i className="fa-solid fa-thumbtack" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode("follow")}
+              title="Follow monster selections and encounter turns"
+              className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] transition ${
+                mode === "follow"
+                  ? "bg-sky-500/15 text-sky-300"
+                  : "text-zinc-600 hover:text-zinc-300"
+              }`}
+            >
+              <i className="fa-solid fa-crosshairs" />
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate(`/campaigns/${campaignId}/monsters`)}
+            title="Open monster library"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+          >
+            <i className="fa-solid fa-up-right-from-square text-[9px]" />
           </button>
-
-          {showModeMenu ? (
-            <div className="absolute right-0 top-9 z-40 w-56 overflow-hidden rounded-xl border border-white/10 bg-zinc-900 p-1 shadow-2xl">
-              <div className="px-3 pb-1 pt-2">
-                <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
-                  Stat Block Mode
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setMode("follow")}
-                className={`flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition ${
-                  mode === "follow" ? "bg-sky-500/10" : "hover:bg-white/5"
-                }`}
-              >
-                <div
-                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
-                    mode === "follow"
-                      ? "bg-sky-500/15 text-sky-300"
-                      : "bg-white/5 text-zinc-500"
-                  }`}
-                >
-                  <i className="fa-solid fa-crosshairs text-[10px]" />
-                </div>
-
-                <div className="min-w-0">
-                  <div
-                    className={`text-xs font-semibold ${
-                      mode === "follow" ? "text-sky-300" : "text-white"
-                    }`}
-                  >
-                    Follow Encounter
-                  </div>
-
-                  <div className="mt-0.5 text-[10px] leading-4 text-zinc-500">
-                    Automatically show the active or next monster.
-                  </div>
-                </div>
-
-                {mode === "follow" ? (
-                  <i className="fa-solid fa-check ml-auto mt-1 text-[10px] text-sky-300" />
-                ) : null}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setMode("pinned")}
-                className={`mt-1 flex w-full items-start gap-3 rounded-lg px-3 py-2 text-left transition ${
-                  mode === "pinned" ? "bg-white/5" : "hover:bg-white/5"
-                }`}
-              >
-                <div
-                  className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
-                    mode === "pinned"
-                      ? "bg-white/10 text-white"
-                      : "bg-white/5 text-zinc-500"
-                  }`}
-                >
-                  <i className="fa-solid fa-thumbtack text-[10px]" />
-                </div>
-
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-white">
-                    Pin Monster
-                  </div>
-
-                  <div className="mt-0.5 text-[10px] leading-4 text-zinc-500">
-                    Always keep one chosen monster visible.
-                  </div>
-                </div>
-
-                {mode === "pinned" ? (
-                  <i className="fa-solid fa-check ml-auto mt-1 text-[10px] text-zinc-300" />
-                ) : null}
-              </button>
-            </div>
-          ) : null}
         </div>
-      </div>
 
-      {/* Monster selector */}
-
-      {mode === "pinned" && showSelector ? (
-        <div className="workspace-no-drag flex min-h-0 flex-1 flex-col p-3">
+        <div className="workspace-no-drag shrink-0 p-2">
           <div className="relative">
-            <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-600" />
+            <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-zinc-600" />
 
             <input
               autoFocus
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search monsters..."
-              className="w-full rounded-xl border border-white/10 bg-black/30 py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/40"
+              className="h-8 w-full rounded-lg border border-white/10 bg-black/30 py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/30"
             />
           </div>
+        </div>
 
-          <div className="workspace-scrollbar mt-2 min-h-0 flex-1 overflow-y-auto rounded-xl border border-white/10 bg-black/20">
-            {filteredMonsters.length === 0 ? (
-              <div className="p-4 text-center text-xs text-zinc-500">
-                No monsters found.
-              </div>
-            ) : (
-              filteredMonsters.map((monster) => {
-                const key = `${monster.source}:${monster.id}`;
+        <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-white/5">
+          {filteredMonsters.length === 0 ? (
+            <div className="p-5 text-center text-xs text-zinc-600">
+              No monsters found.
+            </div>
+          ) : (
+            filteredMonsters.map((monster) => {
+              const key = `${monster.source}:${monster.id}`;
 
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => selectMonster(key)}
-                    className="flex w-full items-center gap-2 border-b border-white/5 p-2 text-left transition last:border-b-0 hover:bg-white/5"
-                  >
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => selectMonster(key)}
+                  className="group flex w-full items-center gap-2.5 border-b border-white/5 p-2.5 text-left transition last:border-b-0 hover:bg-white/[0.035]"
+                >
+                  <div className="h-9 w-11 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
                     {monster.img ? (
                       <img
                         src={monster.img}
                         alt=""
-                        className="h-9 w-11 shrink-0 rounded-lg object-cover"
+                        className="h-full w-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-9 w-11 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-zinc-600">
-                        <i className="fa-solid fa-dragon" />
+                      <div className="flex h-full w-full items-center justify-center text-zinc-600">
+                        <i className="fa-solid fa-dragon text-xs" />
                       </div>
                     )}
+                  </div>
 
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="truncate text-xs font-semibold text-white">
-                          {monster.name}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-xs font-semibold text-zinc-200 group-hover:text-white">
+                        {monster.name}
+                      </span>
+
+                      {monster.source === "campaign" ? (
+                        <span className="shrink-0 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-emerald-300">
+                          Campaign
                         </span>
-
-                        {monster.source === "campaign" ? (
-                          <span className="shrink-0 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-emerald-300">
-                            Campaign
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="truncate text-[10px] text-zinc-500">
-                        CR {monster.challengeRating} · AC {monster.armorClass} ·
-                        HP {monster.hp}
-                      </div>
+                      ) : null}
                     </div>
-                  </button>
-                );
-              })
-            )}
+
+                    <div className="mt-0.5 truncate text-[9px] text-zinc-600">
+                      CR {monster.challengeRating} · AC {monster.armorClass} ·
+                      HP {monster.hp}
+                    </div>
+                  </div>
+
+                  <i className="fa-solid fa-chevron-right shrink-0 text-[8px] text-zinc-700 transition group-hover:text-zinc-400" />
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Standardized toolbar */}
+
+      <div className="workspace-no-drag flex h-10 shrink-0 items-center gap-1.5 border-b border-white/10 bg-black/20 px-2">
+        <button
+          type="button"
+          onClick={() => setShowSelector(true)}
+          title="Browse monsters"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+        >
+          <i className="fa-solid fa-list text-[9px]" />
+        </button>
+
+        <div className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-200">
+          {displayedMonster?.name ?? "Monster"}
+        </div>
+
+        {/* Same Pin / Follow control as Character */}
+
+        <div className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5">
+          <button
+            type="button"
+            onClick={() => setMode("pinned")}
+            disabled={!displayedMonster}
+            title="Pin this monster"
+            className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] transition disabled:opacity-25 ${
+              mode === "pinned"
+                ? "bg-amber-500/15 text-amber-300"
+                : "text-zinc-600 hover:text-zinc-300"
+            }`}
+          >
+            <i className="fa-solid fa-thumbtack" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setMode("follow")}
+            title="Follow monster selections and encounter turns"
+            className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] transition ${
+              mode === "follow"
+                ? "bg-sky-500/15 text-sky-300"
+                : "text-zinc-600 hover:text-zinc-300"
+            }`}
+          >
+            <i className="fa-solid fa-crosshairs" />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate(`/campaigns/${campaignId}/monsters`)}
+          title="Open monster library"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+        >
+          <i className="fa-solid fa-up-right-from-square text-[9px]" />
+        </button>
+      </div>
+
+      {displayedMonster ? (
+        <>
+          {/* Compact state strip */}
+
+          <div className="workspace-no-drag flex h-9 shrink-0 items-center gap-2 border-b border-white/10 bg-black/10 px-3">
+            <span
+              className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-[0.12em] ${statusBadge.className}`}
+            >
+              {statusBadge.text}
+            </span>
+
+            <span className="min-w-0 flex-1 truncate text-[10px] text-zinc-500">
+              {displayedMonster.name}
+            </span>
           </div>
-        </div>
-      ) : displayedMonster ? (
-        <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
-          <MonsterStatBlock monster={displayedMonster} compact />
-        </div>
+
+          <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
+            <MonsterStatBlock monster={displayedMonster} compact />
+          </div>
+        </>
       ) : mode === "follow" ? (
         <div className="flex min-h-0 flex-1 items-center justify-center p-5 text-center">
           <div>
             <i className="fa-solid fa-crosshairs text-3xl text-sky-400/20" />
 
             <p className="mt-3 text-sm font-semibold text-zinc-300">
-              Waiting for combat
+              Waiting for monster
             </p>
 
             <p className="mt-1 text-xs leading-5 text-zinc-600">
-              The active monster, or the next monster after a player's turn,
-              will appear here automatically.
+              The active monster, next monster, or a manually inspected monster
+              will appear here.
             </p>
+
+            <button
+              type="button"
+              onClick={() => setShowSelector(true)}
+              className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10 hover:text-white"
+            >
+              Browse Monsters
+            </button>
           </div>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 items-center justify-center p-5 text-center">
           <div>
-            <i className="fa-solid fa-dragon text-3xl text-rose-300/20" />
+            <i className="fa-solid fa-dragon text-3xl text-amber-300/20" />
 
             <p className="mt-3 text-sm font-semibold text-zinc-300">
               No monster pinned

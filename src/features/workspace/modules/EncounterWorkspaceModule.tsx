@@ -22,6 +22,7 @@ import type { CharacterEquipmentEntry } from "../../../rulesets/dnd/dnd2024/type
 
 import {
   useWorkspace,
+  type WorkspaceCharacterEncounterStatus,
   type WorkspaceMonsterEncounterStatus,
 } from "../WorkspaceContext";
 
@@ -78,6 +79,7 @@ const getArmorClass = (character: CampaignCharacter) => {
   try {
     return getCharacterArmorClassFromEquipment({
       dexterityScore: dex,
+
       equipment,
     });
   } catch {
@@ -134,21 +136,27 @@ export default function EncounterWorkspaceModule({
 }: WorkspaceModuleRenderProps) {
   const {
     encounter,
+
     currentTurnIndex,
+
     currentRound,
 
     addMonsterToEncounter,
+
     addPlayerToEncounter,
 
     removeEntityFromEncounter,
 
     updateEntityHp,
+
     updateEntityInitiative,
 
     nextTurn,
+
     previousTurn,
 
     resetTurns,
+
     clearEncounter,
 
     rollInitiative,
@@ -157,15 +165,24 @@ export default function EncounterWorkspaceModule({
   const {
     selectedEntity,
 
+    selectedCharacter,
+
     activeLocation,
 
     selectEntity,
 
     clearSelection,
+
+    selectCharacter,
+
+    clearCharacterSelection,
   } = useWorkspace();
 
-  const { allMonsters, loading: monstersLoading } =
-    useMonsterLibrary(campaignId);
+  const {
+    allMonsters,
+
+    loading: monstersLoading,
+  } = useMonsterLibrary(campaignId);
 
   const {
     campaignCharacters,
@@ -185,6 +202,13 @@ export default function EncounterWorkspaceModule({
 
   const sortedEncounter = useMemo(() => sortEncounter(encounter), [encounter]);
 
+  /*
+   * Auto-follow effects only need to rerun when
+   * initiative order or the current turn changes.
+   *
+   * This is what lets manually clicking a combatant
+   * remain INSPECTING until the actual turn changes.
+   */
   const initiativeOrderKey = useMemo(
     () =>
       sortedEncounter
@@ -229,6 +253,23 @@ export default function EncounterWorkspaceModule({
       );
     },
     [charactersById, campaignCharacters],
+  );
+
+  const getCharacterIdForEntry = useCallback(
+    (entry: EncounterEntry) => {
+      if (entry.entityKind !== "player") {
+        return null;
+      }
+
+      const snapshotId = entry.playerSnapshot?.characterId;
+
+      if (snapshotId) {
+        return snapshotId;
+      }
+
+      return getCharacterForEntry(entry)?.id ?? null;
+    },
+    [getCharacterForEntry],
   );
 
   const getPlayerEncounterEntry = useCallback(
@@ -324,6 +365,36 @@ export default function EncounterWorkspaceModule({
     [getMonsterKeyForEntry, selectEntity],
   );
 
+  const selectEncounterCharacter = useCallback(
+    (
+      entry: EncounterEntry,
+
+      encounterStatus: WorkspaceCharacterEncounterStatus = "manual",
+    ) => {
+      const characterId = getCharacterIdForEntry(entry);
+
+      if (!characterId) {
+        return;
+      }
+
+      selectCharacter(characterId, {
+        encounterEntryId: entry.id,
+
+        encounterStatus,
+      });
+    },
+    [getCharacterIdForEntry, selectCharacter],
+  );
+
+  /*
+   * MONSTER FOLLOW
+   *
+   * Monster turn:
+   * show ACTIVE monster.
+   *
+   * Player turn:
+   * show next monster UP NEXT.
+   */
   useEffect(() => {
     if (sortedEncounter.length === 0) {
       clearSelection();
@@ -363,11 +434,85 @@ export default function EncounterWorkspaceModule({
       clearSelection();
     }
 
+    // Intentionally not dependent on manual selection state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTurnIndex, initiativeOrderKey, allMonsters]);
 
-  const updateHp = async (entry: EncounterEntry, delta: number) => {
-    const nextHp = Math.max(0, Math.min(entry.maxHp, entry.currentHp + delta));
+  /*
+   * CHARACTER FOLLOW
+   *
+   * Player turn:
+   * show CURRENT player.
+   *
+   * Monster turn:
+   * show the next player UP NEXT.
+   *
+   * This runs independently from monster following,
+   * so the DM can have both relevant sheets visible.
+   */
+  useEffect(() => {
+    if (sortedEncounter.length === 0) {
+      clearCharacterSelection();
+
+      return;
+    }
+
+    const active = sortedEncounter[currentTurnIndex];
+
+    if (!active) {
+      return;
+    }
+
+    if (active.entityKind === "player") {
+      selectEncounterCharacter(active, "active");
+
+      return;
+    }
+
+    let nextPlayer: EncounterEntry | null = null;
+
+    for (let offset = 1; offset <= sortedEncounter.length; offset += 1) {
+      const index = (currentTurnIndex + offset) % sortedEncounter.length;
+
+      const candidate = sortedEncounter[index];
+
+      if (candidate.entityKind === "player") {
+        nextPlayer = candidate;
+
+        break;
+      }
+    }
+
+    if (nextPlayer) {
+      selectEncounterCharacter(nextPlayer, "up-next");
+    } else {
+      clearCharacterSelection();
+    }
+
+    /*
+     * Do not include selectedCharacter here.
+     *
+     * Doing so would recreate the old flicker problem:
+     * clicking a player manually would cause this effect
+     * to immediately replace it with active/up-next.
+     */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTurnIndex, initiativeOrderKey, campaignCharacters]);
+
+  const updateHp = async (
+    entry: EncounterEntry,
+
+    delta: number,
+  ) => {
+    const nextHp = Math.max(
+      0,
+
+      Math.min(
+        entry.maxHp,
+
+        entry.currentHp + delta,
+      ),
+    );
 
     updateEntityHp(entry.id, nextHp);
 
@@ -386,12 +531,20 @@ export default function EncounterWorkspaceModule({
     });
   };
 
-  const setHp = async (entry: EncounterEntry, value: number) => {
+  const setHp = async (
+    entry: EncounterEntry,
+
+    value: number,
+  ) => {
     if (!Number.isFinite(value)) {
       return;
     }
 
-    const nextHp = Math.max(0, Math.min(entry.maxHp, value));
+    const nextHp = Math.max(
+      0,
+
+      Math.min(entry.maxHp, value),
+    );
 
     updateEntityHp(entry.id, nextHp);
 
@@ -438,6 +591,8 @@ export default function EncounterWorkspaceModule({
     clearEncounter();
 
     clearSelection();
+
+    clearCharacterSelection();
 
     setShowManagePanel(false);
 
@@ -512,8 +667,6 @@ export default function EncounterWorkspaceModule({
 
             {showManagePanel ? "Close" : "Manage Combatants"}
           </button>
-
-          {/* Active workspace location */}
 
           {activeLocation ? (
             <div
@@ -821,18 +974,29 @@ export default function EncounterWorkspaceModule({
 
               const monsterKey = getMonsterKeyForEntry(entry);
 
-              const isSelected =
+              const characterId = getCharacterIdForEntry(entry);
+
+              const isMonsterSelected =
                 entry.entityKind === "monster" &&
                 monsterKey !== null &&
                 selectedEntity?.type === "monster" &&
                 selectedEntity.encounterEntryId === entry.id;
 
+              const isCharacterSelected =
+                entry.entityKind === "player" &&
+                characterId !== null &&
+                selectedCharacter?.encounterEntryId === entry.id;
+
+              const isSelected = isMonsterSelected || isCharacterSelected;
+
               const isPlayer = entry.entityKind === "player";
 
               const hpPercent = Math.max(
                 0,
+
                 Math.min(
                   100,
+
                   (entry.currentHp / Math.max(1, entry.maxHp)) * 100,
                 ),
               );
@@ -843,13 +1007,17 @@ export default function EncounterWorkspaceModule({
                   onClick={() => {
                     if (entry.entityKind === "monster") {
                       selectEncounterMonster(entry, "manual");
+
+                      return;
                     }
+
+                    selectEncounterCharacter(entry, "manual");
                   }}
-                  className={`group relative px-2 py-2 transition ${
-                    entry.entityKind === "monster" ? "cursor-pointer" : ""
-                  } ${
+                  className={`group relative cursor-pointer px-2 py-2 transition ${
                     isSelected
-                      ? "bg-sky-500/[0.08] ring-1 ring-inset ring-sky-400/30"
+                      ? isPlayer
+                        ? "bg-emerald-500/[0.07] ring-1 ring-inset ring-emerald-400/25"
+                        : "bg-sky-500/[0.08] ring-1 ring-inset ring-sky-400/30"
                       : isActive
                         ? "bg-amber-500/[0.08]"
                         : "hover:bg-white/[0.025]"
@@ -897,6 +1065,18 @@ export default function EncounterWorkspaceModule({
                         {isActive ? (
                           <span className="shrink-0 rounded-full bg-amber-400/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-amber-300">
                             Turn
+                          </span>
+                        ) : null}
+
+                        {isCharacterSelected && !isActive ? (
+                          <span className="shrink-0 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-emerald-300">
+                            Inspecting
+                          </span>
+                        ) : null}
+
+                        {isMonsterSelected && !isActive ? (
+                          <span className="shrink-0 rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-sky-300">
+                            Inspecting
                           </span>
                         ) : null}
                       </div>
