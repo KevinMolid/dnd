@@ -2,9 +2,14 @@ export type WorkspaceModuleType =
   | "map"
   | "encounter"
   | "monster"
+  | "npc"
   | "notes";
 
 export type MonsterModuleMode =
+  | "pinned"
+  | "follow";
+
+export type NpcModuleMode =
   | "pinned"
   | "follow";
 
@@ -15,6 +20,13 @@ export type WorkspaceModuleConfig = {
   selectedMonsterKey?: string;
 
   monsterMode?: MonsterModuleMode;
+
+  /*
+   * NPC module
+   */
+  selectedNpcId?: string;
+
+  npcMode?: NpcModuleMode;
 
   /*
    * Notes module

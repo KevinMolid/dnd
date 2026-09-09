@@ -6,6 +6,8 @@ import EncounterWorkspaceModule from "./modules/EncounterWorkspaceModule";
 
 import MonsterWorkspaceModule from "./modules/MonsterWorkspaceModule";
 
+import NpcWorkspaceModule from "./modules/NpcWorkspaceModule";
+
 import MapWorkspaceModule from "./modules/MapWorkspaceModule";
 
 import {
@@ -114,6 +116,29 @@ export const MODULE_REGISTRY: Record<
 
     component:
       MonsterWorkspaceModule,
+  },
+
+  npc: {
+    type: "npc",
+
+    title: "NPC",
+
+    description:
+      "Browse, pin and inspect campaign NPCs during play.",
+
+    icon:
+      "fa-solid fa-user",
+
+    defaultW: 4,
+    defaultH: 10,
+
+    minW: 2,
+    minH: 5,
+
+    showHeader: true,
+
+    component:
+      NpcWorkspaceModule,
   },
 
   notes: {

@@ -276,13 +276,27 @@ export function NotesWorkspaceModule({
 
     const entityKey = mention.dataset.entityKey;
 
-    if (entityType === "monster" && entityKey) {
+    if (!entityKey) {
+      return;
+    }
+
+    if (entityType === "monster") {
       selectEntity({
         type: "monster",
 
         monsterKey: entityKey,
 
         encounterStatus: "manual",
+      });
+
+      return;
+    }
+
+    if (entityType === "npc") {
+      selectEntity({
+        type: "npc",
+
+        npcId: entityKey,
       });
     }
   };

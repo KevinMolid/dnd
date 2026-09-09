@@ -24,26 +24,24 @@ export type WorkspaceSelectedMonster = {
    */
   encounterEntryId?: string;
 
-  /**
-   * active:
-   * Monster currently taking its turn.
-   *
-   * up-next:
-   * Player currently has the turn and this
-   * is the next monster in initiative.
-   *
-   * manual:
-   * DM manually selected this monster.
-   */
   encounterStatus?: WorkspaceMonsterEncounterStatus;
 };
 
-export type WorkspaceSelectedEntity = WorkspaceSelectedMonster | null;
+export type WorkspaceSelectedNpc = {
+  type: "npc";
+
+  npcId: string;
+};
+
+export type WorkspaceSelectedEntity =
+  | WorkspaceSelectedMonster
+  | WorkspaceSelectedNpc
+  | null;
 
 /**
  * Location is deliberately separate from selectedEntity.
  *
- * The party can remain "at" a location while the DM
+ * The party can remain at a location while the DM
  * inspects monsters, NPCs, characters, etc.
  */
 export type WorkspaceActiveLocation = {
@@ -82,10 +80,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     useState<WorkspaceActiveLocation | null>(null);
 
   /*
-   * Keep these callbacks stable.
-   *
-   * This is important for the encounter
-   * auto-follow behavior.
+   * These callbacks stay stable so modules that
+   * react to workspace selection don't constantly
+   * retrigger effects.
    */
   const selectEntity = useCallback((entity: WorkspaceSelectedEntity) => {
     setSelectedEntity(entity);
