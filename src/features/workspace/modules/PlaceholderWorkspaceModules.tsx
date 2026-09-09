@@ -25,22 +25,6 @@ import { useWorkspace } from "../WorkspaceContext";
 
 import type { WorkspaceModuleRenderProps } from "../workspaceTypes";
 
-export function MapWorkspaceModule() {
-  return (
-    <div className="flex h-full items-center justify-center bg-black/20">
-      <div className="text-center">
-        <i className="fa-solid fa-map text-4xl text-emerald-400/40" />
-
-        <p className="mt-3 text-sm font-medium text-zinc-300">Map module</p>
-
-        <p className="mt-1 text-xs text-zinc-500">
-          Map integration comes later.
-        </p>
-      </div>
-    </div>
-  );
-}
-
 const escapeHtml = (value: string) => {
   return value
     .replace(/&/g, "&amp;")
@@ -50,12 +34,6 @@ const escapeHtml = (value: string) => {
     .replace(/'/g, "&#039;");
 };
 
-/*
- * Existing Notes modules contain plain text.
- *
- * The new editor stores HTML, so this silently
- * upgrades old notes without losing them.
- */
 const normalizeStoredNoteContent = (value: string) => {
   if (!value.trim()) {
     return "";
@@ -91,10 +69,6 @@ export function NotesWorkspaceModule({
 
   const [titleDraft, setTitleDraft] = useState(module.title);
 
-  /*
-   * Forces toolbar active states to update
-   * when the cursor/selection changes.
-   */
   const [editorRevision, setEditorRevision] = useState(0);
 
   const { campaignCharacters } = useCampaignPageData(campaignId);
@@ -105,12 +79,6 @@ export function NotesWorkspaceModule({
 
   const { selectEntity } = useWorkspace();
 
-  /*
-   * Build one unified entity list.
-   *
-   * The type controls which @ prefix
-   * causes each item to appear.
-   */
   const mentionItems = useMemo<EntityMentionItem[]>(
     () => [
       ...campaignCharacters.map(
@@ -172,11 +140,6 @@ export function NotesWorkspaceModule({
     [campaignCharacters, allMonsters, npcs],
   );
 
-  /*
-   * The editor extension itself should stay stable.
-   * This ref lets its autocomplete callback always
-   * see the latest Firebase data.
-   */
   const mentionItemsRef = useRef(mentionItems);
 
   useEffect(() => {
@@ -198,10 +161,6 @@ export function NotesWorkspaceModule({
   const extensions = useMemo(
     () => [
       StarterKit.configure({
-        /*
-         * Notes intentionally remain simple.
-         * Bold / italic / underline stay enabled.
-         */
         blockquote: false,
 
         bulletList: false,
@@ -256,20 +215,8 @@ export function NotesWorkspaceModule({
     },
   });
 
-  /*
-   * The variable is intentionally referenced here:
-   * it causes React to recalculate editor.isActive()
-   * after selection changes.
-   */
   void editorRevision;
 
-  /*
-   * Keep Tiptap synchronized if module data changes
-   * from outside the editor.
-   *
-   * setContent(..., { emitUpdate: false }) is important
-   * because Tiptap v3 emits update by default.
-   */
   useEffect(() => {
     if (!editor) {
       return;
@@ -329,13 +276,6 @@ export function NotesWorkspaceModule({
 
     const entityKey = mention.dataset.entityKey;
 
-    /*
-     * Monster references immediately integrate
-     * with Follow Stat Block modules.
-     *
-     * Player/NPC references already contain their
-     * stable IDs, ready for their future modules.
-     */
     if (entityType === "monster" && entityKey) {
       selectEntity({
         type: "monster",
@@ -349,8 +289,6 @@ export function NotesWorkspaceModule({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-black/10">
-      {/* Header */}
-
       <div
         className={`workspace-drag-handle flex h-10 shrink-0 items-center gap-1 border-b border-white/10 bg-white/[0.03] px-2 ${
           editing ? "cursor-grab active:cursor-grabbing" : ""
@@ -394,8 +332,6 @@ export function NotesWorkspaceModule({
           </button>
         )}
 
-        {/* Formatting */}
-
         {editor ? (
           <div className="workspace-no-drag ml-auto flex shrink-0 items-center gap-0.5">
             <button
@@ -438,8 +374,6 @@ export function NotesWorkspaceModule({
           </button>
         ) : null}
       </div>
-
-      {/* Editor */}
 
       <div
         onClick={handleEditorClick}

@@ -6,26 +6,42 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+
 import { useNavigate } from "react-router-dom";
+
 import { useEncounter } from "../context/EncounterContext";
+
 import { itemList, type ItemData } from "../data/items";
+
 import type { Money, PlayerCharacter } from "../data/players";
+
 import { updateCampaignMap } from "../features/maps/mapService";
+
 import type {
   CampaignMap,
   CampaignMapRoom,
   EnvironmentEffect,
 } from "../features/maps/types";
 
+import MapCanvas, { type MapCanvasHandle } from "./maps/MapCanvas";
+
 type MapViewerProps = {
   campaignId: string;
+
   map: CampaignMap | null;
+
   onClose: () => void;
+
   onEdit?: (roomId: number | null) => void;
+
   players: PlayerCharacter[];
+
   onGiveItemToPlayer: (itemId: string, playerName: string) => void;
+
   onGiveItemToParty: (itemId: string) => void;
+
   onGiveMoneyToPlayer: (playerName: string, money: Partial<Money>) => void;
+
   onGiveMoneyToParty: (money: Partial<Money>) => void;
 };
 
@@ -34,32 +50,48 @@ type TreasureRecipient = "party" | string;
 type LinkedTreasureEntry =
   | {
       key: string;
+
       text: string;
+
       type: "item";
+
       item: ItemData;
     }
   | {
       key: string;
+
       text: string;
+
       type: "money";
+
       money: Partial<Money>;
+
       moneyLabel: string;
     };
 
 type ExtendedCampaignMap = CampaignMap & {
   description?: string[];
+
   overview?: string[];
+
   generalDescription?: string[];
+
   readAloud?: string;
+
   overviewTitle?: string;
 };
 
 type EnvironmentRollResult = {
   roomId: number;
+
   roomName: string;
+
   roll: number;
+
   previousLevel: number;
+
   targetLevel: number;
+
   nextLevel: number;
 };
 
@@ -93,14 +125,19 @@ const findLinkedItem = (treasureText: string): ItemData | null => {
 const parseMoneyText = (text: string): Partial<Money> | null => {
   const match = text.trim().match(/^(\d+)\s*(gp|sp|cp)$/i);
 
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
 
   const amount = Number(match[1]);
+
   const currency = match[2].toLowerCase() as "gp" | "sp" | "cp";
 
   return {
     gp: currency === "gp" ? amount : 0,
+
     sp: currency === "sp" ? amount : 0,
+
     cp: currency === "cp" ? amount : 0,
   };
 };
@@ -121,7 +158,14 @@ const getMoneyLabel = (money: Partial<Money>) => {
   return "0 gp";
 };
 
-const TreasureLink = ({ text, item }: { text: string; item: ItemData }) => {
+const TreasureLink = ({
+  text,
+  item,
+}: {
+  text: string;
+
+  item: ItemData;
+}) => {
   return (
     <span className="group relative inline-block font-semibold text-white">
       <span className="hover:cursor-pointer">{text}</span>
@@ -165,6 +209,7 @@ const TreasureLink = ({ text, item }: { text: string; item: ItemData }) => {
 
 const renderParagraphs = (
   paragraphs?: string[],
+
   className = "space-y-2 text-sm leading-6 text-white/75",
 ) => {
   if (!paragraphs || paragraphs.length === 0) {
@@ -186,10 +231,15 @@ const getSortedLevels = (effect: EnvironmentEffect) => {
 
 const getDefaultEnvironmentLevel = (effect: EnvironmentEffect) => {
   const levels = getSortedLevels(effect);
+
   return levels[0]?.value ?? 0;
 };
 
-const getEnvironmentLevelName = (effect: EnvironmentEffect, value: number) => {
+const getEnvironmentLevelName = (
+  effect: EnvironmentEffect,
+
+  value: number,
+) => {
   return (
     effect.levels.find((level) => level.value === value)?.name ??
     `Level ${value}`
@@ -198,7 +248,9 @@ const getEnvironmentLevelName = (effect: EnvironmentEffect, value: number) => {
 
 const moveTowardsTarget = (
   effect: EnvironmentEffect,
+
   currentValue: number,
+
   targetValue: number,
 ) => {
   const levels = getSortedLevels(effect);
@@ -222,13 +274,21 @@ const moveTowardsTarget = (
   const maxChange = Math.max(0, effect.maxChangePerRoll);
 
   if (targetIndex > currentIndex) {
-    const nextIndex = Math.min(currentIndex + maxChange, targetIndex);
+    const nextIndex = Math.min(
+      currentIndex + maxChange,
+
+      targetIndex,
+    );
 
     return levels[nextIndex].value;
   }
 
   if (targetIndex < currentIndex) {
-    const nextIndex = Math.max(currentIndex - maxChange, targetIndex);
+    const nextIndex = Math.max(
+      currentIndex - maxChange,
+
+      targetIndex,
+    );
 
     return levels[nextIndex].value;
   }
@@ -248,6 +308,7 @@ const MapViewer = ({
   onGiveMoneyToParty,
 }: MapViewerProps) => {
   const navigate = useNavigate();
+
   const { loadEncounterTemplate } = useEncounter();
 
   const mapData = map as ExtendedCampaignMap | null;
@@ -278,22 +339,13 @@ const MapViewer = ({
     EnvironmentRollResult[]
   >([]);
 
-  const [zoom, setZoom] = useState(1);
-
-  const [imageSize, setImageSize] = useState<{
-    width: number;
-    height: number;
-  } | null>(null);
-
   const [isTreasureModalOpen, setIsTreasureModalOpen] = useState(false);
 
   const [treasureAssignments, setTreasureAssignments] = useState<
     Record<string, TreasureRecipient>
   >({});
 
-  const viewportRef = useRef<HTMLDivElement | null>(null);
-
-  const imageRef = useRef<HTMLImageElement | null>(null);
+  const mapCanvasRef = useRef<MapCanvasHandle | null>(null);
 
   const environmentEffects = mapData?.environmentEffects ?? [];
 
@@ -314,25 +366,7 @@ const MapViewer = ({
     [];
 
   const fitMapToViewport = () => {
-    const viewport = viewportRef.current;
-    const image = imageRef.current;
-
-    if (!viewport || !image) return;
-
-    const naturalWidth = image.naturalWidth;
-    const naturalHeight = image.naturalHeight;
-
-    if (!naturalWidth || !naturalHeight) {
-      return;
-    }
-
-    const availableWidth = viewport.clientWidth - 32;
-
-    if (availableWidth <= 0) return;
-
-    const nextZoom = availableWidth / naturalWidth;
-
-    setZoom(Math.max(0.2, Math.min(4, nextZoom)));
+    mapCanvasRef.current?.fitToViewport();
   };
 
   const handleSidebarResizeStart = (
@@ -344,18 +378,31 @@ const MapViewer = ({
 
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const viewportWidth = window.innerWidth;
+
       const nextWidth = viewportWidth - moveEvent.clientX;
 
       const minWidth = 320;
-      const maxWidth = Math.min(800, viewportWidth * 0.65);
 
-      setSidebarWidth(Math.max(minWidth, Math.min(maxWidth, nextWidth)));
+      const maxWidth = Math.min(
+        800,
+
+        viewportWidth * 0.65,
+      );
+
+      setSidebarWidth(
+        Math.max(
+          minWidth,
+
+          Math.min(maxWidth, nextWidth),
+        ),
+      );
     };
 
     const handlePointerUp = () => {
       setIsResizingSidebar(false);
 
       window.removeEventListener("pointermove", handlePointerMove);
+
       window.removeEventListener("pointerup", handlePointerUp);
 
       window.requestAnimationFrame(() => {
@@ -366,19 +413,20 @@ const MapViewer = ({
     };
 
     window.addEventListener("pointermove", handlePointerMove);
+
     window.addEventListener("pointerup", handlePointerUp);
   };
 
   useEffect(() => {
-    if (!map) return;
+    if (!map) {
+      return;
+    }
 
     setRoomStates(map.rooms ?? []);
 
     /*
-     * Preserve the currently selected area when the map
-     * updates from Firestore after rolling/randomizing.
-     *
-     * Only clear the selection if that area no longer exists.
+     * Preserve the currently selected area when
+     * Firestore updates the map.
      */
     setSelectedRoomId((currentRoomId) => {
       if (currentRoomId === null) {
@@ -395,8 +443,8 @@ const MapViewer = ({
     setHoveredRoomId(null);
 
     /*
-     * Keep the currently selected environment effect if it
-     * still exists. Otherwise fall back to the first effect.
+     * Preserve the selected environment effect
+     * if it still exists.
      */
     setActiveEffectId((currentEffectId) => {
       if (
@@ -410,7 +458,9 @@ const MapViewer = ({
     });
 
     setEnvironmentError(null);
+
     setIsTreasureModalOpen(false);
+
     setTreasureAssignments({});
 
     const timer = window.setTimeout(() => {
@@ -418,20 +468,6 @@ const MapViewer = ({
     }, 0);
 
     return () => window.clearTimeout(timer);
-  }, [map]);
-
-  useEffect(() => {
-    if (!map) return;
-
-    const handleResize = () => {
-      fitMapToViewport();
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
   }, [map]);
 
   const selectedRoom = useMemo(() => {
@@ -455,8 +491,11 @@ const MapViewer = ({
           return [
             {
               key: `${selectedRoom.id}-${index}-item-${item.id}`,
+
               text: treasureText,
+
               type: "item",
+
               item,
             },
           ];
@@ -468,9 +507,13 @@ const MapViewer = ({
           return [
             {
               key: `${selectedRoom.id}-${index}-money-${treasureText}`,
+
               text: treasureText,
+
               type: "money",
+
               money,
+
               moneyLabel: getMoneyLabel(money),
             },
           ];
@@ -481,45 +524,15 @@ const MapViewer = ({
     );
   }, [selectedRoom]);
 
-  const handleImageLoad = () => {
-    const image = imageRef.current;
-
-    if (!image) return;
-
-    setImageSize({
-      width: image.naturalWidth,
-      height: image.naturalHeight,
-    });
-
-    fitMapToViewport();
-  };
-
-  const getSvgPoints = (
-    markers: {
-      x: number;
-      y: number;
-    }[],
-  ) => {
-    if (!imageSize) return "";
-
-    return markers
-      .map((point) => {
-        const x = (point.x / 100) * imageSize.width;
-
-        const y = (point.y / 100) * imageSize.height;
-
-        return `${x},${y}`;
-      })
-      .join(" ");
-  };
-
   const selectRoom = (roomId: number) => {
     setSelectedRoomId(roomId);
+
     setIsTreasureModalOpen(false);
   };
 
   const showOverview = () => {
     setSelectedRoomId(null);
+
     setIsTreasureModalOpen(false);
   };
 
@@ -529,14 +542,18 @@ const MapViewer = ({
 
   const saveEnvironmentRooms = async (
     nextRooms: CampaignMapRoom[],
+
     previousRooms: CampaignMapRoom[],
   ) => {
-    if (!map) return;
+    if (!map) {
+      return;
+    }
 
     setRoomStates(nextRooms);
 
     try {
       setIsEnvironmentSaving(true);
+
       setEnvironmentError(null);
 
       await updateCampaignMap(campaignId, map.id, {
@@ -557,6 +574,7 @@ const MapViewer = ({
 
   const getRoomEnvironmentLevel = (
     room: CampaignMapRoom,
+
     effect: EnvironmentEffect,
   ) => {
     return room.environment?.[effect.id] ?? getDefaultEnvironmentLevel(effect);
@@ -564,6 +582,7 @@ const MapViewer = ({
 
   const changeRoomEnvironmentLevel = async (
     roomId: number,
+
     direction: -1 | 1,
   ) => {
     if (!activeEffect || isEnvironmentSaving) {
@@ -593,7 +612,12 @@ const MapViewer = ({
 
       const nextIndex = Math.max(
         0,
-        Math.min(levels.length - 1, currentIndex + direction),
+
+        Math.min(
+          levels.length - 1,
+
+          currentIndex + direction,
+        ),
       );
 
       const nextValue = levels[nextIndex].value;
@@ -603,6 +627,7 @@ const MapViewer = ({
 
         environment: {
           ...(room.environment ?? {}),
+
           [activeEffect.id]: nextValue,
         },
       };
@@ -613,7 +638,7 @@ const MapViewer = ({
 
       setLastRollResults([]);
     } catch {
-      // Error already handled.
+      // handled above
     }
   };
 
@@ -637,18 +662,19 @@ const MapViewer = ({
 
       const targetLevel = matchingRange?.targetLevel ?? currentLevel;
 
-      /*
-       * Randomize deliberately ignores
-       * maxChangePerRoll.
-       */
       const nextLevel = targetLevel;
 
       results.push({
         roomId: room.id,
+
         roomName: room.name,
+
         roll,
+
         previousLevel: currentLevel,
+
         targetLevel,
+
         nextLevel,
       });
 
@@ -657,6 +683,7 @@ const MapViewer = ({
 
         environment: {
           ...(room.environment ?? {}),
+
           [activeEffect.id]: nextLevel,
         },
       };
@@ -699,10 +726,15 @@ const MapViewer = ({
 
       results.push({
         roomId: room.id,
+
         roomName: room.name,
+
         roll,
+
         previousLevel: currentLevel,
+
         targetLevel,
+
         nextLevel,
       });
 
@@ -711,6 +743,7 @@ const MapViewer = ({
 
         environment: {
           ...(room.environment ?? {}),
+
           [activeEffect.id]: nextLevel,
         },
       };
@@ -745,9 +778,14 @@ const MapViewer = ({
     setIsTreasureModalOpen(false);
   };
 
-  const setTreasureRecipient = (key: string, recipient: TreasureRecipient) => {
+  const setTreasureRecipient = (
+    key: string,
+
+    recipient: TreasureRecipient,
+  ) => {
     setTreasureAssignments((prev) => ({
       ...prev,
+
       [key]: recipient,
     }));
   };
@@ -789,7 +827,9 @@ const MapViewer = ({
   };
 
   useEffect(() => {
-    if (!map) return;
+    if (!map) {
+      return;
+    }
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -808,220 +848,46 @@ const MapViewer = ({
     };
   }, [map, onClose, isTreasureModalOpen]);
 
-  if (!mapData) return null;
-
-  const selectedPolygonPoints =
-    selectedRoom &&
-    selectedRoom.markers &&
-    selectedRoom.markers.length >= 3 &&
-    imageSize
-      ? getSvgPoints(selectedRoom.markers)
-      : null;
+  if (!mapData) {
+    return null;
+  }
 
   return (
     <div className="h-dvh w-full overflow-hidden bg-zinc-950 text-white">
       <div className="flex h-full flex-col overflow-hidden bg-zinc-950">
-        {/* Main layout */}
         <div
           className="flex min-h-0 flex-1 flex-col lg:flex-row"
-          style={{ "--sidebar-width": `${sidebarWidth}px` } as CSSProperties}
+          style={
+            {
+              "--sidebar-width": `${sidebarWidth}px`,
+            } as CSSProperties
+          }
         >
-          {/* Map */}
-          <div
-            ref={viewportRef}
-            className="min-h-0 min-w-0 flex-1 overflow-auto bg-zinc-900 p-4"
-          >
-            <div className="min-h-full min-w-full">
-              <div
-                className="relative mx-auto"
-                onClick={showOverview}
-                style={{
-                  width: imageSize ? `${imageSize.width * zoom}px` : "100%",
-                }}
-              >
-                <img
-                  ref={imageRef}
-                  src={mapData.imageUrl}
-                  alt={mapData.title}
-                  className="block h-auto w-full select-none rounded"
-                  draggable={false}
-                  onLoad={handleImageLoad}
-                />
+          {/* Shared map canvas */}
 
-                {/* Interactive polygons */}
-                {imageSize && (
-                  <svg
-                    className="absolute inset-0 h-full w-full"
-                    viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
-                  >
-                    {roomStates.map((room) => {
-                      if (!room.markers || room.markers.length < 3) {
-                        return null;
-                      }
+          <MapCanvas
+            ref={mapCanvasRef}
+            map={mapData}
+            rooms={roomStates}
+            selectedRoomId={selectedRoomId}
+            hoveredRoomId={hoveredRoomId}
+            onSelectRoom={selectRoom}
+            onShowOverview={showOverview}
+            onHoverRoom={setHoveredRoomId}
+            getRoomEnvironmentLabel={(room) => {
+              if (!activeEffect) {
+                return null;
+              }
 
-                      const isSelected = selectedRoomId === room.id;
+              const level = getRoomEnvironmentLevel(room, activeEffect);
 
-                      const isHovered = hoveredRoomId === room.id;
-
-                      const points = getSvgPoints(room.markers);
-
-                      return (
-                        <polygon
-                          key={room.id}
-                          points={points}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            selectRoom(room.id);
-                          }}
-                          onMouseEnter={() => setHoveredRoomId(room.id)}
-                          onMouseLeave={() => setHoveredRoomId(null)}
-                          className="cursor-pointer"
-                          fill={
-                            isSelected
-                              ? "transparent"
-                              : isHovered
-                                ? "rgba(255,255,255,0.10)"
-                                : "rgba(255,255,255,0.015)"
-                          }
-                          stroke={
-                            isSelected
-                              ? "transparent"
-                              : isHovered
-                                ? "rgba(255,255,255,0.75)"
-                                : "rgba(255,255,255,0.10)"
-                          }
-                          strokeWidth={isHovered ? 3 : 1.5}
-                          vectorEffect="non-scaling-stroke"
-                        />
-                      );
-                    })}
-                  </svg>
-                )}
-
-                {/* Spotlight */}
-                {selectedPolygonPoints && imageSize && (
-                  <svg
-                    className="pointer-events-none absolute inset-0 h-full w-full"
-                    viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
-                  >
-                    <defs>
-                      <mask
-                        id="selected-area-spotlight-mask"
-                        maskUnits="userSpaceOnUse"
-                        x="0"
-                        y="0"
-                        width={imageSize.width}
-                        height={imageSize.height}
-                      >
-                        <rect
-                          x="0"
-                          y="0"
-                          width={imageSize.width}
-                          height={imageSize.height}
-                          fill="white"
-                        />
-
-                        <polygon points={selectedPolygonPoints} fill="black" />
-                      </mask>
-                    </defs>
-
-                    <rect
-                      x="0"
-                      y="0"
-                      width={imageSize.width}
-                      height={imageSize.height}
-                      fill="rgba(0,0,0,0.3)"
-                      mask="url(#selected-area-spotlight-mask)"
-                    />
-
-                    <polygon
-                      points={selectedPolygonPoints}
-                      fill="transparent"
-                      stroke="rgba(255,255,255,0.95)"
-                      strokeWidth="3"
-                      vectorEffect="non-scaling-stroke"
-                    />
-                  </svg>
-                )}
-
-                {/* Area pins */}
-                {roomStates.map((room) => {
-                  if (!room.markers || room.markers.length < 3) {
-                    return null;
-                  }
-
-                  const defaultPin = {
-                    x:
-                      room.markers.reduce(
-                        (total, point) => total + point.x,
-                        0,
-                      ) / room.markers.length,
-
-                    y:
-                      room.markers.reduce(
-                        (total, point) => total + point.y,
-                        0,
-                      ) / room.markers.length,
-                  };
-
-                  const pinPosition = room.pin ?? defaultPin;
-
-                  const isSelected = selectedRoomId === room.id;
-
-                  const activeLevel = activeEffect
-                    ? getRoomEnvironmentLevel(room, activeEffect)
-                    : null;
-
-                  const activeLevelName =
-                    activeEffect && activeLevel !== null
-                      ? getEnvironmentLevelName(activeEffect, activeLevel)
-                      : null;
-
-                  return (
-                    <div key={`area-pin-${room.id}`}>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          selectRoom(room.id);
-                        }}
-                        onMouseEnter={() => setHoveredRoomId(room.id)}
-                        onMouseLeave={() => setHoveredRoomId(null)}
-                        className={`absolute z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border text-xs font-bold shadow-lg transition ${
-                          isSelected
-                            ? "h-9 w-9 border-white bg-white text-zinc-950"
-                            : "h-8 w-8 border-white/60 bg-zinc-950/80 text-white hover:border-white hover:bg-zinc-800"
-                        }`}
-                        style={{
-                          left: `${pinPosition.x}%`,
-                          top: `${pinPosition.y}%`,
-                        }}
-                        title={`${room.id}. ${room.name}${
-                          activeLevelName ? ` — ${activeLevelName}` : ""
-                        }`}
-                      >
-                        {room.id}
-                      </button>
-
-                      {activeEffect && activeLevelName && (
-                        <div
-                          className="pointer-events-none absolute z-10 -translate-x-1/2 translate-y-4 whitespace-nowrap rounded-full border border-white/10 bg-zinc-950/90 px-2 py-0.5 text-[10px] font-medium text-white/80 shadow"
-                          style={{
-                            left: `${pinPosition.x}%`,
-                            top: `${pinPosition.y}%`,
-                          }}
-                        >
-                          {activeLevelName}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
+              return getEnvironmentLevelName(activeEffect, level);
+            }}
+            className="flex-1"
+          />
 
           {/* Resizable divider */}
+
           <div
             onPointerDown={handleSidebarResizeStart}
             className={`group relative hidden w-2 shrink-0 cursor-col-resize touch-none items-center justify-center border-l border-r border-white/5 bg-zinc-950 transition lg:flex ${
@@ -1033,6 +899,7 @@ const MapViewer = ({
           </div>
 
           {/* Information panel */}
+
           <aside className="min-h-0 w-full shrink-0 overflow-auto border-t border-white/10 bg-zinc-950 p-4 lg:w-[var(--sidebar-width)] lg:border-t-0">
             <div className="mb-4 flex items-center gap-2">
               <button
@@ -1071,9 +938,9 @@ const MapViewer = ({
 
             <div className="space-y-5">
               {/* Environment controls */}
+
               {environmentEffects.length > 0 && (
                 <section className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5">
-                  {/* Compact header */}
                   <div className="flex items-center justify-between gap-3 p-4">
                     <button
                       type="button"
@@ -1121,7 +988,6 @@ const MapViewer = ({
                     )}
                   </div>
 
-                  {/* Expanded controls */}
                   {isEnvironmentExpanded && (
                     <div className="border-t border-white/10 px-4 pb-4 pt-4">
                       {environmentEffects.length > 1 && (
@@ -1337,6 +1203,7 @@ const MapViewer = ({
               )}
 
               {/* Overview / selected area */}
+
               {selectedRoom === null ? (
                 <div className="space-y-5">
                   <div>
@@ -1438,6 +1305,7 @@ const MapViewer = ({
                       <div className="mt-1 text-sm font-semibold text-white">
                         {getEnvironmentLevelName(
                           activeEffect,
+
                           getRoomEnvironmentLevel(selectedRoom, activeEffect),
                         )}
                       </div>
@@ -1622,7 +1490,9 @@ const MapViewer = ({
           </aside>
         </div>
       </div>
+
       {/* Treasure modal */}
+
       {isTreasureModalOpen && selectedRoom && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-2xl rounded-xl border border-white/10 bg-zinc-950 p-5 text-white shadow-2xl">

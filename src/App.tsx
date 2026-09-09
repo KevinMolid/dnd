@@ -178,7 +178,11 @@ function App() {
 
               <Route
                 path="/campaigns/:campaignId/maps/:mapId"
-                element={<MapViewerPage />}
+                element={
+                  <CampaignEncounterScope>
+                    <MapViewerPage />
+                  </CampaignEncounterScope>
+                }
               />
 
               <Route

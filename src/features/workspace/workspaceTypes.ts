@@ -20,6 +20,23 @@ export type WorkspaceModuleConfig = {
    * Notes module
    */
   noteContent?: string;
+
+  /*
+   * Map module
+   */
+  mapId?: string;
+
+  /**
+   * null = map overview
+   * number = selected map area
+   */
+  selectedRoomId?: number | null;
+
+  /**
+   * Selected environment effect for this
+   * particular Map module.
+   */
+  mapEnvironmentEffectId?: string;
 };
 
 export type WorkspaceModule = {

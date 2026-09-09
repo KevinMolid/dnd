@@ -2,11 +2,13 @@ import type {
   ComponentType,
 } from "react";
 
-import MonsterWorkspaceModule from "./modules/MonsterWorkspaceModule";
 import EncounterWorkspaceModule from "./modules/EncounterWorkspaceModule";
 
+import MonsterWorkspaceModule from "./modules/MonsterWorkspaceModule";
+
+import MapWorkspaceModule from "./modules/MapWorkspaceModule";
+
 import {
-  MapWorkspaceModule,
   NotesWorkspaceModule,
 } from "./modules/PlaceholderWorkspaceModules";
 
@@ -25,14 +27,21 @@ export type ModuleDefinition = {
   icon: string;
 
   defaultW: number;
+
   defaultH: number;
 
   minW: number;
+
   minH: number;
 
+  /**
+   * false means the module renders its own
+   * title/drag header.
+   */
   showHeader?: boolean;
 
-  component: ComponentType<WorkspaceModuleRenderProps>;
+  component:
+    ComponentType<WorkspaceModuleRenderProps>;
 };
 
 export const MODULE_REGISTRY: Record<
@@ -45,7 +54,7 @@ export const MODULE_REGISTRY: Record<
     title: "Map",
 
     description:
-      "Display a campaign map.",
+      "Keep an interactive campaign map visible during play.",
 
     icon: "fa-solid fa-map",
 
@@ -53,11 +62,12 @@ export const MODULE_REGISTRY: Record<
     defaultH: 10,
 
     minW: 3,
-    minH: 4,
+    minH: 5,
 
     showHeader: true,
 
-    component: MapWorkspaceModule,
+    component:
+      MapWorkspaceModule,
   },
 
   encounter: {
@@ -78,18 +88,21 @@ export const MODULE_REGISTRY: Record<
 
     showHeader: true,
 
-    component: EncounterWorkspaceModule,
+    component:
+      EncounterWorkspaceModule,
   },
 
   monster: {
     type: "monster",
 
-    title: "Monster Stat Block",
+    title:
+      "Monster Stat Block",
 
     description:
       "Keep a monster stat block visible.",
 
-    icon: "fa-solid fa-dragon",
+    icon:
+      "fa-solid fa-dragon",
 
     defaultW: 3,
     defaultH: 13,
@@ -99,7 +112,8 @@ export const MODULE_REGISTRY: Record<
 
     showHeader: true,
 
-    component: MonsterWorkspaceModule,
+    component:
+      MonsterWorkspaceModule,
   },
 
   notes: {
@@ -108,9 +122,10 @@ export const MODULE_REGISTRY: Record<
     title: "DM Notes",
 
     description:
-      "Quick notes during the session.",
+      "Quick persistent notes during the session.",
 
-    icon: "fa-solid fa-note-sticky",
+    icon:
+      "fa-solid fa-note-sticky",
 
     defaultW: 4,
     defaultH: 6,
@@ -120,6 +135,7 @@ export const MODULE_REGISTRY: Record<
 
     showHeader: false,
 
-    component: NotesWorkspaceModule,
+    component:
+      NotesWorkspaceModule,
   },
 };

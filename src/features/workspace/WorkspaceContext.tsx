@@ -20,7 +20,7 @@ export type WorkspaceSelectedMonster = {
   monsterKey: string;
 
   /**
-   * Specific encounter instance.
+   * Specific encounter instance, when relevant.
    */
   encounterEntryId?: string;
 
@@ -40,12 +40,34 @@ export type WorkspaceSelectedMonster = {
 
 export type WorkspaceSelectedEntity = WorkspaceSelectedMonster | null;
 
+/**
+ * Location is deliberately separate from selectedEntity.
+ *
+ * The party can remain "at" a location while the DM
+ * inspects monsters, NPCs, characters, etc.
+ */
+export type WorkspaceActiveLocation = {
+  mapId: string;
+
+  mapTitle: string;
+
+  roomId: number;
+
+  roomName: string;
+};
+
 type WorkspaceContextValue = {
   selectedEntity: WorkspaceSelectedEntity;
+
+  activeLocation: WorkspaceActiveLocation | null;
 
   selectEntity: (entity: WorkspaceSelectedEntity) => void;
 
   clearSelection: () => void;
+
+  setActiveLocation: (location: WorkspaceActiveLocation | null) => void;
+
+  clearActiveLocation: () => void;
 };
 
 const WorkspaceContext = createContext<WorkspaceContextValue | undefined>(
@@ -56,13 +78,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [selectedEntity, setSelectedEntity] =
     useState<WorkspaceSelectedEntity>(null);
 
+  const [activeLocation, setActiveLocationState] =
+    useState<WorkspaceActiveLocation | null>(null);
+
   /*
-   * Important:
-   * These callbacks must stay stable when the
-   * selection itself changes.
+   * Keep these callbacks stable.
    *
-   * Otherwise effects that depend on selectEntity
-   * can run again immediately after a manual selection.
+   * This is important for the encounter
+   * auto-follow behavior.
    */
   const selectEntity = useCallback((entity: WorkspaceSelectedEntity) => {
     setSelectedEntity(entity);
@@ -72,13 +95,39 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     setSelectedEntity(null);
   }, []);
 
+  const setActiveLocation = useCallback(
+    (location: WorkspaceActiveLocation | null) => {
+      setActiveLocationState(location);
+    },
+    [],
+  );
+
+  const clearActiveLocation = useCallback(() => {
+    setActiveLocationState(null);
+  }, []);
+
   const value = useMemo<WorkspaceContextValue>(
     () => ({
       selectedEntity,
+
+      activeLocation,
+
+      selectEntity,
+
+      clearSelection,
+
+      setActiveLocation,
+
+      clearActiveLocation,
+    }),
+    [
+      selectedEntity,
+      activeLocation,
       selectEntity,
       clearSelection,
-    }),
-    [selectedEntity, selectEntity, clearSelection],
+      setActiveLocation,
+      clearActiveLocation,
+    ],
   );
 
   return (

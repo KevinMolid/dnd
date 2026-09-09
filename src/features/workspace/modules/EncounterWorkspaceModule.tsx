@@ -154,7 +154,15 @@ export default function EncounterWorkspaceModule({
     rollInitiative,
   } = useEncounter();
 
-  const { selectedEntity, selectEntity, clearSelection } = useWorkspace();
+  const {
+    selectedEntity,
+
+    activeLocation,
+
+    selectEntity,
+
+    clearSelection,
+  } = useWorkspace();
 
   const { allMonsters, loading: monstersLoading } =
     useMonsterLibrary(campaignId);
@@ -177,15 +185,6 @@ export default function EncounterWorkspaceModule({
 
   const sortedEncounter = useMemo(() => sortEncounter(encounter), [encounter]);
 
-  /*
-   * This key changes only when:
-   *
-   * - combatants are added/removed
-   * - initiative values change
-   * - initiative order changes
-   *
-   * HP changes do not affect it.
-   */
   const initiativeOrderKey = useMemo(
     () =>
       sortedEncounter
@@ -325,29 +324,10 @@ export default function EncounterWorkspaceModule({
     [getMonsterKeyForEntry, selectEntity],
   );
 
-  /*
-   * AUTOMATIC FOLLOW
-   *
-   * This effect intentionally depends ONLY on:
-   *
-   * - current turn
-   * - actual initiative/order changes
-   * - monster library becoming available
-   *
-   * It does NOT depend on selectedEntity.
-   *
-   * Therefore:
-   *
-   * Manual click -> remains manual.
-   * HP edit -> remains manual.
-   * Re-render -> remains manual.
-   *
-   * Next / Previous -> resumes auto follow.
-   * Initiative change -> resumes auto follow.
-   */
   useEffect(() => {
     if (sortedEncounter.length === 0) {
       clearSelection();
+
       return;
     }
 
@@ -383,13 +363,6 @@ export default function EncounterWorkspaceModule({
       clearSelection();
     }
 
-    /*
-     * Do not add sortedEncounter or selectedEntity here.
-     *
-     * initiativeOrderKey represents the parts of
-     * sortedEncounter that are relevant to automatic
-     * follow.
-     */
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTurnIndex, initiativeOrderKey, allMonsters]);
 
@@ -463,6 +436,7 @@ export default function EncounterWorkspaceModule({
     }
 
     clearEncounter();
+
     clearSelection();
 
     setShowManagePanel(false);
@@ -472,7 +446,7 @@ export default function EncounterWorkspaceModule({
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-zinc-950/20">
-      {/* Combat controls */}
+      {/* Controls */}
 
       <div className="workspace-no-drag shrink-0 border-b border-white/10 bg-black/20 p-2">
         <div className="flex flex-wrap items-center gap-2">
@@ -538,6 +512,21 @@ export default function EncounterWorkspaceModule({
 
             {showManagePanel ? "Close" : "Manage Combatants"}
           </button>
+
+          {/* Active workspace location */}
+
+          {activeLocation ? (
+            <div
+              title={`${activeLocation.mapTitle} · ${activeLocation.roomName}`}
+              className="flex min-w-0 max-w-52 items-center gap-1.5 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] px-2 py-1.5"
+            >
+              <i className="fa-solid fa-location-dot shrink-0 text-[9px] text-emerald-300" />
+
+              <span className="truncate text-[10px] font-medium text-emerald-200">
+                {activeLocation.roomName}
+              </span>
+            </div>
+          ) : null}
 
           <div className="relative ml-auto">
             <button
@@ -803,9 +792,17 @@ export default function EncounterWorkspaceModule({
                 No active encounter
               </p>
 
-              <p className="mt-1 text-xs text-zinc-600">
-                Add players or monsters to begin.
-              </p>
+              {activeLocation ? (
+                <p className="mt-1 text-xs text-emerald-300/70">
+                  <i className="fa-solid fa-location-dot mr-1" />
+
+                  {activeLocation.roomName}
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-zinc-600">
+                  Add players or monsters to begin.
+                </p>
+              )}
 
               <button
                 type="button"
