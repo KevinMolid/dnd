@@ -23,16 +23,15 @@ import {
   type MonsterType,
 } from "../data/monsterCatalog";
 
+import MonsterStatBlock, {
+  type MonsterListItem,
+} from "../components/monsters/MonsterStatBlock";
+
 type CampaignMonster = MonsterDefinition & {
   campaignId?: string;
   source: "campaign";
   basedOnMonsterId?: string;
   createdByUid?: string;
-};
-
-type MonsterListItem = MonsterDefinition & {
-  source: "default" | "campaign";
-  basedOnMonsterId?: string;
 };
 
 type MonsterFormState = {
@@ -162,12 +161,6 @@ const monsterToForm = (monster: MonsterDefinition): MonsterFormState => ({
   reactions: entriesToText(monster.reactions),
 });
 
-const abilityModifier = (score: number) => {
-  const modifier = Math.floor((score - 10) / 2);
-
-  return modifier >= 0 ? `+${modifier}` : String(modifier);
-};
-
 const crToNumber = (cr: string) => {
   if (cr.includes("/")) {
     const [numerator, denominator] = cr.split("/").map(Number);
@@ -181,169 +174,6 @@ const crToNumber = (cr: string) => {
 
   return Number.isFinite(numeric) ? numeric : 999;
 };
-
-const StatBlockSection = ({
-  title,
-  entries,
-}: {
-  title: string;
-  entries?: MonsterTextEntry[];
-}) => {
-  if (!entries?.length) {
-    return null;
-  }
-
-  return (
-    <div className="mt-6">
-      <h3 className="border-b border-rose-900/40 pb-1 text-sm font-bold uppercase tracking-[0.18em] text-rose-300">
-        {title}
-      </h3>
-
-      <div className="mt-3 space-y-3">
-        {entries.map((entry, index) => (
-          <p
-            key={`${entry.name}-${index}`}
-            className="text-sm leading-6 text-zinc-300"
-          >
-            <span className="font-semibold italic text-white">
-              {entry.name}.
-            </span>{" "}
-            {entry.text}
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-function MonsterStatBlock({ monster }: { monster: MonsterListItem }) {
-  const abilities = [
-    ["STR", monster.stats.str],
-    ["DEX", monster.stats.dex],
-    ["CON", monster.stats.con],
-    ["INT", monster.stats.int],
-    ["WIS", monster.stats.wis],
-    ["CHA", monster.stats.cha],
-  ] as const;
-
-  return (
-    <div className="overflow-hidden rounded-3xl border border-rose-900/30 bg-[#171311] shadow-2xl">
-      {monster.img ? (
-        <div className="aspect-[2/1] overflow-hidden border-b border-white/10 bg-black/30">
-          <img
-            src={monster.img}
-            alt={monster.name}
-            className="h-full w-full object-cover"
-          />
-        </div>
-      ) : null}
-
-      <div className="p-5 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-serif text-3xl font-bold text-rose-200">
-              {monster.name}
-            </h2>
-
-            <p className="mt-1 text-sm italic text-zinc-400">
-              {monster.description}
-            </p>
-          </div>
-
-          <span
-            className={`rounded-full border px-3 py-1 text-xs font-semibold ${
-              monster.source === "campaign"
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                : "border-white/10 bg-white/5 text-zinc-300"
-            }`}
-          >
-            {monster.source === "campaign" ? "Campaign" : "Default"}
-          </span>
-        </div>
-
-        <div className="my-4 h-px bg-rose-900/40" />
-
-        <div className="space-y-1 text-sm text-zinc-300">
-          <p>
-            <span className="font-semibold text-rose-300">Armor Class</span>{" "}
-            {monster.armorClass}
-            {monster.armorClassNotes ? ` (${monster.armorClassNotes})` : ""}
-          </p>
-
-          <p>
-            <span className="font-semibold text-rose-300">Hit Points</span>{" "}
-            {monster.hp}
-          </p>
-
-          <p>
-            <span className="font-semibold text-rose-300">Speed</span>{" "}
-            {typeof monster.speed === "number"
-              ? `${monster.speed} ft.`
-              : monster.speed}
-          </p>
-        </div>
-
-        <div className="my-4 h-px bg-rose-900/40" />
-
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {abilities.map(([label, score]) => (
-            <div
-              key={label}
-              className="rounded-xl border border-white/10 bg-black/20 p-2 text-center"
-            >
-              <div className="text-xs font-bold text-rose-300">{label}</div>
-
-              <div className="mt-1 text-sm font-semibold text-white">
-                {score} ({abilityModifier(score)})
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="my-4 h-px bg-rose-900/40" />
-
-        <div className="space-y-1 text-sm text-zinc-300">
-          {monster.skills ? (
-            <p>
-              <span className="font-semibold text-rose-300">Skills</span>{" "}
-              {monster.skills}
-            </p>
-          ) : null}
-
-          {monster.senses ? (
-            <p>
-              <span className="font-semibold text-rose-300">Senses</span>{" "}
-              {monster.senses}
-            </p>
-          ) : null}
-
-          {monster.language ? (
-            <p>
-              <span className="font-semibold text-rose-300">Languages</span>{" "}
-              {monster.language}
-            </p>
-          ) : null}
-
-          <p>
-            <span className="font-semibold text-rose-300">Challenge</span>{" "}
-            {monster.challengeRating} ({monster.xp.toLocaleString()} XP)
-          </p>
-        </div>
-
-        <StatBlockSection title="Traits" entries={monster.traits} />
-
-        <StatBlockSection title="Actions" entries={monster.actions} />
-
-        <StatBlockSection
-          title="Bonus Actions"
-          entries={monster.bonusActions}
-        />
-
-        <StatBlockSection title="Reactions" entries={monster.reactions} />
-      </div>
-    </div>
-  );
-}
 
 export default function MonstersPage() {
   const { campaignId } = useParams<{ campaignId: string }>();

@@ -140,6 +140,15 @@ const CampaignHeader = ({
               {canManageCampaign && (
                 <>
                   <NavLink
+                    to={`/campaigns/${campaign.id}/workspace`}
+                    className={({ isActive }) =>
+                      `${tabBaseClass} ${isActive ? tabActiveClass : tabInactiveClass}`
+                    }
+                  >
+                    {" "}
+                    Workspace{" "}
+                  </NavLink>
+                  <NavLink
                     to={`/campaigns/${campaign.id}/maps`}
                     className={({ isActive }) =>
                       `${tabBaseClass} ${isActive ? tabActiveClass : tabInactiveClass}`

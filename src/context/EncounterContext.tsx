@@ -6,9 +6,10 @@ import React, {
   useMemo,
   useState,
 } from "react";
+
 import { monsters, type MonsterDefinition } from "../data/monsterCatalog";
 
-const STORAGE_KEY = "lmop-encounter";
+const getStorageKey = (campaignId: string) => `rphub-encounter-${campaignId}`;
 
 export type EncounterEntityKind = "monster" | "player";
 
@@ -56,6 +57,20 @@ export type EncounterPlayerSnapshot = {
   speciesId: string | null;
 };
 
+export type EncounterMonsterSource = "default" | "campaign";
+
+export type EncounterMonsterSnapshot = {
+  monsterId: string;
+
+  source?: EncounterMonsterSource;
+
+  armorClass: number;
+
+  initiativeBonus: number;
+
+  img?: string;
+};
+
 export type EncounterEntry = {
   id: string;
   entityKind: EncounterEntityKind;
@@ -66,6 +81,7 @@ export type EncounterEntry = {
   maxHp: number;
   initiative: number | "";
   playerSnapshot?: EncounterPlayerSnapshot;
+  monsterSnapshot?: EncounterMonsterSnapshot;
 };
 
 export type SavedEncounter = {
@@ -78,11 +94,13 @@ export type SavedEncounter = {
 
 type EncounterStorageData = {
   activeEncounterId: string | null;
+
   activeEncounter: {
     encounter: EncounterEntry[];
     currentTurnIndex: number;
     currentRound: number;
   };
+
   savedEncounters: SavedEncounter[];
 };
 
@@ -92,33 +110,53 @@ type EncounterContextType = {
   currentRound: number;
   savedEncounters: SavedEncounter[];
   activeEncounterId: string | null;
+
   addMonsterToEncounter: (monster: MonsterDefinition) => void;
+
   addPlayerToEncounter: (player: EncounterPlayerInput) => void;
+
   addEntityToEncounter: (
     entityKind: EncounterEntityKind,
     entity: MonsterDefinition | EncounterPlayerInput,
   ) => void;
+
   removeEntityFromEncounter: (id: string) => void;
+
   updateEntityHp: (id: string, hp: number) => void;
+
   updateEntityInitiative: (id: string, initiative: number | "") => void;
+
   renameEntity: (id: string, name: string) => void;
+
   clearEncounter: () => void;
+
   createNewEncounter: () => void;
+
   saveCurrentEncounter: (name: string) => void;
+
   loadEncounter: (id: string) => void;
+
   deleteEncounter: (id: string) => void;
+
   renameEncounter: (id: string, name: string) => void;
+
   loadEncounterTemplate: (
     template: EncounterTemplate | LegacyEncounterTemplate,
   ) => void;
+
   getEntityByName: (
     entityKind: EncounterEntityKind,
     name: string,
   ) => MonsterDefinition | undefined;
+
   nextTurn: () => void;
+
   previousTurn: () => void;
+
   resetTurns: () => void;
+
   rollInitiative: () => void;
+
   rollInitiativeWithPlayerRolls: (
     playerRollsByEntryId: Record<string, number>,
   ) => void;
@@ -128,14 +166,17 @@ const EncounterContext = createContext<EncounterContextType | undefined>(
   undefined,
 );
 
-const makeId = () => {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-};
+const makeId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 
 const cloneEncounterEntry = (entry: EncounterEntry): EncounterEntry => ({
   ...entry,
+
   playerSnapshot: entry.playerSnapshot
     ? { ...entry.playerSnapshot }
+    : undefined,
+
+  monsterSnapshot: entry.monsterSnapshot
+    ? { ...entry.monsterSnapshot }
     : undefined,
 });
 
@@ -145,7 +186,9 @@ const cloneEncounter = (entries: EncounterEntry[]): EncounterEntry[] =>
 const isEncounterPlayerSnapshot = (
   value: unknown,
 ): value is EncounterPlayerSnapshot => {
-  if (!value || typeof value !== "object") return false;
+  if (!value || typeof value !== "object") {
+    return false;
+  }
 
   const item = value as EncounterPlayerSnapshot;
 
@@ -159,8 +202,30 @@ const isEncounterPlayerSnapshot = (
   );
 };
 
+const isEncounterMonsterSnapshot = (
+  value: unknown,
+): value is EncounterMonsterSnapshot => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const item = value as EncounterMonsterSnapshot;
+
+  return (
+    typeof item.monsterId === "string" &&
+    (item.source === undefined ||
+      item.source === "default" ||
+      item.source === "campaign") &&
+    typeof item.armorClass === "number" &&
+    typeof item.initiativeBonus === "number" &&
+    (item.img === undefined || typeof item.img === "string")
+  );
+};
+
 const isValidEncounterEntry = (value: unknown): value is EncounterEntry => {
-  if (!value || typeof value !== "object") return false;
+  if (!value || typeof value !== "object") {
+    return false;
+  }
 
   const item = value as EncounterEntry;
 
@@ -174,12 +239,16 @@ const isValidEncounterEntry = (value: unknown): value is EncounterEntry => {
     typeof item.maxHp === "number" &&
     (typeof item.initiative === "number" || item.initiative === "") &&
     (item.playerSnapshot === undefined ||
-      isEncounterPlayerSnapshot(item.playerSnapshot))
+      isEncounterPlayerSnapshot(item.playerSnapshot)) &&
+    (item.monsterSnapshot === undefined ||
+      isEncounterMonsterSnapshot(item.monsterSnapshot))
   );
 };
 
 const isValidSavedEncounter = (value: unknown): value is SavedEncounter => {
-  if (!value || typeof value !== "object") return false;
+  if (!value || typeof value !== "object") {
+    return false;
+  }
 
   const item = value as SavedEncounter;
 
@@ -193,39 +262,36 @@ const isValidSavedEncounter = (value: unknown): value is SavedEncounter => {
   );
 };
 
-const loadEncounterFromStorage = (): EncounterStorageData => {
+const getEmptyStorageData = (): EncounterStorageData => ({
+  activeEncounterId: null,
+
+  activeEncounter: {
+    encounter: [],
+    currentTurnIndex: 0,
+    currentRound: 1,
+  },
+
+  savedEncounters: [],
+});
+
+const loadEncounterFromStorage = (campaignId: string): EncounterStorageData => {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getStorageKey(campaignId));
 
     if (!raw) {
-      return {
-        activeEncounterId: null,
-        activeEncounter: {
-          encounter: [],
-          currentTurnIndex: 0,
-          currentRound: 1,
-        },
-        savedEncounters: [],
-      };
+      return getEmptyStorageData();
     }
 
     const parsed: unknown = JSON.parse(raw);
 
     if (!parsed || typeof parsed !== "object") {
-      return {
-        activeEncounterId: null,
-        activeEncounter: {
-          encounter: [],
-          currentTurnIndex: 0,
-          currentRound: 1,
-        },
-        savedEncounters: [],
-      };
+      return getEmptyStorageData();
     }
 
     const data = parsed as Partial<EncounterStorageData>;
 
     const safeActiveEncounter = data.activeEncounter;
+
     const safeEncounter =
       safeActiveEncounter && Array.isArray(safeActiveEncounter.encounter)
         ? safeActiveEncounter.encounter.filter(isValidEncounterEntry)
@@ -253,33 +319,34 @@ const loadEncounterFromStorage = (): EncounterStorageData => {
         typeof data.activeEncounterId === "string"
           ? data.activeEncounterId
           : null,
+
       activeEncounter: {
         encounter: safeEncounter,
         currentTurnIndex: safeTurnIndex,
         currentRound: safeRound,
       },
+
       savedEncounters: safeSavedEncounters,
     };
   } catch (error) {
-    console.error("Failed to load encounter from localStorage:", error);
-    return {
-      activeEncounterId: null,
-      activeEncounter: {
-        encounter: [],
-        currentTurnIndex: 0,
-        currentRound: 1,
-      },
-      savedEncounters: [],
-    };
+    console.error(
+      `Failed to load encounter for campaign ${campaignId}:`,
+      error,
+    );
+
+    return getEmptyStorageData();
   }
 };
 
-const sortEncounterByInitiative = (encounter: EncounterEntry[]) => {
-  return [...encounter].sort((a, b) => {
+const sortEncounterByInitiative = (encounter: EncounterEntry[]) =>
+  [...encounter].sort((a, b) => {
     const aInit = a.initiative === "" ? -999 : a.initiative;
+
     const bInit = b.initiative === "" ? -999 : b.initiative;
 
-    if (bInit !== aInit) return bInit - aInit;
+    if (bInit !== aInit) {
+      return bInit - aInit;
+    }
 
     if (a.entityKind !== b.entityKind) {
       return a.entityKind === "player" ? -1 : 1;
@@ -287,7 +354,6 @@ const sortEncounterByInitiative = (encounter: EncounterEntry[]) => {
 
     return a.displayName.localeCompare(b.displayName);
   });
-};
 
 const getNextInstanceNumber = (
   encounter: EncounterEntry[],
@@ -299,17 +365,33 @@ const getNextInstanceNumber = (
       entry.entityKind === entityKind && entry.entityName === entityName,
   );
 
-  if (sameEntries.length === 0) return 1;
+  if (sameEntries.length === 0) {
+    return 1;
+  }
 
   return Math.max(...sameEntries.map((entry) => entry.instanceNumber)) + 1;
 };
 
-const getMonsterInitiativeBonus = (monster: MonsterDefinition) => {
-  return Math.floor((monster.stats.dex - 10) / 2);
+const getMonsterInitiativeBonus = (monster: MonsterDefinition) =>
+  Math.floor((monster.stats.dex - 10) / 2);
+
+const getMonsterSource = (
+  monster: MonsterDefinition,
+): EncounterMonsterSource => {
+  const possibleSource = (
+    monster as MonsterDefinition & {
+      source?: EncounterMonsterSource;
+    }
+  ).source;
+
+  return possibleSource === "campaign" ? "campaign" : "default";
 };
 
 const getPlayerInitiativeBonus = (entry: EncounterEntry) => {
-  if (entry.entityKind !== "player") return 0;
+  if (entry.entityKind !== "player") {
+    return 0;
+  }
+
   return entry.playerSnapshot?.initiativeBonus ?? 0;
 };
 
@@ -325,14 +407,33 @@ const buildMonsterEncounterEntry = (
 
   return {
     id: makeId(),
+
     entityKind: "monster",
+
     entityName: monster.name,
+
     instanceNumber,
+
     displayName:
       instanceNumber > 1 ? `${monster.name} ${instanceNumber}` : monster.name,
+
     currentHp: monster.hp,
+
     maxHp: monster.hp,
+
     initiative: "",
+
+    monsterSnapshot: {
+      monsterId: monster.id,
+
+      source: getMonsterSource(monster),
+
+      armorClass: monster.armorClass,
+
+      initiativeBonus: getMonsterInitiativeBonus(monster),
+
+      img: monster.img,
+    },
   };
 };
 
@@ -342,10 +443,12 @@ const buildMonsterEncounterEntriesFromTemplateRow = (
   monster: MonsterDefinition,
 ): EncounterEntry[] => {
   const entries: EncounterEntry[] = [];
+
   const quantity = Math.max(1, templateMonster.quantity);
+
   const baseName = templateMonster.customName?.trim() || monster.name;
 
-  for (let i = 0; i < quantity; i++) {
+  for (let i = 0; i < quantity; i += 1) {
     const instanceNumber = getNextInstanceNumber(
       [...previousEncounter, ...entries],
       "monster",
@@ -354,13 +457,32 @@ const buildMonsterEncounterEntriesFromTemplateRow = (
 
     entries.push({
       id: makeId(),
+
       entityKind: "monster",
+
       entityName: monster.name,
+
       instanceNumber,
+
       displayName: quantity > 1 ? `${baseName} ${i + 1}` : baseName,
+
       currentHp: monster.hp,
+
       maxHp: monster.hp,
+
       initiative: "",
+
+      monsterSnapshot: {
+        monsterId: monster.id,
+
+        source: getMonsterSource(monster),
+
+        armorClass: monster.armorClass,
+
+        initiativeBonus: getMonsterInitiativeBonus(monster),
+
+        img: monster.img,
+      },
     });
   }
 
@@ -378,6 +500,7 @@ const buildPlayerEncounterEntry = (
   );
 
   const maxHp = Math.max(1, player.maxHp);
+
   const currentHp = Math.max(
     0,
     Math.min(player.currentHp ?? player.maxHp, player.maxHp),
@@ -392,12 +515,17 @@ const buildPlayerEncounterEntry = (
     currentHp,
     maxHp,
     initiative: "",
+
     playerSnapshot: {
       characterId: player.characterId ?? null,
+
       armorClass:
         typeof player.armorClass === "number" ? player.armorClass : null,
+
       initiativeBonus: player.initiativeBonus ?? 0,
+
       level: typeof player.level === "number" ? player.level : null,
+
       classId: player.classId ?? null,
       speciesId: player.speciesId ?? null,
     },
@@ -415,6 +543,7 @@ const normalizeEncounterTemplate = (
 
   return {
     name: legacyTemplate.name,
+
     monsters: legacyTemplate.entities
       .filter((entity) => entity.entityKind === "monster")
       .map((entity, index) => {
@@ -432,47 +561,62 @@ const normalizeEncounterTemplate = (
 };
 
 export const EncounterProvider = ({
+  campaignId,
   children,
 }: {
+  campaignId: string;
   children: React.ReactNode;
 }) => {
   const [initialData] = useState<EncounterStorageData>(() =>
-    loadEncounterFromStorage(),
+    loadEncounterFromStorage(campaignId),
   );
 
   const [encounter, setEncounter] = useState<EncounterEntry[]>(
     initialData.activeEncounter.encounter,
   );
+
   const [currentTurnIndex, setCurrentTurnIndex] = useState(
     initialData.activeEncounter.currentTurnIndex,
   );
+
   const [currentRound, setCurrentRound] = useState(
     initialData.activeEncounter.currentRound,
   );
+
   const [savedEncounters, setSavedEncounters] = useState<SavedEncounter[]>(
     initialData.savedEncounters,
   );
+
   const [activeEncounterId, setActiveEncounterId] = useState<string | null>(
     initialData.activeEncounterId,
   );
 
+  /*
+   * Save ONLY to this campaign's storage.
+   */
   useEffect(() => {
     try {
       const data: EncounterStorageData = {
         activeEncounterId,
+
         activeEncounter: {
           encounter,
           currentTurnIndex,
           currentRound,
         },
+
         savedEncounters,
       };
 
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(getStorageKey(campaignId), JSON.stringify(data));
     } catch (error) {
-      console.error("Failed to save encounter to localStorage:", error);
+      console.error(
+        `Failed to save encounter for campaign ${campaignId}:`,
+        error,
+      );
     }
   }, [
+    campaignId,
     encounter,
     currentTurnIndex,
     currentRound,
@@ -493,16 +637,22 @@ export const EncounterProvider = ({
   }, [encounter]);
 
   useEffect(() => {
-    if (!activeEncounterId) return;
+    if (!activeEncounterId) {
+      return;
+    }
 
     setSavedEncounters((prev) => {
       let changed = false;
 
       const next = prev.map((saved) => {
-        if (saved.id !== activeEncounterId) return saved;
+        if (saved.id !== activeEncounterId) {
+          return saved;
+        }
 
         const sameTurnIndex = saved.currentTurnIndex === currentTurnIndex;
+
         const sameRound = saved.currentRound === currentRound;
+
         const sameEncounter =
           JSON.stringify(saved.encounter) === JSON.stringify(encounter);
 
@@ -511,6 +661,7 @@ export const EncounterProvider = ({
         }
 
         changed = true;
+
         return {
           ...saved,
           encounter: cloneEncounter(encounter),
@@ -528,15 +679,19 @@ export const EncounterProvider = ({
       entityKind: EncounterEntityKind,
       name: string,
     ): MonsterDefinition | undefined => {
-      if (entityKind !== "monster") return undefined;
+      if (entityKind !== "monster") {
+        return undefined;
+      }
+
       return monsters.find((monster) => monster.name === name);
     },
     [],
   );
 
-  const getMonsterById = useCallback((monsterId: string) => {
-    return monsters.find((monster) => monster.id === monsterId);
-  }, []);
+  const getMonsterById = useCallback(
+    (monsterId: string) => monsters.find((monster) => monster.id === monsterId),
+    [],
+  );
 
   const rollInitiative = useCallback(() => {
     setEncounter((prev) =>
@@ -546,15 +701,29 @@ export const EncounterProvider = ({
         if (entry.entityKind === "player") {
           return {
             ...entry,
+
             initiative: roll + getPlayerInitiativeBonus(entry),
           };
         }
 
+        const snapshotBonus = entry.monsterSnapshot?.initiativeBonus;
+
+        if (typeof snapshotBonus === "number") {
+          return {
+            ...entry,
+            initiative: roll + snapshotBonus,
+          };
+        }
+
         const monster = getEntityByName("monster", entry.entityName);
-        if (!monster) return entry;
+
+        if (!monster) {
+          return entry;
+        }
 
         return {
           ...entry,
+
           initiative: roll + getMonsterInitiativeBonus(monster),
         };
       }),
@@ -574,6 +743,7 @@ export const EncounterProvider = ({
             if (typeof manualRoll === "number") {
               return {
                 ...entry,
+
                 initiative: manualRoll + getPlayerInitiativeBonus(entry),
               };
             }
@@ -581,13 +751,27 @@ export const EncounterProvider = ({
             return entry;
           }
 
-          const monster = getEntityByName("monster", entry.entityName);
-          if (!monster) return entry;
-
           const autoRoll = Math.floor(Math.random() * 20) + 1;
+
+          const snapshotBonus = entry.monsterSnapshot?.initiativeBonus;
+
+          if (typeof snapshotBonus === "number") {
+            return {
+              ...entry,
+
+              initiative: autoRoll + snapshotBonus,
+            };
+          }
+
+          const monster = getEntityByName("monster", entry.entityName);
+
+          if (!monster) {
+            return entry;
+          }
 
           return {
             ...entry,
+
             initiative: autoRoll + getMonsterInitiativeBonus(monster),
           };
         }),
@@ -600,36 +784,38 @@ export const EncounterProvider = ({
   );
 
   const nextTurn = useCallback(() => {
-    setCurrentTurnIndex((prev) => {
-      const sorted = sortEncounterByInitiative(encounter);
+    const sorted = sortEncounterByInitiative(encounter);
 
-      if (sorted.length === 0) return prev;
+    if (sorted.length === 0) {
+      return;
+    }
 
-      const nextIndex = (prev + 1) % sorted.length;
+    const nextIndex = (currentTurnIndex + 1) % sorted.length;
 
-      if (nextIndex === 0) {
-        setCurrentRound((round) => round + 1);
-      }
+    setCurrentTurnIndex(nextIndex);
 
-      return nextIndex;
-    });
-  }, [encounter]);
+    if (nextIndex === 0) {
+      setCurrentRound((round) => round + 1);
+    }
+  }, [encounter, currentTurnIndex]);
 
   const previousTurn = useCallback(() => {
-    setCurrentTurnIndex((prev) => {
-      const sorted = sortEncounterByInitiative(encounter);
+    const sorted = sortEncounterByInitiative(encounter);
 
-      if (sorted.length === 0) return prev;
+    if (sorted.length === 0) {
+      return;
+    }
 
-      const nextIndex = (prev - 1 + sorted.length) % sorted.length;
+    const wasFirstTurn = currentTurnIndex === 0;
 
-      if (prev === 0) {
-        setCurrentRound((round) => Math.max(1, round - 1));
-      }
+    const nextIndex = (currentTurnIndex - 1 + sorted.length) % sorted.length;
 
-      return nextIndex;
-    });
-  }, [encounter]);
+    setCurrentTurnIndex(nextIndex);
+
+    if (wasFirstTurn) {
+      setCurrentRound((round) => Math.max(1, round - 1));
+    }
+  }, [encounter, currentTurnIndex]);
 
   const resetTurns = useCallback(() => {
     setCurrentTurnIndex(0);
@@ -641,10 +827,16 @@ export const EncounterProvider = ({
       let changed = false;
 
       const next = prev.map((entry) => {
-        if (entry.id !== id) return entry;
-        if (entry.displayName === newName) return entry;
+        if (entry.id !== id) {
+          return entry;
+        }
+
+        if (entry.displayName === newName) {
+          return entry;
+        }
 
         changed = true;
+
         return {
           ...entry,
           displayName: newName,
@@ -664,12 +856,14 @@ export const EncounterProvider = ({
         if (entityKind === "monster") {
           return [
             ...prev,
+
             buildMonsterEncounterEntry(prev, entity as MonsterDefinition),
           ];
         }
 
         return [
           ...prev,
+
           buildPlayerEncounterEntry(prev, entity as EncounterPlayerInput),
         ];
       });
@@ -694,23 +888,32 @@ export const EncounterProvider = ({
   const removeEntityFromEncounter = useCallback((id: string) => {
     setEncounter((prev) => {
       const next = prev.filter((entry) => entry.id !== id);
+
       return next.length === prev.length ? prev : next;
     });
   }, []);
 
   const updateEntityHp = useCallback((id: string, hp: number) => {
-    if (Number.isNaN(hp)) return;
+    if (Number.isNaN(hp)) {
+      return;
+    }
 
     setEncounter((prev) => {
       let changed = false;
 
       const next = prev.map((entry) => {
-        if (entry.id !== id) return entry;
+        if (entry.id !== id) {
+          return entry;
+        }
 
         const nextHp = Math.max(0, Math.min(hp, entry.maxHp));
-        if (entry.currentHp === nextHp) return entry;
+
+        if (entry.currentHp === nextHp) {
+          return entry;
+        }
 
         changed = true;
+
         return {
           ...entry,
           currentHp: nextHp,
@@ -727,10 +930,16 @@ export const EncounterProvider = ({
         let changed = false;
 
         const next = prev.map((entry) => {
-          if (entry.id !== id) return entry;
-          if (entry.initiative === initiative) return entry;
+          if (entry.id !== id) {
+            return entry;
+          }
+
+          if (entry.initiative === initiative) {
+            return entry;
+          }
 
           changed = true;
+
           return {
             ...entry,
             initiative,
@@ -757,7 +966,10 @@ export const EncounterProvider = ({
   const saveCurrentEncounter = useCallback(
     (name: string) => {
       const trimmedName = name.trim();
-      if (!trimmedName) return;
+
+      if (!trimmedName) {
+        return;
+      }
 
       if (activeEncounterId) {
         setSavedEncounters((prev) =>
@@ -773,6 +985,7 @@ export const EncounterProvider = ({
               : saved,
           ),
         );
+
         return;
       }
 
@@ -780,6 +993,7 @@ export const EncounterProvider = ({
 
       setSavedEncounters((prev) => [
         ...prev,
+
         {
           id: newId,
           name: trimmedName,
@@ -796,12 +1010,18 @@ export const EncounterProvider = ({
 
   const loadEncounter = useCallback(
     (id: string) => {
-      const saved = savedEncounters.find((enc) => enc.id === id);
-      if (!saved) return;
+      const saved = savedEncounters.find((encounter) => encounter.id === id);
+
+      if (!saved) {
+        return;
+      }
 
       setEncounter(cloneEncounter(saved.encounter));
+
       setCurrentTurnIndex(saved.currentTurnIndex);
+
       setCurrentRound(saved.currentRound);
+
       setActiveEncounterId(saved.id);
     },
     [savedEncounters],
@@ -809,7 +1029,9 @@ export const EncounterProvider = ({
 
   const deleteEncounter = useCallback(
     (id: string) => {
-      setSavedEncounters((prev) => prev.filter((enc) => enc.id !== id));
+      setSavedEncounters((prev) =>
+        prev.filter((encounter) => encounter.id !== id),
+      );
 
       if (activeEncounterId === id) {
         setActiveEncounterId(null);
@@ -823,18 +1045,27 @@ export const EncounterProvider = ({
 
   const renameEncounter = useCallback((id: string, name: string) => {
     const trimmedName = name.trim();
-    if (!trimmedName) return;
+
+    if (!trimmedName) {
+      return;
+    }
 
     setSavedEncounters((prev) => {
       let changed = false;
 
-      const next = prev.map((enc) => {
-        if (enc.id !== id) return enc;
-        if (enc.name === trimmedName) return enc;
+      const next = prev.map((encounter) => {
+        if (encounter.id !== id) {
+          return encounter;
+        }
+
+        if (encounter.name === trimmedName) {
+          return encounter;
+        }
 
         changed = true;
+
         return {
-          ...enc,
+          ...encounter,
           name: trimmedName,
         };
       });
@@ -846,11 +1077,15 @@ export const EncounterProvider = ({
   const loadEncounterTemplate = useCallback(
     (template: EncounterTemplate | LegacyEncounterTemplate) => {
       const normalizedTemplate = normalizeEncounterTemplate(template);
+
       const nextEncounter: EncounterEntry[] = [];
 
       normalizedTemplate.monsters.forEach((templateMonster) => {
         const monster = getMonsterById(templateMonster.monsterId);
-        if (!monster) return;
+
+        if (!monster) {
+          return;
+        }
 
         nextEncounter.push(
           ...buildMonsterEncounterEntriesFromTemplateRow(
@@ -870,11 +1105,16 @@ export const EncounterProvider = ({
 
       setSavedEncounters((prev) => [
         ...prev,
+
         {
           id: newId,
-          name: normalizedTemplate.name.trim() || "Ny kamp",
+
+          name: normalizedTemplate.name.trim() || "New Encounter",
+
           encounter: cloneEncounter(nextEncounter),
+
           currentTurnIndex: 0,
+
           currentRound: 1,
         },
       ]);
@@ -889,24 +1129,34 @@ export const EncounterProvider = ({
       currentRound,
       savedEncounters,
       activeEncounterId,
+
       addMonsterToEncounter,
       addPlayerToEncounter,
       addEntityToEncounter,
+
       removeEntityFromEncounter,
+
       updateEntityHp,
       updateEntityInitiative,
+
       renameEntity,
+
       clearEncounter,
       createNewEncounter,
+
       saveCurrentEncounter,
       loadEncounter,
       deleteEncounter,
       renameEncounter,
+
       loadEncounterTemplate,
+
       getEntityByName,
+
       nextTurn,
       previousTurn,
       resetTurns,
+
       rollInitiative,
       rollInitiativeWithPlayerRolls,
     }),
@@ -916,24 +1166,34 @@ export const EncounterProvider = ({
       currentRound,
       savedEncounters,
       activeEncounterId,
+
       addMonsterToEncounter,
       addPlayerToEncounter,
       addEntityToEncounter,
+
       removeEntityFromEncounter,
+
       updateEntityHp,
       updateEntityInitiative,
+
       renameEntity,
+
       clearEncounter,
       createNewEncounter,
+
       saveCurrentEncounter,
       loadEncounter,
       deleteEncounter,
       renameEncounter,
+
       loadEncounterTemplate,
+
       getEntityByName,
+
       nextTurn,
       previousTurn,
       resetTurns,
+
       rollInitiative,
       rollInitiativeWithPlayerRolls,
     ],
