@@ -10,30 +10,55 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
+
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
+
 import { classesById, speciesById } from "../rulesets/dnd/dnd2024/helpers";
+
 import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
+
 import ClaimableCharactersSection from "../features/campaigns/components/ClaimableCharactersSection";
 
 import Avatar from "../components/Avatar";
 
 type PageState = "loading" | "ready" | "not-found" | "forbidden" | "error";
+
 type CampaignCharacterStatus = "inactive" | "active";
 
 type CharacterDoc = {
-  ownerUid: string | null;
+  ownerUid?: string | null;
+
   createdByUid?: string | null;
-  campaignId: string | null;
+
+  campaignId?: string | null;
+
   campaignStatus?: CampaignCharacterStatus;
-  name: string;
-  level: number;
-  classId: string;
-  speciesId: string;
-  backgroundId: string;
-  originFeatId: string | null;
+
+  buildMode?: string;
+
+  name?: string;
+
+  level?: number;
+
+  /*
+   * Guided D&D character fields
+   */
+  classId?: string;
+  speciesId?: string;
+  backgroundId?: string;
+  originFeatId?: string | null;
+
+  /*
+   * Custom character fields
+   */
+  className?: string;
+  speciesName?: string;
+  backgroundName?: string;
+
   imageUrl?: string;
-  abilityScores: {
+
+  abilityScores?: {
     str: number;
     dex: number;
     con: number;
@@ -41,6 +66,7 @@ type CharacterDoc = {
     wis: number;
     cha: number;
   };
+
   alignment?: string;
   notes?: string;
 };
@@ -52,30 +78,73 @@ type AppUserDoc = {
 
 type CampaignCharacter = {
   id: string;
+
   ownerUid: string | null;
+
   createdByUid?: string | null;
+
   ownerName?: string;
+
   ownerEmail?: string;
+
   campaignId: string | null;
+
   campaignStatus: CampaignCharacterStatus;
+
   name: string;
+
   race?: string;
+
   className?: string;
+
   level?: number;
+
   imageUrl?: string;
 };
 
 const getCampaignStatus = (value: unknown): CampaignCharacterStatus =>
   value === "active" ? "active" : "inactive";
 
+const getCharacterRace = (data: CharacterDoc) => {
+  if (data.buildMode === "custom") {
+    return data.speciesName?.trim() || undefined;
+  }
+
+  if (data.speciesId) {
+    return speciesById[data.speciesId]?.name ?? data.speciesId;
+  }
+
+  return data.speciesName?.trim() || undefined;
+};
+
+const getCharacterClassName = (data: CharacterDoc) => {
+  if (data.buildMode === "custom") {
+    return data.className?.trim() || undefined;
+  }
+
+  if (data.classId) {
+    return classesById[data.classId]?.name ?? data.classId;
+  }
+
+  return data.className?.trim() || undefined;
+};
+
 const CampaignCharactersPage = () => {
-  const { campaignId } = useParams<{ campaignId: string }>();
+  const { campaignId } = useParams<{
+    campaignId: string;
+  }>();
+
   const { user } = useAuth();
 
   const [pageState, setPageState] = useState<PageState>("loading");
+
   const [campaign, setCampaign] = useState<
-    (CampaignDoc & { id: string }) | null
+    | (CampaignDoc & {
+        id: string;
+      })
+    | null
   >(null);
+
   const [myMembership, setMyMembership] = useState<CampaignMemberDoc | null>(
     null,
   );
@@ -83,10 +152,12 @@ const CampaignCharactersPage = () => {
   const [campaignCharacters, setCampaignCharacters] = useState<
     CampaignCharacter[]
   >([]);
+
   const [campaignCharactersLoading, setCampaignCharactersLoading] =
     useState(true);
 
   const [myCharacters, setMyCharacters] = useState<CampaignCharacter[]>([]);
+
   const [myCharactersLoading, setMyCharactersLoading] = useState(true);
 
   const [busyCharacterId, setBusyCharacterId] = useState<string | null>(null);
@@ -100,6 +171,7 @@ const CampaignCharactersPage = () => {
     const loadAccess = async () => {
       if (!user || !campaignId) {
         setPageState("forbidden");
+
         return;
       }
 
@@ -107,6 +179,7 @@ const CampaignCharactersPage = () => {
 
       try {
         const campaignRef = doc(db, "campaigns", campaignId);
+
         const memberRef = doc(db, "campaigns", campaignId, "members", user.uid);
 
         const [campaignSnap, memberSnap] = await Promise.all([
@@ -116,29 +189,40 @@ const CampaignCharactersPage = () => {
 
         if (!campaignSnap.exists()) {
           setCampaign(null);
+
           setMyMembership(null);
+
           setPageState("not-found");
+
           return;
         }
 
         if (!memberSnap.exists()) {
           setCampaign(null);
+
           setMyMembership(null);
+
           setPageState("forbidden");
+
           return;
         }
 
         setCampaign({
           id: campaignSnap.id,
+
           ...(campaignSnap.data() as CampaignDoc),
         });
 
         setMyMembership(memberSnap.data() as CampaignMemberDoc);
+
         setPageState("ready");
       } catch (error) {
         console.error("Failed to load campaign characters page:", error);
+
         setCampaign(null);
+
         setMyMembership(null);
+
         setPageState("error");
       }
     };
@@ -147,7 +231,9 @@ const CampaignCharactersPage = () => {
   }, [campaignId, user]);
 
   useEffect(() => {
-    if (pageState !== "ready" || !campaignId) return;
+    if (pageState !== "ready" || !campaignId) {
+      return;
+    }
 
     setCampaignCharactersLoading(true);
 
@@ -158,6 +244,7 @@ const CampaignCharactersPage = () => {
 
     const unsub = onSnapshot(
       q,
+
       async (snapshot) => {
         try {
           const nextCharacters = await Promise.all(
@@ -165,6 +252,7 @@ const CampaignCharactersPage = () => {
               const data = characterSnap.data() as CharacterDoc;
 
               let ownerName = "";
+
               let ownerEmail = "";
 
               if (data.ownerUid) {
@@ -172,9 +260,12 @@ const CampaignCharactersPage = () => {
                   const ownerSnap = await getDoc(
                     doc(db, "users", data.ownerUid),
                   );
+
                   if (ownerSnap.exists()) {
                     const ownerData = ownerSnap.data() as AppUserDoc;
+
                     ownerName = ownerData.displayName ?? "";
+
                     ownerEmail = ownerData.email ?? "";
                   }
                 } catch (error) {
@@ -184,33 +275,51 @@ const CampaignCharactersPage = () => {
 
               return {
                 id: characterSnap.id,
+
                 ownerUid: data.ownerUid ?? null,
+
                 createdByUid: data.createdByUid ?? null,
+
                 ownerName,
+
                 ownerEmail,
-                campaignId: data.campaignId,
+
+                campaignId: data.campaignId ?? null,
+
                 campaignStatus: getCampaignStatus(data.campaignStatus),
-                name: data.name,
-                race: speciesById[data.speciesId]?.name ?? data.speciesId,
-                className: classesById[data.classId]?.name ?? data.classId,
-                level: data.level,
-                imageUrl: data.imageUrl,
+
+                name: data.name?.trim() || "Unnamed Character",
+
+                race: getCharacterRace(data),
+
+                className: getCharacterClassName(data),
+
+                level: typeof data.level === "number" ? data.level : undefined,
+
+                imageUrl: data.imageUrl?.trim() || undefined,
               } satisfies CampaignCharacter;
             }),
           );
 
           nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
+
           setCampaignCharacters(nextCharacters);
+
           setCampaignCharactersLoading(false);
         } catch (error) {
           console.error("Failed to load campaign characters:", error);
+
           setCampaignCharacters([]);
+
           setCampaignCharactersLoading(false);
         }
       },
+
       (error) => {
         console.error("Failed to load campaign characters:", error);
+
         setCampaignCharacters([]);
+
         setCampaignCharactersLoading(false);
       },
     );
@@ -219,7 +328,9 @@ const CampaignCharactersPage = () => {
   }, [campaignId, pageState]);
 
   useEffect(() => {
-    if (pageState !== "ready" || !user) return;
+    if (pageState !== "ready" || !user) {
+      return;
+    }
 
     setMyCharactersLoading(true);
 
@@ -230,6 +341,7 @@ const CampaignCharactersPage = () => {
 
     const unsub = onSnapshot(
       q,
+
       (snapshot) => {
         const nextCharacters: CampaignCharacter[] = snapshot.docs.map(
           (characterSnap) => {
@@ -237,28 +349,44 @@ const CampaignCharactersPage = () => {
 
             return {
               id: characterSnap.id,
+
               ownerUid: data.ownerUid ?? null,
+
               createdByUid: data.createdByUid ?? null,
+
               ownerName: "",
+
               ownerEmail: user.email ?? "",
-              campaignId: data.campaignId,
+
+              campaignId: data.campaignId ?? null,
+
               campaignStatus: getCampaignStatus(data.campaignStatus),
-              name: data.name,
-              race: speciesById[data.speciesId]?.name ?? data.speciesId,
-              className: classesById[data.classId]?.name ?? data.classId,
-              level: data.level,
-              imageUrl: data.imageUrl,
+
+              name: data.name?.trim() || "Unnamed Character",
+
+              race: getCharacterRace(data),
+
+              className: getCharacterClassName(data),
+
+              level: typeof data.level === "number" ? data.level : undefined,
+
+              imageUrl: data.imageUrl?.trim() || undefined,
             };
           },
         );
 
         nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
+
         setMyCharacters(nextCharacters);
+
         setMyCharactersLoading(false);
       },
+
       (error) => {
         console.error("Failed to load your characters:", error);
+
         setMyCharacters([]);
+
         setMyCharactersLoading(false);
       },
     );
@@ -297,18 +425,23 @@ const CampaignCharactersPage = () => {
   );
 
   const handleAssignToCampaign = async (characterId: string) => {
-    if (!campaignId) return;
+    if (!campaignId) {
+      return;
+    }
 
     setBusyCharacterId(characterId);
 
     try {
       const characterRef = doc(db, "characters", characterId);
+
       await updateDoc(characterRef, {
         campaignId,
+
         campaignStatus: "inactive",
       });
     } catch (error) {
       console.error("Failed to assign character to campaign:", error);
+
       alert("Could not assign character to campaign.");
     } finally {
       setBusyCharacterId(null);
@@ -320,12 +453,15 @@ const CampaignCharactersPage = () => {
 
     try {
       const characterRef = doc(db, "characters", characterId);
+
       await updateDoc(characterRef, {
         campaignId: null,
+
         campaignStatus: "inactive",
       });
     } catch (error) {
       console.error("Failed to remove character from campaign:", error);
+
       alert("Could not remove character from campaign.");
     } finally {
       setBusyCharacterId(null);
@@ -334,17 +470,20 @@ const CampaignCharactersPage = () => {
 
   const handleSetCampaignStatus = async (
     characterId: string,
+
     nextStatus: CampaignCharacterStatus,
   ) => {
     setBusyCharacterId(characterId);
 
     try {
       const characterRef = doc(db, "characters", characterId);
+
       await updateDoc(characterRef, {
         campaignStatus: nextStatus,
       });
     } catch (error) {
       console.error("Failed to update campaign character status:", error);
+
       alert("Could not update character status.");
     } finally {
       setBusyCharacterId(null);
@@ -352,13 +491,16 @@ const CampaignCharactersPage = () => {
   };
 
   const handleClaimCharacter = async (characterId: string) => {
-    if (!user || !campaignId) return;
+    if (!user || !campaignId) {
+      return;
+    }
 
     setBusyCharacterId(characterId);
 
     try {
       await runTransaction(db, async (transaction) => {
         const characterRef = doc(db, "characters", characterId);
+
         const characterSnap = await transaction.get(characterRef);
 
         if (!characterSnap.exists()) {
@@ -381,6 +523,7 @@ const CampaignCharactersPage = () => {
       });
     } catch (error) {
       console.error("Failed to claim character:", error);
+
       alert(
         error instanceof Error ? error.message : "Could not claim character.",
       );
@@ -394,12 +537,15 @@ const CampaignCharactersPage = () => {
 
     try {
       const characterRef = doc(db, "characters", characterId);
+
       await updateDoc(characterRef, {
         ownerUid: null,
+
         campaignStatus: "inactive",
       });
     } catch (error) {
       console.error("Failed to make character claimable:", error);
+
       alert("Could not make character claimable.");
     } finally {
       setBusyCharacterId(null);
@@ -426,9 +572,11 @@ const CampaignCharactersPage = () => {
             <h1 className="text-2xl font-bold text-white">
               Campaign not found
             </h1>
+
             <p className="mt-3 text-sm text-zinc-400">
               The campaign you tried to open does not exist.
             </p>
+
             <div className="mt-6">
               <Link
                 to="/"
@@ -449,9 +597,11 @@ const CampaignCharactersPage = () => {
         <div className="mx-auto max-w-7xl py-6 sm:py-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             <h1 className="text-2xl font-bold text-white">Access denied</h1>
+
             <p className="mt-3 text-sm text-zinc-400">
               You do not have access to this campaign.
             </p>
+
             <div className="mt-6">
               <Link
                 to="/"
@@ -474,9 +624,11 @@ const CampaignCharactersPage = () => {
             <h1 className="text-2xl font-bold text-white">
               Something went wrong
             </h1>
+
             <p className="mt-3 text-sm text-red-200/80">
               We could not load the campaign characters page right now.
             </p>
+
             <div className="mt-6">
               <Link
                 to="/"
@@ -530,6 +682,7 @@ const CampaignCharactersPage = () => {
                 <h2 className="text-xl font-semibold text-white sm:text-2xl">
                   Campaign characters
                 </h2>
+
                 <p className="mt-1 text-sm text-zinc-400">
                   Characters that exist in this campaign, whether active or
                   inactive.
@@ -553,6 +706,7 @@ const CampaignCharactersPage = () => {
                 <p className="text-sm text-zinc-300">
                   No characters have been assigned yet.
                 </p>
+
                 <p className="mt-2 text-sm text-zinc-500">
                   Players can attach their own characters or claim unassigned
                   campaign characters.
@@ -562,9 +716,16 @@ const CampaignCharactersPage = () => {
               <div className="space-y-3">
                 {campaignCharacters.map((character) => {
                   const isOwnCharacter = character.ownerUid === user?.uid;
+
                   const canRemove = isOwnCharacter || isGm;
+
                   const isClaimable = !character.ownerUid;
+
                   const isActive = character.campaignStatus === "active";
+
+                  const summary = [character.race, character.className]
+                    .filter(Boolean)
+                    .join(" • ");
 
                   return (
                     <div
@@ -606,14 +767,17 @@ const CampaignCharactersPage = () => {
                               ) : null}
                             </div>
 
-                            <p className="mt-2 text-sm text-zinc-400">
-                              {[character.race, character.className]
-                                .filter(Boolean)
-                                .join(" • ")}
-                              {character.level
-                                ? ` • Level ${character.level}`
-                                : ""}
-                            </p>
+                            {(summary || character.level) && (
+                              <p className="mt-2 text-sm text-zinc-400">
+                                {summary}
+
+                                {summary && character.level ? " • " : ""}
+
+                                {character.level
+                                  ? `Level ${character.level}`
+                                  : ""}
+                              </p>
+                            )}
 
                             <p className="mt-1 text-sm text-zinc-500">
                               {isClaimable
@@ -628,12 +792,14 @@ const CampaignCharactersPage = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                          {isGm && <Link
-                            to={`/characters/${character.id}`}
-                            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-                          >
-                            Open
-                          </Link>}
+                          {isGm && (
+                            <Link
+                              to={`/characters/${character.id}`}
+                              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                            >
+                              Open
+                            </Link>
+                          )}
 
                           {isGm && (
                             <>
@@ -689,6 +855,7 @@ const CampaignCharactersPage = () => {
               <h2 className="text-xl font-semibold text-white">
                 Your characters
               </h2>
+
               <p className="mt-1 text-sm text-zinc-400">
                 Attach one of your existing characters to this campaign.
               </p>
@@ -722,74 +889,12 @@ const CampaignCharactersPage = () => {
                         </p>
                       </div>
                     ) : (
-                      myAvailableCharacters.map((character) => (
-                        <div
-                          key={character.id}
-                          className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                        >
-                          <div className="flex items-center gap-4">
-                            <Avatar
-                              src={character.imageUrl}
-                              name={character.name}
-                              className="h-12 w-12 shrink-0 rounded-xl"
-                            />
+                      myAvailableCharacters.map((character) => {
+                        const summary = [character.race, character.className]
+                          .filter(Boolean)
+                          .join(" • ");
 
-                            <div className="min-w-0">
-                              <h3 className="text-base font-semibold text-white">
-                                {character.name}
-                              </h3>
-
-                              <p className="mt-2 text-sm text-zinc-400">
-                                {[character.race, character.className]
-                                  .filter(Boolean)
-                                  .join(" • ")}
-                                {character.level
-                                  ? ` • Level ${character.level}`
-                                  : ""}
-                              </p>
-
-                              {character.campaignId && (
-                                <p className="mt-1 text-xs text-zinc-500">
-                                  Already attached to another campaign
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex gap-2">
-                            <button
-                              onClick={() =>
-                                handleAssignToCampaign(character.id)
-                              }
-                              disabled={
-                                busyCharacterId === character.id ||
-                                character.campaignId !== null
-                              }
-                              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              Attach to campaign
-                            </button>
-
-                            <Link
-                              to={`/characters/${character.id}`}
-                              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-                            >
-                              Open
-                            </Link>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-
-                  {myAssignedCharacters.length > 0 && (
-                    <div className="mt-6">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                        Already in this campaign
-                      </h3>
-
-                      <div className="mt-3 space-y-3">
-                        {myAssignedCharacters.map((character) => (
+                        return (
                           <div
                             key={character.id}
                             className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
@@ -802,65 +907,139 @@ const CampaignCharactersPage = () => {
                               />
 
                               <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h4 className="text-base font-semibold text-white">
-                                    {character.name}
-                                  </h4>
+                                <h3 className="text-base font-semibold text-white">
+                                  {character.name}
+                                </h3>
 
-                                  <span
-                                    className={`rounded-full px-2.5 py-1 text-xs ${
-                                      character.campaignStatus === "active"
-                                        ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
-                                        : "border border-white/10 bg-white/5 text-zinc-300"
-                                    }`}
-                                  >
-                                    {character.campaignStatus === "active"
-                                      ? "Active"
-                                      : "Inactive"}
-                                  </span>
-                                </div>
+                                {(summary || character.level) && (
+                                  <p className="mt-2 text-sm text-zinc-400">
+                                    {summary}
 
-                                <p className="mt-2 text-sm text-zinc-400">
-                                  {[character.race, character.className]
-                                    .filter(Boolean)
-                                    .join(" • ")}
-                                  {character.level
-                                    ? ` • Level ${character.level}`
-                                    : ""}
-                                </p>
+                                    {summary && character.level ? " • " : ""}
+
+                                    {character.level
+                                      ? `Level ${character.level}`
+                                      : ""}
+                                  </p>
+                                )}
                               </div>
                             </div>
 
                             <div className="mt-4 flex gap-2">
+                              <button
+                                onClick={() =>
+                                  handleAssignToCampaign(character.id)
+                                }
+                                disabled={
+                                  busyCharacterId === character.id ||
+                                  character.campaignId !== null
+                                }
+                                className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Attach to campaign
+                              </button>
+
                               <Link
                                 to={`/characters/${character.id}`}
-                                className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
                               >
                                 Open
                               </Link>
-
-                              <button
-                                onClick={() =>
-                                  handleMakeCharacterClaimable(character.id)
-                                }
-                                disabled={busyCharacterId === character.id}
-                                className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Make claimable
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  handleRemoveFromCampaign(character.id)
-                                }
-                                disabled={busyCharacterId === character.id}
-                                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Remove
-                              </button>
                             </div>
                           </div>
-                        ))}
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {myAssignedCharacters.length > 0 && (
+                    <div className="mt-6">
+                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                        Already in this campaign
+                      </h3>
+
+                      <div className="mt-3 space-y-3">
+                        {myAssignedCharacters.map((character) => {
+                          const summary = [character.race, character.className]
+                            .filter(Boolean)
+                            .join(" • ");
+
+                          return (
+                            <div
+                              key={character.id}
+                              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                            >
+                              <div className="flex items-center gap-4">
+                                <Avatar
+                                  src={character.imageUrl}
+                                  name={character.name}
+                                  className="h-12 w-12 shrink-0 rounded-xl"
+                                />
+
+                                <div className="min-w-0">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <h4 className="text-base font-semibold text-white">
+                                      {character.name}
+                                    </h4>
+
+                                    <span
+                                      className={`rounded-full px-2.5 py-1 text-xs ${
+                                        character.campaignStatus === "active"
+                                          ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
+                                          : "border border-white/10 bg-white/5 text-zinc-300"
+                                      }`}
+                                    >
+                                      {character.campaignStatus === "active"
+                                        ? "Active"
+                                        : "Inactive"}
+                                    </span>
+                                  </div>
+
+                                  {(summary || character.level) && (
+                                    <p className="mt-2 text-sm text-zinc-400">
+                                      {summary}
+
+                                      {summary && character.level ? " • " : ""}
+
+                                      {character.level
+                                        ? `Level ${character.level}`
+                                        : ""}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="mt-4 flex flex-wrap gap-2">
+                                <Link
+                                  to={`/characters/${character.id}`}
+                                  className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                                >
+                                  Open
+                                </Link>
+
+                                <button
+                                  onClick={() =>
+                                    handleMakeCharacterClaimable(character.id)
+                                  }
+                                  disabled={busyCharacterId === character.id}
+                                  className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Make claimable
+                                </button>
+
+                                <button
+                                  onClick={() =>
+                                    handleRemoveFromCampaign(character.id)
+                                  }
+                                  disabled={busyCharacterId === character.id}
+                                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -880,6 +1059,7 @@ const CampaignCharactersPage = () => {
               <h2 className="text-xl font-semibold text-white">
                 What this page does
               </h2>
+
               <p className="mt-1 text-sm text-zinc-400">
                 A quick overview of the current character flow.
               </p>
@@ -889,6 +1069,7 @@ const CampaignCharactersPage = () => {
                   <p className="text-sm font-medium text-white">
                     Characters can exist without being active
                   </p>
+
                   <p className="mt-1 text-sm text-zinc-400">
                     Only active characters appear in the party controls.
                   </p>
@@ -898,6 +1079,7 @@ const CampaignCharactersPage = () => {
                   <p className="text-sm font-medium text-white">
                     GMs can create unassigned campaign characters
                   </p>
+
                   <p className="mt-1 text-sm text-zinc-400">
                     Players can later claim those characters and become their
                     owner.
@@ -908,6 +1090,7 @@ const CampaignCharactersPage = () => {
                   <p className="text-sm font-medium text-white">
                     Players can still attach their own characters
                   </p>
+
                   <p className="mt-1 text-sm text-zinc-400">
                     A character can only belong to one campaign at a time.
                   </p>

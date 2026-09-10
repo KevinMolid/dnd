@@ -4,6 +4,7 @@ export type WorkspaceModuleType =
   | "monster"
   | "npc"
   | "character"
+  | "randomEncounter"
   | "notes";
 
 export type MonsterModuleMode =
@@ -39,6 +40,11 @@ export type WorkspaceModuleConfig = {
   selectedCharacterId?: string;
 
   characterMode?: CharacterModuleMode;
+
+  /*
+   * Random Encounter module
+   */
+  randomEncounterTableId?: string;
 
   /*
    * Notes module

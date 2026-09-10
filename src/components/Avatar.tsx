@@ -24,6 +24,22 @@ const shapeClasses: Record<AvatarShape, string> = {
   circle: "rounded-full",
 };
 
+const getInitials = (name?: string) => {
+  const cleanedName = name?.trim();
+
+  if (!cleanedName) {
+    return "?";
+  }
+
+  const parts = cleanedName.split(/\s+/).filter(Boolean);
+
+  if (parts.length === 1) {
+    return parts[0].charAt(0).toUpperCase();
+  }
+
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
+};
+
 const Avatar = ({
   name,
   src,
@@ -33,8 +49,8 @@ const Avatar = ({
   className = "",
 }: AvatarProps) => {
   const cleanedSrc = src?.trim() || "";
-  const initial =
-    fallbackText?.trim() || name?.trim().charAt(0).toUpperCase() || "?";
+
+  const fallback = fallbackText?.trim() || getInitials(name);
 
   return (
     <div
@@ -48,7 +64,7 @@ const Avatar = ({
         />
       ) : (
         <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 font-semibold text-zinc-400">
-          {initial}
+          {fallback}
         </div>
       )}
     </div>

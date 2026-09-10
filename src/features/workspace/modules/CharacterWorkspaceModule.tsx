@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 
+import Avatar from "../../../components/Avatar";
+
 import {
   ALL_CONDITIONS,
   type CampaignCharacter,
@@ -13,7 +15,10 @@ import { getCharacterArmorClassFromEquipment } from "../../../rulesets/dnd/dnd20
 
 import { getCharacterHp } from "../../../rulesets/dnd/dnd2024/getCharacterHp";
 
-import type { CharacterEquipmentEntry } from "../../../rulesets/dnd/dnd2024/types";
+import type {
+  CharacterEquipmentEntry,
+  Money,
+} from "../../../rulesets/dnd/dnd2024/types";
 
 import { useWorkspace } from "../WorkspaceContext";
 
@@ -24,40 +29,36 @@ import type {
 
 type AbilityKey = "str" | "dex" | "con" | "int" | "wis" | "cha";
 
+type CustomCharacterStats = {
+  armorClass?: number;
+  currentHp?: number;
+  maxHp?: number;
+  speed?: number;
+  proficiencyBonus?: number;
+};
+
+type WorkspaceCharacter = CampaignCharacter & {
+  buildMode?: string;
+
+  customStats?: CustomCharacterStats;
+
+  money?: Money;
+
+  speciesName?: string;
+
+  className?: string;
+};
+
 const ABILITIES: {
   id: AbilityKey;
-
   label: string;
 }[] = [
-  {
-    id: "str",
-    label: "STR",
-  },
-
-  {
-    id: "dex",
-    label: "DEX",
-  },
-
-  {
-    id: "con",
-    label: "CON",
-  },
-
-  {
-    id: "int",
-    label: "INT",
-  },
-
-  {
-    id: "wis",
-    label: "WIS",
-  },
-
-  {
-    id: "cha",
-    label: "CHA",
-  },
+  { id: "str", label: "STR" },
+  { id: "dex", label: "DEX" },
+  { id: "con", label: "CON" },
+  { id: "int", label: "INT" },
+  { id: "wis", label: "WIS" },
+  { id: "cha", label: "CHA" },
 ];
 
 const formatModifier = (value: number) => {
@@ -65,8 +66,7 @@ const formatModifier = (value: number) => {
 };
 
 const getAbilityScore = (
-  character: CampaignCharacter,
-
+  character: WorkspaceCharacter,
   ability: AbilityKey,
 ) => {
   return character.abilityScores?.[ability] ?? 10;
@@ -76,7 +76,15 @@ const getAbilityModifier = (score: number) => {
   return Math.floor((score - 10) / 2);
 };
 
-const characterHasAlertFeat = (character: CampaignCharacter) => {
+const isCustomCharacter = (character: WorkspaceCharacter) => {
+  return character.buildMode === "custom";
+};
+
+const characterHasAlertFeat = (character: WorkspaceCharacter) => {
+  if (isCustomCharacter(character)) {
+    return false;
+  }
+
   if (character.originFeatId === "alert") {
     return true;
   }
@@ -88,15 +96,23 @@ const characterHasAlertFeat = (character: CampaignCharacter) => {
   );
 };
 
-const getInitiativeBonus = (character: CampaignCharacter) => {
+const getInitiativeBonus = (character: WorkspaceCharacter) => {
   const dex = getAbilityScore(character, "dex");
 
   const dexModifier = getAbilityModifier(dex);
 
+  if (isCustomCharacter(character)) {
+    return dexModifier;
+  }
+
   return dexModifier + (characterHasAlertFeat(character) ? 5 : 0);
 };
 
-const getArmorClass = (character: CampaignCharacter) => {
+const getArmorClass = (character: WorkspaceCharacter) => {
+  if (isCustomCharacter(character)) {
+    return character.customStats?.armorClass ?? character.armorClass ?? 10;
+  }
+
   const dexterityScore = getAbilityScore(character, "dex");
 
   const equipment = character.equipment ?? [];
@@ -104,7 +120,6 @@ const getArmorClass = (character: CampaignCharacter) => {
   try {
     return getCharacterArmorClassFromEquipment({
       dexterityScore,
-
       equipment,
     });
   } catch (error) {
@@ -114,29 +129,41 @@ const getArmorClass = (character: CampaignCharacter) => {
   }
 };
 
-const getLiveHp = (character: CampaignCharacter) => {
+const getLiveHp = (character: WorkspaceCharacter) => {
+  if (isCustomCharacter(character)) {
+    const maxHp = character.customStats?.maxHp ?? character.maxHp ?? 0;
+
+    const currentHp =
+      character.customStats?.currentHp ?? character.currentHp ?? maxHp;
+
+    return {
+      currentHp: Math.max(0, currentHp),
+      maxHp: Math.max(1, maxHp),
+    };
+  }
+
   try {
     const hp = getCharacterHp(character as never);
 
     return {
       currentHp: hp.currentHp,
-
       maxHp: hp.maxHp,
     };
   } catch {
     return {
       currentHp: character.currentHp ?? 0,
-
-      maxHp: Math.max(
-        1,
-
-        character.maxHp ?? 1,
-      ),
+      maxHp: Math.max(1, character.maxHp ?? 1),
     };
   }
 };
 
-const getProficiencyBonus = (level?: number) => {
+const getCharacterProficiencyBonus = (character: WorkspaceCharacter) => {
+  if (isCustomCharacter(character)) {
+    return character.customStats?.proficiencyBonus ?? 2;
+  }
+
+  const level = character.level;
+
   if (!level || level < 1) {
     return 2;
   }
@@ -144,33 +171,56 @@ const getProficiencyBonus = (level?: number) => {
   return 2 + Math.floor((level - 1) / 4);
 };
 
-const formatMoney = (copper: number) => {
-  const safeCopper = Math.max(
-    0,
+const getCharacterSpeed = (character: WorkspaceCharacter) => {
+  if (isCustomCharacter(character)) {
+    return character.customStats?.speed ?? 30;
+  }
 
-    Math.floor(copper),
-  );
+  return (character as any).speed ?? 30;
+};
 
-  const gp = Math.floor(safeCopper / 100);
+const getCharacterMoney = (character: WorkspaceCharacter) => {
+  if (character.money) {
+    return character.money;
+  }
 
-  const remaining = safeCopper % 100;
+  const copper = Math.max(0, Math.floor((character as any).moneyCp ?? 0));
 
-  const sp = Math.floor(remaining / 10);
+  const gp = Math.floor(copper / 100);
+  const remainderAfterGp = copper % 100;
+  const sp = Math.floor(remainderAfterGp / 10);
+  const cp = remainderAfterGp % 10;
 
-  const cp = remaining % 10;
+  return {
+    cp,
+    sp,
+    ep: 0,
+    gp,
+    pp: 0,
+  };
+};
 
+const formatMoney = (money: Money) => {
   const parts: string[] = [];
 
-  if (gp) {
-    parts.push(`${gp} gp`);
+  if (money.pp) {
+    parts.push(`${money.pp} pp`);
   }
 
-  if (sp) {
-    parts.push(`${sp} sp`);
+  if (money.gp) {
+    parts.push(`${money.gp} gp`);
   }
 
-  if (cp || parts.length === 0) {
-    parts.push(`${cp} cp`);
+  if (money.ep) {
+    parts.push(`${money.ep} ep`);
+  }
+
+  if (money.sp) {
+    parts.push(`${money.sp} sp`);
+  }
+
+  if (money.cp || parts.length === 0) {
+    parts.push(`${money.cp ?? 0} cp`);
   }
 
   return parts.join(" · ");
@@ -178,20 +228,16 @@ const formatMoney = (copper: number) => {
 
 const CharacterRow = ({
   character,
-
   onClick,
 }: {
-  character: CampaignCharacter;
-
+  character: WorkspaceCharacter;
   onClick: () => void;
 }) => {
   const hp = getLiveHp(character);
 
   const subtitle = [
-    character.race,
-
+    character.race ?? character.speciesName,
     character.className,
-
     character.level ? `Level ${character.level}` : undefined,
   ]
     .filter(Boolean)
@@ -203,19 +249,11 @@ const CharacterRow = ({
       onClick={onClick}
       className="group flex w-full items-center gap-2.5 border-b border-white/5 p-2.5 text-left transition last:border-b-0 hover:bg-white/[0.035]"
     >
-      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
-        {character.imageUrl ? (
-          <img
-            src={character.imageUrl}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-zinc-600">
-            <i className="fa-solid fa-user-shield text-xs" />
-          </div>
-        )}
-      </div>
+      <Avatar
+        src={character.imageUrl}
+        name={character.name}
+        className="h-9 w-9 rounded-lg"
+      />
 
       <div className="min-w-0 flex-1">
         <div className="truncate text-xs font-semibold text-zinc-200 group-hover:text-white">
@@ -247,39 +285,27 @@ const CharacterRow = ({
 
 export default function CharacterWorkspaceModule({
   module,
-
   campaignId,
-
   updateModule,
 }: WorkspaceModuleRenderProps) {
   const navigate = useNavigate();
 
   const {
-    campaignCharacters,
-
+    campaignCharacters: rawCampaignCharacters,
     campaignCharactersLoading,
-
     updateCharacter,
-
     toggleCondition,
   } = useCampaignPageData(campaignId);
 
-  const {
-    selectedCharacter,
+  const campaignCharacters = rawCampaignCharacters as WorkspaceCharacter[];
 
-    selectedCharacterId,
-
-    selectCharacter,
-  } = useWorkspace();
+  const { selectedCharacter, selectedCharacterId, selectCharacter } =
+    useWorkspace();
 
   const [browserOpen, setBrowserOpen] = useState(false);
-
   const [search, setSearch] = useState("");
-
   const [portraitOpen, setPortraitOpen] = useState(false);
-
   const [equipmentOpen, setEquipmentOpen] = useState(false);
-
   const [conditionsOpen, setConditionsOpen] = useState(false);
 
   const mode: CharacterModuleMode = module.config?.characterMode ?? "follow";
@@ -302,12 +328,6 @@ export default function CharacterWorkspaceModule({
     [campaignCharacters, visibleCharacterId],
   );
 
-  /*
-   * Remember latest Follow selection.
-   *
-   * This also gives us a persistent fallback after
-   * a refresh, but Pin no longer depends on this effect.
-   */
   useEffect(() => {
     if (mode !== "follow" || !selectedCharacterId) {
       return;
@@ -320,7 +340,6 @@ export default function CharacterWorkspaceModule({
     updateModule(module.id, {
       config: {
         ...module.config,
-
         selectedCharacterId,
       },
     });
@@ -348,7 +367,6 @@ export default function CharacterWorkspaceModule({
     updateModule(module.id, {
       config: {
         ...module.config,
-
         selectedCharacterId: undefined,
       },
     });
@@ -368,7 +386,13 @@ export default function CharacterWorkspaceModule({
     }
 
     return campaignCharacters.filter((character) =>
-      [character.name, character.race, character.className, character.ownerName]
+      [
+        character.name,
+        character.race,
+        character.speciesName,
+        character.className,
+        character.ownerName,
+      ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -376,17 +400,10 @@ export default function CharacterWorkspaceModule({
     );
   }, [campaignCharacters, search]);
 
-  /*
-   * Browser selection does NOT change Pin/Follow mode.
-   *
-   * In Follow it becomes a manual workspace selection.
-   * In Pinned it replaces the pinned character.
-   */
-  const inspectCharacter = (character: CampaignCharacter) => {
+  const inspectCharacter = (character: WorkspaceCharacter) => {
     updateModule(module.id, {
       config: {
         ...module.config,
-
         selectedCharacterId: character.id,
       },
     });
@@ -398,26 +415,17 @@ export default function CharacterWorkspaceModule({
     }
 
     setBrowserOpen(false);
-
     setEquipmentOpen(false);
-
     setConditionsOpen(false);
-
     setSearch("");
   };
 
-  /*
-   * Follow -> Pin explicitly captures the entity
-   * currently visible, exactly like Monster.
-   */
   const setMode = (nextMode: CharacterModuleMode) => {
     if (nextMode === "pinned") {
       updateModule(module.id, {
         config: {
           ...module.config,
-
           characterMode: "pinned",
-
           selectedCharacterId:
             visibleCharacterId ?? module.config?.selectedCharacterId,
         },
@@ -431,7 +439,6 @@ export default function CharacterWorkspaceModule({
     updateModule(module.id, {
       config: {
         ...module.config,
-
         characterMode: "follow",
       },
     });
@@ -461,14 +468,9 @@ export default function CharacterWorkspaceModule({
     );
   }
 
-  /*
-   * Browser.
-   */
   if (browserOpen || !selectedCharacterDoc) {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        {/* Same toolbar structure as Monster */}
-
         <div className="workspace-no-drag flex h-10 shrink-0 items-center gap-1.5 border-b border-white/10 bg-black/20 px-2">
           <button
             type="button"
@@ -557,18 +559,15 @@ export default function CharacterWorkspaceModule({
   }
 
   const hp = getLiveHp(selectedCharacterDoc);
-
   const armorClass = getArmorClass(selectedCharacterDoc);
-
   const initiative = getInitiativeBonus(selectedCharacterDoc);
-
-  const proficiency = getProficiencyBonus(selectedCharacterDoc.level);
+  const proficiency = getCharacterProficiencyBonus(selectedCharacterDoc);
+  const speed = getCharacterSpeed(selectedCharacterDoc);
+  const money = getCharacterMoney(selectedCharacterDoc);
 
   const subtitle = [
-    selectedCharacterDoc.race,
-
+    selectedCharacterDoc.race ?? selectedCharacterDoc.speciesName,
     selectedCharacterDoc.className,
-
     selectedCharacterDoc.level
       ? `Level ${selectedCharacterDoc.level}`
       : undefined,
@@ -578,24 +577,22 @@ export default function CharacterWorkspaceModule({
 
   const hpPercentage = Math.max(
     0,
-
-    Math.min(
-      100,
-
-      (hp.currentHp / Math.max(1, hp.maxHp)) * 100,
-    ),
+    Math.min(100, (hp.currentHp / Math.max(1, hp.maxHp)) * 100),
   );
 
   const setHp = async (nextHp: number) => {
-    const safeHp = Math.max(
-      0,
+    const safeHp = Math.max(0, Math.min(hp.maxHp, Math.floor(nextHp)));
 
-      Math.min(
-        hp.maxHp,
+    if (isCustomCharacter(selectedCharacterDoc)) {
+      await updateCharacter(selectedCharacterDoc.id, {
+        customStats: {
+          ...(selectedCharacterDoc.customStats ?? {}),
+          currentHp: safeHp,
+        },
+      } as any);
 
-        Math.floor(nextHp),
-      ),
-    );
+      return;
+    }
 
     await updateCharacter(selectedCharacterDoc.id, {
       currentHp: safeHp,
@@ -609,7 +606,6 @@ export default function CharacterWorkspaceModule({
     if (mode === "pinned") {
       return {
         text: "Pinned",
-
         className: "border-amber-500/15 bg-amber-500/[0.07] text-amber-300",
       };
     }
@@ -617,7 +613,6 @@ export default function CharacterWorkspaceModule({
     if (visibleCharacterSelection?.encounterStatus === "active") {
       return {
         text: "Current Turn",
-
         className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
       };
     }
@@ -625,7 +620,6 @@ export default function CharacterWorkspaceModule({
     if (visibleCharacterSelection?.encounterStatus === "up-next") {
       return {
         text: "Up Next",
-
         className: "border-sky-500/20 bg-sky-500/10 text-sky-300",
       };
     }
@@ -633,14 +627,12 @@ export default function CharacterWorkspaceModule({
     if (visibleCharacterSelection?.encounterStatus === "manual") {
       return {
         text: "Inspecting",
-
         className: "border-violet-500/20 bg-violet-500/10 text-violet-300",
       };
     }
 
     return {
       text: "Follow",
-
       className: "border-sky-500/15 bg-sky-500/[0.07] text-sky-300",
     };
   };
@@ -649,8 +641,6 @@ export default function CharacterWorkspaceModule({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      {/* Standardized toolbar */}
-
       <div className="workspace-no-drag flex h-10 shrink-0 items-center gap-1.5 border-b border-white/10 bg-black/20 px-2">
         <button
           type="button"
@@ -704,27 +694,19 @@ export default function CharacterWorkspaceModule({
       </div>
 
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
-        {/* Identity */}
-
         <section className="border-b border-white/10 p-3">
           <div className="flex items-start gap-3">
             <button
               type="button"
               disabled={!selectedCharacterDoc.imageUrl}
               onClick={() => setPortraitOpen(true)}
-              className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/30 disabled:cursor-default"
+              className="shrink-0 disabled:cursor-default"
             >
-              {selectedCharacterDoc.imageUrl ? (
-                <img
-                  src={selectedCharacterDoc.imageUrl}
-                  alt={selectedCharacterDoc.name}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-zinc-700">
-                  <i className="fa-solid fa-user-shield text-xl" />
-                </div>
-              )}
+              <Avatar
+                src={selectedCharacterDoc.imageUrl}
+                name={selectedCharacterDoc.name}
+                className="h-16 w-16 rounded-xl"
+              />
             </button>
 
             <div className="min-w-0 flex-1">
@@ -741,7 +723,7 @@ export default function CharacterWorkspaceModule({
               </div>
 
               <div className="mt-0.5 truncate text-[10px] text-zinc-500">
-                {subtitle}
+                {subtitle || "Player Character"}
               </div>
 
               {selectedCharacterDoc.ownerName ? (
@@ -764,10 +746,8 @@ export default function CharacterWorkspaceModule({
           </div>
         </section>
 
-        {/* Combat stats */}
-
         <section className="border-b border-white/10 p-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             <div className="rounded-lg border border-rose-500/10 bg-rose-500/[0.04] p-2 text-center">
               <div className="text-[8px] font-bold uppercase text-rose-300/60">
                 HP
@@ -795,6 +775,16 @@ export default function CharacterWorkspaceModule({
 
               <div className="mt-0.5 text-sm font-bold text-white">
                 {formatModifier(initiative)}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/[0.04] p-2 text-center">
+              <div className="text-[8px] font-bold uppercase text-emerald-300/60">
+                Speed
+              </div>
+
+              <div className="mt-0.5 text-sm font-bold text-white">
+                {speed} ft
               </div>
             </div>
           </div>
@@ -840,8 +830,6 @@ export default function CharacterWorkspaceModule({
           </div>
         </section>
 
-        {/* Ability scores */}
-
         <section className="border-b border-white/10 p-3">
           <div className="mb-2 flex items-center justify-between">
             <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-600">
@@ -883,8 +871,6 @@ export default function CharacterWorkspaceModule({
             })}
           </div>
         </section>
-
-        {/* Conditions */}
 
         <section className="border-b border-white/10">
           <button
@@ -935,8 +921,6 @@ export default function CharacterWorkspaceModule({
             </div>
           ) : null}
         </section>
-
-        {/* Equipment */}
 
         <section className="border-b border-white/10">
           <button
@@ -990,8 +974,6 @@ export default function CharacterWorkspaceModule({
           ) : null}
         </section>
 
-        {/* General */}
-
         <section className="grid grid-cols-2 gap-2 p-3">
           <div className="rounded-lg border border-white/5 bg-white/[0.025] p-2">
             <div className="text-[8px] font-bold uppercase text-zinc-600">
@@ -1009,7 +991,7 @@ export default function CharacterWorkspaceModule({
             </div>
 
             <div className="mt-0.5 truncate text-[10px] font-semibold text-zinc-300">
-              {formatMoney(selectedCharacterDoc.moneyCp ?? 0)}
+              {formatMoney(money)}
             </div>
           </div>
 
@@ -1021,8 +1003,6 @@ export default function CharacterWorkspaceModule({
           ) : null}
         </section>
       </div>
-
-      {/* Portrait popup */}
 
       {portraitOpen && selectedCharacterDoc.imageUrl ? (
         <div

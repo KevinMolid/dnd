@@ -12,6 +12,8 @@ import CharacterWorkspaceModule from "./modules/CharacterWorkspaceModule";
 
 import MapWorkspaceModule from "./modules/MapWorkspaceModule";
 
+import RandomEncounterWorkspaceModule from "./modules/RandomEncounterWorkspaceModule";
+
 import {
   NotesWorkspaceModule,
 } from "./modules/PlaceholderWorkspaceModules";
@@ -172,6 +174,31 @@ export const MODULE_REGISTRY: Record<
 
     component:
       CharacterWorkspaceModule,
+  },
+
+  randomEncounter: {
+    type: "randomEncounter",
+
+    title: "Random Encounter",
+
+    description:
+      "Roll campaign-specific combat encounters, events and discoveries.",
+
+    icon:
+      "fa-solid fa-dice-d20",
+
+    defaultW: 4,
+
+    defaultH: 9,
+
+    minW: 3,
+
+    minH: 5,
+
+    showHeader: true,
+
+    component:
+      RandomEncounterWorkspaceModule,
   },
 
   notes: {

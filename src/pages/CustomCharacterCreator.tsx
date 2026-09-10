@@ -1,28 +1,48 @@
 import { FormEvent, useMemo, useState } from "react";
+
 import { useNavigate, useSearchParams } from "react-router-dom";
+
+import { doc, updateDoc } from "firebase/firestore";
+
 import { createCharacter } from "../characters";
-import type { AbilityKey, Money } from "../rulesets/dnd/dnd2024/types";
+import { db } from "../firebase";
+
+import ItemPickerModal from "../components/character/ItemPickerModal";
+
+import SpellPickerModal from "../components/character/SpellPickerModal";
+
 import { defaultCharacterPortraits } from "../data/defaultCharacterPortraits";
 
+import { itemsById } from "../rulesets/dnd/dnd2024/data/items";
+
+import type {
+  AbilityKey,
+  CharacterEquipmentEntry,
+  Money,
+} from "../rulesets/dnd/dnd2024/types";
+
+import {
+  createEmptyCustomSkills,
+  createEmptySpellSlots,
+  customSkillDefinitions,
+} from "../types/customCharacter";
+
+import type {
+  CustomCharacter,
+  CustomProficiencyLevel,
+  CustomSpellEntry,
+  CustomSpellcasting,
+  CustomTrait,
+} from "../types/customCharacter";
+
 type CustomCharacterCreatorProps = {
-  onBackToModeSelect: () => void;
-};
+  onBackToModeSelect?: () => void;
 
-type CustomTraitDraft = {
-  id: string;
-  name: string;
-  source: string;
-  description: string;
-};
+  mode?: "create" | "edit";
 
-type CustomCharacterStep = "details" | "traits" | "review";
+  characterId?: string;
 
-const steps: CustomCharacterStep[] = ["details", "traits", "review"];
-
-const stepLabels: Record<CustomCharacterStep, string> = {
-  details: "Details",
-  traits: "Traits",
-  review: "Review",
+  initialCharacter?: CustomCharacter;
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
@@ -34,6 +54,17 @@ const abilityLabels: Record<AbilityKey, string> = {
   cha: "Charisma",
 };
 
+const abilityShortLabels: Record<AbilityKey, string> = {
+  str: "STR",
+  dex: "DEX",
+  con: "CON",
+  int: "INT",
+  wis: "WIS",
+  cha: "CHA",
+};
+
+const abilityKeys: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
+
 const defaultAbilityScores: Record<AbilityKey, number> = {
   str: 10,
   dex: 10,
@@ -43,7 +74,7 @@ const defaultAbilityScores: Record<AbilityKey, number> = {
   cha: 10,
 };
 
-const emptyMoney: Money = {
+const defaultMoney: Money = {
   cp: 0,
   sp: 0,
   ep: 0,
@@ -59,76 +90,275 @@ const makeId = () => {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
+const getRandomDefaultPortraitUrl = () => {
+  if (defaultCharacterPortraits.length === 0) {
+    return "";
+  }
+
+  return defaultCharacterPortraits[
+    Math.floor(Math.random() * defaultCharacterPortraits.length)
+  ].url;
+};
+
+const getModifier = (score: number) => Math.floor((score - 10) / 2);
+
+const formatModifier = (value: number) =>
+  value >= 0 ? `+${value}` : `${value}`;
+
+const splitTextList = (value: string) =>
+  value
+    .split(/[\n,]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+const joinTextList = (values?: string[]) => (values ?? []).join("\n");
+
+const createEquipmentInstanceId = (
+  baseId: string,
+  equipment: CharacterEquipmentEntry[],
+) => {
+  const usedIds = new Set(equipment.map((entry) => entry.instanceId));
+
+  let number = 1;
+
+  while (usedIds.has(`${baseId}__${number}`)) {
+    number += 1;
+  }
+
+  return `${baseId}__${number}`;
+};
+
 const CustomCharacterCreator = ({
   onBackToModeSelect,
+
+  mode = "create",
+
+  characterId,
+
+  initialCharacter,
 }: CustomCharacterCreatorProps) => {
   const navigate = useNavigate();
+
   const [searchParams] = useSearchParams();
 
+  const isEditing = mode === "edit";
+
   const campaignIdFromQuery = searchParams.get("campaignId");
+
   const campaignMode = searchParams.get("campaignMode");
 
   const isCampaignUnassignedCreate =
-    Boolean(campaignIdFromQuery) && campaignMode === "unassigned";
+    !isEditing && Boolean(campaignIdFromQuery) && campaignMode === "unassigned";
 
-  const [currentStep, setCurrentStep] =
-    useState<CustomCharacterStep>("details");
+  const initialStats = initialCharacter?.customStats ?? {};
 
-  const [name, setName] = useState("");
-  const [imageUrl, setImageUrl] = useState(() => getRandomDefaultPortraitUrl());
+  const initialProficiencies = initialCharacter?.customProficiencies;
+
+  const [name, setName] = useState(initialCharacter?.name ?? "");
+
+  const [imageUrl, setImageUrl] = useState(() => {
+    if (isEditing) {
+      return initialCharacter?.imageUrl ?? "";
+    }
+
+    return getRandomDefaultPortraitUrl();
+  });
+
   const [showPortraitPicker, setShowPortraitPicker] = useState(false);
+
   const [showImageUrlInput, setShowImageUrlInput] = useState(false);
 
-  const [customClassName, setCustomClassName] = useState("");
-  const [customSpeciesName, setCustomSpeciesName] = useState("");
-  const [customBackgroundName, setCustomBackgroundName] = useState("");
-  const [customLevel, setCustomLevel] = useState(1);
+  const [customClassName, setCustomClassName] = useState(
+    initialCharacter?.className ?? "",
+  );
 
-  const [alignment, setAlignment] = useState("");
-  const [notes, setNotes] = useState("");
+  const [customSpeciesName, setCustomSpeciesName] = useState(
+    initialCharacter?.speciesName ?? "",
+  );
 
-  const [abilityScores, setAbilityScores] =
-    useState<Record<AbilityKey, number>>(defaultAbilityScores);
+  const [customBackgroundName, setCustomBackgroundName] = useState(
+    initialCharacter?.backgroundName ?? "",
+  );
 
-  const [customArmorClass, setCustomArmorClass] = useState(10);
-  const [customMaxHp, setCustomMaxHp] = useState(10);
-  const [customCurrentHp, setCustomCurrentHp] = useState(10);
-  const [customSpeed, setCustomSpeed] = useState(30);
-  const [customProficiencyBonus, setCustomProficiencyBonus] = useState(2);
+  const [customLevel, setCustomLevel] = useState(initialCharacter?.level ?? 1);
 
-  const [customTraits, setCustomTraits] = useState<CustomTraitDraft[]>([]);
+  const [alignment, setAlignment] = useState(initialCharacter?.alignment ?? "");
+
+  const [characterAppearance, setCharacterAppearance] = useState(
+    initialCharacter?.characterAppearance ?? "",
+  );
+
+  const [alliesAndOrganizations, setAlliesAndOrganizations] = useState(
+    initialCharacter?.alliesAndOrganizations ?? "",
+  );
+
+  const [characterBackstory, setCharacterBackstory] = useState(
+    initialCharacter?.characterBackstory ?? initialCharacter?.notes ?? "",
+  );
+
+  const [abilityScores, setAbilityScores] = useState<
+    Record<AbilityKey, number>
+  >({
+    ...defaultAbilityScores,
+
+    ...(initialCharacter?.abilityScores ?? {}),
+  });
+
+  const [customArmorClass, setCustomArmorClass] = useState(
+    initialStats.armorClass ?? 10,
+  );
+
+  const [customMaxHp, setCustomMaxHp] = useState(initialStats.maxHp ?? 10);
+
+  const [customCurrentHp, setCustomCurrentHp] = useState(
+    initialStats.currentHp ?? initialStats.maxHp ?? 10,
+  );
+
+  const [customSpeed, setCustomSpeed] = useState(initialStats.speed ?? 30);
+
+  const [customProficiencyBonus, setCustomProficiencyBonus] = useState(
+    initialStats.proficiencyBonus ?? 2,
+  );
+
+  const [savingThrowProficiencies, setSavingThrowProficiencies] = useState<
+    AbilityKey[]
+  >(initialProficiencies?.savingThrows ?? []);
+
+  const [skillProficiencies, setSkillProficiencies] = useState(() => ({
+    ...createEmptyCustomSkills(),
+
+    ...(initialProficiencies?.skills ?? {}),
+  }));
+
+  const [armorProficienciesText, setArmorProficienciesText] = useState(
+    joinTextList(initialProficiencies?.armor),
+  );
+
+  const [weaponProficienciesText, setWeaponProficienciesText] = useState(
+    joinTextList(initialProficiencies?.weapons),
+  );
+
+  const [toolProficienciesText, setToolProficienciesText] = useState(
+    joinTextList(initialProficiencies?.tools),
+  );
+
+  const [languagesText, setLanguagesText] = useState(
+    joinTextList(initialProficiencies?.languages),
+  );
+
+  const [customTraits, setCustomTraits] = useState<CustomTrait[]>(
+    initialCharacter?.customTraits ?? [],
+  );
+
+  const [equipment, setEquipment] = useState<CharacterEquipmentEntry[]>(
+    initialCharacter?.equipment ?? [],
+  );
+
+  const [itemPickerOpen, setItemPickerOpen] = useState(false);
+
+  const [spellPickerOpen, setSpellPickerOpen] = useState(false);
+
+  const [customSpellcasting, setCustomSpellcasting] =
+    useState<CustomSpellcasting>(() => ({
+      enabled: false,
+
+      ability: null,
+
+      spellSaveDc: 10,
+
+      spellAttackBonus: 0,
+
+      spellSlots: createEmptySpellSlots(),
+
+      spells: [],
+
+      ...(initialCharacter?.customSpellcasting ?? {}),
+    }));
+
+  const [money, setMoney] = useState<Money>({
+    ...defaultMoney,
+
+    ...(initialCharacter?.money ?? {}),
+  });
 
   const [error, setError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
-  const currentStepIndex = steps.indexOf(currentStep);
-  const isFirstStep = currentStepIndex === 0;
-  const isLastStep = currentStepIndex === steps.length - 1;
+  const [submitting, setSubmitting] = useState(false);
 
   const visibleTraits = useMemo(
     () =>
       customTraits.filter(
-        (trait) => trait.name.trim() || trait.description.trim(),
+        (trait) =>
+          trait.name.trim() ||
+          trait.source?.trim() ||
+          trait.description?.trim(),
       ),
+
     [customTraits],
   );
+
+  const dexModifier = getModifier(abilityScores.dex);
+
+  const wisModifier = getModifier(abilityScores.wis);
+
+  const perceptionLevel = skillProficiencies.perception;
+
+  const perceptionBonus =
+    wisModifier +
+    (perceptionLevel === "expertise"
+      ? customProficiencyBonus * 2
+      : perceptionLevel === "proficient"
+        ? customProficiencyBonus
+        : 0);
+
+  const passivePerception = 10 + perceptionBonus;
 
   const handleAbilityChange = (key: AbilityKey, value: string) => {
     const parsed = Number(value);
 
-    setAbilityScores((prev) => ({
-      ...prev,
+    setAbilityScores((current) => ({
+      ...current,
+
       [key]: Number.isNaN(parsed) ? 0 : parsed,
     }));
   };
 
+  const toggleSavingThrow = (ability: AbilityKey) => {
+    setSavingThrowProficiencies((current) =>
+      current.includes(ability)
+        ? current.filter((entry) => entry !== ability)
+        : [...current, ability],
+    );
+  };
+
+  const getSkillBonus = (
+    ability: AbilityKey,
+    proficiency: CustomProficiencyLevel,
+  ) => {
+    let bonus = getModifier(abilityScores[ability]);
+
+    if (proficiency === "proficient") {
+      bonus += customProficiencyBonus;
+    }
+
+    if (proficiency === "expertise") {
+      bonus += customProficiencyBonus * 2;
+    }
+
+    return bonus;
+  };
+
   const addCustomTrait = () => {
-    setCustomTraits((prev) => [
-      ...prev,
+    setCustomTraits((current) => [
+      ...current,
+
       {
         id: makeId(),
+
         name: "",
+
         source: "",
+
         description: "",
       },
     ]);
@@ -136,135 +366,320 @@ const CustomCharacterCreator = ({
 
   const updateCustomTrait = (
     id: string,
-    updates: Partial<CustomTraitDraft>,
+
+    updates: Partial<CustomTrait>,
   ) => {
-    setCustomTraits((prev) =>
-      prev.map((trait) => (trait.id === id ? { ...trait, ...updates } : trait)),
+    setCustomTraits((current) =>
+      current.map((trait) =>
+        trait.id === id
+          ? {
+              ...trait,
+              ...updates,
+            }
+          : trait,
+      ),
     );
   };
 
   const removeCustomTrait = (id: string) => {
-    setCustomTraits((prev) => prev.filter((trait) => trait.id !== id));
+    setCustomTraits((current) => current.filter((trait) => trait.id !== id));
   };
 
-  const validateCurrentStep = () => {
-    switch (currentStep) {
-      case "details":
-        if (!name.trim()) return "Character name is required.";
-        if (!customClassName.trim()) return "Class is required.";
-        if (!customSpeciesName.trim()) return "Species / race is required.";
-        if (customLevel < 1) return "Level must be at least 1.";
-        return "";
+  const addCatalogItem = (itemId: string) => {
+    const item = itemsById[itemId];
 
-      case "traits":
-        if (
-          customTraits.some(
-            (trait) => !trait.name.trim() && trait.description.trim(),
-          )
-        ) {
-          return "Custom traits with descriptions must also have a name.";
-        }
-
-        return "";
-
-      case "review":
-        return "";
-
-      default:
-        return "";
+    if (!item) {
+      return;
     }
+
+    setEquipment((current) => {
+      if (item.stackable) {
+        const existing = current.find(
+          (entry) =>
+            (entry.source === "base" || entry.source === undefined) &&
+            entry.itemId === itemId &&
+            !entry.equipped,
+        );
+
+        if (existing) {
+          return current.map((entry) =>
+            entry === existing
+              ? {
+                  ...entry,
+
+                  quantity: entry.quantity + 1,
+                }
+              : entry,
+          );
+        }
+      }
+
+      return [
+        ...current,
+
+        {
+          instanceId: createEquipmentInstanceId(itemId, current),
+
+          source: "base",
+
+          itemId,
+
+          name: item.name,
+
+          quantity: 1,
+
+          equipped: false,
+
+          equippedSlots: [],
+        },
+      ];
+    });
+  };
+
+  const updateEquipmentQuantity = (
+    instanceId: string,
+
+    quantity: number,
+  ) => {
+    setEquipment((current) =>
+      current.map((entry) =>
+        entry.instanceId === instanceId
+          ? {
+              ...entry,
+
+              quantity: Math.max(
+                1,
+
+                Math.floor(quantity) || 1,
+              ),
+            }
+          : entry,
+      ),
+    );
+  };
+
+  const removeEquipment = (instanceId: string) => {
+    setEquipment((current) =>
+      current.filter((entry) => entry.instanceId !== instanceId),
+    );
+  };
+
+  const addSpell = (spell: CustomSpellEntry) => {
+    setCustomSpellcasting((current) => {
+      if (current.spells.some((entry) => entry.spellId === spell.spellId)) {
+        return current;
+      }
+
+      return {
+        ...current,
+
+        spells: [...current.spells, spell],
+      };
+    });
+  };
+
+  const removeSpell = (spellId: string) => {
+    setCustomSpellcasting((current) => ({
+      ...current,
+
+      spells: current.spells.filter((spell) => spell.spellId !== spellId),
+    }));
+  };
+
+  const updateSpellSlot = (
+    level: number,
+
+    max: number,
+  ) => {
+    const safeMax = Math.max(
+      0,
+
+      Math.floor(max) || 0,
+    );
+
+    setCustomSpellcasting((current) => {
+      const previous = current.spellSlots[String(level)];
+
+      return {
+        ...current,
+
+        spellSlots: {
+          ...current.spellSlots,
+
+          [String(level)]: {
+            max: safeMax,
+
+            remaining: isEditing
+              ? Math.min(
+                  safeMax,
+
+                  previous?.remaining ?? safeMax,
+                )
+              : safeMax,
+          },
+        },
+      };
+    });
   };
 
   const validateForm = () => {
-    if (!name.trim()) return "Character name is required.";
-    if (!customClassName.trim()) return "Class is required.";
-    if (!customSpeciesName.trim()) return "Species / race is required.";
-    if (customLevel < 1) return "Level must be at least 1.";
+    if (!name.trim()) {
+      return "Character name is required.";
+    }
 
-    if (
-      customTraits.some(
-        (trait) => !trait.name.trim() && trait.description.trim(),
-      )
-    ) {
-      return "Custom traits with descriptions must also have a name.";
+    if (customLevel < 1) {
+      return "Level must be at least 1.";
+    }
+
+    if (customCurrentHp < 0) {
+      return "Current HP cannot be negative.";
+    }
+
+    if (customMaxHp < 0) {
+      return "Maximum HP cannot be negative.";
+    }
+
+    if (visibleTraits.some((trait) => !trait.name.trim())) {
+      return "Every trait must have a name.";
     }
 
     return "";
   };
 
-  const goToNextStep = () => {
-    const stepError = validateCurrentStep();
+  const buildCustomCharacterPayload = () => ({
+    buildMode: "custom",
 
-    if (stepError) {
-      setError(stepError);
-      return;
-    }
+    name: name.trim(),
 
-    setError("");
+    /*
+     * Important:
+     * empty string means a previously saved
+     * portrait can actually be removed.
+     */
+    imageUrl: imageUrl.trim(),
 
-    const nextStep = steps[currentStepIndex + 1];
-    if (nextStep) setCurrentStep(nextStep);
-  };
+    level: customLevel,
 
-  const goToPreviousStep = () => {
-    setError("");
+    className: customClassName.trim(),
 
-    const previousStep = steps[currentStepIndex - 1];
-    if (previousStep) setCurrentStep(previousStep);
-  };
+    speciesName: customSpeciesName.trim(),
+
+    backgroundName: customBackgroundName.trim(),
+
+    alignment: alignment.trim(),
+
+    abilityScores,
+
+    customStats: {
+      armorClass: customArmorClass,
+
+      currentHp: customCurrentHp,
+
+      maxHp: customMaxHp,
+
+      speed: customSpeed,
+
+      proficiencyBonus: customProficiencyBonus,
+    },
+
+    customProficiencies: {
+      savingThrows: savingThrowProficiencies,
+
+      skills: skillProficiencies,
+
+      armor: splitTextList(armorProficienciesText),
+
+      weapons: splitTextList(weaponProficienciesText),
+
+      tools: splitTextList(toolProficienciesText),
+
+      languages: splitTextList(languagesText),
+    },
+
+    customTraits: visibleTraits.map((trait) => ({
+      id: trait.id,
+
+      name: trait.name.trim(),
+
+      source: trait.source?.trim() ?? "",
+
+      description: trait.description?.trim() ?? "",
+    })),
+
+    customSpellcasting,
+
+    characterAppearance: characterAppearance.trim(),
+
+    alliesAndOrganizations: alliesAndOrganizations.trim(),
+
+    characterBackstory: characterBackstory.trim(),
+
+    equipment,
+
+    money,
+
+    /*
+     * Retain choices because other generic
+     * character code expects the field.
+     */
+    choices: {},
+  });
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+
     setError("");
 
     const validationError = validateForm();
 
     if (validationError) {
       setError(validationError);
+
       return;
     }
 
-    setSubmitting(true);
-
     try {
+      setSubmitting(true);
+
+      const payload = buildCustomCharacterPayload();
+
+      if (isEditing) {
+        if (!characterId) {
+          throw new Error("Missing character ID.");
+        }
+
+        /*
+         * We deliberately update only character
+         * sheet fields here.
+         *
+         * ownerUid, campaignId, campaignStatus,
+         * XP, etc. are preserved.
+         */
+        await updateDoc(
+          doc(db, "characters", characterId),
+
+          {
+            ...payload,
+
+            updatedAt: new Date(),
+          } as any,
+        );
+
+        navigate(`/characters/${characterId}`);
+
+        return;
+      }
+
       await createCharacter({
         ownerUid: isCampaignUnassignedCreate ? null : undefined,
+
         createdByUid: undefined,
+
         campaignId: campaignIdFromQuery ?? null,
+
         campaignStatus: "inactive",
 
-        buildMode: "custom",
-
-        name: name.trim(),
-        ...(imageUrl.trim() ? { imageUrl: imageUrl.trim() } : {}),
-
-        level: customLevel,
-        className: customClassName.trim(),
-        speciesName: customSpeciesName.trim(),
-        backgroundName: customBackgroundName.trim(),
-
-        abilityScores,
-        alignment: alignment.trim(),
-        notes: notes.trim(),
-
-        customStats: {
-          armorClass: customArmorClass,
-          currentHp: customCurrentHp,
-          maxHp: customMaxHp,
-          speed: customSpeed,
-          proficiencyBonus: customProficiencyBonus,
-        },
-
-        customTraits: visibleTraits.map((trait) => ({
-          id: trait.id,
-          name: trait.name.trim(),
-          source: trait.source.trim(),
-          description: trait.description.trim(),
-        })),
-
-        choices: {},
-        equipment: [],
-        money: emptyMoney,
+        ...payload,
       } as any);
 
       navigate(
@@ -273,707 +688,941 @@ const CustomCharacterCreator = ({
           : "/",
       );
     } catch (err: any) {
-      setError(err?.message || "Failed to create character.");
+      console.error(
+        isEditing
+          ? "Failed to update custom character:"
+          : "Failed to create custom character:",
+
+        err,
+      );
+
+      setError(
+        err?.message ||
+          (isEditing
+            ? "Failed to update character."
+            : "Failed to create character."),
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
-  const getRandomDefaultPortraitUrl = () => {
-    if (defaultCharacterPortraits.length === 0) return "";
+  const handleCancel = () => {
+    if (isEditing && characterId) {
+      navigate(`/characters/${characterId}`);
 
-    const randomIndex = Math.floor(
-      Math.random() * defaultCharacterPortraits.length,
-    );
-    return defaultCharacterPortraits[randomIndex].url;
+      return;
+    }
+
+    onBackToModeSelect?.();
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="mb-8">
+    <>
+      <div className="min-h-screen bg-zinc-950 text-zinc-100">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <button
             type="button"
-            onClick={onBackToModeSelect}
-            className="mb-4 text-sm font-medium text-zinc-400 transition hover:text-white"
+            onClick={handleCancel}
+            className="mb-4 text-sm text-zinc-400 hover:text-white"
           >
-            ← Change character type
+            ← {isEditing ? "Back to character" : "Change character type"}
           </button>
 
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
-            Custom Character Creator
+            {isEditing ? "Character Editor" : "Quick Character Creator"}
           </p>
 
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-            Create Custom Character
+          <h1 className="text-3xl font-bold text-white">
+            {isEditing ? "Edit Character" : "Create Character"}
           </h1>
 
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
-            Manually enter the character values. This works for homebrew, custom
-            rules, NPCs and non-D&amp;D systems.
+          <p className="mt-2 text-zinc-400">
+            {isEditing
+              ? "Update the manually entered character sheet."
+              : "Enter an existing character sheet directly."}
           </p>
-        </div>
 
-        <div className="mb-6 flex flex-wrap gap-2">
-          {steps.map((step, index) => {
-            const isActive = step === currentStep;
-            const isCompleted = index < currentStepIndex;
+          <form
+            onSubmit={handleSubmit}
+            className="mt-8 grid gap-6 lg:grid-cols-3"
+          >
+            <div className="space-y-6 lg:col-span-2">
+              {/* CHARACTER */}
 
-            return (
-              <button
-                key={step}
-                type="button"
-                onClick={() => {
-                  setError("");
-                  setCurrentStep(step);
-                }}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                  isActive
-                    ? "bg-white text-zinc-950"
-                    : isCompleted
-                      ? "bg-white/10 text-white hover:bg-white/15"
-                      : "bg-zinc-900 text-zinc-400 hover:bg-zinc-800"
-                }`}
-              >
-                {index + 1}. {stepLabels[step]}
-              </button>
-            );
-          })}
-        </div>
-
-        <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-3">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6 lg:col-span-2">
-            {currentStep === "details" && (
-              <>
-                <h2 className="mb-5 text-xl font-semibold text-white">
-                  Character Details
-                </h2>
-
-                <div className="mb-6 rounded-3xl border border-white/10 bg-zinc-900/40 p-4 sm:p-5">
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <button
-                      type="button"
-                      onClick={() => setShowPortraitPicker((prev) => !prev)}
-                      className="group h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 transition hover:border-white/20 hover:bg-white/10"
-                      aria-label="Toggle character image URL input"
-                      title="Change portrait"
-                    >
-                      {imageUrl.trim() ? (
-                        <img
-                          src={imageUrl.trim()}
-                          alt="Character avatar preview"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-2xl font-semibold text-zinc-500 transition group-hover:text-zinc-300">
-                          {name.trim().charAt(0).toUpperCase() || "?"}
-                        </div>
-                      )}
-                    </button>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="space-y-2">
-                        <label
-                          htmlFor="name"
-                          className="text-sm font-medium text-zinc-200"
-                        >
-                          Character name
-                        </label>
-                        <input
-                          id="name"
-                          type="text"
-                          value={name}
-                          onChange={(event) => setName(event.target.value)}
-                          placeholder="Elaris, Brom, Kael..."
-                          className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-zinc-400"
-                          required
-                        />
+              <Card title="Character">
+                <div className="mb-6 flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowPortraitPicker((current) => !current)}
+                    className="group h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 transition hover:border-white/20"
+                    title="Change portrait"
+                  >
+                    {imageUrl.trim() ? (
+                      <img
+                        src={imageUrl.trim()}
+                        alt="Character portrait"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 text-2xl font-semibold text-zinc-400">
+                        {name.trim().charAt(0).toUpperCase() || "?"}
                       </div>
-                    </div>
+                    )}
+                  </button>
+
+                  <div className="flex-1">
+                    <TextInput
+                      label="Character Name"
+                      value={name}
+                      onChange={setName}
+                    />
                   </div>
+                </div>
 
-                  {showPortraitPicker && (
-                    <div className="mt-5 border-t border-white/10 pt-4">
-                      <p className="mb-3 text-sm font-medium text-zinc-200">
-                        Choose default portrait
-                      </p>
+                {showPortraitPicker ? (
+                  <div className="mb-6 border-t border-white/10 pt-5">
+                    <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+                      {defaultCharacterPortraits.map((portrait) => (
+                        <button
+                          key={portrait.id}
+                          type="button"
+                          onClick={() => {
+                            setImageUrl(portrait.url);
 
-                      <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                        {defaultCharacterPortraits.map((portrait) => {
-                          const isSelected = imageUrl === portrait.url;
+                            setShowImageUrlInput(false);
+                          }}
+                          className="overflow-hidden rounded-xl border border-white/10 transition hover:border-white/30"
+                        >
+                          <img
+                            src={portrait.url}
+                            alt={portrait.label}
+                            className="aspect-square w-full object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
 
-                          return (
-                            <button
-                              key={portrait.id}
-                              type="button"
-                              onClick={() => {
-                                setImageUrl(portrait.url);
-                                setShowImageUrlInput(false);
-                              }}
-                              className={`overflow-hidden rounded-2xl border transition ${
-                                isSelected
-                                  ? "border-white bg-white/10"
-                                  : "border-white/10 bg-zinc-900 hover:border-white/25"
-                              }`}
-                              title={portrait.label}
-                            >
-                              <img
-                                src={portrait.url}
-                                alt={portrait.label}
-                                className="aspect-square w-full object-cover"
-                              />
-                            </button>
-                          );
-                        })}
-                      </div>
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowImageUrlInput((current) => !current)
+                        }
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/10"
+                      >
+                        Use image URL
+                      </button>
 
-                      <div className="mt-4 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setImageUrl(getRandomDefaultPortraitUrl())
+                        }
+                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/10"
+                      >
+                        Random portrait
+                      </button>
+
+                      {imageUrl.trim() ? (
                         <button
                           type="button"
-                          onClick={() => setShowImageUrlInput((prev) => !prev)}
-                          className="text-sm font-medium text-zinc-400 transition hover:text-white"
+                          onClick={() => {
+                            setImageUrl("");
+
+                            setShowImageUrlInput(false);
+                          }}
+                          className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300 hover:bg-red-500/15"
                         >
-                          Use image URL instead
+                          Remove portrait
                         </button>
-
-                        {imageUrl.trim() && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setImageUrl("");
-                              setShowImageUrlInput(false);
-                            }}
-                            className="text-sm font-medium text-zinc-500 transition hover:text-red-300"
-                          >
-                            Remove portrait
-                          </button>
-                        )}
-                      </div>
+                      ) : null}
                     </div>
-                  )}
 
-                  {showImageUrlInput && (
-                    <div className="mt-4 border-t border-white/10 pt-4">
-                      <label className="mb-1 block text-sm font-medium text-zinc-200">
-                        Character image URL
-                      </label>
+                    {showImageUrlInput ? (
                       <input
                         type="url"
                         value={imageUrl}
                         onChange={(event) => setImageUrl(event.target.value)}
-                        placeholder="https://example.com/character.jpg"
-                        className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
+                        placeholder="https://..."
+                        className="mt-4 w-full rounded-xl border border-white/10 bg-zinc-950 p-3 outline-none"
                       />
-                    </div>
-                  )}
-                </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-200">
-                      Class
-                    </label>
-                    <input
-                      value={customClassName}
-                      onChange={(event) =>
-                        setCustomClassName(event.target.value)
-                      }
-                      placeholder="Fighter, Witch, Blood Hunter..."
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-zinc-400"
-                    />
-                  </div>
+                  <TextInput
+                    label="Class"
+                    value={customClassName}
+                    onChange={setCustomClassName}
+                  />
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-200">
-                      Species / Race
-                    </label>
-                    <input
-                      value={customSpeciesName}
-                      onChange={(event) =>
-                        setCustomSpeciesName(event.target.value)
-                      }
-                      placeholder="Human, Elf, Goblin, Homebrew..."
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-zinc-400"
-                    />
-                  </div>
+                  <NumberInput
+                    label="Level"
+                    value={customLevel}
+                    min={1}
+                    onChange={setCustomLevel}
+                  />
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-200">
-                      Background
-                    </label>
-                    <input
-                      value={customBackgroundName}
-                      onChange={(event) =>
-                        setCustomBackgroundName(event.target.value)
-                      }
-                      placeholder="Soldier, Noble, Cultist..."
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-zinc-400"
-                    />
-                  </div>
+                  <TextInput
+                    label="Species / Race"
+                    value={customSpeciesName}
+                    onChange={setCustomSpeciesName}
+                  />
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-zinc-200">
-                      Level
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      value={customLevel}
-                      onChange={(event) =>
-                        setCustomLevel(Number(event.target.value))
-                      }
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                    />
-                  </div>
+                  <TextInput
+                    label="Background"
+                    value={customBackgroundName}
+                    onChange={setCustomBackgroundName}
+                  />
 
-                  <div className="space-y-2 sm:col-span-2">
-                    <label className="text-sm font-medium text-zinc-200">
-                      Alignment
-                    </label>
-                    <input
-                      value={alignment}
-                      onChange={(event) => setAlignment(event.target.value)}
-                      placeholder="Optional"
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-zinc-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  <h3 className="mb-4 text-lg font-semibold text-white">
-                    Ability Scores
-                  </h3>
-
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    {(Object.keys(abilityLabels) as AbilityKey[]).map((key) => (
-                      <div key={key} className="space-y-2">
-                        <label className="text-sm font-medium text-zinc-200">
-                          {abilityLabels[key]}
-                        </label>
-                        <input
-                          type="number"
-                          inputMode="numeric"
-                          value={abilityScores[key]}
-                          onChange={(event) =>
-                            handleAbilityChange(key, event.target.value)
-                          }
-                          className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-8">
-                  <h3 className="mb-4 text-lg font-semibold text-white">
-                    Combat Values
-                  </h3>
-
-                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-200">
-                        AC
-                      </label>
-                      <input
-                        type="number"
-                        value={customArmorClass}
-                        onChange={(event) =>
-                          setCustomArmorClass(Number(event.target.value))
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-200">
-                        Current HP
-                      </label>
-                      <input
-                        type="number"
-                        value={customCurrentHp}
-                        onChange={(event) =>
-                          setCustomCurrentHp(Number(event.target.value))
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-200">
-                        Max HP
-                      </label>
-                      <input
-                        type="number"
-                        value={customMaxHp}
-                        onChange={(event) =>
-                          setCustomMaxHp(Number(event.target.value))
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-200">
-                        Speed
-                      </label>
-                      <input
-                        type="number"
-                        value={customSpeed}
-                        onChange={(event) =>
-                          setCustomSpeed(Number(event.target.value))
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-zinc-200">
-                        Proficiency
-                      </label>
-                      <input
-                        type="number"
-                        value={customProficiencyBonus}
-                        onChange={(event) =>
-                          setCustomProficiencyBonus(Number(event.target.value))
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 space-y-2">
-                  <label className="text-sm font-medium text-zinc-200">
-                    Notes
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(event) => setNotes(event.target.value)}
-                    placeholder="Appearance, personality, backstory, goals..."
-                    rows={6}
-                    className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none transition focus:border-zinc-400"
+                  <TextInput
+                    label="Alignment"
+                    value={alignment}
+                    onChange={setAlignment}
                   />
                 </div>
-              </>
-            )}
+              </Card>
 
-            {currentStep === "traits" && (
-              <>
-                <div className="mb-5 flex items-center justify-between gap-3">
-                  <h2 className="text-xl font-semibold text-white">
-                    Custom Traits
-                  </h2>
+              {/* ABILITIES */}
 
+              <Card title="Ability Scores">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+                  {abilityKeys.map((key) => (
+                    <div
+                      key={key}
+                      className="rounded-xl border border-white/10 bg-zinc-900 p-3 text-center"
+                    >
+                      <label className="text-xs font-bold text-zinc-500">
+                        {abilityShortLabels[key]}
+                      </label>
+
+                      <input
+                        type="number"
+                        value={abilityScores[key]}
+                        onChange={(event) =>
+                          handleAbilityChange(
+                            key,
+
+                            event.target.value,
+                          )
+                        }
+                        className="mt-2 w-full rounded-lg bg-zinc-950 p-2 text-center text-xl font-bold"
+                      />
+
+                      <p className="mt-1 text-xs text-zinc-400">
+                        {formatModifier(getModifier(abilityScores[key]))}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* COMBAT */}
+
+              <Card title="Combat">
+                <div className="grid gap-4 sm:grid-cols-5">
+                  <NumberInput
+                    label="AC"
+                    value={customArmorClass}
+                    onChange={setCustomArmorClass}
+                  />
+
+                  <NumberInput
+                    label="Current HP"
+                    value={customCurrentHp}
+                    min={0}
+                    onChange={setCustomCurrentHp}
+                  />
+
+                  <NumberInput
+                    label="Max HP"
+                    value={customMaxHp}
+                    min={0}
+                    onChange={setCustomMaxHp}
+                  />
+
+                  <NumberInput
+                    label="Speed"
+                    value={customSpeed}
+                    min={0}
+                    onChange={setCustomSpeed}
+                  />
+
+                  <NumberInput
+                    label="Prof. Bonus"
+                    value={customProficiencyBonus}
+                    onChange={setCustomProficiencyBonus}
+                  />
+                </div>
+              </Card>
+
+              {/* SAVES */}
+
+              <Card title="Saving Throws">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  {abilityKeys.map((ability) => {
+                    const proficient =
+                      savingThrowProficiencies.includes(ability);
+
+                    const bonus =
+                      getModifier(abilityScores[ability]) +
+                      (proficient ? customProficiencyBonus : 0);
+
+                    return (
+                      <label
+                        key={ability}
+                        className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3"
+                      >
+                        <span>
+                          <input
+                            type="checkbox"
+                            checked={proficient}
+                            onChange={() => toggleSavingThrow(ability)}
+                            className="mr-3"
+                          />
+
+                          {abilityLabels[ability]}
+                        </span>
+
+                        <strong>{formatModifier(bonus)}</strong>
+                      </label>
+                    );
+                  })}
+                </div>
+              </Card>
+
+              {/* SKILLS */}
+
+              <Card title="Skills">
+                <div className="space-y-2">
+                  {customSkillDefinitions.map((skill) => (
+                    <div
+                      key={skill.id}
+                      className="grid items-center gap-3 rounded-xl border border-white/10 bg-zinc-900 p-3 sm:grid-cols-[1fr_70px_160px]"
+                    >
+                      <div>
+                        <p className="text-sm text-white">{skill.name}</p>
+
+                        <p className="text-xs text-zinc-500">
+                          {abilityShortLabels[skill.ability]}
+                        </p>
+                      </div>
+
+                      <strong>
+                        {formatModifier(
+                          getSkillBonus(
+                            skill.ability,
+
+                            skillProficiencies[skill.id],
+                          ),
+                        )}
+                      </strong>
+
+                      <select
+                        value={skillProficiencies[skill.id]}
+                        onChange={(event) =>
+                          setSkillProficiencies((current) => ({
+                            ...current,
+
+                            [skill.id]: event.target
+                              .value as CustomProficiencyLevel,
+                          }))
+                        }
+                        className="rounded-lg border border-white/10 bg-zinc-950 p-2 text-sm"
+                      >
+                        <option value="none">None</option>
+
+                        <option value="proficient">Proficient</option>
+
+                        <option value="expertise">Expertise</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* PROFICIENCIES */}
+
+              <Card title="Other Proficiencies & Languages">
+                <p className="mb-4 text-sm text-zinc-500">
+                  Separate entries with commas or new lines.
+                </p>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Textarea
+                    label="Armor Proficiencies"
+                    value={armorProficienciesText}
+                    onChange={setArmorProficienciesText}
+                  />
+
+                  <Textarea
+                    label="Weapon Proficiencies"
+                    value={weaponProficienciesText}
+                    onChange={setWeaponProficienciesText}
+                  />
+
+                  <Textarea
+                    label="Tool Proficiencies"
+                    value={toolProficienciesText}
+                    onChange={setToolProficienciesText}
+                  />
+
+                  <Textarea
+                    label="Languages"
+                    value={languagesText}
+                    onChange={setLanguagesText}
+                  />
+                </div>
+              </Card>
+
+              {/* EQUIPMENT */}
+
+              <Card title="Equipment">
+                <div className="mb-4 flex justify-end">
                   <button
                     type="button"
-                    onClick={addCustomTrait}
-                    className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                    onClick={() => setItemPickerOpen(true)}
+                    className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
                   >
-                    Add trait
+                    + Add Item
                   </button>
                 </div>
 
-                <div className="space-y-4">
-                  {customTraits.map((trait) => (
-                    <div
-                      key={trait.id}
-                      className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4"
-                    >
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <input
-                          value={trait.name}
-                          onChange={(event) =>
-                            updateCustomTrait(trait.id, {
-                              name: event.target.value,
-                            })
-                          }
-                          placeholder="Trait name"
-                          className="rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none"
-                        />
+                {equipment.length === 0 ? (
+                  <p className="text-sm text-zinc-500">No equipment added.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {equipment.map((entry) => (
+                      <div
+                        key={entry.instanceId}
+                        className="grid gap-3 rounded-xl border border-white/10 bg-zinc-900 p-3 sm:grid-cols-[1fr_100px_auto]"
+                      >
+                        <div>
+                          <p className="font-medium text-white">{entry.name}</p>
+
+                          <p className="text-xs text-zinc-500">
+                            {entry.itemId ?? entry.campaignItemId}
+                          </p>
+                        </div>
 
                         <input
-                          value={trait.source}
+                          type="number"
+                          min={1}
+                          value={entry.quantity}
                           onChange={(event) =>
-                            updateCustomTrait(trait.id, {
-                              source: event.target.value,
-                            })
+                            updateEquipmentQuantity(
+                              entry.instanceId,
+
+                              Number(event.target.value),
+                            )
                           }
-                          placeholder="Source, optional"
-                          className="rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none"
+                          className="rounded-lg border border-white/10 bg-zinc-950 p-2"
                         />
+
+                        <button
+                          type="button"
+                          onClick={() => removeEquipment(entry.instanceId)}
+                          className="text-red-300"
+                        >
+                          Remove
+                        </button>
                       </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
 
-                      <textarea
-                        value={trait.description}
-                        onChange={(event) =>
-                          updateCustomTrait(trait.id, {
-                            description: event.target.value,
-                          })
+              {/* SPELLS */}
+
+              <Card title="Spellcasting">
+                <label className="mb-5 flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={customSpellcasting.enabled}
+                    onChange={(event) =>
+                      setCustomSpellcasting((current) => ({
+                        ...current,
+
+                        enabled: event.target.checked,
+                      }))
+                    }
+                  />
+
+                  <span className="font-medium text-white">
+                    This character uses spells
+                  </span>
+                </label>
+
+                {customSpellcasting.enabled ? (
+                  <div className="space-y-6">
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <label className="block">
+                        <span className="text-sm text-zinc-300">
+                          Spellcasting Ability
+                        </span>
+
+                        <select
+                          value={customSpellcasting.ability ?? ""}
+                          onChange={(event) =>
+                            setCustomSpellcasting((current) => ({
+                              ...current,
+
+                              ability: event.target.value
+                                ? (event.target.value as AbilityKey)
+                                : null,
+                            }))
+                          }
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3"
+                        >
+                          <option value="">None</option>
+
+                          {abilityKeys.map((ability) => (
+                            <option key={ability} value={ability}>
+                              {abilityLabels[ability]}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <NumberInput
+                        label="Spell Save DC"
+                        value={customSpellcasting.spellSaveDc}
+                        onChange={(value) =>
+                          setCustomSpellcasting((current) => ({
+                            ...current,
+
+                            spellSaveDc: value,
+                          }))
                         }
-                        placeholder="Description"
-                        rows={4}
-                        className="mt-3 w-full rounded-2xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-sm text-white placeholder:text-zinc-500 outline-none"
                       />
 
-                      <button
-                        type="button"
-                        onClick={() => removeCustomTrait(trait.id)}
-                        className="mt-3 text-sm font-medium text-zinc-500 transition hover:text-red-300"
-                      >
-                        Remove trait
-                      </button>
+                      <NumberInput
+                        label="Spell Attack Bonus"
+                        value={customSpellcasting.spellAttackBonus}
+                        onChange={(value) =>
+                          setCustomSpellcasting((current) => ({
+                            ...current,
+
+                            spellAttackBonus: value,
+                          }))
+                        }
+                      />
                     </div>
-                  ))}
 
-                  {customTraits.length === 0 && (
-                    <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5">
-                      <p className="text-sm text-zinc-400">
-                        No custom traits added yet.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
+                    <div>
+                      <h3 className="mb-3 font-semibold text-white">
+                        Spell Slots
+                      </h3>
 
-            {currentStep === "review" && (
-              <>
-                <h2 className="mb-5 text-xl font-semibold text-white">
-                  Review
-                </h2>
+                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-9">
+                        {Array.from(
+                          {
+                            length: 9,
+                          },
 
-                <div className="space-y-6">
-                  <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                      Character
-                    </p>
+                          (_, index) => index + 1,
+                        ).map((level) => (
+                          <NumberInput
+                            key={level}
+                            label={`${level}`}
+                            value={
+                              customSpellcasting.spellSlots[String(level)]
+                                ?.max ?? 0
+                            }
+                            min={0}
+                            onChange={(value) =>
+                              updateSpellSlot(
+                                level,
 
-                    <div className="mt-3 space-y-2 text-sm text-zinc-200">
-                      <p>
-                        <span className="text-zinc-500">Name:</span>{" "}
-                        {name || "—"}
-                      </p>
-                      <p>
-                        <span className="text-zinc-500">Class:</span>{" "}
-                        {customClassName || "—"}
-                      </p>
-                      <p>
-                        <span className="text-zinc-500">Species / Race:</span>{" "}
-                        {customSpeciesName || "—"}
-                      </p>
-                      <p>
-                        <span className="text-zinc-500">Background:</span>{" "}
-                        {customBackgroundName || "—"}
-                      </p>
-                      <p>
-                        <span className="text-zinc-500">Level:</span>{" "}
-                        {customLevel}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                      Combat
-                    </p>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-zinc-200 sm:grid-cols-5">
-                      <div className="rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2">
-                        AC: {customArmorClass}
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2">
-                        HP: {customCurrentHp}/{customMaxHp}
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2">
-                        Speed: {customSpeed}
-                      </div>
-                      <div className="rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2">
-                        Prof: +{customProficiencyBonus}
+                                value,
+                              )
+                            }
+                          />
+                        ))}
                       </div>
                     </div>
-                  </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                      Ability Scores
-                    </p>
+                    <div>
+                      <div className="mb-4 flex items-center justify-between">
+                        <h3 className="font-semibold text-white">Spells</h3>
 
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-zinc-200 sm:grid-cols-3">
-                      {(Object.keys(abilityLabels) as AbilityKey[]).map(
-                        (key) => (
-                          <div
-                            key={key}
-                            className="rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-2"
-                          >
-                            {abilityLabels[key]}: {abilityScores[key]}
-                          </div>
-                        ),
-                      )}
-                    </div>
-                  </div>
+                        <button
+                          type="button"
+                          onClick={() => setSpellPickerOpen(true)}
+                          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
+                        >
+                          + Add Spell
+                        </button>
+                      </div>
 
-                  <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                      Traits
-                    </p>
-
-                    <div className="mt-3 space-y-3">
-                      {visibleTraits.length > 0 ? (
-                        visibleTraits.map((trait) => (
-                          <div
-                            key={trait.id}
-                            className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
-                          >
-                            <p className="text-sm font-medium text-white">
-                              {trait.name}
-                            </p>
-
-                            {trait.source.trim() && (
-                              <p className="mt-1 text-xs text-zinc-500">
-                                {trait.source}
-                              </p>
-                            )}
-
-                            {trait.description.trim() && (
-                              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-400">
-                                {trait.description}
-                              </p>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-sm text-zinc-400">
-                          No custom traits.
+                      {customSpellcasting.spells.length === 0 ? (
+                        <p className="text-sm text-zinc-500">
+                          No spells added.
                         </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {[...customSpellcasting.spells]
+                            .sort(
+                              (a, b) =>
+                                a.level - b.level ||
+                                a.name.localeCompare(b.name),
+                            )
+                            .map((spell) => (
+                              <div
+                                key={spell.spellId}
+                                className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3"
+                              >
+                                <div>
+                                  <p className="font-medium text-white">
+                                    {spell.name}
+                                  </p>
+
+                                  <p className="text-xs text-zinc-500">
+                                    {spell.level === 0
+                                      ? "Cantrip"
+                                      : `Level ${spell.level}`}
+                                  </p>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => removeSpell(spell.spellId)}
+                                  className="text-sm text-red-300"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                        </div>
                       )}
                     </div>
                   </div>
+                ) : null}
+              </Card>
+
+              {/* MONEY */}
+
+              <Card title="Currency">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+                  {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
+                    <NumberInput
+                      key={currency}
+                      label={currency.toUpperCase()}
+                      value={money[currency] ?? 0}
+                      min={0}
+                      onChange={(value) =>
+                        setMoney((current) => ({
+                          ...current,
+
+                          [currency]: Math.max(
+                            0,
+
+                            value,
+                          ),
+                        }))
+                      }
+                    />
+                  ))}
                 </div>
-              </>
-            )}
+              </Card>
 
-            {error && (
-              <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                {error}
-              </div>
-            )}
+              {/* FEATURES */}
 
-            <div className="mt-10 flex flex-col-reverse gap-3 border-t border-white/10 pt-6 sm:flex-row sm:justify-between">
-              <button
-                type="button"
-                onClick={isFirstStep ? onBackToModeSelect : goToPreviousStep}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                {isFirstStep ? "Back" : "Previous"}
-              </button>
-
-              {!isLastStep ? (
+              <Card title="Features & Traits">
                 <button
                   type="button"
-                  onClick={goToNextStep}
-                  className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                  onClick={addCustomTrait}
+                  className="mb-4 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
                 >
-                  Next
+                  + Add Trait
                 </button>
-              ) : (
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {submitting ? "Creating character..." : "Create character"}
-                </button>
-              )}
-            </div>
-          </section>
 
-          <aside className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-            <h2 className="mb-5 text-xl font-semibold text-white">
-              Character Summary
-            </h2>
-
-            <div className="space-y-5">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Identity
-                </p>
-
-                <div className="mt-2 space-y-1 text-sm text-zinc-200">
-                  <p>{name || "Unnamed character"}</p>
-                  <p className="text-zinc-400">
-                    Level {customLevel} {customSpeciesName || "Custom Species"}{" "}
-                    {customClassName || "Custom Class"}
+                {customTraits.length === 0 ? (
+                  <p className="text-sm text-zinc-500">
+                    No features or traits added.
                   </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Combat
-                </p>
-
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
-                    AC {customArmorClass}
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
-                    HP {customCurrentHp}/{customMaxHp}
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs text-zinc-200">
-                    Speed {customSpeed}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-                  Traits
-                </p>
-
-                <div className="mt-3 space-y-3">
-                  {visibleTraits.length > 0 ? (
-                    visibleTraits.map((trait) => (
+                ) : (
+                  <div className="space-y-4">
+                    {customTraits.map((trait) => (
                       <div
                         key={trait.id}
-                        className="rounded-2xl border border-white/10 bg-zinc-900/70 p-3"
+                        className="rounded-xl border border-white/10 bg-zinc-900 p-4"
                       >
-                        <p className="text-sm font-medium text-white">
-                          {trait.name || "Unnamed trait"}
-                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          <TextInput
+                            label="Name"
+                            value={trait.name}
+                            onChange={(value) =>
+                              updateCustomTrait(
+                                trait.id,
 
-                        {trait.description.trim() ? (
-                          <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-xs leading-5 text-zinc-400">
-                            {trait.description}
-                          </p>
-                        ) : (
-                          <p className="mt-2 text-xs text-zinc-500">
-                            No description.
-                          </p>
-                        )}
+                                {
+                                  name: value,
+                                },
+                              )
+                            }
+                          />
+
+                          <TextInput
+                            label="Source"
+                            value={trait.source ?? ""}
+                            onChange={(value) =>
+                              updateCustomTrait(
+                                trait.id,
+
+                                {
+                                  source: value,
+                                },
+                              )
+                            }
+                          />
+                        </div>
+
+                        <div className="mt-3">
+                          <Textarea
+                            label="Description"
+                            value={trait.description ?? ""}
+                            onChange={(value) =>
+                              updateCustomTrait(
+                                trait.id,
+
+                                {
+                                  description: value,
+                                },
+                              )
+                            }
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeCustomTrait(trait.id)}
+                          className="mt-3 text-sm text-red-300"
+                        >
+                          Remove trait
+                        </button>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-zinc-400">
-                      No custom traits added.
-                    </p>
-                  )}
+                    ))}
+                  </div>
+                )}
+              </Card>
+
+              {/* DETAILS */}
+
+              <Card title="Character Details">
+                <div className="space-y-5">
+                  <Textarea
+                    label="Character Appearance"
+                    value={characterAppearance}
+                    onChange={setCharacterAppearance}
+                    rows={6}
+                  />
+
+                  <Textarea
+                    label="Allies & Organizations"
+                    value={alliesAndOrganizations}
+                    onChange={setAlliesAndOrganizations}
+                    rows={6}
+                  />
+
+                  <Textarea
+                    label="Character Backstory"
+                    value={characterBackstory}
+                    onChange={setCharacterBackstory}
+                    rows={10}
+                  />
                 </div>
-              </div>
+              </Card>
             </div>
 
-            <div className="mt-6 rounded-2xl border border-white/10 bg-zinc-900/60 p-4">
-              <p className="text-sm font-medium text-white">
-                Step {currentStepIndex + 1} of {steps.length}
+            {/* SIDEBAR */}
+
+            <aside className="h-fit rounded-3xl border border-white/10 bg-white/5 p-5 lg:sticky lg:top-6">
+              <h2 className="text-xl font-semibold text-white">Summary</h2>
+
+              <p className="mt-5 text-xl font-bold">
+                {name || "Unnamed Character"}
               </p>
-              <p className="mt-1 text-sm text-zinc-400">
-                {stepLabels[currentStep]}
+
+              <p className="text-sm text-zinc-400">
+                Level {customLevel} {customSpeciesName} {customClassName}
               </p>
-            </div>
-          </aside>
-        </form>
+
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <MiniStat
+                  label="HP"
+                  value={`${customCurrentHp}/${customMaxHp}`}
+                />
+
+                <MiniStat label="AC" value={customArmorClass} />
+
+                <MiniStat
+                  label="Initiative"
+                  value={formatModifier(dexModifier)}
+                />
+
+                <MiniStat
+                  label="Passive Perception"
+                  value={passivePerception}
+                />
+              </div>
+
+              {error ? (
+                <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+                  {error}
+                </div>
+              ) : null}
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="mt-6 w-full rounded-xl bg-white p-3 font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-50"
+              >
+                {submitting
+                  ? isEditing
+                    ? "Saving..."
+                    : "Creating..."
+                  : isEditing
+                    ? "Save Changes"
+                    : "Create Character"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={submitting}
+                className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </aside>
+          </form>
+        </div>
       </div>
-    </div>
+
+      <ItemPickerModal
+        isOpen={itemPickerOpen}
+        onClose={() => setItemPickerOpen(false)}
+        onSelect={addCatalogItem}
+      />
+
+      <SpellPickerModal
+        isOpen={spellPickerOpen}
+        onClose={() => setSpellPickerOpen(false)}
+        selectedSpellIds={customSpellcasting.spells.map(
+          (spell) => spell.spellId,
+        )}
+        onSelect={addSpell}
+      />
+    </>
   );
 };
+
+const Card = ({
+  title,
+  children,
+}: {
+  title: string;
+
+  children: React.ReactNode;
+}) => (
+  <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
+    <h2 className="mb-5 text-xl font-semibold text-white">{title}</h2>
+
+    {children}
+  </section>
+);
+
+const TextInput = ({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+
+  value: string;
+
+  onChange: (value: string) => void;
+}) => (
+  <label className="block">
+    <span className="text-sm text-zinc-300">{label}</span>
+
+    <input
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-white outline-none focus:border-white/25"
+    />
+  </label>
+);
+
+const NumberInput = ({
+  label,
+  value,
+  onChange,
+  min,
+}: {
+  label: string;
+
+  value: number;
+
+  onChange: (value: number) => void;
+
+  min?: number;
+}) => (
+  <label className="block">
+    <span className="text-sm text-zinc-300">{label}</span>
+
+    <input
+      type="number"
+      min={min}
+      value={value}
+      onChange={(event) => onChange(Number(event.target.value))}
+      className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-white outline-none focus:border-white/25"
+    />
+  </label>
+);
+
+const Textarea = ({
+  label,
+  value,
+  onChange,
+  rows = 4,
+}: {
+  label: string;
+
+  value: string;
+
+  onChange: (value: string) => void;
+
+  rows?: number;
+}) => (
+  <label className="block">
+    <span className="text-sm text-zinc-300">{label}</span>
+
+    <textarea
+      rows={rows}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-white outline-none focus:border-white/25"
+    />
+  </label>
+);
+
+const MiniStat = ({
+  label,
+  value,
+}: {
+  label: string;
+
+  value: string | number;
+}) => (
+  <div className="rounded-xl border border-white/10 bg-zinc-900 p-3">
+    <p className="text-xs text-zinc-500">{label}</p>
+
+    <p className="mt-1 font-semibold text-white">{value}</p>
+  </div>
+);
 
 export default CustomCharacterCreator;

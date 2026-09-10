@@ -16,6 +16,8 @@ import useNpcLibrary from "../../../hooks/useNpcLibrary";
 
 import useCampaignPageData from "../../campaigns/hooks/useCampaignPageData";
 
+import { allItems } from "../../../rulesets/dnd/dnd2024/data/items";
+
 import {
   createEntityMentionExtension,
   type EntityMentionItem,
@@ -55,6 +57,12 @@ const getFormatButtonClass = (active: boolean) => {
       : "text-zinc-500 hover:bg-white/10 hover:text-white"
   }`;
 };
+
+const formatLabel = (value: string) =>
+  value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 
 export function NotesWorkspaceModule({
   module,
@@ -134,6 +142,26 @@ export function NotesWorkspaceModule({
           imageUrl: npc.imageUrl,
 
           meta: [npc.species, npc.occupation].filter(Boolean).join(" · "),
+        }),
+      ),
+
+      ...allItems.map(
+        (item): EntityMentionItem => ({
+          id: `base:${item.id}`,
+
+          entityType: "item",
+
+          entityKey: `base:${item.id}`,
+
+          label: item.name,
+
+          meta: [
+            item.category ? formatLabel(item.category) : "",
+
+            item.magical ? "Magical" : "",
+          ]
+            .filter(Boolean)
+            .join(" · "),
         }),
       ),
     ],
@@ -297,6 +325,16 @@ export function NotesWorkspaceModule({
         type: "npc",
 
         npcId: entityKey,
+      });
+
+      return;
+    }
+
+    if (entityType === "item") {
+      selectEntity({
+        type: "item",
+
+        itemKey: entityKey,
       });
 
       return;

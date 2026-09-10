@@ -28,7 +28,7 @@ import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 import NPCsPage from "./pages/NPCsPage";
 import NpcDetailPage from "./pages/NpcDetailPage";
 import MonstersPage from "./pages/MonstersPage";
-import EditCharacter from "./pages/editCharacter";
+import EditCharacter from "./pages/editCharacter.tsx";
 import DMWorkspacePage from "./pages/DMWorkspacePage";
 
 // Context

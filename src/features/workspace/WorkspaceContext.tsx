@@ -25,9 +25,22 @@ export type WorkspaceSelectedNpc = {
   npcId: string;
 };
 
+export type WorkspaceSelectedItem = {
+  type: "item";
+
+  /**
+   * Examples:
+   *
+   * base:longsword
+   * campaign:abc123
+   */
+  itemKey: string;
+};
+
 export type WorkspaceSelectedEntity =
   | WorkspaceSelectedMonster
   | WorkspaceSelectedNpc
+  | WorkspaceSelectedItem
   | null;
 
 export type WorkspaceCharacterEncounterStatus = "active" | "up-next" | "manual";

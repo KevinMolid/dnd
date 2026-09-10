@@ -3,13 +3,13 @@ import Mention from "@tiptap/extension-mention";
 export type EntityMentionType =
   | "player"
   | "monster"
-  | "npc";
+  | "npc"
+  | "item";
 
 export type EntityMentionItem = {
   id: string;
 
-  entityType:
-    EntityMentionType;
+  entityType: EntityMentionType;
 
   /**
    * Player:
@@ -21,6 +21,10 @@ export type EntityMentionItem = {
    *
    * NPC:
    * NPC Firestore document ID
+   *
+   * Item:
+   * base:longsword
+   * campaign:abc123
    */
   entityKey: string;
 
@@ -52,6 +56,10 @@ const getEntityTypeFromQuery = (
     return "npc";
   }
 
+  if (prefix === "i") {
+    return "item";
+  }
+
   return null;
 };
 
@@ -76,7 +84,11 @@ const getEntityLetter = (
     return "M";
   }
 
-  return "N";
+  if (type === "npc") {
+    return "N";
+  }
+
+  return "I";
 };
 
 const createSuggestionRenderer =
@@ -439,11 +451,6 @@ export const createEntityMentionExtension =
             {}
           ),
 
-          /*
-           * Explicitly persist the visible label.
-           *
-           * This is the important fix.
-           */
           label: {
             default: null,
 
@@ -579,10 +586,6 @@ export const createEntityMentionExtension =
             "data-entity-key":
               entityKey,
 
-            /*
-             * Critical:
-             * persist the human-readable name too.
-             */
             "data-label":
               label,
 
