@@ -8,13 +8,15 @@ type SectionCardProps = {
 
 const SectionCard = ({ title, children, right }: SectionCardProps) => {
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
-        <h2 className="text-xl font-semibold text-white sm:text-2xl">
+    <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <h2 className="text-base font-semibold text-white sm:text-lg">
           {title}
         </h2>
+
         {right}
       </div>
+
       {children}
     </section>
   );

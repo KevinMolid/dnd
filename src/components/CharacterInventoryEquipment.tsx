@@ -1,19 +1,25 @@
 import { useMemo } from "react";
+
 import {
   equipmentSlotLabels,
   equipmentSlotOrder,
 } from "../rulesets/dnd/dnd2024/data/equipmentMetadata";
+
 import {
   getEquipActionsForItem,
   getOccupiedSlotsForEquip,
   isItemEquippable,
 } from "../rulesets/dnd/dnd2024/getEquipmentRules";
+
 import { copperToMoneyBreakdown } from "../rulesets/dnd/dnd2024/money";
+
 import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
+
 import type {
   CampaignItem,
   CharacterEquipmentEntry,
   EquipmentSlotId,
+  Money,
   WieldMode,
 } from "../rulesets/dnd/dnd2024/types";
 
@@ -21,9 +27,21 @@ import ItemTooltip from "./ItemTooltip";
 
 type Props = {
   equipment: CharacterEquipmentEntry[];
+
   onChange: (nextEquipment: CharacterEquipmentEntry[]) => void;
+
   campaignItemsById?: Record<string, CampaignItem>;
+
+  /*
+   * Guided-character / legacy money representation.
+   */
   moneyCp?: number;
+
+  /*
+   * Custom characters retain the exact denominations
+   * entered on their sheet.
+   */
+  money?: Money;
 };
 
 const formatLabel = (value: string) =>
@@ -45,6 +63,7 @@ const normalizeEntry = (
 
   if (equippedSlots.length === 0) {
     const { wieldMode, ...rest } = entry;
+
     return {
       ...rest,
       equipped: false,
@@ -71,13 +90,32 @@ const unequipEntry = (
   };
 };
 
+const normalizeMoney = (money?: Money): Required<Money> => ({
+  cp: Math.max(0, Math.floor(money?.cp ?? 0)),
+  sp: Math.max(0, Math.floor(money?.sp ?? 0)),
+  ep: Math.max(0, Math.floor(money?.ep ?? 0)),
+  gp: Math.max(0, Math.floor(money?.gp ?? 0)),
+  pp: Math.max(0, Math.floor(money?.pp ?? 0)),
+});
+
 const CharacterInventoryEquipment = ({
   equipment,
+
   onChange,
+
   campaignItemsById = {},
+
   moneyCp = 0,
+
+  money: suppliedMoney,
 }: Props) => {
-  const money = useMemo(() => copperToMoneyBreakdown(moneyCp), [moneyCp]);
+  const money = useMemo(() => {
+    if (suppliedMoney) {
+      return normalizeMoney(suppliedMoney);
+    }
+
+    return normalizeMoney(copperToMoneyBreakdown(moneyCp));
+  }, [suppliedMoney, moneyCp]);
 
   const normalizedEquipment = useMemo(
     () => equipment.map(normalizeEntry),
@@ -88,6 +126,7 @@ const CharacterInventoryEquipment = ({
     () =>
       normalizedEquipment.map((entry) => ({
         entry,
+
         resolvedItem: resolveItemFromEquipmentEntry(entry, campaignItemsById),
       })),
     [normalizedEquipment, campaignItemsById],
@@ -116,17 +155,26 @@ const CharacterInventoryEquipment = ({
 
   const handleEquip = (
     instanceId: string,
+
     rulesItemId: string,
+
     mode?: WieldMode,
   ) => {
     const slotsToOccupy = getOccupiedSlotsForEquip(rulesItemId, mode);
-    if (slotsToOccupy.length === 0) return;
 
-    const next = normalizedEquipment.map((entry) => ({ ...entry }));
+    if (slotsToOccupy.length === 0) {
+      return;
+    }
+
+    const next = normalizedEquipment.map((entry) => ({
+      ...entry,
+    }));
 
     for (let i = 0; i < next.length; i += 1) {
       const entry = next[i];
+
       const occupied = entry.equippedSlots ?? [];
+
       const conflicts = occupied.some((slot) => slotsToOccupy.includes(slot));
 
       if (conflicts) {
@@ -137,13 +185,23 @@ const CharacterInventoryEquipment = ({
     const targetIndex = next.findIndex(
       (entry) => entry.instanceId === instanceId,
     );
-    if (targetIndex < 0) return;
+
+    if (targetIndex < 0) {
+      return;
+    }
 
     next[targetIndex] = {
       ...next[targetIndex],
+
       equipped: true,
+
       equippedSlots: slotsToOccupy,
-      ...(mode ? { wieldMode: mode } : {}),
+
+      ...(mode
+        ? {
+            wieldMode: mode,
+          }
+        : {}),
     };
 
     onChange(next);
@@ -161,13 +219,18 @@ const CharacterInventoryEquipment = ({
             <div className="space-y-3">
               {resolvedEquipment.map(({ entry, resolvedItem }) => {
                 const rulesItemId = getRulesItemId(entry);
+
                 const displayId = getEntryDisplayId(entry);
 
                 const isEquippable = isItemEquippable(rulesItemId);
+
                 const actions = getEquipActionsForItem(rulesItemId);
+
                 const itemName =
                   resolvedItem?.name ?? entry.name ?? formatLabel(displayId);
+
                 const equippedSlots = entry.equippedSlots ?? [];
+
                 const isEquipped = equippedSlots.length > 0;
 
                 return (
@@ -178,7 +241,10 @@ const CharacterInventoryEquipment = ({
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0">
                         {resolvedItem ? (
-                          <ItemTooltip item={resolvedItem}>
+                          <ItemTooltip
+                            item={resolvedItem}
+                            className="max-w-full"
+                          >
                             <div className="min-w-0 cursor-pointer rounded-xl transition hover:bg-white/5">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="font-medium text-white">
@@ -310,10 +376,7 @@ const CharacterInventoryEquipment = ({
                               </button>
                             )}
                           </>
-                        ) : (
-                          <>
-                          </>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -333,19 +396,34 @@ const CharacterInventoryEquipment = ({
           </h2>
 
           <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5">
-            <div className="flex flex-wrap items-end gap-3 text-sm font-semibold text-white">
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-2 text-sm font-semibold text-white">
+              <span className="inline-flex items-center gap-1">
+                <span>{money.pp}</span>
+
+                <span className="text-cyan-200">PP</span>
+              </span>
+
               <span className="inline-flex items-center gap-1">
                 <span>{money.gp}</span>
+
                 <span className="text-yellow-400">GP</span>
               </span>
 
               <span className="inline-flex items-center gap-1">
+                <span>{money.ep}</span>
+
+                <span className="text-sky-300">EP</span>
+              </span>
+
+              <span className="inline-flex items-center gap-1">
                 <span>{money.sp}</span>
+
                 <span className="text-zinc-300">SP</span>
               </span>
 
               <span className="inline-flex items-center gap-1">
                 <span>{money.cp}</span>
+
                 <span className="text-amber-600">CP</span>
               </span>
             </div>
@@ -360,9 +438,11 @@ const CharacterInventoryEquipment = ({
           <div className="grid gap-3">
             {equipmentSlotOrder.map((slot) => {
               const equippedItem = equippedBySlot[slot];
+
               const resolvedItem = equippedItem
                 ? resolveItemFromEquipmentEntry(equippedItem, campaignItemsById)
                 : null;
+
               const displayId = equippedItem
                 ? getEntryDisplayId(equippedItem)
                 : undefined;
@@ -375,6 +455,7 @@ const CharacterInventoryEquipment = ({
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
                     {equipmentSlotLabels[slot]}
                   </p>
+
                   <p className="mt-2 text-sm font-medium text-white">
                     {equippedItem
                       ? (resolvedItem?.name ??

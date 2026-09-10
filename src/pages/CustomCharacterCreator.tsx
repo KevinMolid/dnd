@@ -184,6 +184,18 @@ const CustomCharacterCreator = ({
 
   const [alignment, setAlignment] = useState(initialCharacter?.alignment ?? "");
 
+  const [age, setAge] = useState(initialCharacter?.age ?? "");
+
+  const [height, setHeight] = useState(initialCharacter?.height ?? "");
+
+  const [weight, setWeight] = useState(initialCharacter?.weight ?? "");
+
+  const [eyes, setEyes] = useState(initialCharacter?.eyes ?? "");
+
+  const [skin, setSkin] = useState(initialCharacter?.skin ?? "");
+
+  const [hair, setHair] = useState(initialCharacter?.hair ?? "");
+
   const [characterAppearance, setCharacterAppearance] = useState(
     initialCharacter?.characterAppearance ?? "",
   );
@@ -567,6 +579,18 @@ const CustomCharacterCreator = ({
     backgroundName: customBackgroundName.trim(),
 
     alignment: alignment.trim(),
+
+    age: age.trim(),
+
+    height: height.trim(),
+
+    weight: weight.trim(),
+
+    eyes: eyes.trim(),
+
+    skin: skin.trim(),
+
+    hair: hair.trim(),
 
     abilityScores,
 
@@ -1413,6 +1437,36 @@ const CustomCharacterCreator = ({
 
               <Card title="Character Details">
                 <div className="space-y-5">
+                  <div>
+                    <h3 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                      Physical Characteristics
+                    </h3>
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <TextInput label="Age" value={age} onChange={setAge} />
+
+                      <TextInput
+                        label="Height"
+                        value={height}
+                        onChange={setHeight}
+                      />
+
+                      <TextInput
+                        label="Weight"
+                        value={weight}
+                        onChange={setWeight}
+                      />
+
+                      <TextInput label="Eyes" value={eyes} onChange={setEyes} />
+
+                      <TextInput label="Skin" value={skin} onChange={setSkin} />
+
+                      <TextInput label="Hair" value={hair} onChange={setHair} />
+                    </div>
+                  </div>
+
+                  <div className="border-t border-white/10" />
+
                   <Textarea
                     label="Character Appearance"
                     value={characterAppearance}

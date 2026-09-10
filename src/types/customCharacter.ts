@@ -94,6 +94,19 @@ export type CustomCharacter = {
   backgroundName?: string;
   alignment?: string;
 
+  /*
+   * Official character-sheet physical details.
+   *
+   * Strings are intentional. Values such as
+   * 6' 2", 180 lb, Unknown, etc. should all work.
+   */
+  age?: string;
+  height?: string;
+  weight?: string;
+  eyes?: string;
+  skin?: string;
+  hair?: string;
+
   abilityScores?: Record<
     AbilityKey,
     number

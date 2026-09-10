@@ -1,19 +1,18 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useMemo, useState } from "react";
 
-import Avatar from "../components/Avatar";
+import { Link } from "react-router-dom";
 
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
 
-import StatCard from "../features/character-sheet/components/StatCard";
-
+import SpellTooltip from "../components/SpellTooltip";
+import CharacterSheetHeader from "../features/character-sheet/components/CharacterSheetHeader";
 import SectionCard from "../features/character-sheet/components/SectionCard";
-
 import CharacterSheetTabs from "../features/character-sheet/components/CharacterSheetTabs";
+import CharacterQuickStats from "../features/character-sheet/components/CharacterQuickStats";
 
 import type { CharacterSheetTab } from "../features/character-sheet/types";
-
 import type { AbilityKey, Money } from "../rulesets/dnd/dnd2024/types";
+import { spells } from "../rulesets/dnd/dnd2024/data/spells";
 
 import {
   createEmptyCustomSkills,
@@ -49,18 +48,7 @@ const abilityLabels: Record<AbilityKey, string> = {
   cha: "Charisma",
 };
 
-const abilityShortLabels: Record<AbilityKey, string> = {
-  str: "STR",
-  dex: "DEX",
-  con: "CON",
-  int: "INT",
-  wis: "WIS",
-  cha: "CHA",
-};
-
-const abilityKeys: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
-
-const defaultAbilityScores = {
+const defaultAbilityScores: Record<AbilityKey, number> = {
   str: 10,
   dex: 10,
   con: 10,
@@ -68,6 +56,8 @@ const defaultAbilityScores = {
   wis: 10,
   cha: 10,
 };
+
+const abilityKeys: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
 
 const defaultMoney: Money = {
   cp: 0,
@@ -87,18 +77,24 @@ const getProficiencyMultiplier = (level: CustomProficiencyLevel) =>
 
 export default function CustomCharacterSheet({
   characterId,
+
   character,
+
   backTo,
+
   backLabel,
+
   campaignItemsById,
+
   handleEquipmentChange,
 }: CustomCharacterSheetProps) {
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("overview");
 
   const stats = character.customStats ?? {};
 
-  const abilityScores = {
+  const abilityScores: Record<AbilityKey, number> = {
     ...defaultAbilityScores,
+
     ...(character.abilityScores ?? {}),
   };
 
@@ -154,18 +150,24 @@ export default function CustomCharacterSheet({
     ...(character.customSpellcasting ?? {}),
   };
 
+  const spellsById = useMemo(
+    () => Object.fromEntries(spells.map((spell) => [spell.id, spell])),
+    [],
+  );
+
   const getSkillBonus = (
     ability: AbilityKey,
+
     proficiency: CustomProficiencyLevel,
   ) =>
     getModifier(abilityScores[ability]) +
     proficiencyBonus * getProficiencyMultiplier(proficiency);
 
   const renderOverviewTab = () => (
-    <div className="grid gap-6 lg:grid-cols-3">
-      <div className="space-y-6 lg:col-span-2">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(260px,1fr)]">
+      <div className="space-y-4">
         <SectionCard title="Character">
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <Info label="Class" value={character.className} />
 
             <Info label="Species / Race" value={character.speciesName} />
@@ -176,31 +178,49 @@ export default function CustomCharacterSheet({
           </div>
         </SectionCard>
 
+        <SectionCard title="Physical Characteristics">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+            <Info label="Age" value={character.age} />
+
+            <Info label="Height" value={character.height} />
+
+            <Info label="Weight" value={character.weight} />
+
+            <Info label="Eyes" value={character.eyes} />
+
+            <Info label="Skin" value={character.skin} />
+
+            <Info label="Hair" value={character.hair} />
+          </div>
+        </SectionCard>
+
         <SectionCard title="Saving Throws">
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-1.5 sm:grid-cols-3">
             {abilityKeys.map((ability) => {
               const proficient = savingThrows.includes(ability);
 
-              const bonus =
+              const total =
                 getModifier(abilityScores[ability]) +
                 (proficient ? proficiencyBonus : 0);
 
               return (
                 <div
                   key={ability}
-                  className="flex justify-between rounded-xl border border-white/10 bg-zinc-900 p-3"
+                  className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm text-white">
+                    <p className="text-xs text-white">
                       {abilityLabels[ability]}
                     </p>
 
-                    <p className="text-xs text-zinc-500">
+                    <p className="text-[9px] text-zinc-600">
                       {proficient ? "Proficient" : "Not proficient"}
                     </p>
                   </div>
 
-                  <strong>{formatModifier(bonus)}</strong>
+                  <span className="text-xs font-semibold text-zinc-200">
+                    {formatModifier(total)}
+                  </span>
                 </div>
               );
             })}
@@ -208,39 +228,50 @@ export default function CustomCharacterSheet({
         </SectionCard>
 
         <SectionCard title="Skills">
-          <div className="grid gap-2 sm:grid-cols-2">
-            {customSkillDefinitions.map((skill) => (
-              <div
-                key={skill.id}
-                className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3"
-              >
-                <div>
-                  <p className="text-sm text-white">{skill.name}</p>
+          <div className="grid gap-1.5 sm:grid-cols-2">
+            {customSkillDefinitions.map((skill) => {
+              const proficiency = skills[skill.id];
 
-                  <p className="text-xs text-zinc-500">
-                    {abilityShortLabels[skill.ability]}
+              return (
+                <div
+                  key={skill.id}
+                  className="flex min-w-0 items-center justify-between rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <p className="truncate text-xs font-medium text-white">
+                        {skill.name}
+                      </p>
 
-                    {skills[skill.id] !== "none" &&
-                      ` · ${
-                        skills[skill.id] === "expertise"
-                          ? "Expertise"
-                          : "Proficient"
-                      }`}
-                  </p>
+                      <span className="rounded-full border border-white/10 bg-zinc-800 px-1.5 py-0.5 text-[8px] uppercase tracking-[0.12em] text-zinc-500">
+                        {skill.ability.toUpperCase()}
+                      </span>
+
+                      {proficiency === "proficient" ? (
+                        <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] uppercase tracking-[0.12em] text-emerald-300">
+                          Prof
+                        </span>
+                      ) : null}
+
+                      {proficiency === "expertise" ? (
+                        <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[8px] uppercase tracking-[0.12em] text-blue-300">
+                          Exp
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <span className="ml-3 shrink-0 text-xs font-semibold text-zinc-200">
+                    {formatModifier(getSkillBonus(skill.ability, proficiency))}
+                  </span>
                 </div>
-
-                <strong>
-                  {formatModifier(
-                    getSkillBonus(skill.ability, skills[skill.id]),
-                  )}
-                </strong>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </SectionCard>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-4">
         <SectionCard title="Languages">
           <TagList items={customProficiencies?.languages ?? []} />
         </SectionCard>
@@ -256,26 +287,13 @@ export default function CustomCharacterSheet({
         <SectionCard title="Tool Proficiencies">
           <TagList items={customProficiencies?.tools ?? []} />
         </SectionCard>
-
-        <SectionCard title="Currency">
-          <div className="flex flex-wrap gap-2">
-            {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
-              <span
-                key={currency}
-                className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs"
-              >
-                {money[currency] ?? 0} {currency.toUpperCase()}
-              </span>
-            ))}
-          </div>
-        </SectionCard>
       </div>
     </div>
   );
 
   const renderCombatTab = () => (
     <SectionCard title="Combat">
-      <div className="grid gap-4 sm:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-5">
         <CombatStat label="Armor Class" value={armorClass} />
 
         <CombatStat label="Hit Points" value={`${currentHp}/${maxHp}`} />
@@ -295,22 +313,24 @@ export default function CustomCharacterSheet({
   const renderFeaturesTab = () => (
     <SectionCard title="Features & Traits">
       {character.customTraits?.length ? (
-        <div className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2">
           {character.customTraits.map((trait) => (
             <div
               key={trait.id}
-              className="rounded-xl border border-white/10 bg-zinc-900 p-4"
+              className="rounded-xl border border-white/10 bg-zinc-900/60 p-3"
             >
               <div className="flex justify-between gap-3">
-                <strong>{trait.name}</strong>
+                <strong className="text-sm text-white">{trait.name}</strong>
 
                 {trait.source ? (
-                  <span className="text-xs text-zinc-500">{trait.source}</span>
+                  <span className="text-[10px] text-zinc-600">
+                    {trait.source}
+                  </span>
                 ) : null}
               </div>
 
               {trait.description ? (
-                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-zinc-400">
+                <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-zinc-400">
                   {trait.description}
                 </p>
               ) : null}
@@ -318,7 +338,7 @@ export default function CustomCharacterSheet({
           ))}
         </div>
       ) : (
-        <p className="text-sm text-zinc-500">No features added.</p>
+        <p className="text-xs text-zinc-600">No features added.</p>
       )}
     </SectionCard>
   );
@@ -328,7 +348,7 @@ export default function CustomCharacterSheet({
       equipment={character.equipment ?? []}
       onChange={handleEquipmentChange}
       campaignItemsById={campaignItemsById}
-      moneyCp={money.cp ?? 0}
+      money={money}
     />
   );
 
@@ -336,23 +356,21 @@ export default function CustomCharacterSheet({
     if (!spellcasting.enabled) {
       return (
         <SectionCard title="Spells">
-          <p className="text-sm text-zinc-500">
-            This character does not have spellcasting enabled.
+          <p className="text-xs text-zinc-600">
+            This character does not currently have spellcasting.
           </p>
         </SectionCard>
       );
     }
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         <SectionCard title="Spellcasting">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-3">
             <CombatStat
               label="Spellcasting Ability"
               value={
-                spellcasting.ability
-                  ? abilityShortLabels[spellcasting.ability]
-                  : "—"
+                spellcasting.ability ? abilityLabels[spellcasting.ability] : "—"
               }
             />
 
@@ -376,17 +394,17 @@ export default function CustomCharacterSheet({
               },
 
               (_, index) => index + 1,
-            ).map((level) => {
-              const slot = spellcasting.spellSlots[String(level)];
+            ).map((spellLevel) => {
+              const slot = spellcasting.spellSlots[String(spellLevel)];
 
               return (
                 <div
-                  key={level}
-                  className="rounded-xl border border-white/10 bg-zinc-900 p-3 text-center"
+                  key={spellLevel}
+                  className="rounded-xl border border-white/10 bg-zinc-900/60 px-2 py-2 text-center"
                 >
-                  <p className="text-xs text-zinc-500">Level {level}</p>
+                  <p className="text-[9px] text-zinc-600">L{spellLevel}</p>
 
-                  <p className="mt-1 font-bold text-white">
+                  <p className="mt-1 text-xs font-semibold text-white">
                     {slot?.remaining ?? 0}/{slot?.max ?? 0}
                   </p>
                 </div>
@@ -396,11 +414,11 @@ export default function CustomCharacterSheet({
         </SectionCard>
 
         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((spellLevel) => {
-          const spells = spellcasting.spells
+          const levelSpells = spellcasting.spells
             .filter((spell) => spell.level === spellLevel)
             .sort((a, b) => a.name.localeCompare(b.name));
 
-          if (spells.length === 0) {
+          if (levelSpells.length === 0) {
             return null;
           }
 
@@ -411,15 +429,36 @@ export default function CustomCharacterSheet({
                 spellLevel === 0 ? "Cantrips" : `Level ${spellLevel} Spells`
               }
             >
-              <div className="grid gap-2 sm:grid-cols-2">
-                {spells.map((spell) => (
-                  <div
-                    key={spell.spellId}
-                    className="rounded-xl border border-white/10 bg-zinc-900 px-4 py-3"
-                  >
-                    <p className="font-medium text-white">{spell.name}</p>
-                  </div>
-                ))}
+              <div className="flex flex-wrap gap-2">
+                {levelSpells.map((savedSpell) => {
+                  const resolvedSpell = spellsById[savedSpell.spellId];
+
+                  const tooltipSpell = resolvedSpell ?? {
+                    id: savedSpell.spellId,
+
+                    spellId: savedSpell.spellId,
+
+                    name: savedSpell.name,
+
+                    level: savedSpell.level,
+                  };
+
+                  return (
+                    <SpellTooltip key={savedSpell.spellId} spell={tooltipSpell}>
+                      <div className="min-w-[150px] rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2.5 transition hover:bg-zinc-900">
+                        <p className="text-xs font-medium text-white">
+                          {tooltipSpell.name}
+                        </p>
+
+                        {resolvedSpell?.school ? (
+                          <p className="mt-1 text-[10px] text-zinc-600">
+                            {resolvedSpell.school}
+                          </p>
+                        ) : null}
+                      </div>
+                    </SpellTooltip>
+                  );
+                })}
               </div>
             </SectionCard>
           );
@@ -429,7 +468,7 @@ export default function CustomCharacterSheet({
   };
 
   const renderNotesTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <SectionCard title="Character Appearance">
         <LongText value={character.characterAppearance} />
       </SectionCard>
@@ -444,81 +483,50 @@ export default function CustomCharacterSheet({
     </div>
   );
 
+  const subtitle = [
+    character.speciesName,
+    character.className,
+    `Level ${level}`,
+  ]
+    .filter(Boolean)
+    .join(" • ");
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-7xl px-4 py-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-5 lg:px-6">
+        <div className="mb-4">
           <Link
             to={backTo}
-            className="text-zinc-400 transition hover:text-white"
+            className="text-xs text-zinc-400 transition hover:text-white"
           >
             ← {backLabel}
           </Link>
-
-          {characterId ? (
-            <Link
-              to={`/characters/${characterId}/edit`}
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:border-white/20 hover:bg-white/10"
-            >
-              <i className="fa-solid fa-pen-to-square" />
-              Edit Character
-            </Link>
-          ) : null}
         </div>
 
-        <div className="my-8 rounded-3xl border border-white/10 bg-white/5 p-6">
-          <div className="flex items-center gap-5">
-            <Avatar
-              src={character.imageUrl}
-              name={character.name}
-              className="h-24 w-24 rounded-2xl"
-            />
+        <CharacterSheetHeader
+          characterId={characterId}
+          name={character.name}
+          imageUrl={character.imageUrl}
+          subtitle={subtitle}
+          badges={[
+            character.backgroundName
+              ? `Background: ${character.backgroundName}`
+              : null,
 
-            <div>
-              <h1 className="text-3xl font-bold">{character.name}</h1>
+            character.alignment,
+          ]}
+        />
 
-              <p className="mt-2 text-zinc-400">
-                Level {level} {character.speciesName} {character.className}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-6">
-          <StatCard label="HP" value={`${currentHp}/${maxHp}`} />
-
-          <StatCard label="AC" value={armorClass} />
-
-          <StatCard label="Initiative" value={formatModifier(dexModifier)} />
-
-          <StatCard label="Speed" value={`${speed} ft`} />
-
-          <StatCard
-            label="Prof Bonus"
-            value={formatModifier(proficiencyBonus)}
-          />
-
-          <StatCard label="Passive Perception" value={passivePerception} />
-        </div>
-
-        <div className="mb-6 grid grid-cols-3 gap-3 sm:grid-cols-6">
-          {abilityKeys.map((ability) => (
-            <div
-              key={ability}
-              className="rounded-xl border border-white/10 bg-white/5 p-3 text-center"
-            >
-              <p className="text-xs text-zinc-500">
-                {abilityShortLabels[ability]}
-              </p>
-
-              <p className="text-xl font-bold">{abilityScores[ability]}</p>
-
-              <p className="text-xs text-zinc-400">
-                {formatModifier(getModifier(abilityScores[ability]))}
-              </p>
-            </div>
-          ))}
-        </div>
+        <CharacterQuickStats
+          currentHp={currentHp}
+          maxHp={maxHp}
+          armorClass={armorClass}
+          initiative={dexModifier}
+          speed={speed}
+          proficiencyBonus={proficiencyBonus}
+          passivePerception={passivePerception}
+          abilityScores={abilityScores}
+        />
 
         <CharacterSheetTabs activeTab={activeTab} onChange={setActiveTab} />
 
@@ -547,9 +555,11 @@ const Info = ({
   value?: string;
 }) => (
   <div>
-    <p className="text-xs font-semibold uppercase text-zinc-500">{label}</p>
+    <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+      {label}
+    </p>
 
-    <p className="mt-1 text-sm text-zinc-200">{value || "—"}</p>
+    <p className="mt-1 text-xs text-zinc-300">{value || "—"}</p>
   </div>
 );
 
@@ -561,34 +571,36 @@ const CombatStat = ({
 
   value: string | number;
 }) => (
-  <div className="rounded-xl border border-white/10 bg-zinc-900 p-4">
-    <p className="text-xs uppercase text-zinc-500">{label}</p>
+  <div className="rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2.5">
+    <p className="text-[9px] uppercase tracking-[0.14em] text-zinc-600">
+      {label}
+    </p>
 
-    <p className="mt-2 text-2xl font-bold">{value}</p>
+    <p className="mt-1 text-lg font-bold text-white">{value}</p>
   </div>
 );
 
 const TagList = ({ items }: { items: string[] }) =>
   items.length ? (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5">
       {items.map((item, index) => (
         <span
           key={`${item}-${index}`}
-          className="rounded-full border border-white/10 bg-zinc-900 px-3 py-1 text-xs"
+          className="rounded-full border border-white/10 bg-zinc-900 px-2 py-1 text-[10px] text-zinc-300"
         >
           {item}
         </span>
       ))}
     </div>
   ) : (
-    <p className="text-sm text-zinc-500">None</p>
+    <p className="text-xs text-zinc-600">None</p>
   );
 
 const LongText = ({ value }: { value?: string }) =>
   value ? (
-    <p className="whitespace-pre-wrap text-sm leading-7 text-zinc-300">
+    <p className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
       {value}
     </p>
   ) : (
-    <p className="text-sm text-zinc-500">Nothing entered.</p>
+    <p className="text-xs text-zinc-600">Nothing entered.</p>
   );

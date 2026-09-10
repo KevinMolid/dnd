@@ -11,11 +11,11 @@ import type {
   TraitGroupKey,
 } from "../features/character-sheet/types";
 
-import StatCard from "../features/character-sheet/components/StatCard";
 import SectionCard from "../features/character-sheet/components/SectionCard";
 import CharacterSheetHeader from "../features/character-sheet/components/CharacterSheetHeader";
 import CharacterSheetTabs from "../features/character-sheet/components/CharacterSheetTabs";
 import TraitGroupSection from "../features/character-sheet/components/TraitGroupSection";
+import CharacterQuickStats from "../features/character-sheet/components/CharacterQuickStats";
 
 import OverviewTab from "../features/character-sheet/tabs/OverviewTab";
 import CombatTab from "../features/character-sheet/tabs/CombatTab";
@@ -602,7 +602,7 @@ const CharacterSheet = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-5 lg:px-6">
         <div className="mb-6">
           <div className="mb-6">
             <Link to={backTo} className="text-zinc-400 hover:text-white">
@@ -613,32 +613,37 @@ const CharacterSheet = () => {
 
         <CharacterSheetHeader
           characterId={characterId}
-          character={character}
-          derived={derived}
+          name={character.name}
+          imageUrl={character.imageUrl}
+          subtitle={[
+            derived.speciesName,
+            derived.className,
+            derived.subclassName,
+            `Level ${character.level}`,
+          ]
+            .filter(Boolean)
+            .join(" • ")}
+          badges={[
+            derived.backgroundName
+              ? `Background: ${derived.backgroundName}`
+              : null,
+            derived.featName ? `Origin Feat: ${derived.featName}` : null,
+            character.alignment,
+          ]}
         />
 
-        <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
-          <StatCard
-            label="HP"
-            value={`${derived.currentHp}/${derived.maxHp}`}
-            subValue="Current / Max"
-          />
-          <StatCard label="AC" value={derived.armorClass} />
-          <StatCard
-            label="Initiative"
-            value={formatModifier(derived.initiativeBonus)}
-            subValue={derived.initiativeBreakdown}
-          />
-          <StatCard label="Speed" value={`${derived.speed} ft`} />
-          <StatCard
-            label="Prof Bonus"
-            value={formatModifier(derived.proficiencyBonus)}
-          />
-          <StatCard
-            label="Passive Perception"
-            value={derived.passivePerception}
-          />
-        </div>
+        <CharacterQuickStats
+          currentHp={derived.currentHp}
+          maxHp={derived.maxHp}
+          armorClass={derived.armorClass}
+          initiative={derived.initiativeBonus}
+          initiativeSubValue={derived.initiativeBreakdown}
+          speed={derived.speed}
+          proficiencyBonus={derived.proficiencyBonus}
+          passivePerception={derived.passivePerception}
+          abilityScores={derived.finalAbilityScores}
+          baseAbilityScores={character.abilityScores}
+        />
 
         <CharacterSheetTabs activeTab={activeTab} onChange={setActiveTab} />
 
