@@ -9,82 +9,84 @@ type CharacterSheetHeaderProps = {
 
   imageUrl?: string | null;
 
-  subtitle?: string;
+  level: number;
 
-  eyebrow?: string;
+  speciesName?: string | null;
 
-  badges?: Array<string | null | undefined | false>;
+  className?: string | null;
+
+  subclassName?: string | null;
+
+  backgroundName?: string | null;
 };
 
 const CharacterSheetHeader = ({
   characterId,
-
   name,
-
   imageUrl,
-
-  subtitle,
-
-  eyebrow = "Character Sheet",
-
-  badges = [],
+  level,
+  speciesName,
+  className,
+  subclassName,
+  backgroundName,
 }: CharacterSheetHeaderProps) => {
-  const visibleBadges = badges.filter(
-    (badge): badge is string =>
-      typeof badge === "string" && badge.trim().length > 0,
+  const identityParts = [`Level ${level}`, speciesName, className].filter(
+    (value): value is string => Boolean(value?.trim()),
   );
 
+  const identityText = identityParts.join(" ");
+
   return (
-    <div className="mb-4 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.06] to-white/[0.025] p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <Avatar
-            name={name}
-            src={imageUrl}
-            className="h-16 w-16 rounded-xl sm:h-20 sm:w-20"
-          />
+    <header className="mb-3 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Avatar name={name} src={imageUrl} className="h-16 w-16 rounded-xl" />
 
           <div className="min-w-0">
-            <p className="mb-1 text-[9px] font-semibold uppercase tracking-[0.22em] text-zinc-600">
-              {eyebrow}
-            </p>
-
-            <h1 className="truncate text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            <h1 className="truncate text-2xl font-bold leading-tight tracking-tight text-white">
               {name}
             </h1>
 
-            {subtitle ? (
-              <p className="mt-1 truncate text-xs text-zinc-400 sm:text-sm">
-                {subtitle}
-              </p>
-            ) : null}
+            <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <p className="text-sm text-zinc-300">{identityText}</p>
 
-            {visibleBadges.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {visibleBadges.map((badge, index) => (
-                  <span
-                    key={`${badge}-${index}`}
-                    className="rounded-full border border-white/10 bg-zinc-900 px-2 py-0.5 text-[10px] text-zinc-300"
-                  >
-                    {badge}
+              {subclassName ? (
+                <>
+                  <span aria-hidden="true" className="text-zinc-700">
+                    •
                   </span>
-                ))}
-              </div>
-            ) : null}
+
+                  <span className="text-xs text-zinc-400">{subclassName}</span>
+                </>
+              ) : null}
+
+              {backgroundName ? (
+                <>
+                  <span aria-hidden="true" className="text-zinc-700">
+                    •
+                  </span>
+
+                  <span className="text-xs text-zinc-500">
+                    {backgroundName} background
+                  </span>
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
 
         {characterId ? (
           <Link
             to={`/characters/${characterId}/edit`}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10 hover:text-white"
           >
-            <i className="fa-solid fa-pen-to-square" />
-            Edit
+            <i className="fa-solid fa-pen-to-square text-[10px]" />
+
+            <span className="hidden sm:inline">Edit</span>
           </Link>
         ) : null}
       </div>
-    </div>
+    </header>
   );
 };
 
