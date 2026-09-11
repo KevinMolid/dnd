@@ -27,7 +27,7 @@ import ItemTooltip from "./ItemTooltip";
 
 type Props = {
   equipment: CharacterEquipmentEntry[];
-  onChange: (nextEquipment: CharacterEquipmentEntry[]) => void;
+  onChange: (nextEquipment: CharacterEquipmentEntry[]) => void | Promise<void>;
   campaignItemsById?: Record<string, CampaignItem>;
   moneyCp?: number;
   money?: Money;
@@ -257,6 +257,86 @@ const CharacterInventoryEquipment = ({
     onChange(next);
   };
 
+  /*
+   * Quantity changes operate on the real stored equipment entries rather than
+   * on the grouped display row.
+   *
+   * For visually grouped items, decrementing consumes the last underlying
+   * stack first. If that stack reaches zero, its equipment entry is removed.
+   * Incrementing adds to the first underlying stack.
+   */
+  const handleAdjustQuantity = (row: InventoryDisplayRow, delta: number) => {
+    if (delta === 0 || row.entries.length === 0) {
+      return;
+    }
+
+    const next = normalizedEquipment.map((entry) => ({
+      ...entry,
+    }));
+
+    if (delta > 0) {
+      const target = row.entries[0];
+
+      const targetIndex = next.findIndex(
+        (entry) => entry.instanceId === target.instanceId,
+      );
+
+      if (targetIndex < 0) {
+        return;
+      }
+
+      next[targetIndex] = {
+        ...next[targetIndex],
+        quantity: Math.max(1, next[targetIndex].quantity ?? 1) + delta,
+      };
+
+      void onChange(next);
+      return;
+    }
+
+    let remainingToRemove = Math.abs(delta);
+
+    /*
+     * Work backwards through the underlying entries. This keeps the oldest
+     * stack/instance stable while reducing newer duplicate stacks first.
+     */
+    for (
+      let entryIndex = row.entries.length - 1;
+      entryIndex >= 0 && remainingToRemove > 0;
+      entryIndex -= 1
+    ) {
+      const sourceEntry = row.entries[entryIndex];
+
+      const targetIndex = next.findIndex(
+        (entry) => entry.instanceId === sourceEntry.instanceId,
+      );
+
+      if (targetIndex < 0) {
+        continue;
+      }
+
+      const quantity = Math.max(1, next[targetIndex].quantity ?? 1);
+
+      if (quantity > remainingToRemove) {
+        next[targetIndex] = {
+          ...next[targetIndex],
+          quantity: quantity - remainingToRemove,
+        };
+
+        remainingToRemove = 0;
+      } else {
+        remainingToRemove -= quantity;
+        next.splice(targetIndex, 1);
+      }
+    }
+
+    void onChange(next);
+  };
+
+  const handleUseItem = (row: InventoryDisplayRow) => {
+    handleAdjustQuantity(row, -1);
+  };
+
   return (
     <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_250px]">
       {/* =====================================================
@@ -267,7 +347,13 @@ const CharacterInventoryEquipment = ({
         {displayRows.length > 0 ? (
           <div className="divide-y divide-white/[0.06]">
             {displayRows.map((row) => (
-              <InventoryRow key={row.key} row={row} onEquip={handleEquip} />
+              <InventoryRow
+                key={row.key}
+                row={row}
+                onEquip={handleEquip}
+                onAdjustQuantity={handleAdjustQuantity}
+                onUseItem={handleUseItem}
+              />
             ))}
           </div>
         ) : (
@@ -384,20 +470,43 @@ const CharacterInventoryEquipment = ({
 const InventoryRow = ({
   row,
   onEquip,
+  onAdjustQuantity,
+  onUseItem,
 }: {
   row: InventoryDisplayRow;
+
   onEquip: (instanceId: string, rulesItemId: string, mode?: WieldMode) => void;
+
+  onAdjustQuantity: (row: InventoryDisplayRow, delta: number) => void;
+
+  onUseItem: (row: InventoryDisplayRow) => void;
 }) => {
   const { entry, resolvedItem, totalQuantity } = row;
+
   const rulesItemId = getRulesItemId(entry);
+
   const displayId = getEntryDisplayId(entry);
+
   const isEquippable = isItemEquippable(rulesItemId);
+
   const actions = getEquipActionsForItem(rulesItemId);
+
   const itemName = resolvedItem?.name ?? entry.name ?? formatLabel(displayId);
 
   const category = resolvedItem?.category
     ? formatLabel(resolvedItem.category)
     : null;
+
+  const normalizedCategory = String(resolvedItem?.category ?? "").toLowerCase();
+
+  const isConsumable =
+    normalizedCategory === "consumable" || normalizedCategory === "ammunition";
+
+  /*
+   * Weapons, armor and other equippable objects remain individual instances.
+   * Quantity controls belong to backpack-style inventory rows.
+   */
+  const canAdjustQuantity = !isEquippable;
 
   const itemContent = (
     <div className="min-w-0">
@@ -420,13 +529,13 @@ const InventoryRow = ({
       </div>
 
       {resolvedItem?.shortDescription ? (
-        <p className="mt-1 line-clamp-1 text-[8px] text-zinc-600">
+        <p className="mt-0.5 line-clamp-1 text-[8px] text-zinc-600">
           {resolvedItem.shortDescription}
         </p>
       ) : null}
 
       {!resolvedItem ? (
-        <p className="mt-1 text-[8px] text-amber-400/70">
+        <p className="mt-0.5 text-[8px] text-amber-400/70">
           Unknown item data · {displayId}
         </p>
       ) : null}
@@ -443,25 +552,86 @@ const InventoryRow = ({
         itemContent
       )}
 
-      {isEquippable ? (
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-          {actions.map((action) => (
-            <button
-              key={`${entry.instanceId}-${action.label}`}
-              type="button"
-              onClick={() =>
-                onEquip(entry.instanceId, rulesItemId, action.mode)
-              }
-              className="rounded-md border border-white/[0.08] bg-black/20 px-1.5 py-0.5 text-[7px] font-semibold text-zinc-400 transition hover:border-white/15 hover:text-zinc-200"
-            >
-              {getCompactActionLabel(action.label)}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      <div className="flex shrink-0 items-center justify-end gap-1">
+        {isConsumable && canAdjustQuantity ? (
+          <button
+            type="button"
+            onClick={() => onUseItem(row)}
+            disabled={totalQuantity <= 0}
+            title={`Use one ${itemName}`}
+            className="rounded-md border border-emerald-500/15 bg-emerald-500/[0.06] px-1.5 py-0.5 text-[7px] font-semibold text-emerald-300/80 transition hover:border-emerald-500/25 hover:bg-emerald-500/10 hover:text-emerald-200 disabled:cursor-default disabled:opacity-30"
+          >
+            Use
+          </button>
+        ) : null}
+
+        {canAdjustQuantity ? (
+          <QuantityControl
+            quantity={totalQuantity}
+            onDecrease={() => onAdjustQuantity(row, -1)}
+            onIncrease={() => onAdjustQuantity(row, 1)}
+          />
+        ) : null}
+
+        {isEquippable ? (
+          <>
+            {actions.map((action) => (
+              <button
+                key={`${entry.instanceId}-${action.label}`}
+                type="button"
+                onClick={() =>
+                  onEquip(entry.instanceId, rulesItemId, action.mode)
+                }
+                className="rounded-md border border-white/[0.08] bg-black/20 px-1.5 py-0.5 text-[7px] font-semibold text-zinc-400 transition hover:border-white/15 hover:text-zinc-200"
+              >
+                {getCompactActionLabel(action.label)}
+              </button>
+            ))}
+          </>
+        ) : null}
+      </div>
     </div>
   );
 };
+
+const QuantityControl = ({
+  quantity,
+  onDecrease,
+  onIncrease,
+}: {
+  quantity: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) => (
+  <div
+    className="flex h-5 items-center overflow-hidden rounded-md border border-white/[0.08] bg-black/20"
+    aria-label="Item quantity controls"
+  >
+    <button
+      type="button"
+      onClick={onDecrease}
+      title={quantity <= 1 ? "Remove item" : "Decrease quantity"}
+      aria-label={quantity <= 1 ? "Remove item" : "Decrease quantity"}
+      className="flex h-full w-5 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+    >
+      −
+    </button>
+
+    <span className="min-w-[24px] border-x border-white/[0.06] px-1 text-center text-[7px] font-semibold tabular-nums text-zinc-400">
+      {quantity}
+    </span>
+
+    <button
+      type="button"
+      onClick={onIncrease}
+      title="Increase quantity"
+      aria-label="Increase quantity"
+      className="flex h-full w-5 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+    >
+      +
+    </button>
+  </div>
+);
 
 /* =========================================================
    MONEY
