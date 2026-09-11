@@ -75,6 +75,7 @@ import type {
   CharacterSheetDataHookResult,
   CharacterSheetDerived,
   DeathSaves,
+  ShortRestResult,
   TraitGroup,
 } from "../types";
 
@@ -1015,6 +1016,558 @@ const handleSetConditions = async (
       );
     }
   };
+
+  const handleShortRest = async (
+    requestedHitDice: number,
+  ): Promise<ShortRestResult> => {
+    if (
+      !character ||
+      !characterId
+    ) {
+      throw new Error(
+        "Character is not loaded.",
+      );
+    }
+
+    const level =
+      Math.max(
+        1,
+        character.level ??
+          1,
+      );
+
+    const isCustom =
+      character.buildMode ===
+      "custom";
+
+    const customStats =
+      character.customStats ??
+      {};
+
+    const hitDieSize =
+      isCustom
+        ? Number(
+            String(
+              customStats.hitDie ??
+                "",
+            ).replace(
+              /^d/i,
+              "",
+            ),
+          ) || 0
+        : Number(
+            classesById[
+              character.classId
+            ]?.hitDie ??
+              0,
+          );
+
+    const currentHp =
+      isCustom
+        ? customStats.currentHp ??
+          0
+        : derived?.currentHp ??
+          character.currentHp ??
+          0;
+
+    const maxHp =
+      isCustom
+        ? customStats.maxHp ??
+          character.maxHp ??
+          0
+        : derived?.maxHp ??
+          character.maxHp ??
+          0;
+
+    const conScore =
+      isCustom
+        ? character.abilityScores
+            ?.con ??
+          10
+        : derived
+            ?.finalAbilityScores
+            .con ??
+          character.abilityScores
+            ?.con ??
+          10;
+
+    const constitutionModifier =
+      Math.floor(
+        (conScore - 10) /
+          2,
+      );
+
+    const hitDiceRemaining =
+      isCustom
+        ? customStats.hitDiceRemaining ??
+          level
+        : character.hitDiceRemaining ??
+          level;
+
+    const diceSpent =
+      hitDieSize > 0
+        ? Math.max(
+            0,
+            Math.min(
+              hitDiceRemaining,
+              Math.floor(
+                requestedHitDice,
+              ),
+            ),
+          )
+        : 0;
+
+    const rolls =
+      Array.from(
+        {
+          length:
+            diceSpent,
+        },
+        () =>
+          Math.floor(
+            Math.random() *
+              hitDieSize,
+          ) + 1,
+      );
+
+    const rolledHealing =
+      rolls.reduce(
+        (
+          total,
+          roll,
+        ) =>
+          total +
+          Math.max(
+            0,
+            roll +
+              constitutionModifier,
+          ),
+        0,
+      );
+
+    const nextHp =
+      Math.min(
+        maxHp,
+        currentHp +
+          rolledHealing,
+      );
+
+    const actualHealing =
+      Math.max(
+        0,
+        nextHp -
+          currentHp,
+      );
+
+    const nextHitDiceRemaining =
+      Math.max(
+        0,
+        hitDiceRemaining -
+          diceSpent,
+      );
+
+    const previousCharacter =
+      character;
+
+    if (
+      isCustom
+    ) {
+      setCharacter(
+        (
+          current,
+        ) =>
+          current
+            ? {
+                ...current,
+
+                customStats: {
+                  ...(current.customStats ??
+                    {}),
+
+                  currentHp:
+                    nextHp,
+
+                  hitDiceRemaining:
+                    nextHitDiceRemaining,
+                },
+              }
+            : current,
+      );
+
+      try {
+        await updateDoc(
+          doc(
+            db,
+            "characters",
+            characterId,
+          ),
+          {
+            "customStats.currentHp":
+              nextHp,
+
+            "customStats.hitDiceRemaining":
+              nextHitDiceRemaining,
+
+            lastShortRestAt:
+              serverTimestamp(),
+          },
+        );
+      } catch (
+        err
+      ) {
+        console.error(
+          "Failed to complete Short Rest:",
+          err,
+        );
+
+        setCharacter(
+          previousCharacter,
+        );
+
+        setError(
+          "Failed to complete Short Rest.",
+        );
+
+        throw err;
+      }
+    } else {
+      setCharacter(
+        (
+          current,
+        ) =>
+          current
+            ? {
+                ...current,
+
+                currentHp:
+                  nextHp,
+
+                hitDiceRemaining:
+                  nextHitDiceRemaining,
+              }
+            : current,
+      );
+
+      try {
+        await updateDoc(
+          doc(
+            db,
+            "characters",
+            characterId,
+          ),
+          {
+            currentHp:
+              nextHp,
+
+            hitDiceRemaining:
+              nextHitDiceRemaining,
+
+            lastShortRestAt:
+              serverTimestamp(),
+          },
+        );
+      } catch (
+        err
+      ) {
+        console.error(
+          "Failed to complete Short Rest:",
+          err,
+        );
+
+        setCharacter(
+          previousCharacter,
+        );
+
+        setError(
+          "Failed to complete Short Rest.",
+        );
+
+        throw err;
+      }
+    }
+
+    return {
+      diceSpent,
+      dieSize:
+        hitDieSize,
+      rolls,
+      constitutionModifier,
+      rolledHealing,
+      actualHealing,
+      currentHp:
+        nextHp,
+      hitDiceRemaining:
+        nextHitDiceRemaining,
+    };
+  };
+
+
+  const handleLongRest =
+    async () => {
+      if (
+        !character ||
+        !characterId
+      ) {
+        return;
+      }
+
+      const level =
+        Math.max(
+          1,
+          character.level ??
+            1,
+        );
+
+      const isCustom =
+        character.buildMode ===
+        "custom";
+
+      const previousCharacter =
+        character;
+
+      const emptyDeathSaves = {
+        successes: 0,
+        failures: 0,
+      };
+
+      if (
+        isCustom
+      ) {
+        const customStats =
+          character.customStats ??
+          {};
+
+        const maxHp =
+          customStats.maxHp ??
+          character.maxHp ??
+          0;
+
+        const currentSpellSlots =
+          character.customSpellcasting
+            ?.spellSlots ??
+          {};
+
+        const restoredSpellSlots =
+          Object.fromEntries(
+            Object.entries(
+              currentSpellSlots,
+            ).map(
+              ([
+                key,
+                value,
+              ]) => {
+                const slot =
+                  value as {
+                    max?: number;
+                    remaining?: number;
+                  };
+
+                const max =
+                  Math.max(
+                    0,
+                    Number(
+                      slot.max ??
+                        0,
+                    ),
+                  );
+
+                return [
+                  key,
+                  {
+                    ...slot,
+                    max,
+                    remaining:
+                      max,
+                  },
+                ];
+              },
+            ),
+          );
+
+        setCharacter(
+          (
+            current,
+          ) => {
+            if (
+              !current
+            ) {
+              return current;
+            }
+
+            return {
+              ...current,
+
+              customStats: {
+                ...(current.customStats ??
+                  {}),
+
+                currentHp:
+                  maxHp,
+
+                hitDiceRemaining:
+                  level,
+              },
+
+              customSpellcasting: {
+                ...(current.customSpellcasting ??
+                  {}),
+
+                spellSlots:
+                  restoredSpellSlots,
+              },
+
+              deathSaves:
+                emptyDeathSaves,
+            };
+          },
+        );
+
+        try {
+          await updateDoc(
+            doc(
+              db,
+              "characters",
+              characterId,
+            ),
+            {
+              "customStats.currentHp":
+                maxHp,
+
+              "customStats.hitDiceRemaining":
+                level,
+
+              "customSpellcasting.spellSlots":
+                restoredSpellSlots,
+
+              deathSaves:
+                emptyDeathSaves,
+
+              lastLongRestAt:
+                serverTimestamp(),
+            },
+          );
+        } catch (
+          err
+        ) {
+          console.error(
+            "Failed to complete Long Rest:",
+            err,
+          );
+
+          setCharacter(
+            previousCharacter,
+          );
+
+          setError(
+            "Failed to complete Long Rest.",
+          );
+
+          throw err;
+        }
+
+        return;
+      }
+
+      const maxHp =
+        derived?.maxHp ??
+        character.maxHp ??
+        0;
+
+      const restoredSpellSlots =
+        Object.fromEntries(
+          Object.entries(
+            derived?.spellSlots ??
+              {},
+          )
+            .filter(
+              ([
+                ,
+                max,
+              ]) =>
+                Number(
+                  max,
+                ) >
+                0,
+            )
+            .map(
+              ([
+                key,
+                max,
+              ]) => [
+                key,
+                Number(
+                  max,
+                ),
+              ],
+            ),
+        );
+
+      setCharacter(
+        (
+          current,
+        ) =>
+          current
+            ? {
+                ...current,
+
+                currentHp:
+                  maxHp,
+
+                hitDiceRemaining:
+                  level,
+
+                spellSlotsRemaining:
+                  restoredSpellSlots,
+
+                deathSaves:
+                  emptyDeathSaves,
+              }
+            : current,
+      );
+
+      try {
+        await updateDoc(
+          doc(
+            db,
+            "characters",
+            characterId,
+          ),
+          {
+            currentHp:
+              maxHp,
+
+            hitDiceRemaining:
+              level,
+
+            spellSlotsRemaining:
+              restoredSpellSlots,
+
+            deathSaves:
+              emptyDeathSaves,
+
+            lastLongRestAt:
+              serverTimestamp(),
+          },
+        );
+      } catch (
+        err
+      ) {
+        console.error(
+          "Failed to complete Long Rest:",
+          err,
+        );
+
+        setCharacter(
+          previousCharacter,
+        );
+
+        setError(
+          "Failed to complete Long Rest.",
+        );
+
+        throw err;
+      }
+    };
 
   /* =========================================================
      EQUIPMENT
@@ -2854,5 +3407,8 @@ const handleSetConditions = async (
     handleApplyDecision,
 
     handleCompleteLevelUp,
+
+    handleShortRest,
+    handleLongRest,
   };
 };

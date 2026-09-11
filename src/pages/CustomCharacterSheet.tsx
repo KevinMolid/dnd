@@ -23,6 +23,8 @@ import type {
   DeathSaves,
 } from "../features/character-sheet/types";
 
+import type { ShortRestResult } from "../features/character-sheet/types";
+
 import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
 import type { AbilityKey, Money } from "../rulesets/dnd/dnd2024/types";
@@ -68,6 +70,10 @@ type CustomCharacterSheetProps = {
     level: number,
     remaining: number,
   ) => Promise<void>;
+
+  handleShortRest: (hitDiceToSpend: number) => Promise<ShortRestResult>;
+
+  handleLongRest: () => Promise<void>;
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
@@ -268,6 +274,8 @@ const CustomCharacterSheet = ({
   handleSetHeroicInspiration,
   handleSetDeathSaves,
   handleSetSpellSlotRemaining,
+  handleShortRest,
+  handleLongRest,
 }: CustomCharacterSheetProps) => {
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
 
@@ -355,6 +363,12 @@ const CustomCharacterSheet = ({
         customHitDie.startsWith("d") ? customHitDie : `d${customHitDie}`
       }`
     : undefined;
+
+  const customHitDieSize = customHitDie
+    ? Number(customHitDie.replace(/^d/i, "")) || undefined
+    : undefined;
+
+  const constitutionModifier = getModifier(abilityScores.con);
 
   /* =========================================================
        ATTACKS
@@ -718,6 +732,19 @@ const CustomCharacterSheet = ({
           }}
           onDeathSavesChange={handleSetDeathSaves}
           hitDiceLabel={hitDiceLabel}
+          rest={{
+            hitDieSize: customHitDieSize,
+
+            hitDiceRemaining: stats.hitDiceRemaining ?? level,
+
+            hitDiceMax: level,
+
+            constitutionModifier,
+
+            onShortRest: handleShortRest,
+
+            onLongRest: handleLongRest,
+          }}
           languages={customProficiencies?.languages ?? []}
           armorProficiencies={customProficiencies?.armor ?? []}
           weaponProficiencies={customProficiencies?.weapons ?? []}

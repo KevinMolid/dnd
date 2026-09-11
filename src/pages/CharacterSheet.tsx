@@ -72,6 +72,9 @@ const CharacterSheet = () => {
 
     handleApplyDecision,
     handleCompleteLevelUp,
+
+    handleShortRest,
+    handleLongRest,
   } = useCharacterSheetData(characterId);
 
   const navigationState = location.state as
@@ -136,6 +139,8 @@ const CharacterSheet = () => {
         handleSetDeathSaves={handleSetDeathSaves}
         handleSetSpellSlotRemaining={handleSetSpellSlotRemaining}
         handleSetPlayerNotes={handleSetPlayerNotes}
+        handleShortRest={handleShortRest}
+        handleLongRest={handleLongRest}
       />
     );
   }
@@ -555,6 +560,24 @@ const CharacterSheet = () => {
         />
 
         <CharacterQuickStats
+          rest={{
+            hitDieSize:
+              typeof classDefinition?.hitDie === "number"
+                ? classDefinition.hitDie
+                : Number(classDefinition?.hitDie) || undefined,
+
+            hitDiceRemaining: character.hitDiceRemaining ?? character.level,
+
+            hitDiceMax: character.level,
+
+            constitutionModifier: Math.floor(
+              (derived.finalAbilityScores.con - 10) / 2,
+            ),
+
+            onShortRest: handleShortRest,
+
+            onLongRest: handleLongRest,
+          }}
           currentHp={derived.currentHp}
           maxHp={derived.maxHp}
           onCurrentHpChange={handleSetCurrentHp}

@@ -2,6 +2,10 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { createPortal } from "react-dom";
 
+import CharacterRestControls from "./CharacterRestControls";
+
+import type { ShortRestResult } from "../types";
+
 import type { AbilityKey } from "../../../rulesets/dnd/dnd2024/types";
 
 type AbilityScores = Record<AbilityKey, number>;
@@ -25,6 +29,17 @@ type CharacterProgress = {
   xp: number;
   nextLevelXp: number | null;
   progressPercent: number;
+};
+
+type CharacterRestConfig = {
+  hitDieSize?: number;
+  hitDiceRemaining?: number;
+  hitDiceMax?: number;
+  constitutionModifier?: number;
+
+  onShortRest: (hitDiceToSpend: number) => Promise<ShortRestResult>;
+
+  onLongRest: () => Promise<void>;
 };
 
 type CharacterQuickStatsProps = {
@@ -55,6 +70,7 @@ type CharacterQuickStatsProps = {
   armorProficiencies?: string[];
   weaponProficiencies?: string[];
   toolProficiencies?: string[];
+  rest?: CharacterRestConfig;
 };
 
 const abilities: Array<{ id: AbilityKey; label: string }> = [
@@ -102,6 +118,7 @@ const CharacterQuickStats = ({
   deathSaves = { successes: 0, failures: 0 },
   onDeathSavesChange,
   hitDiceLabel,
+  rest,
   progress,
   languages = [],
   armorProficiencies = [],
@@ -183,7 +200,22 @@ const CharacterQuickStats = ({
         </section>
 
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3 xl:row-span-2">
-          <SectionLabel>Live State</SectionLabel>
+          <div className="flex items-center justify-between gap-2">
+            <SectionLabel>Live State</SectionLabel>
+
+            {rest ? (
+              <CharacterRestControls
+                currentHp={currentHp}
+                maxHp={maxHp}
+                hitDieSize={rest.hitDieSize}
+                hitDiceRemaining={rest.hitDiceRemaining}
+                hitDiceMax={rest.hitDiceMax}
+                constitutionModifier={rest.constitutionModifier}
+                onShortRest={rest.onShortRest}
+                onLongRest={rest.onLongRest}
+              />
+            ) : null}
+          </div>
 
           <div className="mt-2 grid grid-cols-6 gap-1">
             <HpStat

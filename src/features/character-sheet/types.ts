@@ -24,6 +24,17 @@ export type DeathSaves = {
   failures: number;
 };
 
+export type ShortRestResult = {
+  diceSpent: number;
+  dieSize: number;
+  rolls: number[];
+  constitutionModifier: number;
+  rolledHealing: number;
+  actualHealing: number;
+  currentHp: number;
+  hitDiceRemaining: number;
+};
+
 export type CustomCharacterTrait = {
   id: string;
   name: string;
@@ -41,6 +52,24 @@ export type CustomCharacterStats = {
   hitDiceRemaining?: number;
 };
 
+export type CustomSpellSlotState = {
+  max: number;
+  remaining: number;
+};
+
+export type CustomSpellcastingState = {
+  enabled?: boolean;
+  ability?: AbilityKey | null;
+  spellSaveDc?: number;
+  spellAttackBonus?: number;
+  spellSlots?: Record<string, CustomSpellSlotState>;
+  spells?: Array<{
+    spellId: string;
+    name: string;
+    level: number;
+  }>;
+};
+
 export type CharacterDoc = CharacterSheetData & {
   buildMode?: CharacterBuildMode;
 
@@ -50,6 +79,7 @@ export type CharacterDoc = CharacterSheetData & {
 
   customStats?: CustomCharacterStats;
   customTraits?: CustomCharacterTrait[];
+  customSpellcasting?: CustomSpellcastingState;
 
   maxHp?: number;
   currentHp?: number;
@@ -98,15 +128,7 @@ export type CharacterDoc = CharacterSheetData & {
   bonds?: string;
   flaws?: string;
 
-  /**
-   * Personal play notes.
-   * Deliberately separate from characterBackstory / legacy notes.
-   */
   playerNotes?: string;
-
-  /**
-   * Legacy/general field retained for older characters.
-   */
   notes?: string;
 };
 
@@ -153,10 +175,7 @@ export type CharacterSheetDerived = {
   currentHp: number;
   maxHp: number;
 
-  finalAbilityScores: Record<
-    AbilityKey,
-    number
-  >;
+  finalAbilityScores: Record<AbilityKey, number>;
 
   skillRows: Array<{
     id: SkillId;
@@ -262,16 +281,17 @@ export type CharacterSheetDataHookResult = {
   loading: boolean;
   error: string;
 
-  campaignItemsById: Record<
-    string,
-    CampaignItem
-  >;
+  campaignItemsById: Record<string, CampaignItem>;
 
   derived: CharacterSheetDerived | null;
 
-  setError: Dispatch<
-    SetStateAction<string>
-  >;
+  setError: Dispatch<SetStateAction<string>>;
+
+  handleShortRest: (
+    hitDiceToSpend: number,
+  ) => Promise<ShortRestResult>;
+
+  handleLongRest: () => Promise<void>;
 
   handleEquipmentChange: (
     nextEquipment: CharacterEquipmentEntry[],
