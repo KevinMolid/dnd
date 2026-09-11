@@ -278,12 +278,16 @@ export type CharacterSheetDataHookResult = {
   ) => Promise<void>;
 
   handleSetPlayerNotes: (
-  notes: string,
-) => Promise<void>;
+    notes: string,
+  ) => Promise<void>;
 
-handleSetCurrentHp: (
-  currentHp: number,
-) => Promise<void>;
+  handleSetCurrentHp: (
+    currentHp: number,
+  ) => Promise<void>;
+
+  handleSetConditions: (
+    conditions: string[],
+  ) => Promise<void>;
 
   handleSetHeroicInspiration: (
     value: boolean,

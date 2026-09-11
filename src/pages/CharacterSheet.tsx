@@ -66,6 +66,7 @@ const CharacterSheet = () => {
     handleSetHeroicInspiration,
     handleSetDeathSaves,
     handleSetCurrentHp,
+    handleSetConditions,
     handleSetSpellSlotRemaining,
     handleSetPlayerNotes,
 
@@ -130,6 +131,7 @@ const CharacterSheet = () => {
         campaignItemsById={campaignItemsById}
         handleEquipmentChange={handleEquipmentChange}
         handleSetCurrentHp={handleSetCurrentHp}
+        handleSetConditions={handleSetConditions}
         handleSetHeroicInspiration={handleSetHeroicInspiration}
         handleSetDeathSaves={handleSetDeathSaves}
         handleSetSpellSlotRemaining={handleSetSpellSlotRemaining}
@@ -582,6 +584,7 @@ const CharacterSheet = () => {
             expertise: skill.expertise,
           }))}
           conditions={character.conditions ?? []}
+          onConditionsChange={handleSetConditions}
           defenses={derived.resistances.map(
             (resistance) => `${formatLabel(resistance)} Resistance`,
           )}

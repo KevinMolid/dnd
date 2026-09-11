@@ -43,6 +43,7 @@ type CharacterQuickStatsProps = {
   savingThrowProficiencies?: AbilityKey[];
   skills?: CharacterQuickSkill[];
   conditions?: string[];
+  onConditionsChange?: (conditions: string[]) => void | Promise<void>;
   defenses?: string[];
   heroicInspiration?: boolean;
   onHeroicInspirationChange?: (value: boolean) => void | Promise<void>;
@@ -94,6 +95,7 @@ const CharacterQuickStats = ({
   savingThrowProficiencies = [],
   skills = [],
   conditions = [],
+  onConditionsChange,
   defenses = [],
   heroicInspiration = false,
   onHeroicInspirationChange,
@@ -224,19 +226,10 @@ const CharacterQuickStats = ({
             />
           </div>
 
-          <StateRow label="Conditions">
-            {conditions.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {conditions.map((condition) => (
-                  <StatePill key={condition} tone="danger">
-                    {condition}
-                  </StatePill>
-                ))}
-              </div>
-            ) : (
-              <EmptyValue />
-            )}
-          </StateRow>
+          <ConditionsControl
+            conditions={conditions}
+            onChange={onConditionsChange}
+          />
 
           <StateRow label="Defenses">
             {defenses.length > 0 ? (
@@ -744,6 +737,182 @@ const InteractiveCoreStat = ({
     ) : null}
   </button>
 );
+
+const ALL_CONDITIONS = [
+  "Blinded",
+  "Charmed",
+  "Deafened",
+  "Frightened",
+  "Grappled",
+  "Incapacitated",
+  "Invisible",
+  "Paralyzed",
+  "Petrified",
+  "Poisoned",
+  "Prone",
+  "Restrained",
+  "Stunned",
+  "Unconscious",
+  "Exhaustion",
+] as const;
+
+const ConditionsControl = ({
+  conditions,
+  onChange,
+}: {
+  conditions: string[];
+  onChange?: (conditions: string[]) => void | Promise<void>;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const toggleCondition = async (condition: string) => {
+    if (!onChange || saving) {
+      return;
+    }
+
+    const active = conditions.includes(condition);
+
+    const next = active
+      ? conditions.filter((value) => value !== condition)
+      : [...conditions, condition];
+
+    setSaving(true);
+
+    try {
+      await onChange(next);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const clearConditions = async () => {
+    if (!onChange || saving || conditions.length === 0) {
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await onChange([]);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="mt-2 grid grid-cols-[70px_minmax(0,1fr)_auto] items-center gap-2 border-t border-white/[0.06] pt-2">
+        <SmallLabel>Conditions</SmallLabel>
+
+        <div className="min-w-0">
+          {conditions.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {conditions.map((condition) => (
+                <StatePill key={condition} tone="danger">
+                  {condition}
+                </StatePill>
+              ))}
+            </div>
+          ) : (
+            <EmptyValue />
+          )}
+        </div>
+
+        <button
+          type="button"
+          disabled={!onChange}
+          onClick={() => setOpen(true)}
+          className={`rounded-md border px-1.5 py-0.5 text-[7px] font-semibold transition ${
+            onChange
+              ? "border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:border-white/15 hover:bg-white/[0.07] hover:text-zinc-200"
+              : "cursor-default border-transparent text-zinc-700"
+          }`}
+        >
+          Edit
+        </button>
+      </div>
+
+      {open
+        ? createPortal(
+            <div className="fixed bottom-4 right-4 z-[140] w-[320px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
+              <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-3 py-2.5">
+                <div>
+                  <p className="text-[10px] font-semibold text-white">
+                    Conditions
+                  </p>
+
+                  <p className="mt-0.5 text-[8px] text-zinc-600">
+                    {conditions.length === 0
+                      ? "No active conditions"
+                      : `${conditions.length} active`}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Close condition controls"
+                  title="Close"
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-sm text-zinc-500 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white"
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="p-3">
+                <div className="grid grid-cols-2 gap-1.5">
+                  {ALL_CONDITIONS.map((condition) => {
+                    const active = conditions.includes(condition);
+
+                    return (
+                      <button
+                        key={condition}
+                        type="button"
+                        disabled={!onChange || saving}
+                        onClick={() => void toggleCondition(condition)}
+                        className={`flex min-h-[32px] items-center justify-between rounded-md border px-2 py-1.5 text-left text-[9px] font-medium transition ${
+                          active
+                            ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
+                            : "border-white/[0.06] bg-white/[0.025] text-zinc-500 hover:border-white/10 hover:bg-white/[0.055] hover:text-zinc-300"
+                        } ${saving ? "cursor-wait opacity-60" : ""}`}
+                      >
+                        <span>{condition}</span>
+
+                        <span
+                          className={`h-2 w-2 rounded-full border ${
+                            active
+                              ? "border-rose-300/60 bg-rose-400/50"
+                              : "border-white/15 bg-transparent"
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-2">
+                  <span className="text-[7px] text-zinc-600">
+                    Changes save immediately
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={!onChange || saving || conditions.length === 0}
+                    onClick={() => void clearConditions()}
+                    className="rounded-md border border-rose-500/15 bg-rose-500/[0.05] px-2 py-1 text-[8px] font-semibold text-rose-300/75 transition hover:bg-rose-500/10 disabled:cursor-default disabled:opacity-30"
+                  >
+                    Clear all
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
+  );
+};
 
 const StateRow = ({
   label,

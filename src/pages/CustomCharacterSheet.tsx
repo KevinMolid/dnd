@@ -55,6 +55,8 @@ type CustomCharacterSheetProps = {
 
   handleSetCurrentHp: (currentHp: number) => Promise<void>;
 
+  handleSetConditions: (conditions: string[]) => Promise<void>;
+
   handleEquipmentChange: (equipment: any[]) => void | Promise<void>;
 
   handleSetHeroicInspiration: (value: boolean) => Promise<void>;
@@ -107,6 +109,7 @@ const CustomCharacterSheet = ({
   handleSetPlayerNotes,
   handleEquipmentChange,
   handleSetCurrentHp,
+  handleSetConditions,
   handleSetHeroicInspiration,
   handleSetDeathSaves,
   handleSetSpellSlotRemaining,
@@ -415,6 +418,7 @@ const CustomCharacterSheet = ({
             };
           })}
           conditions={character.conditions ?? []}
+          onConditionsChange={handleSetConditions}
           heroicInspiration={character.heroicInspiration ?? false}
           onHeroicInspirationChange={handleSetHeroicInspiration}
           deathSaves={{

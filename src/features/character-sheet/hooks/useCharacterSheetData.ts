@@ -458,6 +458,76 @@ export const useCharacterSheetData = (
   }
 };
 
+const handleSetConditions = async (
+  nextConditions: string[],
+) => {
+  if (
+    !character ||
+    !characterId
+  ) {
+    return;
+  }
+
+  const previousConditions =
+    character.conditions ?? [];
+
+  const normalizedConditions =
+    Array.from(
+      new Set(
+        nextConditions
+          .map((condition) =>
+            condition.trim(),
+          )
+          .filter(Boolean),
+      ),
+    );
+
+  setCharacter((current) =>
+    current
+      ? {
+          ...current,
+          conditions:
+            normalizedConditions,
+        }
+      : current,
+  );
+
+  try {
+    await updateDoc(
+      doc(
+        db,
+        "characters",
+        characterId,
+      ),
+      {
+        conditions:
+          normalizedConditions,
+      },
+    );
+  } catch (err) {
+    console.error(
+      "Failed to update conditions:",
+      err,
+    );
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+            conditions:
+              previousConditions,
+          }
+        : current,
+    );
+
+    setError(
+      "Failed to update conditions.",
+    );
+
+    throw err;
+  }
+};
+
   const handleSetPlayerNotes = async (
   notes: string,
 ) => {
@@ -2768,6 +2838,8 @@ export const useCharacterSheetData = (
     setError,
 
     handleSetCurrentHp,
+
+    handleSetConditions,
 
     handleSetPlayerNotes,
 
