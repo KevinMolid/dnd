@@ -31,8 +31,11 @@ export type CustomSkillId =
 
 export type CustomTrait = {
   id: string;
+
   name: string;
+
   source?: string;
+
   description?: string;
 };
 
@@ -45,19 +48,25 @@ export type CustomProficiencies = {
   >;
 
   armor: string[];
+
   weapons: string[];
+
   tools: string[];
+
   languages: string[];
 };
 
 export type CustomSpellEntry = {
   spellId: string;
+
   name: string;
+
   level: number;
 };
 
 export type CustomSpellSlot = {
   max: number;
+
   remaining: number;
 };
 
@@ -66,15 +75,14 @@ export type CustomSpellcasting = {
 
   ability: AbilityKey | null;
 
-  /**
-   * Stored manually because Custom mode should
-   * not assume the normal D&D formula.
-   */
   spellSaveDc: number;
 
   spellAttackBonus: number;
 
-  spellSlots: Record<string, CustomSpellSlot>;
+  spellSlots: Record<
+    string,
+    CustomSpellSlot
+  >;
 
   spells: CustomSpellEntry[];
 };
@@ -164,7 +172,9 @@ export type CustomCharacter = {
 
 export const customSkillDefinitions: Array<{
   id: CustomSkillId;
+
   name: string;
+
   ability: AbilityKey;
 }> = [
   {
@@ -265,37 +275,67 @@ export const createEmptyCustomSkills =
     CustomProficiencyLevel
   > => ({
     acrobatics: "none",
-    "animal-handling": "none",
+
+    "animal-handling":
+      "none",
+
     arcana: "none",
+
     athletics: "none",
+
     deception: "none",
+
     history: "none",
+
     insight: "none",
-    intimidation: "none",
-    investigation: "none",
+
+    intimidation:
+      "none",
+
+    investigation:
+      "none",
+
     medicine: "none",
+
     nature: "none",
+
     perception: "none",
-    performance: "none",
+
+    performance:
+      "none",
+
     persuasion: "none",
+
     religion: "none",
-    "sleight-of-hand": "none",
+
+    "sleight-of-hand":
+      "none",
+
     stealth: "none",
+
     survival: "none",
   });
 
-export const createEmptySpellSlots = () => {
-  const result: Record<
-    string,
-    CustomSpellSlot
-  > = {};
+export const createEmptySpellSlots =
+  () => {
+    const result: Record<
+      string,
+      CustomSpellSlot
+    > = {};
 
-  for (let level = 1; level <= 9; level += 1) {
-    result[String(level)] = {
-      max: 0,
-      remaining: 0,
-    };
-  }
+    for (
+      let level = 1;
+      level <= 9;
+      level += 1
+    ) {
+      result[
+        String(level)
+      ] = {
+        max: 0,
 
-  return result;
-};
+        remaining: 0,
+      };
+    }
+
+    return result;
+  };

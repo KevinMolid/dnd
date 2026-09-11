@@ -1,4 +1,9 @@
 import type {
+  Dispatch,
+  SetStateAction,
+} from "react";
+
+import type {
   AbilityKey,
   SkillId,
   LanguageId,
@@ -6,11 +11,9 @@ import type {
   WeaponMasteryChoiceId,
   Trait,
   CampaignItem,
+  CharacterEquipmentEntry,
+  CharacterSheetData,
 } from "../../rulesets/dnd/dnd2024/types";
-
-import type { CharacterSheetData } from "../../rulesets/dnd/dnd2024/types";
-
-import type { CharacterEquipmentEntry } from "../../rulesets/dnd/dnd2024/types";
 
 export type CharacterBuildMode =
   | "guided-dnd-2024"
@@ -38,11 +41,6 @@ export type CustomCharacterStats = {
 
   proficiencyBonus?: number;
 
-  /**
-   * Optional custom-mode hit-die information.
-   * This lets custom sheets participate in the same
-   * compact HP / Hit Dice display as guided characters.
-   */
   hitDie?: string;
   hitDiceRemaining?: number;
 };
@@ -79,26 +77,30 @@ export type CharacterDoc = CharacterSheetData & {
 
   equipment?: CharacterEquipmentEntry[];
 
-  /**
-   * Live character state.
-   *
-   * Heroic Inspiration is intentionally boolean:
-   * a character either has it or does not.
-   */
+  conditions?: string[];
+
   heroicInspiration?: boolean;
 
   deathSaves?: DeathSaves;
 
-  /**
-   * Legacy support for characters that used separate
-   * death-save fields before deathSaves was introduced.
-   */
   deathSaveSuccesses?: number;
   deathSaveFailures?: number;
 
   hitDiceRemaining?: number;
 
-  conditions?: string[];
+  /**
+   * Guided D&D characters derive their maximum slots
+   * from class progression.
+   *
+   * We therefore only need to persist how many remain.
+   *
+   * Example:
+   * {
+   *   "1": 2,
+   *   "2": 1
+   * }
+   */
+  spellSlotsRemaining?: Record<string, number>;
 };
 
 export type TraitGroupKey =
@@ -119,10 +121,15 @@ export type TraitGroup = {
   traits: Trait[];
 };
 
+/**
+ * These are now DETAIL tabs only.
+ *
+ * Combat and Spells have both been promoted to the
+ * permanent Play Panel and are no longer duplicated here.
+ */
 export type CharacterSheetTab =
   | "features"
   | "inventory"
-  | "spells"
   | "notes";
 
 export type ApplyDecisionInput =
@@ -266,10 +273,7 @@ export type CharacterSheetDerived = {
 
   spellAttackBonus: number | null;
 
-  spellSlots: Record<
-    string,
-    number
-  >;
+  spellSlots: Record<string, number>;
 
   cantripsKnown: number;
 
@@ -342,8 +346,8 @@ export type CharacterSheetDataHookResult = {
 
   derived: CharacterSheetDerived | null;
 
-  setError: React.Dispatch<
-    React.SetStateAction<string>
+  setError: Dispatch<
+    SetStateAction<string>
   >;
 
   handleEquipmentChange: (
@@ -356,6 +360,11 @@ export type CharacterSheetDataHookResult = {
 
   handleSetDeathSaves: (
     nextDeathSaves: DeathSaves,
+  ) => Promise<void>;
+
+  handleSetSpellSlotRemaining: (
+    level: number,
+    remaining: number,
   ) => Promise<void>;
 
   handleApplyDecision: (

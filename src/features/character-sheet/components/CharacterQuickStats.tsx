@@ -18,14 +18,6 @@ export type CharacterQuickSkill = {
   expertise?: boolean;
 };
 
-export type CharacterQuickSpellSlot = {
-  level: number;
-
-  max: number;
-
-  remaining?: number;
-};
-
 export type DeathSaves = {
   successes: number;
 
@@ -55,11 +47,6 @@ type CharacterQuickStatsProps = {
 
   speed: number;
 
-  /**
-   * Still required because saving throws are calculated
-   * from it. It is deliberately no longer displayed as
-   * a prime Live State statistic.
-   */
   proficiencyBonus: number;
 
   passivePerception: number;
@@ -87,8 +74,6 @@ type CharacterQuickStatsProps = {
   onDeathSavesChange?: (value: DeathSaves) => void | Promise<void>;
 
   hitDiceLabel?: string;
-
-  spellSlots?: CharacterQuickSpellSlot[];
 
   progress?: CharacterProgress | null;
 
@@ -188,8 +173,6 @@ const CharacterQuickStats = ({
 
   hitDiceLabel,
 
-  spellSlots = [],
-
   progress,
 
   languages = [],
@@ -200,8 +183,6 @@ const CharacterQuickStats = ({
 
   toolProficiencies = [],
 }: CharacterQuickStatsProps) => {
-  const activeSpellSlots = spellSlots.filter((slot) => slot.max > 0);
-
   const nextLevel =
     progress?.nextLevelXp !== null ? (progress?.level ?? 0) + 1 : null;
 
@@ -212,9 +193,7 @@ const CharacterQuickStats = ({
   return (
     <div className="mb-3">
       <div className="grid gap-2 xl:grid-cols-[250px_minmax(430px,1fr)_360px] xl:grid-rows-[auto_auto]">
-        {/* ===================================================
-            ABILITIES + SAVING THROWS
-        =================================================== */}
+        {/* ABILITIES */}
 
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
           <SectionLabel>Abilities & Saving Throws</SectionLabel>
@@ -274,9 +253,7 @@ const CharacterQuickStats = ({
           </div>
         </section>
 
-        {/* ===================================================
-            SKILLS
-        =================================================== */}
+        {/* SKILLS */}
 
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
           <SectionLabel>Skills</SectionLabel>
@@ -288,14 +265,10 @@ const CharacterQuickStats = ({
           </div>
         </section>
 
-        {/* ===================================================
-            LIVE STATE
-        =================================================== */}
+        {/* LIVE STATE */}
 
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3 xl:row-span-2">
           <SectionLabel>Live State</SectionLabel>
-
-          {/* PRIMARY COMBAT VALUES */}
 
           <div className="mt-2 grid grid-cols-6 gap-1">
             <CoreStat
@@ -338,8 +311,6 @@ const CharacterQuickStats = ({
             />
           </div>
 
-          {/* CONDITIONS */}
-
           <StateRow label="Conditions">
             {conditions.length > 0 ? (
               <div className="flex flex-wrap gap-1">
@@ -354,8 +325,6 @@ const CharacterQuickStats = ({
             )}
           </StateRow>
 
-          {/* DEFENSES */}
-
           <StateRow label="Defenses">
             {defenses.length > 0 ? (
               <div className="flex flex-wrap gap-1">
@@ -369,8 +338,6 @@ const CharacterQuickStats = ({
               <EmptyValue />
             )}
           </StateRow>
-
-          {/* DEATH SAVES */}
 
           <div className="mt-2 border-t border-white/[0.06] pt-2">
             <div className="flex items-center justify-between gap-3">
@@ -408,33 +375,6 @@ const CharacterQuickStats = ({
             </div>
           </div>
 
-          {/* SPELL SLOTS */}
-
-          {activeSpellSlots.length > 0 ? (
-            <div className="mt-2 border-t border-white/[0.06] pt-2">
-              <SmallLabel>Spell Slots</SmallLabel>
-
-              <div className="mt-1 flex flex-wrap gap-1">
-                {activeSpellSlots.map((slot) => (
-                  <span
-                    key={slot.level}
-                    className="rounded-md border border-white/[0.07] bg-black/20 px-1.5 py-0.5 text-[8px]"
-                  >
-                    <span className="text-zinc-500">L{slot.level} </span>
-
-                    <span className="font-semibold text-zinc-200">
-                      {typeof slot.remaining === "number"
-                        ? `${slot.remaining}/${slot.max}`
-                        : slot.max}
-                    </span>
-                  </span>
-                ))}
-              </div>
-            </div>
-          ) : null}
-
-          {/* SENSES */}
-
           <div className="mt-2 border-t border-white/[0.06] pt-2">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <SmallLabel>Senses</SmallLabel>
@@ -453,8 +393,6 @@ const CharacterQuickStats = ({
               ) : null}
             </div>
           </div>
-
-          {/* XP */}
 
           {progress ? (
             <div className="mt-2 border-t border-white/[0.06] pt-2">
@@ -485,9 +423,7 @@ const CharacterQuickStats = ({
           ) : null}
         </section>
 
-        {/* ===================================================
-            PROFICIENCIES
-        =================================================== */}
+        {/* PROFICIENCIES */}
 
         <section className="rounded-xl border border-white/[0.08] bg-zinc-900/35 p-3 xl:col-span-2">
           <div className="grid gap-3 md:grid-cols-[110px_minmax(0,1fr)]">
@@ -549,7 +485,7 @@ const SkillRow = ({ skill }: { skill: CharacterQuickSkill }) => (
 );
 
 /* =========================================================
-   CORE STATS
+   CORE
 ========================================================= */
 
 type CoreTone =
@@ -824,11 +760,6 @@ const DeathSaveRow = ({
 
     const requested = index + 1;
 
-    /*
-     * Clicking the currently highest active circle
-     * removes that mark. Otherwise clicking a circle
-     * sets the count to that position.
-     */
     const next = requested === amount ? amount - 1 : requested;
 
     onChange(clamp(next, 0, 3));

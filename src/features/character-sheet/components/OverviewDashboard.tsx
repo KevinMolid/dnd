@@ -8,10 +8,6 @@ import { formatLabel, formatModifier } from "../utils/characterSheetHelpers";
 
 import type { AbilityKey, Spell } from "../../../rulesets/dnd/dnd2024/types";
 
-/* =========================================================
-   TYPES
-========================================================= */
-
 export type OverviewAttack = {
   id: string;
 
@@ -58,6 +54,24 @@ export type OverviewSpell = Partial<Spell> & {
   level?: number;
 };
 
+export type OverviewSpellSlot = {
+  level: number;
+
+  max: number;
+
+  remaining: number;
+};
+
+export type OverviewSpellcasting = {
+  abilityLabel?: string;
+
+  saveDc?: number | null;
+
+  attackBonus?: number | null;
+
+  slots?: OverviewSpellSlot[];
+};
+
 export type OverviewAction = {
   id: string;
 
@@ -75,6 +89,13 @@ type OverviewDashboardProps = {
 
   spells?: OverviewSpell[];
 
+  spellcasting?: OverviewSpellcasting;
+
+  onSpellSlotChange?: (
+    level: number,
+    remaining: number,
+  ) => void | Promise<void>;
+
   actions?: OverviewAction[];
 
   bonusActions?: OverviewAction[];
@@ -87,10 +108,6 @@ type OverviewDashboardProps = {
 type AttackType = "melee" | "thrown" | "ranged" | "special";
 
 type AttackRole = "main-hand" | "off-hand" | "two-handed" | "standard";
-
-/* =========================================================
-   PLAY TABS
-========================================================= */
 
 const playTabs: Array<{
   id: PlayTab;
@@ -110,10 +127,6 @@ const playTabs: Array<{
     label: "Actions",
   },
 ];
-
-/* =========================================================
-   ATTACK HELPERS
-========================================================= */
 
 const getAttackType = (attack: OverviewAttack): AttackType => {
   if (attack.isSpecial) {
@@ -214,11 +227,7 @@ const formatAttackRange = (attack: OverviewAttack) => {
 
     const long = attack.range.long;
 
-    if (long) {
-      return `${normal}/${long} ft`;
-    }
-
-    return `${normal} ft`;
+    return long ? `${normal}/${long} ft` : `${normal} ft`;
   }
 
   if (type === "melee") {
@@ -228,14 +237,14 @@ const formatAttackRange = (attack: OverviewAttack) => {
   return null;
 };
 
-/* =========================================================
-   MAIN
-========================================================= */
-
 const OverviewDashboard = ({
   attacks = [],
 
   spells = [],
+
+  spellcasting,
+
+  onSpellSlotChange,
 
   actions = [],
 
@@ -281,7 +290,13 @@ const OverviewDashboard = ({
           <AttacksPanel attacks={attacks} />
         ) : null}
 
-        {activePlayTab === "spells" ? <SpellsPanel spells={spells} /> : null}
+        {activePlayTab === "spells" ? (
+          <SpellsPanel
+            spells={spells}
+            spellcasting={spellcasting}
+            onSpellSlotChange={onSpellSlotChange}
+          />
+        ) : null}
 
         {activePlayTab === "actions" ? (
           <ActionsPanel
@@ -310,14 +325,12 @@ const AttacksPanel = ({ attacks }: { attacks: OverviewAttack[] }) => {
           originalIndex,
         }))
         .sort((a, b) => {
-          const weightDifference =
+          const difference =
             getAttackSortWeight(a.attack) - getAttackSortWeight(b.attack);
 
-          if (weightDifference !== 0) {
-            return weightDifference;
-          }
-
-          return a.originalIndex - b.originalIndex;
+          return difference !== 0
+            ? difference
+            : a.originalIndex - b.originalIndex;
         })
         .map((entry) => entry.attack),
     [attacks],
@@ -369,14 +382,10 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
 
   return (
     <div className="py-3 first:pt-0 last:pb-0">
-      {/* PRIMARY */}
-
       <div className="grid grid-cols-[minmax(0,1fr)_46px_88px] items-end gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold text-white">
-            {attack.name}
-          </p>
-        </div>
+        <p className="truncate text-[11px] font-semibold text-white">
+          {attack.name}
+        </p>
 
         <div className="text-right">
           <TinyLabel>{resolutionLabel}</TinyLabel>
@@ -394,8 +403,6 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
           </p>
         </div>
       </div>
-
-      {/* USE / RANGE */}
 
       <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[8px] font-medium">
         {attackRoleLabels[role] ? (
@@ -429,8 +436,6 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
         ) : null}
       </div>
 
-      {/* SECONDARY */}
-
       {attack.ability ||
       attack.mastery ||
       attack.usageLabel ||
@@ -453,9 +458,7 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
             <Separator />
           ) : null}
 
-          {attack.usageLabel ? (
-            <span className="text-zinc-500">{attack.usageLabel}</span>
-          ) : null}
+          {attack.usageLabel ? <span>{attack.usageLabel}</span> : null}
 
           {(attack.ability || attack.mastery || attack.usageLabel) &&
           secondaryProperties.length > 0 ? (
@@ -473,37 +476,26 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
   );
 };
 
-const AttackRoleLabel = ({
-  role,
-  children,
-}: {
-  role: AttackRole;
-
-  children: ReactNode;
-}) => {
-  const className =
-    role === "off-hand"
-      ? "text-amber-300/80"
-      : role === "two-handed"
-        ? "text-violet-300/75"
-        : "text-zinc-400";
-
-  return (
-    <span
-      className={`text-[7px] font-bold uppercase tracking-[0.08em] ${className}`}
-    >
-      {children}
-    </span>
-  );
-};
-
-const Separator = () => <span className="text-zinc-700">·</span>;
-
 /* =========================================================
    SPELLS
 ========================================================= */
 
-const SpellsPanel = ({ spells }: { spells: OverviewSpell[] }) => {
+const SpellsPanel = ({
+  spells,
+
+  spellcasting,
+
+  onSpellSlotChange,
+}: {
+  spells: OverviewSpell[];
+
+  spellcasting?: OverviewSpellcasting;
+
+  onSpellSlotChange?: (
+    level: number,
+    remaining: number,
+  ) => void | Promise<void>;
+}) => {
   const sorted = [...spells].sort(
     (a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name),
   );
@@ -523,57 +515,215 @@ const SpellsPanel = ({ spells }: { spells: OverviewSpell[] }) => {
     {},
   );
 
+  const slots = spellcasting?.slots?.filter((slot) => slot.max > 0) ?? [];
+
+  const hasStats =
+    Boolean(spellcasting?.abilityLabel) ||
+    typeof spellcasting?.saveDc === "number" ||
+    typeof spellcasting?.attackBonus === "number";
+
+  if (sorted.length === 0 && slots.length === 0 && !hasStats) {
+    return (
+      <PanelSection title="Spells">
+        <EmptyText>This character has no spells.</EmptyText>
+      </PanelSection>
+    );
+  }
+
   return (
     <div>
-      {sorted.length > 0 ? (
-        Object.entries(grouped).map(([level, levelSpells]) => (
-          <section
-            key={level}
-            className="border-b border-white/[0.06] p-3 last:border-b-0"
-          >
-            <h3 className="mb-2 text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-              {Number(level) === 0 ? "Cantrips" : `Level ${level}`}
-            </h3>
+      {hasStats || slots.length > 0 ? (
+        <section className="border-b border-white/[0.07] p-3">
+          {hasStats ? (
+            <div className="grid grid-cols-3 gap-1">
+              <SpellcastingStat
+                label="Ability"
+                value={spellcasting?.abilityLabel ?? "—"}
+              />
 
-            <div className="flex flex-wrap gap-1.5">
-              {levelSpells.map((spell, index) => (
-                <SpellTooltip
-                  key={spell.spellId ?? spell.id ?? `${spell.name}-${index}`}
-                  spell={spell}
-                >
-                  <div className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5 transition hover:border-white/15 hover:bg-white/[0.05]">
-                    <span className="whitespace-nowrap text-[9px] font-semibold text-white">
-                      {spell.name}
-                    </span>
+              <SpellcastingStat
+                label="Save DC"
+                value={spellcasting?.saveDc ?? "—"}
+              />
 
-                    {spell.concentration ? (
-                      <span
-                        title="Concentration"
-                        className="text-[7px] font-bold text-fuchsia-400"
-                      >
-                        C
-                      </span>
-                    ) : null}
-
-                    {spell.ritual ? (
-                      <span
-                        title="Ritual"
-                        className="text-[7px] font-bold text-sky-400"
-                      >
-                        R
-                      </span>
-                    ) : null}
-                  </div>
-                </SpellTooltip>
-              ))}
+              <SpellcastingStat
+                label="Attack"
+                value={
+                  typeof spellcasting?.attackBonus === "number"
+                    ? formatModifier(spellcasting.attackBonus)
+                    : "—"
+                }
+              />
             </div>
-          </section>
-        ))
-      ) : (
-        <PanelSection title="Spells">
-          <EmptyText>This character has no spells.</EmptyText>
-        </PanelSection>
-      )}
+          ) : null}
+
+          {slots.length > 0 ? (
+            <div
+              className={
+                hasStats ? "mt-3 border-t border-white/[0.06] pt-3" : ""
+              }
+            >
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                  Spell Slots
+                </span>
+
+                <span className="text-[7px] text-zinc-600">
+                  Click to use or restore
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                {slots.map((slot) => (
+                  <SpellSlotRow
+                    key={slot.level}
+                    slot={slot}
+                    onChange={onSpellSlotChange}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {Object.entries(grouped).map(([level, levelSpells]) => (
+        <section
+          key={level}
+          className="border-b border-white/[0.06] p-3 last:border-b-0"
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              {Number(level) === 0 ? "Cantrips" : `Level ${level}`}
+            </span>
+
+            <span className="text-[7px] text-zinc-700">
+              {levelSpells.length}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            {levelSpells.map((spell, index) => (
+              <SpellTooltip
+                key={spell.spellId ?? spell.id ?? `${spell.name}-${index}`}
+                spell={spell}
+              >
+                <div className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5 transition hover:border-white/15 hover:bg-white/[0.05]">
+                  <span className="whitespace-nowrap text-[9px] font-semibold text-white">
+                    {spell.name}
+                  </span>
+
+                  {spell.concentration ? (
+                    <span
+                      title="Concentration"
+                      className="text-[7px] font-bold text-fuchsia-400"
+                    >
+                      C
+                    </span>
+                  ) : null}
+
+                  {spell.ritual ? (
+                    <span
+                      title="Ritual"
+                      className="text-[7px] font-bold text-sky-400"
+                    >
+                      R
+                    </span>
+                  ) : null}
+                </div>
+              </SpellTooltip>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+};
+
+const SpellcastingStat = ({
+  label,
+
+  value,
+}: {
+  label: string;
+
+  value: string | number;
+}) => (
+  <div className="rounded-lg bg-black/20 px-2 py-2">
+    <span className="text-[7px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+      {label}
+    </span>
+
+    <p className="mt-1 truncate text-[11px] font-bold text-zinc-200">{value}</p>
+  </div>
+);
+
+const SpellSlotRow = ({
+  slot,
+
+  onChange,
+}: {
+  slot: OverviewSpellSlot;
+
+  onChange?: (level: number, remaining: number) => void | Promise<void>;
+}) => {
+  const remaining = Math.max(0, Math.min(slot.max, slot.remaining));
+
+  const spendOne = () => {
+    if (!onChange || remaining <= 0) {
+      return;
+    }
+
+    onChange(slot.level, remaining - 1);
+  };
+
+  const restoreOne = () => {
+    if (!onChange || remaining >= slot.max) {
+      return;
+    }
+
+    onChange(slot.level, remaining + 1);
+  };
+
+  return (
+    <div className="grid grid-cols-[42px_minmax(0,1fr)_30px] items-center gap-2">
+      <span className="text-[8px] font-semibold text-zinc-400">
+        L{slot.level}
+      </span>
+
+      <div className="flex flex-wrap gap-1">
+        {Array.from(
+          {
+            length: slot.max,
+          },
+          (_, index) => {
+            const filled = index < remaining;
+
+            return (
+              <button
+                key={index}
+                type="button"
+                disabled={!onChange}
+                onClick={filled ? spendOne : restoreOne}
+                title={filled ? "Use one spell slot" : "Restore one spell slot"}
+                aria-label={`Level ${slot.level} spell slot ${index + 1}`}
+                aria-pressed={filled}
+                className={`h-4 w-4 rounded-md border transition ${
+                  onChange ? "cursor-pointer hover:scale-105" : "cursor-default"
+                } ${
+                  filled
+                    ? "border-violet-400/40 bg-violet-400/30"
+                    : "border-white/15 bg-transparent hover:border-violet-400/30"
+                }`}
+              />
+            );
+          },
+        )}
+      </div>
+
+      <span className="text-right text-[8px] font-semibold text-zinc-500">
+        {remaining}/{slot.max}
+      </span>
     </div>
   );
 };
@@ -584,8 +734,11 @@ const SpellsPanel = ({ spells }: { spells: OverviewSpell[] }) => {
 
 const ActionsPanel = ({
   actions,
+
   bonusActions,
+
   reactions,
+
   combatOptions,
 }: {
   actions: OverviewAction[];
@@ -631,6 +784,7 @@ const ActionsPanel = ({
 
 const ActionSection = ({
   title,
+
   actions,
 }: {
   title: string;
@@ -672,11 +826,39 @@ const ActionSection = ({
 );
 
 /* =========================================================
-   HELPERS
+   SHARED
 ========================================================= */
+
+const AttackRoleLabel = ({
+  role,
+
+  children,
+}: {
+  role: AttackRole;
+
+  children: ReactNode;
+}) => {
+  const className =
+    role === "off-hand"
+      ? "text-amber-300/80"
+      : role === "two-handed"
+        ? "text-violet-300/75"
+        : "text-zinc-400";
+
+  return (
+    <span
+      className={`text-[7px] font-bold uppercase tracking-[0.08em] ${className}`}
+    >
+      {children}
+    </span>
+  );
+};
+
+const Separator = () => <span className="text-zinc-700">·</span>;
 
 const PanelSection = ({
   title,
+
   children,
 }: {
   title: string;

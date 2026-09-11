@@ -971,6 +971,15 @@ export const items: Item[] = [
   { id: "mirror", name: "Mirror", category: "gear" },
   { id: "manacles", name: "Manacles", category: "gear" },
   { id: "book", name: "Book", category: "gear" },
+  {
+    id: "spellbook",
+    name: "Spellbook",
+    category: "adventuring-gear",
+    weight: 3,
+    cost: { gp: 50 },
+    description:
+      "A leather-bound tome with 100 blank vellum pages suitable for recording spells.",
+  },
   { id: "lamp", name: "Lamp", category: "gear" },
   { id: "hooded-lantern", name: "Hooded Lantern", category: "gear" },
 
@@ -1019,12 +1028,13 @@ export const items: Item[] = [
     id: "travelers-clothes",
     name: "Traveler's Clothes",
     category: "adventuring-gear",
+    stackable: true,
     description:
       "A set of sturdy, practical clothes suited for travel. Includes boots, a cloak, and durable garments designed to withstand long journeys and varying weather conditions.",
   },
-  { id: "fine-clothes", name: "Fine Clothes", category: "clothing" },
-  { id: "costume", name: "Costume", category: "clothing" },
-  { id: "robe", name: "Robe", category: "clothing" },
+  { id: "fine-clothes", name: "Fine Clothes", category: "clothing", stackable: true },
+  { id: "costume", name: "Costume", category: "clothing", stackable: true },
+  { id: "robe", name: "Robe", category: "clothing", stackable: true },
 
   // === MAGIC / SYMBOLS ===
   {

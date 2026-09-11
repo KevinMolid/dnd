@@ -426,6 +426,270 @@ export const useCharacterSheetData = (
       }
     };
 
+  const handleSetSpellSlotRemaining =
+  async (
+    level: number,
+    remaining: number,
+  ) => {
+    if (
+      !character ||
+      !characterId
+    ) {
+      return;
+    }
+
+    const key =
+      String(
+        level,
+      );
+
+    const normalized =
+      Math.max(
+        0,
+        Math.floor(
+          remaining,
+        ),
+      );
+
+    /* ===============================================
+       CUSTOM
+    =============================================== */
+
+    if (
+      character.buildMode ===
+      "custom"
+    ) {
+      const currentCharacter =
+        character as any;
+
+      const currentSlots =
+        currentCharacter
+          .customSpellcasting
+          ?.spellSlots ??
+        {};
+
+      const currentSlot =
+        currentSlots[
+          key
+        ];
+
+      if (
+        !currentSlot
+      ) {
+        return;
+      }
+
+      const previousRemaining =
+        currentSlot.remaining;
+
+      setCharacter(
+        (
+          current,
+        ) => {
+          if (
+            !current
+          ) {
+            return current;
+          }
+
+          const currentAny =
+            current as any;
+
+          return {
+            ...current,
+
+            customSpellcasting:
+              {
+                ...currentAny.customSpellcasting,
+
+                spellSlots:
+                  {
+                    ...(currentAny
+                      .customSpellcasting
+                      ?.spellSlots ??
+                      {}),
+
+                    [key]:
+                      {
+                        ...currentAny
+                          .customSpellcasting
+                          .spellSlots[
+                          key
+                        ],
+
+                        remaining:
+                          normalized,
+                      },
+                  },
+              },
+          };
+        },
+      );
+
+      try {
+        await updateDoc(
+          doc(
+            db,
+            "characters",
+            characterId,
+          ),
+          {
+            [`customSpellcasting.spellSlots.${key}.remaining`]:
+              normalized,
+          },
+        );
+      } catch (
+        err
+      ) {
+        console.error(
+          err,
+        );
+
+        setCharacter(
+          (
+            current,
+          ) => {
+            if (
+              !current
+            ) {
+              return current;
+            }
+
+            const currentAny =
+              current as any;
+
+            return {
+              ...current,
+
+              customSpellcasting:
+                {
+                  ...currentAny.customSpellcasting,
+
+                  spellSlots:
+                    {
+                      ...(currentAny
+                        .customSpellcasting
+                        ?.spellSlots ??
+                        {}),
+
+                      [key]:
+                        {
+                          ...currentAny
+                            .customSpellcasting
+                            .spellSlots[
+                            key
+                          ],
+
+                          remaining:
+                            previousRemaining,
+                        },
+                    },
+                },
+            };
+          },
+        );
+
+        setError(
+          "Failed to update spell slots.",
+        );
+      }
+
+      return;
+    }
+
+    /* ===============================================
+       GUIDED
+    =============================================== */
+
+    const previousRemaining =
+      character.spellSlotsRemaining?.[
+        key
+      ];
+
+    setCharacter(
+      (
+        current,
+      ) =>
+        current
+          ? {
+              ...current,
+
+              spellSlotsRemaining:
+                {
+                  ...(current.spellSlotsRemaining ??
+                    {}),
+
+                  [key]:
+                    normalized,
+                },
+            }
+          : current,
+    );
+
+    try {
+      await updateDoc(
+        doc(
+          db,
+          "characters",
+          characterId,
+        ),
+        {
+          [`spellSlotsRemaining.${key}`]:
+            normalized,
+        },
+      );
+    } catch (
+      err
+    ) {
+      console.error(
+        err,
+      );
+
+      setCharacter(
+        (
+          current,
+        ) => {
+          if (
+            !current
+          ) {
+            return current;
+          }
+
+          const next =
+            {
+              ...(current.spellSlotsRemaining ??
+                {}),
+            };
+
+          if (
+            typeof previousRemaining ===
+            "number"
+          ) {
+            next[
+              key
+            ] =
+              previousRemaining;
+          } else {
+            delete next[
+              key
+            ];
+          }
+
+          return {
+            ...current,
+
+            spellSlotsRemaining:
+              next,
+          };
+        },
+      );
+
+      setError(
+        "Failed to update spell slots.",
+      );
+    }
+  };
+
   /* =========================================================
      EQUIPMENT
   ========================================================= */
@@ -2252,6 +2516,8 @@ export const useCharacterSheetData = (
     handleSetHeroicInspiration,
 
     handleSetDeathSaves,
+
+    handleSetSpellSlotRemaining,
 
     handleApplyDecision,
 

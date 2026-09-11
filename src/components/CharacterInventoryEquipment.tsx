@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import {
   equipmentSlotLabels,
@@ -27,21 +27,24 @@ import ItemTooltip from "./ItemTooltip";
 
 type Props = {
   equipment: CharacterEquipmentEntry[];
-
   onChange: (nextEquipment: CharacterEquipmentEntry[]) => void;
-
   campaignItemsById?: Record<string, CampaignItem>;
-
-  /*
-   * Guided-character / legacy money representation.
-   */
   moneyCp?: number;
-
-  /*
-   * Custom characters retain the exact denominations
-   * entered on their sheet.
-   */
   money?: Money;
+};
+
+type ResolvedEquipmentRow = {
+  entry: CharacterEquipmentEntry;
+  resolvedItem: ReturnType<typeof resolveItemFromEquipmentEntry>;
+};
+
+type InventoryDisplayRow = {
+  key: string;
+  entries: CharacterEquipmentEntry[];
+  entry: CharacterEquipmentEntry;
+  resolvedItem: ReturnType<typeof resolveItemFromEquipmentEntry>;
+  totalQuantity: number;
+  grouped: boolean;
 };
 
 const formatLabel = (value: string) =>
@@ -100,13 +103,9 @@ const normalizeMoney = (money?: Money): Required<Money> => ({
 
 const CharacterInventoryEquipment = ({
   equipment,
-
   onChange,
-
   campaignItemsById = {},
-
   moneyCp = 0,
-
   money: suppliedMoney,
 }: Props) => {
   const money = useMemo(() => {
@@ -122,15 +121,79 @@ const CharacterInventoryEquipment = ({
     [equipment],
   );
 
-  const resolvedEquipment = useMemo(
+  const resolvedEquipment = useMemo<ResolvedEquipmentRow[]>(
     () =>
       normalizedEquipment.map((entry) => ({
         entry,
-
         resolvedItem: resolveItemFromEquipmentEntry(entry, campaignItemsById),
       })),
     [normalizedEquipment, campaignItemsById],
   );
+
+  /*
+   * Stackable mundane items are grouped for display only.
+   * The stored character inventory is left untouched.
+   *
+   * Equippable / equipped objects remain individual instances so that
+   * Main Hand, Off Hand, armor slots, etc. always refer to a real instance.
+   */
+  const displayRows = useMemo<InventoryDisplayRow[]>(() => {
+    const rows: InventoryDisplayRow[] = [];
+    const groupedIndexes = new Map<string, number>();
+
+    for (const { entry, resolvedItem } of resolvedEquipment) {
+      const equippedSlots = entry.equippedSlots ?? [];
+      const isEquipped = equippedSlots.length > 0;
+
+      /*
+       * Equipped items have one canonical visual home: the Equipped panel.
+       * They remain in the underlying equipment array; they are only omitted
+       * from the backpack/inventory list.
+       */
+      if (isEquipped) {
+        continue;
+      }
+
+      const rulesItemId = getRulesItemId(entry);
+      const isEquippable = isItemEquippable(rulesItemId);
+      const canGroup = Boolean(resolvedItem?.stackable && !isEquippable);
+
+      if (!canGroup) {
+        rows.push({
+          key: `instance:${entry.instanceId}`,
+          entries: [entry],
+          entry,
+          resolvedItem,
+          totalQuantity: Math.max(1, entry.quantity ?? 1),
+          grouped: false,
+        });
+        continue;
+      }
+
+      const displayId = getEntryDisplayId(entry);
+      const groupKey = `${entry.source}:${displayId}`;
+      const existingIndex = groupedIndexes.get(groupKey);
+
+      if (existingIndex === undefined) {
+        groupedIndexes.set(groupKey, rows.length);
+        rows.push({
+          key: `group:${groupKey}`,
+          entries: [entry],
+          entry,
+          resolvedItem,
+          totalQuantity: Math.max(1, entry.quantity ?? 1),
+          grouped: false,
+        });
+      } else {
+        const existing = rows[existingIndex];
+        existing.entries.push(entry);
+        existing.totalQuantity += Math.max(1, entry.quantity ?? 1);
+        existing.grouped = true;
+      }
+    }
+
+    return rows;
+  }, [resolvedEquipment]);
 
   const equippedBySlot = useMemo(() => {
     const slotMap: Partial<Record<EquipmentSlotId, CharacterEquipmentEntry>> =
@@ -155,9 +218,7 @@ const CharacterInventoryEquipment = ({
 
   const handleEquip = (
     instanceId: string,
-
     rulesItemId: string,
-
     mode?: WieldMode,
   ) => {
     const slotsToOccupy = getOccupiedSlotsForEquip(rulesItemId, mode);
@@ -166,15 +227,11 @@ const CharacterInventoryEquipment = ({
       return;
     }
 
-    const next = normalizedEquipment.map((entry) => ({
-      ...entry,
-    }));
+    const next = normalizedEquipment.map((entry) => ({ ...entry }));
 
     for (let i = 0; i < next.length; i += 1) {
       const entry = next[i];
-
       const occupied = entry.equippedSlots ?? [];
-
       const conflicts = occupied.some((slot) => slotsToOccupy.includes(slot));
 
       if (conflicts) {
@@ -192,250 +249,48 @@ const CharacterInventoryEquipment = ({
 
     next[targetIndex] = {
       ...next[targetIndex],
-
       equipped: true,
-
       equippedSlots: slotsToOccupy,
-
-      ...(mode
-        ? {
-            wieldMode: mode,
-          }
-        : {}),
+      ...(mode ? { wieldMode: mode } : {}),
     };
 
     onChange(next);
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-3">
-      <div className="space-y-6 xl:col-span-2">
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-          <h2 className="mb-5 text-xl font-semibold text-white sm:text-2xl">
-            Inventory
-          </h2>
+    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_250px]">
+      {/* =====================================================
+          INVENTORY
+      ===================================================== */}
 
-          {resolvedEquipment.length > 0 ? (
-            <div className="space-y-3">
-              {resolvedEquipment.map(({ entry, resolvedItem }) => {
-                const rulesItemId = getRulesItemId(entry);
-
-                const displayId = getEntryDisplayId(entry);
-
-                const isEquippable = isItemEquippable(rulesItemId);
-
-                const actions = getEquipActionsForItem(rulesItemId);
-
-                const itemName =
-                  resolvedItem?.name ?? entry.name ?? formatLabel(displayId);
-
-                const equippedSlots = entry.equippedSlots ?? [];
-
-                const isEquipped = equippedSlots.length > 0;
-
-                return (
-                  <div
-                    key={entry.instanceId}
-                    className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                  >
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        {resolvedItem ? (
-                          <ItemTooltip
-                            item={resolvedItem}
-                            className="max-w-full"
-                          >
-                            <div className="min-w-0 cursor-pointer rounded-xl transition hover:bg-white/5">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-medium text-white">
-                                  {itemName}
-                                </p>
-
-                                <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
-                                  x{entry.quantity}
-                                </span>
-
-                                {resolvedItem.category && (
-                                  <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
-                                    {formatLabel(resolvedItem.category)}
-                                  </span>
-                                )}
-
-                                {entry.source === "campaign" && (
-                                  <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-violet-300">
-                                    Campaign Item
-                                  </span>
-                                )}
-
-                                {isEquipped && (
-                                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-                                    Equipped
-                                  </span>
-                                )}
-                              </div>
-
-                              {resolvedItem.shortDescription && (
-                                <p className="mt-2 text-sm text-zinc-400">
-                                  {resolvedItem.shortDescription}
-                                </p>
-                              )}
-
-                              {isEquipped && (
-                                <p className="mt-2 text-sm text-zinc-400">
-                                  {equippedSlots
-                                    .map((slot) => equipmentSlotLabels[slot])
-                                    .join(" • ")}
-                                </p>
-                              )}
-                            </div>
-                          </ItemTooltip>
-                        ) : (
-                          <>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-medium text-white">
-                                {itemName}
-                              </p>
-
-                              <span className="rounded-full border border-white/10 bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
-                                x{entry.quantity}
-                              </span>
-
-                              {entry.source === "campaign" && (
-                                <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-violet-300">
-                                  Campaign Item
-                                </span>
-                              )}
-
-                              {isEquipped && (
-                                <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-emerald-300">
-                                  Equipped
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="mt-2 text-sm text-amber-300">
-                              Item data could not be resolved.
-                            </p>
-
-                            {isEquipped && (
-                              <p className="mt-2 text-sm text-zinc-400">
-                                {equippedSlots
-                                  .map((slot) => equipmentSlotLabels[slot])
-                                  .join(" • ")}
-                              </p>
-                            )}
-                          </>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        {isEquippable ? (
-                          <>
-                            {actions.map((action) => {
-                              const selectedSlots = getOccupiedSlotsForEquip(
-                                rulesItemId,
-                                action.mode,
-                              );
-
-                              const isSelected =
-                                selectedSlots.length > 0 &&
-                                selectedSlots.length === equippedSlots.length &&
-                                selectedSlots.every((slot) =>
-                                  equippedSlots.includes(slot),
-                                );
-
-                              return (
-                                <button
-                                  key={`${entry.instanceId}-${action.label}`}
-                                  type="button"
-                                  onClick={() =>
-                                    handleEquip(
-                                      entry.instanceId,
-                                      rulesItemId,
-                                      action.mode,
-                                    )
-                                  }
-                                  className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
-                                    isSelected
-                                      ? "bg-emerald-500 text-black"
-                                      : "border border-white/10 bg-white/5 text-white hover:bg-white/10"
-                                  }`}
-                                >
-                                  {action.label}
-                                </button>
-                              );
-                            })}
-
-                            {isEquipped && (
-                              <button
-                                type="button"
-                                onClick={() => handleUnequip(entry.instanceId)}
-                                className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
-                              >
-                                Unequip
-                              </button>
-                            )}
-                          </>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-zinc-500">No equipment added yet.</p>
-          )}
-        </section>
-      </div>
-
-      <div className="space-y-6">
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-          <h2 className="mb-5 text-xl font-semibold text-white sm:text-2xl">
-            Money
-          </h2>
-
-          <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-5">
-            <div className="flex flex-wrap items-end gap-x-4 gap-y-2 text-sm font-semibold text-white">
-              <span className="inline-flex items-center gap-1">
-                <span>{money.pp}</span>
-
-                <span className="text-cyan-200">PP</span>
-              </span>
-
-              <span className="inline-flex items-center gap-1">
-                <span>{money.gp}</span>
-
-                <span className="text-yellow-400">GP</span>
-              </span>
-
-              <span className="inline-flex items-center gap-1">
-                <span>{money.ep}</span>
-
-                <span className="text-sky-300">EP</span>
-              </span>
-
-              <span className="inline-flex items-center gap-1">
-                <span>{money.sp}</span>
-
-                <span className="text-zinc-300">SP</span>
-              </span>
-
-              <span className="inline-flex items-center gap-1">
-                <span>{money.cp}</span>
-
-                <span className="text-amber-600">CP</span>
-              </span>
-            </div>
+      <section className="overflow-hidden rounded-xl border border-white/10 bg-zinc-900/40">
+        {displayRows.length > 0 ? (
+          <div className="divide-y divide-white/[0.06]">
+            {displayRows.map((row) => (
+              <InventoryRow key={row.key} row={row} onEquip={handleEquip} />
+            ))}
           </div>
+        ) : (
+          <p className="px-4 py-4 text-[10px] text-zinc-600">
+            No equipment added yet.
+          </p>
+        )}
+      </section>
+
+      {/* =====================================================
+          SIDE SUMMARY
+      ===================================================== */}
+
+      <div className="space-y-3">
+        <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
+          <SectionLabel>Money</SectionLabel>
+          <MoneySummary money={money} />
         </section>
 
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-          <h2 className="mb-5 text-xl font-semibold text-white sm:text-2xl">
-            Equipped Slots
-          </h2>
+        <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
+          <SectionLabel>Equipped</SectionLabel>
 
-          <div className="grid gap-3">
+          <div className="mt-2 divide-y divide-white/[0.055]">
             {equipmentSlotOrder.map((slot) => {
               const equippedItem = equippedBySlot[slot];
 
@@ -447,22 +302,71 @@ const CharacterInventoryEquipment = ({
                 ? getEntryDisplayId(equippedItem)
                 : undefined;
 
+              const itemName = equippedItem
+                ? (resolvedItem?.name ??
+                  equippedItem.name ??
+                  (displayId ? formatLabel(displayId) : "Unknown Item"))
+                : "—";
+
+              const occupiedSlots = equippedItem?.equippedSlots ?? [];
+              const isPrimarySlot = !!equippedItem && occupiedSlots[0] === slot;
+
+              const itemContent = (
+                <div className="min-w-0">
+                  <p
+                    className={`truncate text-[9px] font-medium ${
+                      equippedItem ? "text-zinc-200" : "text-zinc-700"
+                    }`}
+                    title={equippedItem ? itemName : undefined}
+                  >
+                    {itemName}
+                  </p>
+
+                  {equippedItem && occupiedSlots.length > 1 && isPrimarySlot ? (
+                    <p className="mt-0.5 text-[7px] text-zinc-600">
+                      {occupiedSlots
+                        .map(
+                          (occupiedSlot) => equipmentSlotLabels[occupiedSlot],
+                        )
+                        .join(" · ")}
+                    </p>
+                  ) : null}
+                </div>
+              );
+
               return (
                 <div
                   key={slot}
-                  className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                  className="grid min-h-[34px] grid-cols-[74px_minmax(0,1fr)_auto] items-center gap-2 py-1.5 first:pt-0 last:pb-0"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+                  <span className="text-[7px] font-semibold uppercase tracking-[0.09em] text-zinc-600">
                     {equipmentSlotLabels[slot]}
-                  </p>
+                  </span>
 
-                  <p className="mt-2 text-sm font-medium text-white">
-                    {equippedItem
-                      ? (resolvedItem?.name ??
-                        equippedItem.name ??
-                        (displayId ? formatLabel(displayId) : "Unknown Item"))
-                      : "Empty"}
-                  </p>
+                  {equippedItem && resolvedItem ? (
+                    <ItemTooltip
+                      item={resolvedItem}
+                      className="min-w-0 max-w-full"
+                    >
+                      <div className="min-w-0 cursor-pointer rounded px-1 py-0.5 -ml-1 transition hover:bg-white/[0.04]">
+                        {itemContent}
+                      </div>
+                    </ItemTooltip>
+                  ) : (
+                    itemContent
+                  )}
+
+                  {equippedItem && isPrimarySlot ? (
+                    <button
+                      type="button"
+                      onClick={() => handleUnequip(equippedItem.instanceId)}
+                      className="rounded-md border border-rose-500/15 bg-rose-500/[0.05] px-1.5 py-0.5 text-[7px] font-semibold text-rose-300/75 transition hover:bg-rose-500/10 hover:text-rose-200"
+                    >
+                      Unequip
+                    </button>
+                  ) : (
+                    <span />
+                  )}
                 </div>
               );
             })}
@@ -472,5 +376,148 @@ const CharacterInventoryEquipment = ({
     </div>
   );
 };
+
+/* =========================================================
+   INVENTORY ROW
+========================================================= */
+
+const InventoryRow = ({
+  row,
+  onEquip,
+}: {
+  row: InventoryDisplayRow;
+  onEquip: (instanceId: string, rulesItemId: string, mode?: WieldMode) => void;
+}) => {
+  const { entry, resolvedItem, totalQuantity } = row;
+  const rulesItemId = getRulesItemId(entry);
+  const displayId = getEntryDisplayId(entry);
+  const isEquippable = isItemEquippable(rulesItemId);
+  const actions = getEquipActionsForItem(rulesItemId);
+  const itemName = resolvedItem?.name ?? entry.name ?? formatLabel(displayId);
+
+  const category = resolvedItem?.category
+    ? formatLabel(resolvedItem.category)
+    : null;
+
+  const itemContent = (
+    <div className="min-w-0">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <p className="truncate text-[10px] font-semibold text-zinc-100">
+          {totalQuantity}× {itemName}
+        </p>
+
+        {category ? (
+          <span className="text-[7px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+            {category}
+          </span>
+        ) : null}
+
+        {entry.source === "campaign" ? (
+          <span className="text-[7px] font-semibold uppercase tracking-[0.08em] text-violet-400/70">
+            Campaign
+          </span>
+        ) : null}
+      </div>
+
+      {resolvedItem?.shortDescription ? (
+        <p className="mt-1 line-clamp-1 text-[8px] text-zinc-600">
+          {resolvedItem.shortDescription}
+        </p>
+      ) : null}
+
+      {!resolvedItem ? (
+        <p className="mt-1 text-[8px] text-amber-400/70">
+          Unknown item data · {displayId}
+        </p>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <div className="grid min-h-[38px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 transition hover:bg-white/[0.025]">
+      {resolvedItem ? (
+        <ItemTooltip item={resolvedItem} className="min-w-0 max-w-full">
+          <div className="min-w-0 cursor-pointer">{itemContent}</div>
+        </ItemTooltip>
+      ) : (
+        itemContent
+      )}
+
+      {isEquippable ? (
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+          {actions.map((action) => (
+            <button
+              key={`${entry.instanceId}-${action.label}`}
+              type="button"
+              onClick={() =>
+                onEquip(entry.instanceId, rulesItemId, action.mode)
+              }
+              className="rounded-md border border-white/[0.08] bg-black/20 px-1.5 py-0.5 text-[7px] font-semibold text-zinc-400 transition hover:border-white/15 hover:text-zinc-200"
+            >
+              {getCompactActionLabel(action.label)}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+/* =========================================================
+   MONEY
+========================================================= */
+
+const MoneySummary = ({ money }: { money: Required<Money> }) => {
+  const denominations = [
+    { key: "pp" as const, label: "PP", className: "text-cyan-200" },
+    { key: "gp" as const, label: "GP", className: "text-yellow-400" },
+    { key: "ep" as const, label: "EP", className: "text-sky-300" },
+    { key: "sp" as const, label: "SP", className: "text-zinc-300" },
+    { key: "cp" as const, label: "CP", className: "text-amber-600" },
+  ];
+
+  const nonZero = denominations.filter(({ key }) => money[key] > 0);
+  const visible = nonZero.length > 0 ? nonZero : [denominations[1]];
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+      {visible.map(({ key, label, className }, index) => (
+        <span
+          key={key}
+          className="inline-flex items-baseline gap-1 text-[10px]"
+        >
+          {index > 0 ? <span className="mr-1 text-zinc-700">·</span> : null}
+          <strong className="text-zinc-100">{money[key]}</strong>
+          <span className={`text-[8px] font-semibold ${className}`}>
+            {label}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+};
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+const getCompactActionLabel = (label: string) => {
+  const normalized = label.toLowerCase();
+
+  if (normalized.includes("main hand")) return "Main";
+  if (normalized.includes("off hand")) return "Off";
+  if (normalized.includes("two-handed") || normalized.includes("two handed")) {
+    return "2H";
+  }
+  if (normalized === "equip") return "Equip";
+
+  return label;
+};
+
+const SectionLabel = ({ children }: { children: ReactNode }) => (
+  <h2 className="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+    {children}
+  </h2>
+);
 
 export default CharacterInventoryEquipment;
