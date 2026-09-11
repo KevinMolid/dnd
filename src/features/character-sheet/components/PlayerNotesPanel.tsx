@@ -1,37 +1,52 @@
 import { useEffect, useRef, useState } from "react";
 
-import { doc, updateDoc } from "firebase/firestore";
-
-import { db } from "../../../firebase";
-
 type SaveState = "saved" | "saving" | "error";
 
 type PlayerNotesPanelProps = {
-  characterId?: string;
-  initialValue?: string | null;
+  value?: string | null;
+
+  onSave: (notes: string) => Promise<void>;
 };
 
 const AUTOSAVE_DELAY_MS = 700;
 
 const PlayerNotesPanel = ({
-  characterId,
-  initialValue = "",
-}: PlayerNotesPanelProps) => {
-  const normalizedInitialValue = initialValue ?? "";
+  value: savedValue = "",
 
-  const [value, setValue] = useState(normalizedInitialValue);
+  onSave,
+}: PlayerNotesPanelProps) => {
+  const normalizedSavedValue = savedValue ?? "";
+
+  const [draft, setDraft] = useState(normalizedSavedValue);
 
   const [saveState, setSaveState] = useState<SaveState>("saved");
 
-  const lastSavedValueRef = useRef(normalizedInitialValue);
-
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const latestDraftRef = useRef(normalizedSavedValue);
+
+  const lastSavedRef = useRef(normalizedSavedValue);
+
+  /*
+   * Whenever the canonical character state changes,
+   * synchronize the editor unless the value is already
+   * what we're editing.
+   *
+   * This is what makes switching tabs safe.
+   */
   useEffect(() => {
-    setValue(normalizedInitialValue);
-    lastSavedValueRef.current = normalizedInitialValue;
+    if (normalizedSavedValue === lastSavedRef.current) {
+      return;
+    }
+
+    lastSavedRef.current = normalizedSavedValue;
+
+    latestDraftRef.current = normalizedSavedValue;
+
+    setDraft(normalizedSavedValue);
+
     setSaveState("saved");
-  }, [characterId, normalizedInitialValue]);
+  }, [normalizedSavedValue]);
 
   useEffect(() => {
     return () => {
@@ -41,31 +56,26 @@ const PlayerNotesPanel = ({
     };
   }, []);
 
-  const save = async (nextValue: string) => {
-    if (!characterId) {
-      setSaveState("error");
-      return;
-    }
-
-    if (nextValue === lastSavedValueRef.current) {
+  const saveDraft = async (nextValue: string) => {
+    if (nextValue === lastSavedRef.current) {
       setSaveState("saved");
+
       return;
     }
 
     setSaveState("saving");
 
     try {
-      await updateDoc(doc(db, "characters", characterId), {
-        playerNotes: nextValue,
-        updatedAt: new Date(),
-      });
+      await onSave(nextValue);
 
-      lastSavedValueRef.current = nextValue;
+      lastSavedRef.current = nextValue;
 
       setSaveState("saved");
-    } catch (error) {
-      console.error("Failed to save player notes:", error);
-
+    } catch {
+      /*
+       * The hook handles rollback and the global error.
+       * This component only reflects that saving failed.
+       */
       setSaveState("error");
     }
   };
@@ -75,20 +85,26 @@ const PlayerNotesPanel = ({
       clearTimeout(timeoutRef.current);
     }
 
-    if (nextValue === lastSavedValueRef.current) {
+    if (nextValue === lastSavedRef.current) {
       setSaveState("saved");
+
       return;
     }
 
     setSaveState("saving");
 
     timeoutRef.current = setTimeout(() => {
-      void save(nextValue);
+      timeoutRef.current = null;
+
+      void saveDraft(nextValue);
     }, AUTOSAVE_DELAY_MS);
   };
 
   const handleChange = (nextValue: string) => {
-    setValue(nextValue);
+    latestDraftRef.current = nextValue;
+
+    setDraft(nextValue);
+
     queueSave(nextValue);
   };
 
@@ -99,7 +115,7 @@ const PlayerNotesPanel = ({
       timeoutRef.current = null;
     }
 
-    void save(value);
+    void saveDraft(latestDraftRef.current);
   };
 
   return (
@@ -111,7 +127,7 @@ const PlayerNotesPanel = ({
           </p>
 
           <p className="mt-0.5 text-[8px] text-zinc-600">
-            Personal notes for play. Autosaved.
+            Personal notes for play.
           </p>
         </div>
 
@@ -120,7 +136,8 @@ const PlayerNotesPanel = ({
 
       <div className="min-h-0 flex-1 p-3">
         <textarea
-          value={value}
+          value={draft}
+          spellCheck={false}
           onChange={(event) => handleChange(event.target.value)}
           onBlur={handleBlur}
           placeholder="Write notes from the game here..."

@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
+
+import { createPortal } from "react-dom";
 
 import type { AbilityKey } from "../../../rulesets/dnd/dnd2024/types";
 
@@ -6,120 +8,65 @@ type AbilityScores = Record<AbilityKey, number>;
 
 export type CharacterQuickSkill = {
   id: string;
-
   name: string;
-
   ability: string;
-
   bonus: number;
-
   proficient?: boolean;
-
   expertise?: boolean;
 };
 
 export type DeathSaves = {
   successes: number;
-
   failures: number;
 };
 
 type CharacterProgress = {
   level: number;
-
   xp: number;
-
   nextLevelXp: number | null;
-
   progressPercent: number;
 };
 
 type CharacterQuickStatsProps = {
   currentHp: number;
-
   maxHp: number;
-
+  onCurrentHpChange?: (currentHp: number) => void | Promise<void>;
   armorClass: number;
-
   initiative: number;
-
   initiativeSubValue?: string;
-
   speed: number;
-
   proficiencyBonus: number;
-
   passivePerception: number;
-
   passiveInsight?: number;
-
   passiveInvestigation?: number;
-
   abilityScores: AbilityScores;
-
   savingThrowProficiencies?: AbilityKey[];
-
   skills?: CharacterQuickSkill[];
-
   conditions?: string[];
-
   defenses?: string[];
-
   heroicInspiration?: boolean;
-
   onHeroicInspirationChange?: (value: boolean) => void | Promise<void>;
-
   deathSaves?: DeathSaves;
-
   onDeathSavesChange?: (value: DeathSaves) => void | Promise<void>;
-
   hitDiceLabel?: string;
-
   progress?: CharacterProgress | null;
-
   languages?: string[];
-
   armorProficiencies?: string[];
-
   weaponProficiencies?: string[];
-
   toolProficiencies?: string[];
 };
 
-const abilities: Array<{
-  id: AbilityKey;
-
-  label: string;
-}> = [
-  {
-    id: "str",
-    label: "STR",
-  },
-  {
-    id: "dex",
-    label: "DEX",
-  },
-  {
-    id: "con",
-    label: "CON",
-  },
-  {
-    id: "int",
-    label: "INT",
-  },
-  {
-    id: "wis",
-    label: "WIS",
-  },
-  {
-    id: "cha",
-    label: "CHA",
-  },
+const abilities: Array<{ id: AbilityKey; label: string }> = [
+  { id: "str", label: "STR" },
+  { id: "dex", label: "DEX" },
+  { id: "con", label: "CON" },
+  { id: "int", label: "INT" },
+  { id: "wis", label: "WIS" },
+  { id: "cha", label: "CHA" },
 ];
 
 const formatModifier = (value: number) =>
   value >= 0 ? `+${value}` : `${value}`;
-
 const getModifier = (score: number) => Math.floor((score - 10) / 2);
 
 const formatLabel = (value: string) =>
@@ -134,78 +81,48 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 const CharacterQuickStats = ({
   currentHp,
   maxHp,
-
+  onCurrentHpChange,
   armorClass,
-
   initiative,
   initiativeSubValue,
-
   speed,
-
   proficiencyBonus,
-
   passivePerception,
-
   passiveInsight,
-
   passiveInvestigation,
-
   abilityScores,
-
   savingThrowProficiencies = [],
-
   skills = [],
-
   conditions = [],
-
   defenses = [],
-
   heroicInspiration = false,
-
   onHeroicInspirationChange,
-
-  deathSaves = {
-    successes: 0,
-    failures: 0,
-  },
-
+  deathSaves = { successes: 0, failures: 0 },
   onDeathSavesChange,
-
   hitDiceLabel,
-
   progress,
-
   languages = [],
-
   armorProficiencies = [],
-
   weaponProficiencies = [],
-
   toolProficiencies = [],
 }: CharacterQuickStatsProps) => {
   const nextLevel =
     progress?.nextLevelXp !== null ? (progress?.level ?? 0) + 1 : null;
 
   const safeMaxHp = Math.max(1, maxHp);
-
   const hpPercent = clamp((currentHp / safeMaxHp) * 100, 0, 100);
 
   return (
     <div className="mb-3">
       <div className="grid gap-2 xl:grid-cols-[250px_minmax(430px,1fr)_360px] xl:grid-rows-[auto_auto]">
-        {/* ABILITIES */}
-
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
           <SectionLabel>Abilities & Saving Throws</SectionLabel>
 
           <div className="mt-2 divide-y divide-white/[0.045]">
             {abilities.map((ability) => {
               const score = abilityScores[ability.id] ?? 10;
-
               const modifier = getModifier(score);
-
               const proficient = savingThrowProficiencies.includes(ability.id);
-
               const save = modifier + (proficient ? proficiencyBonus : 0);
 
               return (
@@ -253,8 +170,6 @@ const CharacterQuickStats = ({
           </div>
         </section>
 
-        {/* SKILLS */}
-
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
           <SectionLabel>Skills</SectionLabel>
 
@@ -265,18 +180,16 @@ const CharacterQuickStats = ({
           </div>
         </section>
 
-        {/* LIVE STATE */}
-
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3 xl:row-span-2">
           <SectionLabel>Live State</SectionLabel>
 
           <div className="mt-2 grid grid-cols-6 gap-1">
-            <CoreStat
-              label="HP"
-              value={`${currentHp}/${maxHp}`}
-              subValue={hitDiceLabel ? `HD ${hitDiceLabel}` : undefined}
+            <HpStat
+              currentHp={currentHp}
+              maxHp={maxHp}
+              hitDiceLabel={hitDiceLabel}
               tone={getHpTone(hpPercent, currentHp)}
-              className="col-span-2"
+              onChange={onCurrentHpChange}
             />
 
             <CoreStat
@@ -351,7 +264,6 @@ const CharacterQuickStats = ({
                   onChange={(successes) =>
                     onDeathSavesChange?.({
                       ...deathSaves,
-
                       successes,
                     })
                   }
@@ -365,7 +277,6 @@ const CharacterQuickStats = ({
                   onChange={(failures) =>
                     onDeathSavesChange?.({
                       ...deathSaves,
-
                       failures,
                     })
                   }
@@ -423,8 +334,6 @@ const CharacterQuickStats = ({
           ) : null}
         </section>
 
-        {/* PROFICIENCIES */}
-
         <section className="rounded-xl border border-white/[0.08] bg-zinc-900/35 p-3 xl:col-span-2">
           <div className="grid gap-3 md:grid-cols-[110px_minmax(0,1fr)]">
             <div>
@@ -433,11 +342,8 @@ const CharacterQuickStats = ({
 
             <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
               <ProficiencyRow label="Languages" values={languages} />
-
               <ProficiencyRow label="Armor" values={armorProficiencies} />
-
               <ProficiencyRow label="Weapons" values={weaponProficiencies} />
-
               <ProficiencyRow label="Tools" values={toolProficiencies} />
             </div>
           </div>
@@ -446,10 +352,6 @@ const CharacterQuickStats = ({
     </div>
   );
 };
-
-/* =========================================================
-   SKILLS
-========================================================= */
 
 const SkillRow = ({ skill }: { skill: CharacterQuickSkill }) => (
   <div className="flex min-h-[23px] min-w-0 items-center gap-1.5 border-b border-white/[0.035] py-0.5">
@@ -484,10 +386,6 @@ const SkillRow = ({ skill }: { skill: CharacterQuickSkill }) => (
   </div>
 );
 
-/* =========================================================
-   CORE
-========================================================= */
-
 type CoreTone =
   | "neutral"
   | "healthy"
@@ -498,84 +396,49 @@ type CoreTone =
   | "initiative";
 
 const getHpTone = (percentage: number, currentHp: number): CoreTone => {
-  if (currentHp <= 0) {
-    return "critical";
-  }
-
-  if (percentage <= 25) {
-    return "danger";
-  }
-
-  if (percentage <= 50) {
-    return "warning";
-  }
-
+  if (currentHp <= 0) return "critical";
+  if (percentage <= 25) return "danger";
+  if (percentage <= 50) return "warning";
   return "healthy";
 };
 
 const coreToneClasses: Record<
   CoreTone,
-  {
-    background: string;
-
-    border: string;
-
-    label: string;
-  }
+  { background: string; border: string; label: string }
 > = {
   neutral: {
     background: "bg-black/20",
-
     border: "border-transparent",
-
     label: "text-zinc-400",
   },
-
   healthy: {
     background: "bg-emerald-500/[0.055]",
-
     border: "border-emerald-500/10",
-
     label: "text-emerald-300/80",
   },
-
   warning: {
     background: "bg-amber-500/[0.075]",
-
     border: "border-amber-500/15",
-
     label: "text-amber-300/90",
   },
-
   danger: {
     background: "bg-rose-500/[0.085]",
-
     border: "border-rose-500/20",
-
     label: "text-rose-300",
   },
-
   critical: {
     background: "bg-red-500/[0.14]",
-
     border: "border-red-500/30",
-
     label: "text-red-300",
   },
-
   ac: {
     background: "bg-sky-500/[0.055]",
-
     border: "border-sky-500/10",
-
     label: "text-sky-300/80",
   },
-
   initiative: {
     background: "bg-amber-500/[0.045]",
-
     border: "border-amber-500/10",
-
     label: "text-amber-300/80",
   },
 };
@@ -589,15 +452,10 @@ const CoreStat = ({
   className = "",
 }: {
   label: string;
-
   value: string | number;
-
   subValue?: string;
-
   title?: string;
-
   tone?: CoreTone;
-
   className?: string;
 }) => {
   const classes = coreToneClasses[tone];
@@ -626,6 +484,210 @@ const CoreStat = ({
   );
 };
 
+const HpStat = ({
+  currentHp,
+  maxHp,
+  hitDiceLabel,
+  tone,
+  onChange,
+}: {
+  currentHp: number;
+  maxHp: number;
+  hitDiceLabel?: string;
+  tone: CoreTone;
+  onChange?: (value: number) => void | Promise<void>;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(String(currentHp));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setDraft(String(currentHp));
+  }, [currentHp]);
+
+  const clampHp = (value: number) =>
+    Math.max(0, Math.min(maxHp, Math.floor(value)));
+
+  const setHp = async (value: number) => {
+    if (!onChange) return;
+
+    const normalized = clampHp(value);
+    setDraft(String(normalized));
+    setSaving(true);
+
+    try {
+      await onChange(normalized);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const adjustHp = (amount: number) => {
+    void setHp(currentHp + amount);
+  };
+
+  const submitDraft = () => {
+    const parsed = Number(draft);
+
+    if (Number.isNaN(parsed)) {
+      setDraft(String(currentHp));
+      return;
+    }
+
+    void setHp(parsed);
+  };
+
+  const classes = coreToneClasses[tone];
+
+  return (
+    <div className="col-span-2">
+      <button
+        type="button"
+        disabled={!onChange}
+        onClick={() => setOpen(true)}
+        className={`flex min-h-[52px] w-full flex-col justify-center rounded-lg border px-2 py-1.5 text-left transition ${classes.background} ${classes.border} ${
+          onChange ? "cursor-pointer hover:brightness-110" : "cursor-default"
+        }`}
+      >
+        <span
+          className={`text-[7px] font-bold uppercase tracking-[0.08em] ${classes.label}`}
+        >
+          HP
+        </span>
+
+        <span className="mt-1 text-base font-bold leading-none text-white">
+          {currentHp}/{maxHp}
+        </span>
+
+        {hitDiceLabel ? (
+          <span className="mt-1 text-[7px] font-medium text-zinc-500">
+            HD {hitDiceLabel}
+          </span>
+        ) : null}
+      </button>
+
+      {open
+        ? createPortal(
+            <div className="fixed bottom-4 right-4 z-[140] w-[280px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
+              <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-3 py-2.5">
+                <div>
+                  <p className="text-[10px] font-semibold text-white">
+                    Hit Points
+                  </p>
+
+                  <p className="mt-0.5 text-[8px] text-zinc-600">
+                    Current / Max
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <p className="text-lg font-bold text-white">
+                    {currentHp}
+                    <span className="text-zinc-600">/{maxHp}</span>
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    aria-label="Close hit point controls"
+                    title="Close"
+                    className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-sm text-zinc-500 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white"
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-3 p-3">
+                <div className="grid grid-cols-4 gap-1.5">
+                  <HpAdjustButton
+                    label="−5"
+                    onClick={() => adjustHp(-5)}
+                    disabled={saving}
+                  />
+
+                  <HpAdjustButton
+                    label="−1"
+                    onClick={() => adjustHp(-1)}
+                    disabled={saving}
+                  />
+
+                  <HpAdjustButton
+                    label="+1"
+                    onClick={() => adjustHp(1)}
+                    disabled={saving}
+                  />
+
+                  <HpAdjustButton
+                    label="+5"
+                    onClick={() => adjustHp(5)}
+                    disabled={saving}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[7px] font-semibold uppercase tracking-[0.1em] text-zinc-600">
+                    Set Current HP
+                  </label>
+
+                  <div className="mt-1.5 flex gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      max={maxHp}
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          submitDraft();
+                        }
+                      }}
+                      className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-black/30 px-2.5 py-2 text-sm font-semibold text-white outline-none focus:border-white/20"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={submitDraft}
+                      disabled={saving}
+                      className="rounded-lg bg-white px-3 py-2 text-[9px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Set
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex justify-between border-t border-white/[0.06] pt-2 text-[7px] text-zinc-600">
+                  <span>Minimum 0</span>
+                  <span>Maximum {maxHp}</span>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
+    </div>
+  );
+};
+
+const HpAdjustButton = ({
+  label,
+  onClick,
+  disabled = false,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    className="rounded-lg border border-white/[0.08] bg-white/[0.035] py-2 text-[10px] font-bold text-zinc-300 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+  >
+    {label}
+  </button>
+);
+
 const InteractiveCoreStat = ({
   label,
   value,
@@ -636,17 +698,11 @@ const InteractiveCoreStat = ({
   className = "",
 }: {
   label: string;
-
   value: string | number;
-
   subValue?: string;
-
   active: boolean;
-
   onClick: () => void;
-
   disabled?: boolean;
-
   className?: string;
 }) => (
   <button
@@ -689,21 +745,15 @@ const InteractiveCoreStat = ({
   </button>
 );
 
-/* =========================================================
-   STATE
-========================================================= */
-
 const StateRow = ({
   label,
   children,
 }: {
   label: string;
-
   children: ReactNode;
 }) => (
   <div className="mt-2 grid grid-cols-[70px_minmax(0,1fr)] items-center gap-2 border-t border-white/[0.06] pt-2">
     <SmallLabel>{label}</SmallLabel>
-
     <div className="min-w-0">{children}</div>
   </div>
 );
@@ -713,7 +763,6 @@ const StatePill = ({
   children,
 }: {
   tone: "danger" | "defense";
-
   children: ReactNode;
 }) => {
   const classes =
@@ -730,10 +779,6 @@ const StatePill = ({
   );
 };
 
-/* =========================================================
-   DEATH SAVES
-========================================================= */
-
 const DeathSaveRow = ({
   label,
   value,
@@ -742,24 +787,17 @@ const DeathSaveRow = ({
   disabled = false,
 }: {
   label: string;
-
   value: number;
-
   type: "success" | "failure";
-
   onChange: (value: number) => void;
-
   disabled?: boolean;
 }) => {
   const amount = clamp(value, 0, 3);
 
   const handleCircleClick = (index: number) => {
-    if (disabled) {
-      return;
-    }
+    if (disabled) return;
 
     const requested = index + 1;
-
     const next = requested === amount ? amount - 1 : requested;
 
     onChange(clamp(next, 0, 3));
@@ -806,33 +844,17 @@ const DeathSaveRow = ({
   );
 };
 
-/* =========================================================
-   SENSES
-========================================================= */
-
-const SenseValue = ({
-  label,
-  value,
-}: {
-  label: string;
-
-  value: number;
-}) => (
+const SenseValue = ({ label, value }: { label: string; value: number }) => (
   <span className="text-[8px] text-zinc-500">
     {label} <strong className="font-semibold text-zinc-300">{value}</strong>
   </span>
 );
-
-/* =========================================================
-   PROFICIENCIES
-========================================================= */
 
 const ProficiencyRow = ({
   label,
   values,
 }: {
   label: string;
-
   values: string[];
 }) => {
   const formatted = values.filter(Boolean).map(formatLabel);
@@ -852,10 +874,6 @@ const ProficiencyRow = ({
     </div>
   );
 };
-
-/* =========================================================
-   GENERIC
-========================================================= */
 
 const SectionLabel = ({ children }: { children: ReactNode }) => (
   <h2 className="text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">

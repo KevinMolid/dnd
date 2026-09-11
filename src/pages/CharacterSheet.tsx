@@ -61,10 +61,14 @@ const CharacterSheet = () => {
     loading,
     error,
     campaignItemsById,
+
     handleEquipmentChange,
     handleSetHeroicInspiration,
     handleSetDeathSaves,
+    handleSetCurrentHp,
     handleSetSpellSlotRemaining,
+    handleSetPlayerNotes,
+
     handleApplyDecision,
     handleCompleteLevelUp,
   } = useCharacterSheetData(characterId);
@@ -125,9 +129,11 @@ const CharacterSheet = () => {
         backLabel={backLabel}
         campaignItemsById={campaignItemsById}
         handleEquipmentChange={handleEquipmentChange}
+        handleSetCurrentHp={handleSetCurrentHp}
         handleSetHeroicInspiration={handleSetHeroicInspiration}
         handleSetDeathSaves={handleSetDeathSaves}
         handleSetSpellSlotRemaining={handleSetSpellSlotRemaining}
+        handleSetPlayerNotes={handleSetPlayerNotes}
       />
     );
   }
@@ -518,8 +524,8 @@ const CharacterSheet = () => {
 
   const renderNotesTab = () => (
     <PlayerNotesPanel
-      characterId={characterId}
-      initialValue={character.playerNotes}
+      value={character.playerNotes}
+      onSave={handleSetPlayerNotes}
     />
   );
 
@@ -549,6 +555,7 @@ const CharacterSheet = () => {
         <CharacterQuickStats
           currentHp={derived.currentHp}
           maxHp={derived.maxHp}
+          onCurrentHpChange={handleSetCurrentHp}
           armorClass={derived.armorClass}
           initiative={derived.initiativeBonus}
           initiativeSubValue={derived.initiativeBreakdown}

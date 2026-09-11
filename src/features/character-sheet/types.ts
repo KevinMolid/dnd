@@ -277,6 +277,14 @@ export type CharacterSheetDataHookResult = {
     nextEquipment: CharacterEquipmentEntry[],
   ) => Promise<void>;
 
+  handleSetPlayerNotes: (
+  notes: string,
+) => Promise<void>;
+
+handleSetCurrentHp: (
+  currentHp: number,
+) => Promise<void>;
+
   handleSetHeroicInspiration: (
     value: boolean,
   ) => Promise<void>;

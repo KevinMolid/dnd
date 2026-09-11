@@ -9,6 +9,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  serverTimestamp,
   updateDoc,
 } from "firebase/firestore";
 
@@ -281,6 +282,261 @@ export const useCharacterSheetData = (
   /* =========================================================
      LIVE STATE
   ========================================================= */
+
+  const handleSetCurrentHp = async (
+  nextCurrentHp: number,
+) => {
+  if (
+    !character ||
+    !characterId
+  ) {
+    return;
+  }
+
+  const maxHp =
+    character.buildMode === "custom"
+      ? character.customStats?.maxHp ??
+        character.maxHp ??
+        0
+      : derived?.maxHp ??
+        character.maxHp ??
+        0;
+
+  const normalizedHp =
+    Math.max(
+      0,
+      Math.min(
+        maxHp,
+        Math.floor(
+          nextCurrentHp,
+        ),
+      ),
+    );
+
+  /* =========================================================
+     CUSTOM
+  ========================================================= */
+
+  if (
+    character.buildMode === "custom"
+  ) {
+    const previousHp =
+      character.customStats
+        ?.currentHp ??
+      0;
+
+    setCharacter(
+      (
+        current,
+      ) =>
+        current
+          ? {
+              ...current,
+
+              customStats: {
+                ...(current.customStats ??
+                  {}),
+
+                currentHp:
+                  normalizedHp,
+              },
+            }
+          : current,
+    );
+
+    try {
+      await updateDoc(
+        doc(
+          db,
+          "characters",
+          characterId,
+        ),
+        {
+          "customStats.currentHp":
+            normalizedHp,
+        },
+      );
+    } catch (
+      err
+    ) {
+      console.error(
+        "Failed to update HP:",
+        err,
+      );
+
+      setCharacter(
+        (
+          current,
+        ) =>
+          current
+            ? {
+                ...current,
+
+                customStats: {
+                  ...(current.customStats ??
+                    {}),
+
+                  currentHp:
+                    previousHp,
+                },
+              }
+            : current,
+      );
+
+      setError(
+        "Failed to update HP.",
+      );
+
+      throw err;
+    }
+
+    return;
+  }
+
+  /* =========================================================
+     GUIDED
+  ========================================================= */
+
+  const previousHp =
+    character.currentHp ??
+    derived?.currentHp ??
+    0;
+
+  setCharacter(
+    (
+      current,
+    ) =>
+      current
+        ? {
+            ...current,
+
+            currentHp:
+              normalizedHp,
+          }
+        : current,
+  );
+
+  try {
+    await updateDoc(
+      doc(
+        db,
+        "characters",
+        characterId,
+      ),
+      {
+        currentHp:
+          normalizedHp,
+      },
+    );
+  } catch (
+    err
+  ) {
+    console.error(
+      "Failed to update HP:",
+      err,
+    );
+
+    setCharacter(
+      (
+        current,
+      ) =>
+        current
+          ? {
+              ...current,
+
+              currentHp:
+                previousHp,
+            }
+          : current,
+    );
+
+    setError(
+      "Failed to update HP.",
+    );
+
+    throw err;
+  }
+};
+
+  const handleSetPlayerNotes = async (
+  notes: string,
+) => {
+  if (
+    !character ||
+    !characterId
+  ) {
+    return;
+  }
+
+  const previousNotes =
+    character.playerNotes ??
+    "";
+
+  /*
+   * Update local character state immediately.
+   * This is the important part that was missing before.
+   */
+  setCharacter(
+    (
+      current,
+    ) =>
+      current
+        ? {
+            ...current,
+
+            playerNotes:
+              notes,
+          }
+        : current,
+  );
+
+  try {
+    await updateDoc(
+      doc(
+        db,
+        "characters",
+        characterId,
+      ),
+      {
+        playerNotes:
+          notes,
+
+        updatedAt:
+          serverTimestamp(),
+      },
+    );
+  } catch (
+    err
+  ) {
+    console.error(
+      "Failed to save player notes:",
+      err,
+    );
+
+    /*
+     * Roll local state back if Firestore fails.
+     */
+    setCharacter(
+      (
+        current,
+      ) =>
+        current
+          ? {
+              ...current,
+
+              playerNotes:
+                previousNotes,
+            }
+          : current,
+    );
+
+    setError(
+      "Failed to save player notes.",
+    );
+
+    throw err;
+  }
+};
 
   const handleSetHeroicInspiration =
     async (
@@ -2510,6 +2766,10 @@ export const useCharacterSheetData = (
     derived,
 
     setError,
+
+    handleSetCurrentHp,
+
+    handleSetPlayerNotes,
 
     handleEquipmentChange,
 

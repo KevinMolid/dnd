@@ -51,6 +51,10 @@ type CustomCharacterSheetProps = {
 
   campaignItemsById: Record<string, any>;
 
+  handleSetPlayerNotes: (notes: string) => Promise<void>;
+
+  handleSetCurrentHp: (currentHp: number) => Promise<void>;
+
   handleEquipmentChange: (equipment: any[]) => void | Promise<void>;
 
   handleSetHeroicInspiration: (value: boolean) => Promise<void>;
@@ -100,7 +104,9 @@ const CustomCharacterSheet = ({
   backTo,
   backLabel,
   campaignItemsById,
+  handleSetPlayerNotes,
   handleEquipmentChange,
+  handleSetCurrentHp,
   handleSetHeroicInspiration,
   handleSetDeathSaves,
   handleSetSpellSlotRemaining,
@@ -350,8 +356,8 @@ const CustomCharacterSheet = ({
 
   const renderNotesTab = () => (
     <PlayerNotesPanel
-      characterId={characterId}
-      initialValue={character.playerNotes}
+      value={character.playerNotes}
+      onSave={handleSetPlayerNotes}
     />
   );
 
@@ -380,6 +386,7 @@ const CustomCharacterSheet = ({
         <CharacterQuickStats
           currentHp={currentHp}
           maxHp={maxHp}
+          onCurrentHpChange={handleSetCurrentHp}
           armorClass={armorClass}
           initiative={dexModifier}
           speed={speed}
