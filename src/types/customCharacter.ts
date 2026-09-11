@@ -83,6 +83,7 @@ export type CustomCharacter = {
   id?: string;
 
   name: string;
+
   imageUrl?: string;
 
   buildMode: "custom";
@@ -90,21 +91,23 @@ export type CustomCharacter = {
   level?: number;
 
   className?: string;
+
   speciesName?: string;
+
   backgroundName?: string;
+
   alignment?: string;
 
-  /*
-   * Official character-sheet physical details.
-   *
-   * Strings are intentional. Values such as
-   * 6' 2", 180 lb, Unknown, etc. should all work.
-   */
   age?: string;
+
   height?: string;
+
   weight?: string;
+
   eyes?: string;
+
   skin?: string;
+
   hair?: string;
 
   abilityScores?: Record<
@@ -116,11 +119,16 @@ export type CustomCharacter = {
     armorClass?: number;
 
     currentHp?: number;
+
     maxHp?: number;
 
     speed?: number;
 
     proficiencyBonus?: number;
+
+    hitDie?: string;
+
+    hitDiceRemaining?: number;
   };
 
   customProficiencies?: CustomProficiencies;
@@ -135,15 +143,23 @@ export type CustomCharacter = {
 
   characterBackstory?: string;
 
-  /**
-   * Legacy field for previously-created
-   * custom characters.
-   */
   notes?: string;
 
   equipment?: CharacterEquipmentEntry[];
 
   money?: Money;
+
+  heroicInspiration?: boolean;
+
+  deathSaves?: {
+    successes: number;
+
+    failures: number;
+  };
+
+  conditions?: string[];
+
+  xp?: number;
 };
 
 export const customSkillDefinitions: Array<{

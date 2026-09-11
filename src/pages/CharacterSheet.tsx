@@ -25,17 +25,16 @@ import CharacterSheetHeader from "../features/character-sheet/components/Charact
 
 import CharacterQuickStats from "../features/character-sheet/components/CharacterQuickStats";
 
-import CharacterSheetTabs from "../features/character-sheet/components/CharacterSheetTabs";
+import CharacterSheetWorkspace from "../features/character-sheet/components/CharacterSheetWorkspace";
+
+import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
 
 import TraitGroupSection from "../features/character-sheet/components/TraitGroupSection";
-
-import OverviewTab from "../features/character-sheet/tabs/OverviewTab";
-
-import CombatTab from "../features/character-sheet/tabs/CombatTab";
 
 import { abilityFullLabels } from "../features/character-sheet/utils/characterSheetConstants";
 
 import {
+  formatLabel,
   formatModifier,
   formatSpellUsage,
 } from "../features/character-sheet/utils/characterSheetHelpers";
@@ -45,7 +44,7 @@ const CharacterSheet = () => {
 
   const location = useLocation();
 
-  const [activeTab, setActiveTab] = useState<CharacterSheetTab>("overview");
+  const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
 
   const [openTraitGroups, setOpenTraitGroups] = useState<
     Record<TraitGroupKey, boolean>
@@ -64,14 +63,22 @@ const CharacterSheet = () => {
     loading,
     error,
     campaignItemsById,
+
     handleEquipmentChange,
+
+    handleSetHeroicInspiration,
+
+    handleSetDeathSaves,
+
     handleApplyDecision,
+
     handleCompleteLevelUp,
   } = useCharacterSheetData(characterId);
 
   const navigationState = location.state as
     | {
         from?: string;
+
         label?: string;
       }
     | undefined;
@@ -91,7 +98,7 @@ const CharacterSheet = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-100">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-7xl">
           <p className="text-sm text-zinc-400">Loading character...</p>
         </div>
       </div>
@@ -101,7 +108,7 @@ const CharacterSheet = () => {
   if (error || !character) {
     return (
       <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-100">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-7xl">
           <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-300">
             {error || "Something went wrong."}
           </div>
@@ -126,6 +133,8 @@ const CharacterSheet = () => {
         backLabel={backLabel}
         campaignItemsById={campaignItemsById}
         handleEquipmentChange={handleEquipmentChange}
+        handleSetHeroicInspiration={handleSetHeroicInspiration}
+        handleSetDeathSaves={handleSetDeathSaves}
       />
     );
   }
@@ -133,7 +142,7 @@ const CharacterSheet = () => {
   if (!derived) {
     return (
       <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-100">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-7xl">
           <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-300">
             Could not derive character data.
           </div>
@@ -142,13 +151,6 @@ const CharacterSheet = () => {
     );
   }
 
-  /*
-   * Pull the guided character's persistent
-   * proficiencies from its class definition.
-   *
-   * The defensive alternatives let this keep
-   * working while your class schema evolves.
-   */
   const classDefinition = classesById[character.classId] as any;
 
   const savingThrowProficiencies: AbilityKey[] =
@@ -168,9 +170,203 @@ const CharacterSheet = () => {
     classDefinition?.proficiencies?.weapons ??
     [];
 
+  const insight = derived.skillRows.find((skill) => skill.id === "insight");
+
+  const investigation = derived.skillRows.find(
+    (skill) => skill.id === "investigation",
+  );
+
+  const hitDie = classDefinition?.hitDie ?? classDefinition?.hitDice;
+
+  const hitDieText =
+    typeof hitDie === "number"
+      ? `d${hitDie}`
+      : typeof hitDie === "string"
+        ? hitDie.startsWith("d")
+          ? hitDie
+          : `d${hitDie}`
+        : undefined;
+
+  const hitDiceLabel = hitDieText
+    ? `${character.hitDiceRemaining ?? character.level}/${character.level} ${hitDieText}`
+    : undefined;
+
+  const guidedSpellSlots = Object.entries(derived.spellSlots).map(
+    ([level, value]) => ({
+      level: Number(level),
+
+      max: Number(value),
+    }),
+  );
+
+  /* =========================================================
+     PLAY PANEL — ATTACKS
+  ========================================================= */
+
+  const weaponAttacks = derived.equippedWeaponAttacks.map((attack) => ({
+    id: attack.instanceId,
+
+    name: attack.name,
+
+    attackBonus: attack.attackBonus,
+
+    damage: attack.damage,
+
+    isOffHand: attack.isOffHand,
+
+    isThrown: attack.isThrown,
+
+    isTwoHanded: attack.isTwoHanded,
+
+    properties: attack.properties,
+
+    ability: attack.ability as AbilityKey,
+
+    mastery: attack.mastery,
+
+    range: attack.range
+      ? {
+          normal: attack.range.normal,
+
+          long: attack.range.long,
+        }
+      : null,
+  }));
+
+  const specialAttacks =
+    derived.dragonbornAncestryName && derived.dragonbornDamageType
+      ? [
+          {
+            id: "dragonborn-breath-weapon",
+
+            name: "Breath Weapon",
+
+            saveDc: derived.dragonbornBreathWeaponDc ?? undefined,
+
+            damage: `${derived.dragonbornBreathWeaponDamage ?? "—"} ${formatLabel(
+              derived.dragonbornDamageType,
+            )}`,
+
+            isSpecial: true,
+
+            rangeLabel: "15 ft cone / 30 × 5 ft line",
+
+            usageLabel: `${derived.proficiencyBonus} / Long Rest`,
+          },
+        ]
+      : [];
+
+  const attacks = [...weaponAttacks, ...specialAttacks];
+
+  /* =========================================================
+     PLAY PANEL — SPELLS
+  ========================================================= */
+
+  const combinedSpells = [
+    ...derived.groupedTieflingLegacySpells.flatMap((group) => group.spells),
+
+    ...derived.groupedSpells.flatMap((group) => group.spells),
+  ];
+
+  const seenSpellIds = new Set<string>();
+
+  const quickSpells = combinedSpells.filter((spell) => {
+    const id = spell.spellId ?? spell.id ?? spell.name;
+
+    if (seenSpellIds.has(id)) {
+      return false;
+    }
+
+    seenSpellIds.add(id);
+
+    return true;
+  });
+
+  /* =========================================================
+     FEATURES → USAGE CONTEXT
+  ========================================================= */
+
+  const features = derived.traitGroups.flatMap((group) =>
+    group.traits.map((trait: any) => ({
+      id: trait.id ?? `${group.key}-${trait.name}`,
+
+      name: trait.name ?? "Feature",
+
+      description: trait.description,
+    })),
+  );
+
+  const specialAttackNames = new Set(
+    specialAttacks.map((attack) => attack.name.toLowerCase()),
+  );
+
+  const rawCharacterActions = features
+    .filter((feature) => {
+      const text = feature.description?.toLowerCase() ?? "";
+
+      return text.includes("as an action") || text.includes("take an action");
+    })
+    .map((feature) => ({
+      id: `action-${feature.id}`,
+
+      name: feature.name,
+
+      description: feature.description,
+    }));
+
+  const characterActions = rawCharacterActions.filter(
+    (action) => !specialAttackNames.has(action.name.toLowerCase()),
+  );
+
+  const characterBonusActions = features
+    .filter((feature) =>
+      feature.description?.toLowerCase().includes("bonus action"),
+    )
+    .map((feature) => ({
+      id: `bonus-${feature.id}`,
+
+      name: feature.name,
+
+      description: feature.description,
+    }));
+
+  const characterReactions = features
+    .filter((feature) =>
+      feature.description?.toLowerCase().includes("reaction"),
+    )
+    .map((feature) => ({
+      id: `reaction-${feature.id}`,
+
+      name: feature.name,
+
+      description: feature.description,
+    }));
+
+  const activatedFeatureNames = new Set(
+    [...characterActions, ...characterBonusActions, ...characterReactions].map(
+      (item) => item.name.toLowerCase(),
+    ),
+  );
+
+  const combatOptions = derived.combatFeatures
+    .filter((feature) => !activatedFeatureNames.has(feature.name.toLowerCase()))
+    .map((feature) => ({
+      id: `combat-option-${feature.id}`,
+
+      name: feature.name,
+
+      description: feature.summary,
+
+      value: feature.value ?? undefined,
+    }));
+
+  /* =========================================================
+     DETAIL TABS
+  ========================================================= */
+
   const renderFeaturesTab = () => (
     <div className="space-y-4">
-      {derived.pendingSteps.length > 0 && (
+      {derived.pendingSteps.length > 0 ? (
         <SectionCard title="Level Up">
           <div className="space-y-3">
             {derived.pendingSteps.map((step) => (
@@ -196,7 +392,7 @@ const CharacterSheet = () => {
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {step.type === "subclass-choice" && (
+                    {step.type === "subclass-choice" ? (
                       <button
                         type="button"
                         onClick={() =>
@@ -204,13 +400,13 @@ const CharacterSheet = () => {
                             subclassId: "assassin",
                           })
                         }
-                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black"
                       >
                         Choose
                       </button>
-                    )}
+                    ) : null}
 
-                    {step.type === "feat-choice" && (
+                    {step.type === "feat-choice" ? (
                       <button
                         type="button"
                         onClick={() =>
@@ -218,13 +414,13 @@ const CharacterSheet = () => {
                             featId: "alert",
                           })
                         }
-                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black"
                       >
                         Choose
                       </button>
-                    )}
+                    ) : null}
 
-                    {step.type === "expertise-choice" && (
+                    {step.type === "expertise-choice" ? (
                       <button
                         type="button"
                         onClick={() =>
@@ -232,13 +428,13 @@ const CharacterSheet = () => {
                             expertise: ["stealth", "perception"],
                           })
                         }
-                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black"
                       >
                         Choose
                       </button>
-                    )}
+                    ) : null}
 
-                    {step.type === "language-choice" && (
+                    {step.type === "language-choice" ? (
                       <button
                         type="button"
                         onClick={() =>
@@ -246,13 +442,13 @@ const CharacterSheet = () => {
                             language: "elvish",
                           })
                         }
-                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black"
                       >
                         Choose
                       </button>
-                    )}
+                    ) : null}
 
-                    {step.type === "weapon-mastery-choice" && (
+                    {step.type === "weapon-mastery-choice" ? (
                       <button
                         type="button"
                         onClick={() =>
@@ -260,11 +456,11 @@ const CharacterSheet = () => {
                             weaponMastery: ["dagger", "shortsword"],
                           })
                         }
-                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-200"
+                        className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-black"
                       >
                         Choose
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -273,13 +469,13 @@ const CharacterSheet = () => {
             <button
               type="button"
               onClick={handleCompleteLevelUp}
-              className="w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black transition hover:bg-emerald-400"
+              className="w-full rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-black"
             >
               Complete Level Up
             </button>
           </div>
         </SectionCard>
-      )}
+      ) : null}
 
       <SectionCard
         title="Features & Traits"
@@ -305,7 +501,7 @@ const CharacterSheet = () => {
             ))}
           </div>
         ) : (
-          <p className="text-xs text-zinc-600">No traits found yet.</p>
+          <p className="text-xs text-zinc-600">No traits found.</p>
         )}
       </SectionCard>
     </div>
@@ -325,42 +521,33 @@ const CharacterSheet = () => {
   };
 
   const renderNotesTab = () => (
-    <div className="space-y-4">
-      <SectionCard title="Notes">
-        {character.notes ? (
-          <p className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
-            {character.notes}
-          </p>
-        ) : (
-          <p className="text-xs text-zinc-600">No notes yet.</p>
-        )}
-      </SectionCard>
-    </div>
+    <SectionCard title="Notes">
+      {character.notes ? (
+        <p className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
+          {character.notes}
+        </p>
+      ) : (
+        <p className="text-xs text-zinc-600">No notes yet.</p>
+      )}
+    </SectionCard>
   );
 
   const hasAnySpells =
     derived.groupedSpells.length > 0 ||
     derived.groupedTieflingLegacySpells.length > 0;
 
-  const showSpellcastingPanel = Boolean(derived.activeSpellcasting);
-
   const renderSpellsTab = () => (
     <SectionCard title="Spells">
-      {showSpellcastingPanel || hasAnySpells ? (
+      {derived.activeSpellcasting || hasAnySpells ? (
         <div className="space-y-4">
-          {showSpellcastingPanel ? (
-            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {derived.activeSpellcasting ? (
+            <div className="grid gap-2 sm:grid-cols-3">
               <SpellStat
                 label="Ability"
                 value={
                   derived.spellcastingAbility
                     ? abilityFullLabels[derived.spellcastingAbility]
                     : "—"
-                }
-                subValue={
-                  derived.spellcastingAbilityMod !== null
-                    ? `Mod ${formatModifier(derived.spellcastingAbilityMod)}`
-                    : undefined
                 }
               />
 
@@ -374,64 +561,39 @@ const CharacterSheet = () => {
                     : "—"
                 }
               />
-
-              <SpellStat
-                label="Source"
-                value={derived.subclassName ?? derived.className}
-              />
             </div>
           ) : null}
 
           <div className="rounded-xl bg-zinc-900/60 p-3">
             <p className="text-xs font-semibold text-zinc-300">Spell Slots</p>
 
-            {Object.keys(derived.spellSlots).length > 0 ? (
-              <div className="mt-2 grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-9">
-                {Object.entries(derived.spellSlots).map(
-                  ([slotLevel, count]) => (
-                    <div
-                      key={slotLevel}
-                      className="rounded-lg bg-black/20 px-2 py-2 text-center"
-                    >
-                      <p className="text-[9px] text-zinc-600">L{slotLevel}</p>
-
-                      <p className="mt-1 text-sm font-bold text-white">
-                        {count}
-                      </p>
-                    </div>
-                  ),
-                )}
-              </div>
-            ) : (
-              <p className="mt-2 text-xs text-zinc-600">
-                No spell slots available.
-              </p>
-            )}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {Object.entries(derived.spellSlots).map(([level, count]) => (
+                <span
+                  key={level}
+                  className="rounded-lg bg-black/20 px-2 py-1 text-[10px] text-zinc-300"
+                >
+                  L{level}: <strong>{count}</strong>
+                </span>
+              ))}
+            </div>
           </div>
 
-          {derived.groupedTieflingLegacySpells.length > 0 ? (
-            <div className="space-y-3">
-              {derived.groupedTieflingLegacySpells.map((group) => (
-                <SpellGroup
-                  key={`tiefling-${group.level}`}
-                  title={group.title}
-                  spells={group.spells}
-                />
-              ))}
-            </div>
-          ) : null}
+          {derived.groupedTieflingLegacySpells.map((group) => (
+            <SpellGroup
+              key={`tiefling-${group.level}`}
+              title={group.title}
+              spells={group.spells}
+            />
+          ))}
 
-          {derived.groupedSpells.length > 0 ? (
-            <div className="space-y-3">
-              {derived.groupedSpells.map((group) => (
-                <SpellGroup
-                  key={group.level}
-                  title={group.title}
-                  spells={group.spells}
-                />
-              ))}
-            </div>
-          ) : null}
+          {derived.groupedSpells.map((group) => (
+            <SpellGroup
+              key={group.level}
+              title={group.title}
+              spells={group.spells}
+            />
+          ))}
         </div>
       ) : (
         <p className="text-xs text-zinc-600">
@@ -443,7 +605,7 @@ const CharacterSheet = () => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-5 lg:px-6">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 lg:px-6">
         <div className="mb-4">
           <Link
             to={backTo}
@@ -473,31 +635,82 @@ const CharacterSheet = () => {
           speed={derived.speed}
           proficiencyBonus={derived.proficiencyBonus}
           passivePerception={derived.passivePerception}
+          passiveInsight={insight ? 10 + insight.total : undefined}
+          passiveInvestigation={
+            investigation ? 10 + investigation.total : undefined
+          }
           abilityScores={derived.finalAbilityScores}
           savingThrowProficiencies={savingThrowProficiencies}
+          skills={derived.skillRows.map((skill) => ({
+            id: skill.id,
+
+            name: skill.name,
+
+            ability: skill.ability.toUpperCase(),
+
+            bonus: skill.total,
+
+            proficient: skill.proficient,
+
+            expertise: skill.expertise,
+          }))}
+          conditions={character.conditions ?? []}
+          defenses={derived.resistances.map(
+            (resistance) => `${formatLabel(resistance)} Resistance`,
+          )}
+          heroicInspiration={character.heroicInspiration ?? false}
+          onHeroicInspirationChange={handleSetHeroicInspiration}
+          deathSaves={{
+            successes:
+              character.deathSaves?.successes ??
+              character.deathSaveSuccesses ??
+              0,
+
+            failures:
+              character.deathSaves?.failures ??
+              character.deathSaveFailures ??
+              0,
+          }}
+          onDeathSavesChange={handleSetDeathSaves}
+          hitDiceLabel={hitDiceLabel}
+          spellSlots={guidedSpellSlots}
+          progress={{
+            level: derived.xpProgress.level,
+
+            xp: derived.xp,
+
+            nextLevelXp: derived.xpProgress.nextLevelXp,
+
+            progressPercent: derived.xpProgress.progressPercent,
+          }}
           languages={derived.languages}
           armorProficiencies={armorProficiencies}
           weaponProficiencies={weaponProficiencies}
           toolProficiencies={derived.toolProficiencies}
         />
 
-        <CharacterSheetTabs activeTab={activeTab} onChange={setActiveTab} />
+        <CharacterSheetWorkspace
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          playPanel={
+            <OverviewDashboard
+              attacks={attacks}
+              spells={quickSpells}
+              actions={characterActions}
+              bonusActions={characterBonusActions}
+              reactions={characterReactions}
+              combatOptions={combatOptions}
+            />
+          }
+        >
+          {activeTab === "spells" ? renderSpellsTab() : null}
 
-        {activeTab === "overview" && (
-          <OverviewTab character={character} derived={derived} />
-        )}
+          {activeTab === "inventory" ? renderInventoryTab() : null}
 
-        {activeTab === "combat" && (
-          <CombatTab character={character} derived={derived} />
-        )}
+          {activeTab === "features" ? renderFeaturesTab() : null}
 
-        {activeTab === "features" && renderFeaturesTab()}
-
-        {activeTab === "inventory" && renderInventoryTab()}
-
-        {activeTab === "spells" && renderSpellsTab()}
-
-        {activeTab === "notes" && renderNotesTab()}
+          {activeTab === "notes" ? renderNotesTab() : null}
+        </CharacterSheetWorkspace>
       </div>
     </div>
   );
@@ -506,24 +719,17 @@ const CharacterSheet = () => {
 const SpellStat = ({
   label,
   value,
-  subValue,
 }: {
   label: string;
 
   value: string | number;
-
-  subValue?: string;
 }) => (
-  <div className="rounded-xl bg-zinc-900/60 px-3 py-2.5">
-    <p className="text-[9px] uppercase tracking-[0.12em] text-zinc-600">
+  <div className="rounded-xl bg-zinc-900/60 px-3 py-2">
+    <p className="text-[9px] uppercase tracking-[0.1em] text-zinc-600">
       {label}
     </p>
 
     <p className="mt-1 text-sm font-semibold text-white">{value}</p>
-
-    {subValue ? (
-      <p className="mt-1 text-[9px] text-zinc-600">{subValue}</p>
-    ) : null}
   </div>
 );
 
@@ -536,47 +742,24 @@ const SpellGroup = ({
   spells: any[];
 }) => (
   <div className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
-    <div className="mb-2 flex items-center justify-between gap-3">
-      <h3 className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
-        {title}
-      </h3>
-
-      <span className="text-[9px] text-zinc-600">
-        {spells.length} spell
-        {spells.length === 1 ? "" : "s"}
-      </span>
-    </div>
+    <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+      {title}
+    </h3>
 
     <div className="flex flex-wrap gap-2">
-      {spells.map((spell) => {
-        const usageLabel = formatSpellUsage(spell.usage);
+      {spells.map((spell) => (
+        <SpellTooltip key={spell.spellId} spell={spell}>
+          <div className="rounded-lg border border-white/10 bg-zinc-900/60 px-2.5 py-2">
+            <p className="text-[10px] font-semibold text-white">{spell.name}</p>
 
-        return (
-          <SpellTooltip key={spell.spellId} spell={spell}>
-            <div className="min-w-[145px] rounded-xl border border-white/10 bg-zinc-900/70 px-3 py-2.5 transition hover:bg-zinc-900">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-medium text-white">
-                    {spell.name}
-                  </p>
-
-                  {spell.school ? (
-                    <p className="mt-1 text-[9px] text-zinc-600">
-                      {spell.school}
-                    </p>
-                  ) : null}
-                </div>
-
-                {usageLabel ? (
-                  <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] text-emerald-300">
-                    {usageLabel}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-          </SpellTooltip>
-        );
-      })}
+            {formatSpellUsage(spell.usage) ? (
+              <p className="mt-0.5 text-[8px] text-zinc-600">
+                {formatSpellUsage(spell.usage)}
+              </p>
+            ) : null}
+          </div>
+        </SpellTooltip>
+      ))}
     </div>
   </div>
 );

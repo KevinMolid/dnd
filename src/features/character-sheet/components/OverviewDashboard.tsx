@@ -1,40 +1,54 @@
-import type { ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import SpellTooltip from "../../../components/SpellTooltip";
 
-import type { Spell } from "../../../rulesets/dnd/dnd2024/types";
+import { abilityLabels } from "../utils/characterSheetConstants";
+
+import { formatLabel, formatModifier } from "../utils/characterSheetHelpers";
+
+import type { AbilityKey, Spell } from "../../../rulesets/dnd/dnd2024/types";
 
 /* =========================================================
    TYPES
 ========================================================= */
 
-type OverviewSkill = {
-  id: string;
-
-  name: string;
-
-  ability: string;
-
-  bonus: number;
-
-  proficient?: boolean;
-
-  expertise?: boolean;
-};
-
-type OverviewAttack = {
+export type OverviewAttack = {
   id: string;
 
   name: string;
 
   attackBonus?: number;
 
+  saveDc?: number;
+
   damage?: string;
 
-  detail?: string;
+  isOffHand?: boolean;
+
+  isThrown?: boolean;
+
+  isTwoHanded?: boolean;
+
+  isSpecial?: boolean;
+
+  properties?: string[];
+
+  ability?: AbilityKey;
+
+  mastery?: string | null;
+
+  range?: {
+    normal: number;
+
+    long?: number | null;
+  } | null;
+
+  rangeLabel?: string;
+
+  usageLabel?: string;
 };
 
-type OverviewSpell = Partial<Spell> & {
+export type OverviewSpell = Partial<Spell> & {
   id?: string;
 
   spellId?: string;
@@ -42,251 +56,500 @@ type OverviewSpell = Partial<Spell> & {
   name: string;
 
   level?: number;
-
-  school?: string;
 };
 
-type OverviewFeature = {
-  id: string;
-
-  name: string;
-
-  source?: string;
-
-  description?: string;
-
-  resourceLabel?: string;
-};
-
-type OverviewAction = {
+export type OverviewAction = {
   id: string;
 
   name: string;
 
   description?: string;
+
+  value?: string;
 };
 
-type OverviewProgress = {
-  level: number;
-
-  xp: number;
-
-  nextLevelXp: number | null;
-
-  progressPercent: number;
-
-  xpRemaining?: number;
-};
-
-type OverviewSense = {
-  id: string;
-
-  label: string;
-
-  value: string | number;
-};
-
-type OverviewDefense = {
-  id: string;
-
-  label: string;
-
-  value: string;
-};
-
-type OverviewSpellSlot = {
-  level: number;
-
-  remaining: number;
-
-  max: number;
-};
-
-type OverviewDeathSaves = {
-  successes: number;
-
-  failures: number;
-};
+type PlayTab = "attacks" | "spells" | "actions";
 
 type OverviewDashboardProps = {
-  skills: OverviewSkill[];
-
   attacks?: OverviewAttack[];
 
   spells?: OverviewSpell[];
-
-  conditions?: string[];
-
-  features?: OverviewFeature[];
 
   actions?: OverviewAction[];
 
   bonusActions?: OverviewAction[];
 
-  moneyLabel?: string;
+  reactions?: OverviewAction[];
 
-  progress?: OverviewProgress | null;
+  combatOptions?: OverviewAction[];
+};
 
-  heroicInspiration?: boolean;
+type AttackType = "melee" | "thrown" | "ranged" | "special";
 
-  deathSaves?: OverviewDeathSaves;
+type AttackRole = "main-hand" | "off-hand" | "two-handed" | "standard";
 
-  hitDiceLabel?: string;
+/* =========================================================
+   PLAY TABS
+========================================================= */
 
-  spellSlots?: OverviewSpellSlot[];
+const playTabs: Array<{
+  id: PlayTab;
 
-  senses?: OverviewSense[];
+  label: string;
+}> = [
+  {
+    id: "attacks",
+    label: "Attacks",
+  },
+  {
+    id: "spells",
+    label: "Spells",
+  },
+  {
+    id: "actions",
+    label: "Actions",
+  },
+];
 
-  defenses?: OverviewDefense[];
+/* =========================================================
+   ATTACK HELPERS
+========================================================= */
+
+const getAttackType = (attack: OverviewAttack): AttackType => {
+  if (attack.isSpecial) {
+    return "special";
+  }
+
+  if (attack.isThrown) {
+    return "thrown";
+  }
+
+  const properties =
+    attack.properties?.map((property) => property.toLowerCase()) ?? [];
+
+  if (properties.includes("ammunition") || attack.range) {
+    return "ranged";
+  }
+
+  return "melee";
+};
+
+const getAttackRole = (attack: OverviewAttack): AttackRole => {
+  if (attack.isSpecial) {
+    return "standard";
+  }
+
+  if (attack.isOffHand) {
+    return "off-hand";
+  }
+
+  if (attack.isTwoHanded) {
+    return "two-handed";
+  }
+
+  if (!attack.isThrown && getAttackType(attack) === "melee") {
+    return "main-hand";
+  }
+
+  return "standard";
+};
+
+const attackRoleLabels: Record<AttackRole, string> = {
+  "main-hand": "Main Hand",
+
+  "off-hand": "Off Hand",
+
+  "two-handed": "Two-Handed",
+
+  standard: "",
+};
+
+const attackTypeLabels: Record<AttackType, string> = {
+  melee: "Melee",
+
+  thrown: "Thrown",
+
+  ranged: "Ranged",
+
+  special: "Special",
+};
+
+const getAttackSortWeight = (attack: OverviewAttack) => {
+  if (attack.isSpecial) {
+    return 5;
+  }
+
+  const role = getAttackRole(attack);
+
+  const type = getAttackType(attack);
+
+  if (role === "main-hand") {
+    return 0;
+  }
+
+  if (type === "melee") {
+    return 1;
+  }
+
+  if (role === "off-hand" && type !== "thrown") {
+    return 2;
+  }
+
+  if (type === "thrown") {
+    return 3;
+  }
+
+  return 4;
+};
+
+const formatAttackRange = (attack: OverviewAttack) => {
+  if (attack.rangeLabel) {
+    return attack.rangeLabel;
+  }
+
+  const type = getAttackType(attack);
+
+  if (attack.range) {
+    const normal = attack.range.normal;
+
+    const long = attack.range.long;
+
+    if (long) {
+      return `${normal}/${long} ft`;
+    }
+
+    return `${normal} ft`;
+  }
+
+  if (type === "melee") {
+    return "5 ft";
+  }
+
+  return null;
 };
 
 /* =========================================================
-   HELPERS
+   MAIN
 ========================================================= */
 
-const formatModifier = (value: number) =>
-  value >= 0 ? `+${value}` : `${value}`;
-
-const clamp = (value: number, min: number, max: number) =>
-  Math.max(min, Math.min(max, value));
-
 const OverviewDashboard = ({
-  skills,
-
   attacks = [],
 
   spells = [],
-
-  conditions = [],
-
-  features = [],
 
   actions = [],
 
   bonusActions = [],
 
-  moneyLabel,
+  reactions = [],
 
-  progress,
-
-  heroicInspiration,
-
-  deathSaves,
-
-  hitDiceLabel,
-
-  spellSlots = [],
-
-  senses = [],
-
-  defenses = [],
+  combatOptions = [],
 }: OverviewDashboardProps) => {
-  const visibleAttacks = attacks.slice(0, 5);
-
-  const visibleSpells = spells.slice(0, 10);
-
-  const visibleFeatures = features.slice(0, 8);
-
-  const visibleActions = actions.slice(0, 12);
-
-  const visibleBonusActions = bonusActions.slice(0, 8);
-
-  const visibleSpellSlots = spellSlots.filter((slot) => slot.max > 0);
-
-  const hasStatusResources =
-    conditions.length > 0 ||
-    heroicInspiration !== undefined ||
-    Boolean(deathSaves) ||
-    Boolean(hitDiceLabel) ||
-    Boolean(moneyLabel) ||
-    Boolean(progress);
-
-  const hasSensesOrDefenses = senses.length > 0 || defenses.length > 0;
+  const [activePlayTab, setActivePlayTab] = useState<PlayTab>("attacks");
 
   return (
-    <div className="space-y-3">
-      {/* =====================================================
-          PRIMARY PLAY ROW
-          ATTACKS + QUICK SPELLS
-      ===================================================== */}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b border-white/10 bg-black/15 px-2">
+        <div className="flex">
+          {playTabs.map((tab) => {
+            const active = activePlayTab === tab.id;
 
-      <div className="grid items-stretch gap-3 lg:grid-cols-2">
-        {/* ATTACKS */}
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActivePlayTab(tab.id)}
+                className={`relative px-3 py-3 text-[10px] font-semibold transition ${
+                  active ? "text-white" : "text-zinc-500 hover:text-zinc-200"
+                }`}
+              >
+                {tab.label}
 
-        <CompactSection title="Attacks" className="h-full">
-          {visibleAttacks.length > 0 ? (
-            <div className="divide-y divide-white/[0.06]">
-              {visibleAttacks.map((attack) => (
-                <div
-                  key={attack.id}
-                  className="grid min-h-[42px] grid-cols-[minmax(0,1fr)_48px_minmax(92px,auto)] items-center gap-3 py-2 first:pt-0 last:pb-0"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold text-white">
-                      {attack.name}
-                    </p>
+                <span
+                  className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full ${
+                    active ? "bg-white" : "bg-transparent"
+                  }`}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
-                    {attack.detail ? (
-                      <p className="mt-0.5 truncate text-[9px] text-zinc-500">
-                        {attack.detail}
-                      </p>
-                    ) : null}
-                  </div>
+      <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
+        {activePlayTab === "attacks" ? (
+          <AttacksPanel attacks={attacks} />
+        ) : null}
 
-                  <div className="text-right">
-                    <MetaLabel>Hit</MetaLabel>
+        {activePlayTab === "spells" ? <SpellsPanel spells={spells} /> : null}
 
-                    <p className="mt-0.5 text-sm font-bold text-white">
-                      {typeof attack.attackBonus === "number"
-                        ? formatModifier(attack.attackBonus)
-                        : "—"}
-                    </p>
-                  </div>
+        {activePlayTab === "actions" ? (
+          <ActionsPanel
+            actions={actions}
+            bonusActions={bonusActions}
+            reactions={reactions}
+            combatOptions={combatOptions}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+};
 
-                  <div className="text-right">
-                    <MetaLabel>Damage</MetaLabel>
+/* =========================================================
+   ATTACKS
+========================================================= */
 
-                    <p className="mt-0.5 whitespace-nowrap text-xs font-semibold text-zinc-200">
-                      {attack.damage || "—"}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyText>No attacks available.</EmptyText>
-          )}
-        </CompactSection>
+const AttacksPanel = ({ attacks }: { attacks: OverviewAttack[] }) => {
+  const sortedAttacks = useMemo(
+    () =>
+      attacks
+        .map((attack, originalIndex) => ({
+          attack,
 
-        {/* QUICK SPELLS */}
+          originalIndex,
+        }))
+        .sort((a, b) => {
+          const weightDifference =
+            getAttackSortWeight(a.attack) - getAttackSortWeight(b.attack);
 
-        <CompactSection
-          title="Quick Spells"
-          className="h-full"
-          right={
-            visibleSpellSlots.length > 0 ? (
-              <SpellSlotSummary slots={visibleSpellSlots} />
-            ) : undefined
+          if (weightDifference !== 0) {
+            return weightDifference;
+          }
+
+          return a.originalIndex - b.originalIndex;
+        })
+        .map((entry) => entry.attack),
+    [attacks],
+  );
+
+  return (
+    <PanelSection title="Character Attacks">
+      {sortedAttacks.length > 0 ? (
+        <div className="divide-y divide-white/[0.07]">
+          {sortedAttacks.map((attack) => (
+            <AttackRow key={attack.id} attack={attack} />
+          ))}
+        </div>
+      ) : (
+        <EmptyText>No attacks available.</EmptyText>
+      )}
+    </PanelSection>
+  );
+};
+
+const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
+  const role = getAttackRole(attack);
+
+  const type = getAttackType(attack);
+
+  const range = formatAttackRange(attack);
+
+  const properties = attack.properties ?? [];
+
+  const hiddenProperties = new Set([
+    "thrown",
+    "two-handed",
+    "ammunition",
+    "range",
+  ]);
+
+  const secondaryProperties = properties.filter(
+    (property) => !hiddenProperties.has(property.toLowerCase()),
+  );
+
+  const resolutionLabel = typeof attack.saveDc === "number" ? "Save" : "To Hit";
+
+  const resolutionValue =
+    typeof attack.saveDc === "number"
+      ? `DC ${attack.saveDc}`
+      : typeof attack.attackBonus === "number"
+        ? formatModifier(attack.attackBonus)
+        : "—";
+
+  return (
+    <div className="py-3 first:pt-0 last:pb-0">
+      {/* PRIMARY */}
+
+      <div className="grid grid-cols-[minmax(0,1fr)_46px_88px] items-end gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[11px] font-semibold text-white">
+            {attack.name}
+          </p>
+        </div>
+
+        <div className="text-right">
+          <TinyLabel>{resolutionLabel}</TinyLabel>
+
+          <p className="mt-0.5 text-sm font-bold leading-none text-white">
+            {resolutionValue}
+          </p>
+        </div>
+
+        <div className="text-right">
+          <TinyLabel>Damage</TinyLabel>
+
+          <p className="mt-0.5 whitespace-nowrap text-[10px] font-bold leading-none text-zinc-100">
+            {attack.damage ?? "—"}
+          </p>
+        </div>
+      </div>
+
+      {/* USE / RANGE */}
+
+      <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[8px] font-medium">
+        {attackRoleLabels[role] ? (
+          <>
+            <AttackRoleLabel role={role}>
+              {attackRoleLabels[role]}
+            </AttackRoleLabel>
+
+            <Separator />
+          </>
+        ) : null}
+
+        <span
+          className={
+            type === "ranged" || type === "thrown"
+              ? "text-sky-300/80"
+              : type === "special"
+                ? "text-violet-300/80"
+                : "text-zinc-400"
           }
         >
-          {visibleSpells.length > 0 ? (
+          {attackTypeLabels[type]}
+        </span>
+
+        {range ? (
+          <>
+            <Separator />
+
+            <span className="font-semibold text-zinc-300">{range}</span>
+          </>
+        ) : null}
+      </div>
+
+      {/* SECONDARY */}
+
+      {attack.ability ||
+      attack.mastery ||
+      attack.usageLabel ||
+      secondaryProperties.length > 0 ? (
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[7px] text-zinc-600">
+          {attack.ability ? <span>{abilityLabels[attack.ability]}</span> : null}
+
+          {attack.ability && attack.mastery ? <Separator /> : null}
+
+          {attack.mastery ? (
+            <span>
+              Mastery{" "}
+              <strong className="font-medium text-zinc-500">
+                {formatLabel(attack.mastery)}
+              </strong>
+            </span>
+          ) : null}
+
+          {(attack.ability || attack.mastery) && attack.usageLabel ? (
+            <Separator />
+          ) : null}
+
+          {attack.usageLabel ? (
+            <span className="text-zinc-500">{attack.usageLabel}</span>
+          ) : null}
+
+          {(attack.ability || attack.mastery || attack.usageLabel) &&
+          secondaryProperties.length > 0 ? (
+            <Separator />
+          ) : null}
+
+          {secondaryProperties.length > 0 ? (
+            <span className="truncate">
+              {secondaryProperties.map(formatLabel).join(" · ")}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const AttackRoleLabel = ({
+  role,
+  children,
+}: {
+  role: AttackRole;
+
+  children: ReactNode;
+}) => {
+  const className =
+    role === "off-hand"
+      ? "text-amber-300/80"
+      : role === "two-handed"
+        ? "text-violet-300/75"
+        : "text-zinc-400";
+
+  return (
+    <span
+      className={`text-[7px] font-bold uppercase tracking-[0.08em] ${className}`}
+    >
+      {children}
+    </span>
+  );
+};
+
+const Separator = () => <span className="text-zinc-700">·</span>;
+
+/* =========================================================
+   SPELLS
+========================================================= */
+
+const SpellsPanel = ({ spells }: { spells: OverviewSpell[] }) => {
+  const sorted = [...spells].sort(
+    (a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name),
+  );
+
+  const grouped = sorted.reduce<Record<number, OverviewSpell[]>>(
+    (groups, spell) => {
+      const level = spell.level ?? 0;
+
+      if (!groups[level]) {
+        groups[level] = [];
+      }
+
+      groups[level].push(spell);
+
+      return groups;
+    },
+    {},
+  );
+
+  return (
+    <div>
+      {sorted.length > 0 ? (
+        Object.entries(grouped).map(([level, levelSpells]) => (
+          <section
+            key={level}
+            className="border-b border-white/[0.06] p-3 last:border-b-0"
+          >
+            <h3 className="mb-2 text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+              {Number(level) === 0 ? "Cantrips" : `Level ${level}`}
+            </h3>
+
             <div className="flex flex-wrap gap-1.5">
-              {visibleSpells.map((spell, index) => (
+              {levelSpells.map((spell, index) => (
                 <SpellTooltip
                   key={spell.spellId ?? spell.id ?? `${spell.name}-${index}`}
                   spell={spell}
                 >
-                  <div className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/[0.07] bg-zinc-900/60 px-2.5 py-1.5 transition hover:border-white/15 hover:bg-zinc-800/80">
-                    <span className="whitespace-nowrap text-[11px] font-semibold text-white">
+                  <div className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5 transition hover:border-white/15 hover:bg-white/[0.05]">
+                    <span className="whitespace-nowrap text-[9px] font-semibold text-white">
                       {spell.name}
                     </span>
-
-                    <SpellLevelPill level={spell.level} />
 
                     {spell.concentration ? (
                       <span
                         title="Concentration"
-                        className="text-[8px] font-bold uppercase text-fuchsia-400"
+                        className="text-[7px] font-bold text-fuchsia-400"
                       >
                         C
                       </span>
@@ -295,7 +558,7 @@ const OverviewDashboard = ({
                     {spell.ritual ? (
                       <span
                         title="Ritual"
-                        className="text-[8px] font-bold uppercase text-sky-400"
+                        className="text-[7px] font-bold text-sky-400"
                       >
                         R
                       </span>
@@ -304,480 +567,139 @@ const OverviewDashboard = ({
                 </SpellTooltip>
               ))}
             </div>
-          ) : (
-            <EmptyText>No spells available.</EmptyText>
-          )}
-        </CompactSection>
-      </div>
-
-      {/* =====================================================
-          SECONDARY PLAY ROW
-          ACTIONS + BONUS ACTIONS + STATUS
-      ===================================================== */}
-
-      <div className="grid items-stretch gap-3 lg:grid-cols-3">
-        {/* ACTIONS */}
-
-        <CompactSection title="Actions" className="h-full">
-          {visibleActions.length > 0 ? (
-            <ActionGrid actions={visibleActions} />
-          ) : (
-            <EmptyText>No actions available.</EmptyText>
-          )}
-        </CompactSection>
-
-        {/* BONUS ACTIONS */}
-
-        <CompactSection title="Bonus Actions" className="h-full">
-          {visibleBonusActions.length > 0 ? (
-            <ActionGrid actions={visibleBonusActions} />
-          ) : (
-            <EmptyText>No bonus actions available.</EmptyText>
-          )}
-        </CompactSection>
-
-        {/* STATUS + RESOURCES */}
-
-        <CompactSection title="Status & Resources" className="h-full">
-          {hasStatusResources ? (
-            <div className="space-y-2.5">
-              {/* CONDITIONS */}
-
-              <StatusBlock label="Conditions">
-                {conditions.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {conditions.map((condition) => (
-                      <span
-                        key={condition}
-                        className="rounded-md border border-rose-500/20 bg-rose-500/[0.08] px-2 py-0.5 text-[9px] font-medium text-rose-300"
-                      >
-                        {condition}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="text-[10px] text-zinc-500">None</span>
-                )}
-              </StatusBlock>
-
-              {/* INSPIRATION */}
-
-              {heroicInspiration !== undefined ? (
-                <StatusBlock label="Heroic Inspiration">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`flex h-4 w-4 items-center justify-center rounded-full border text-[8px] ${
-                        heroicInspiration
-                          ? "border-amber-400/40 bg-amber-400/15 text-amber-300"
-                          : "border-white/15 text-zinc-600"
-                      }`}
-                    >
-                      {heroicInspiration ? "●" : ""}
-                    </span>
-
-                    <span
-                      className={`text-[10px] font-medium ${
-                        heroicInspiration ? "text-amber-300" : "text-zinc-500"
-                      }`}
-                    >
-                      {heroicInspiration ? "Available" : "Not available"}
-                    </span>
-                  </div>
-                </StatusBlock>
-              ) : null}
-
-              {/* DEATH SAVES */}
-
-              {deathSaves ? (
-                <StatusBlock label="Death Saves">
-                  <DeathSaveTracker
-                    successes={deathSaves.successes}
-                    failures={deathSaves.failures}
-                  />
-                </StatusBlock>
-              ) : null}
-
-              {/* HIT DICE */}
-
-              {hitDiceLabel ? (
-                <StatusBlock label="Hit Dice">
-                  <span className="text-[11px] font-semibold text-zinc-200">
-                    {hitDiceLabel}
-                  </span>
-                </StatusBlock>
-              ) : null}
-
-              {/* MONEY */}
-
-              {moneyLabel ? (
-                <StatusBlock label="Money">
-                  <span className="text-[11px] font-semibold text-zinc-200">
-                    {moneyLabel}
-                  </span>
-                </StatusBlock>
-              ) : null}
-
-              {/* XP */}
-
-              {progress ? (
-                <StatusBlock label="Experience">
-                  <div className="w-full">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-[10px] font-semibold text-zinc-200">
-                        {progress.xp}
-                        {progress.nextLevelXp !== null
-                          ? ` / ${progress.nextLevelXp}`
-                          : ""}
-                      </span>
-
-                      <span className="text-[8px] text-zinc-600">
-                        Level {progress.level}
-                      </span>
-                    </div>
-
-                    {progress.nextLevelXp !== null ? (
-                      <>
-                        <div className="mt-1 h-1 overflow-hidden rounded-full bg-zinc-800">
-                          <div
-                            className="h-full rounded-full bg-zinc-400"
-                            style={{
-                              width: `${clamp(
-                                progress.progressPercent,
-                                0,
-                                100,
-                              )}%`,
-                            }}
-                          />
-                        </div>
-
-                        {typeof progress.xpRemaining === "number" ? (
-                          <p className="mt-1 text-[8px] text-zinc-600">
-                            {progress.xpRemaining} XP to level{" "}
-                            {progress.level + 1}
-                          </p>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </div>
-                </StatusBlock>
-              ) : null}
-            </div>
-          ) : (
-            <EmptyText>No active status or resources.</EmptyText>
-          )}
-        </CompactSection>
-      </div>
-
-      {/* =====================================================
-          REFERENCE ROW
-          KEY FEATURES + SKILLS
-      ===================================================== */}
-
-      <div className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(330px,1fr)]">
-        {/* FEATURES */}
-
-        <CompactSection title="Key Features" className="h-full">
-          {visibleFeatures.length > 0 ? (
-            <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-              {visibleFeatures.map((feature) => (
-                <div
-                  key={feature.id}
-                  title={feature.description || undefined}
-                  className="rounded-lg bg-zinc-900/55 px-2.5 py-2"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate text-[11px] font-semibold text-white">
-                        {feature.name}
-                      </p>
-
-                      {feature.source ? (
-                        <p className="mt-0.5 truncate text-[8px] uppercase tracking-[0.08em] text-zinc-600">
-                          {feature.source}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {feature.resourceLabel ? (
-                      <span className="shrink-0 text-[10px] font-bold text-zinc-300">
-                        {feature.resourceLabel}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <EmptyText>No key features available.</EmptyText>
-          )}
-        </CompactSection>
-
-        {/* SKILLS */}
-
-        <CompactSection title="Skills" className="h-full">
-          <div className="grid grid-cols-2 gap-x-3">
-            {skills.map((skill) => (
-              <SkillRow key={skill.id} skill={skill} />
-            ))}
-          </div>
-        </CompactSection>
-      </div>
-
-      {/* =====================================================
-          SENSES + DEFENSES
-      ===================================================== */}
-
-      {hasSensesOrDefenses ? (
-        <div className="rounded-xl border border-white/10 bg-zinc-900/45 px-4 py-2.5">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            <span className="shrink-0 text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Senses & Defenses
-            </span>
-
-            {senses.map((sense) => (
-              <InlineStat
-                key={sense.id}
-                label={sense.label}
-                value={sense.value}
-              />
-            ))}
-
-            {defenses.map((defense) => (
-              <InlineStat
-                key={defense.id}
-                label={defense.label}
-                value={defense.value}
-              />
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-};
-
-/* =========================================================
-   SPELLS
-========================================================= */
-
-const SpellLevelPill = ({ level }: { level?: number }) => {
-  const label =
-    level === 0 ? "CANTRIP" : typeof level === "number" ? `L${level}` : "SPELL";
-
-  return (
-    <span className="rounded-full border border-white/10 bg-black/20 px-1.5 py-0.5 text-[7px] font-semibold uppercase tracking-[0.06em] text-zinc-500">
-      {label}
-    </span>
-  );
-};
-
-const SpellSlotSummary = ({ slots }: { slots: OverviewSpellSlot[] }) => (
-  <div className="flex flex-wrap justify-end gap-1">
-    {slots.map((slot) => (
-      <span
-        key={slot.level}
-        title={`Level ${slot.level} spell slots`}
-        className="inline-flex items-center gap-1 rounded-md border border-white/[0.07] bg-black/20 px-1.5 py-0.5 text-[8px]"
-      >
-        <span className="font-semibold text-zinc-500">L{slot.level}</span>
-
-        <span className="font-bold text-zinc-200">
-          {slot.remaining}/{slot.max}
-        </span>
-      </span>
-    ))}
-  </div>
-);
-
-/* =========================================================
-   DEATH SAVES
-========================================================= */
-
-const DeathSaveTracker = ({
-  successes,
-  failures,
-}: {
-  successes: number;
-
-  failures: number;
-}) => (
-  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-    <DeathSaveRow label="Success" value={successes} type="success" />
-
-    <DeathSaveRow label="Fail" value={failures} type="failure" />
-  </div>
-);
-
-const DeathSaveRow = ({
-  label,
-  value,
-  type,
-}: {
-  label: string;
-
-  value: number;
-
-  type: "success" | "failure";
-}) => {
-  const safeValue = clamp(value, 0, 3);
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[8px] text-zinc-500">{label}</span>
-
-      <div className="flex gap-1">
-        {[0, 1, 2].map((index) => {
-          const active = index < safeValue;
-
-          const activeClass =
-            type === "success"
-              ? "border-emerald-400/50 bg-emerald-400/20"
-              : "border-rose-400/50 bg-rose-400/20";
-
-          return (
-            <span
-              key={index}
-              className={`h-2.5 w-2.5 rounded-full border ${
-                active ? activeClass : "border-white/15 bg-transparent"
-              }`}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-};
-
-/* =========================================================
-   SKILLS
-========================================================= */
-
-const SkillRow = ({ skill }: { skill: OverviewSkill }) => (
-  <div className="flex min-h-[25px] min-w-0 items-center gap-1.5 border-b border-white/[0.035] px-0.5 py-1 last:border-b-0">
-    <div
-      className="flex w-3.5 shrink-0 justify-center"
-      title={
-        skill.expertise
-          ? "Expertise"
-          : skill.proficient
-            ? "Proficient"
-            : "Not proficient"
-      }
-    >
-      {skill.expertise ? (
-        <span className="text-[8px] font-bold tracking-[-2px] text-emerald-400">
-          ●●
-        </span>
-      ) : skill.proficient ? (
-        <span className="text-[8px] text-emerald-400">●</span>
+          </section>
+        ))
       ) : (
-        <span className="text-[8px] text-zinc-700">○</span>
+        <PanelSection title="Spells">
+          <EmptyText>This character has no spells.</EmptyText>
+        </PanelSection>
       )}
     </div>
-
-    <span className="min-w-0 flex-1 truncate text-[10px] font-medium text-zinc-300">
-      {skill.name}
-    </span>
-
-    <span className="w-7 shrink-0 text-right text-[11px] font-bold text-white">
-      {formatModifier(skill.bonus)}
-    </span>
-  </div>
-);
+  );
+};
 
 /* =========================================================
    ACTIONS
 ========================================================= */
 
-const ActionGrid = ({ actions }: { actions: OverviewAction[] }) => (
-  <div className="grid grid-cols-2 gap-1.5">
-    {actions.map((action) => (
-      <div
-        key={action.id}
-        title={action.description || undefined}
-        className="rounded-lg bg-zinc-900/55 px-2.5 py-2"
-      >
-        <p className="truncate text-[11px] font-semibold text-zinc-200">
-          {action.name}
-        </p>
-      </div>
-    ))}
-  </div>
-);
-
-/* =========================================================
-   STATUS HELPERS
-========================================================= */
-
-const StatusBlock = ({
-  label,
-  children,
+const ActionsPanel = ({
+  actions,
+  bonusActions,
+  reactions,
+  combatOptions,
 }: {
-  label: string;
+  actions: OverviewAction[];
 
-  children: ReactNode;
+  bonusActions: OverviewAction[];
+
+  reactions: OverviewAction[];
+
+  combatOptions: OverviewAction[];
+}) => {
+  const empty =
+    actions.length === 0 &&
+    bonusActions.length === 0 &&
+    reactions.length === 0 &&
+    combatOptions.length === 0;
+
+  return (
+    <div className="divide-y divide-white/[0.07]">
+      {actions.length > 0 ? (
+        <ActionSection title="Actions" actions={actions} />
+      ) : null}
+
+      {bonusActions.length > 0 ? (
+        <ActionSection title="Bonus Actions" actions={bonusActions} />
+      ) : null}
+
+      {reactions.length > 0 ? (
+        <ActionSection title="Reactions" actions={reactions} />
+      ) : null}
+
+      {combatOptions.length > 0 ? (
+        <ActionSection title="Combat Options" actions={combatOptions} />
+      ) : null}
+
+      {empty ? (
+        <PanelSection title="Actions">
+          <EmptyText>No character-specific actions.</EmptyText>
+        </PanelSection>
+      ) : null}
+    </div>
+  );
+};
+
+const ActionSection = ({
+  title,
+  actions,
+}: {
+  title: string;
+
+  actions: OverviewAction[];
 }) => (
-  <div className="grid grid-cols-[100px_1fr] items-start gap-3 border-b border-white/[0.06] pb-2.5 last:border-b-0 last:pb-0">
-    <MetaLabel>{label}</MetaLabel>
+  <section className="p-3">
+    <h3 className="mb-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+      {title}
+    </h3>
 
-    <div className="min-w-0">{children}</div>
-  </div>
+    <div className="grid gap-1.5">
+      {actions.map((action) => (
+        <div
+          key={action.id}
+          className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-[10px] font-semibold text-zinc-200">
+              {action.name}
+            </p>
+
+            {action.value ? (
+              <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-semibold text-emerald-300">
+                {action.value}
+              </span>
+            ) : null}
+          </div>
+
+          {action.description ? (
+            <p className="mt-1 text-[8px] leading-4 text-zinc-500">
+              {action.description}
+            </p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  </section>
 );
 
 /* =========================================================
-   GENERIC UI
+   HELPERS
 ========================================================= */
 
-const CompactSection = ({
+const PanelSection = ({
   title,
   children,
-  className = "",
-  right,
 }: {
   title: string;
 
   children: ReactNode;
-
-  className?: string;
-
-  right?: ReactNode;
 }) => (
-  <section
-    className={`rounded-xl border border-white/10 bg-zinc-900/45 p-3.5 ${className}`}
-  >
-    <div className="mb-3 flex min-h-[20px] items-center justify-between gap-3">
-      <h2 className="text-base font-semibold leading-5 text-white">{title}</h2>
-
-      {right ? <div className="min-w-0">{right}</div> : null}
-    </div>
+  <section className="p-3">
+    <h2 className="mb-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+      {title}
+    </h2>
 
     {children}
   </section>
 );
 
-const MetaLabel = ({ children }: { children: ReactNode }) => (
-  <p className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+const TinyLabel = ({ children }: { children: ReactNode }) => (
+  <span className="text-[6px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
     {children}
-  </p>
-);
-
-const InlineStat = ({
-  label,
-  value,
-}: {
-  label: string;
-
-  value: string | number;
-}) => (
-  <div className="flex items-baseline gap-1.5 text-[10px]">
-    <span className="text-zinc-500">{label}</span>
-
-    <span className="font-semibold text-zinc-200">{value}</span>
-  </div>
+  </span>
 );
 
 const EmptyText = ({ children }: { children: ReactNode }) => (
-  <p className="text-[10px] leading-4 text-zinc-600">{children}</p>
+  <p className="text-[9px] text-zinc-600">{children}</p>
 );
 
 export default OverviewDashboard;

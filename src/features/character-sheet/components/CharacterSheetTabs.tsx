@@ -8,27 +8,20 @@ type CharacterSheetTabsProps = {
 
 const tabs: Array<{
   id: CharacterSheetTab;
+
   label: string;
 }> = [
   {
-    id: "overview",
-    label: "Overview",
-  },
-  {
-    id: "combat",
-    label: "Combat",
-  },
-  {
-    id: "features",
-    label: "Features",
+    id: "spells",
+    label: "Spells",
   },
   {
     id: "inventory",
     label: "Inventory",
   },
   {
-    id: "spells",
-    label: "Spells",
+    id: "features",
+    label: "Features",
   },
   {
     id: "notes",
@@ -41,10 +34,10 @@ const CharacterSheetTabs = ({
   onChange,
 }: CharacterSheetTabsProps) => {
   return (
-    <div className="mb-4 border-b border-white/10">
+    <div className="shrink-0 border-b border-white/10 bg-black/15 px-2">
       <nav
-        className="workspace-scrollbar flex gap-1 overflow-x-auto"
-        aria-label="Character sheet sections"
+        className="workspace-scrollbar flex overflow-x-auto"
+        aria-label="Character detail sections"
       >
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
@@ -54,14 +47,14 @@ const CharacterSheetTabs = ({
               key={tab.id}
               type="button"
               onClick={() => onChange(tab.id)}
-              className={`relative shrink-0 px-3 py-2.5 text-xs font-medium transition ${
+              className={`relative shrink-0 px-3 py-3 text-[11px] font-semibold transition ${
                 active ? "text-white" : "text-zinc-500 hover:text-zinc-200"
               }`}
             >
               {tab.label}
 
               <span
-                className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full transition ${
+                className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full ${
                   active ? "bg-white" : "bg-transparent"
                 }`}
               />

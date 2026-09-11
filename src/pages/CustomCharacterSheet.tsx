@@ -4,11 +4,11 @@ import { Link } from "react-router-dom";
 
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
 
+import SpellTooltip from "../components/SpellTooltip";
+
 import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
 
-import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
-
-import SpellTooltip from "../components/SpellTooltip";
+import CharacterSheetWorkspace from "../features/character-sheet/components/CharacterSheetWorkspace";
 
 import CharacterSheetHeader from "../features/character-sheet/components/CharacterSheetHeader";
 
@@ -16,9 +16,12 @@ import CharacterQuickStats from "../features/character-sheet/components/Characte
 
 import SectionCard from "../features/character-sheet/components/SectionCard";
 
-import CharacterSheetTabs from "../features/character-sheet/components/CharacterSheetTabs";
+import type {
+  CharacterSheetTab,
+  DeathSaves,
+} from "../features/character-sheet/types";
 
-import type { CharacterSheetTab } from "../features/character-sheet/types";
+import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
 import type { AbilityKey, Money } from "../rulesets/dnd/dnd2024/types";
 
@@ -47,31 +50,49 @@ type CustomCharacterSheetProps = {
   campaignItemsById: Record<string, any>;
 
   handleEquipmentChange: (equipment: any[]) => void | Promise<void>;
+
+  handleSetHeroicInspiration: (value: boolean) => Promise<void>;
+
+  handleSetDeathSaves: (value: DeathSaves) => Promise<void>;
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
   str: "Strength",
+
   dex: "Dexterity",
+
   con: "Constitution",
+
   int: "Intelligence",
+
   wis: "Wisdom",
+
   cha: "Charisma",
 };
 
 const defaultAbilityScores: Record<AbilityKey, number> = {
   str: 10,
+
   dex: 10,
+
   con: 10,
+
   int: 10,
+
   wis: 10,
+
   cha: 10,
 };
 
 const defaultMoney: Money = {
   cp: 0,
+
   sp: 0,
+
   ep: 0,
+
   gp: 0,
+
   pp: 0,
 };
 
@@ -85,13 +106,22 @@ const getProficiencyMultiplier = (level: CustomProficiencyLevel) =>
 
 const CustomCharacterSheet = ({
   characterId,
+
   character,
+
   backTo,
+
   backLabel,
+
   campaignItemsById,
+
   handleEquipmentChange,
+
+  handleSetHeroicInspiration,
+
+  handleSetDeathSaves,
 }: CustomCharacterSheetProps) => {
-  const [activeTab, setActiveTab] = useState<CharacterSheetTab>("overview");
+  const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
 
   const stats = character.customStats ?? {};
 
@@ -166,158 +196,116 @@ const CustomCharacterSheet = ({
     getModifier(abilityScores[ability]) +
     proficiencyBonus * getProficiencyMultiplier(proficiency);
 
-  const renderOverviewTab = () => {
-    const customAttacks = (character.equipment ?? [])
-      .filter(
-        (entry) => entry.equipped || (entry.equippedSlots?.length ?? 0) > 0,
-      )
-      .map((entry) => {
-        const item = resolveItemFromEquipmentEntry(entry, campaignItemsById);
+  /* =========================================================
+       HIT DICE
+    ========================================================= */
 
-        if (!item?.weapon) {
-          return null;
+  const customHitDie = stats.hitDie?.trim();
+
+  const hitDiceLabel = customHitDie
+    ? `${stats.hitDiceRemaining ?? level}/${level} ${
+        customHitDie.startsWith("d") ? customHitDie : `d${customHitDie}`
+      }`
+    : undefined;
+
+  /* =========================================================
+       PLAY PANEL
+    ========================================================= */
+
+  const customAttacks = (character.equipment ?? [])
+    .filter((entry) => entry.equipped || (entry.equippedSlots?.length ?? 0) > 0)
+    .map((entry) => {
+      const item = resolveItemFromEquipmentEntry(entry, campaignItemsById);
+
+      if (!item?.weapon) {
+        return null;
+      }
+
+      const damage = item.weapon.damage;
+
+      return {
+        id: entry.instanceId,
+
+        name: item.name ?? entry.name ?? "Weapon",
+
+        attackBonus: undefined,
+
+        damage: `${damage.dice.count}d${damage.dice.die} ${damage.damageType}`,
+
+        properties: item.weapon.properties ?? [],
+      };
+    })
+    .filter((attack): attack is NonNullable<typeof attack> => Boolean(attack));
+
+  const quickSpells = spellcasting.spells
+    .map((savedSpell) => {
+      const resolved = spellsById[savedSpell.spellId];
+
+      return (
+        resolved ?? {
+          id: savedSpell.spellId,
+
+          spellId: savedSpell.spellId,
+
+          name: savedSpell.name,
+
+          level: savedSpell.level,
         }
-
-        const damage = item.weapon.damage;
-
-        const damageLabel = `${damage.dice.count}d${damage.dice.die} ${damage.damageType}`;
-
-        return {
-          id: entry.instanceId,
-
-          name: item.name ?? entry.name ?? "Weapon",
-
-          /*
-           * Custom mode currently doesn't store a
-           * manual total weapon attack bonus.
-           *
-           * Do not guess it here. Once custom
-           * attacks become editable, this can be
-           * supplied properly.
-           */
-          attackBonus: undefined,
-
-          damage: damageLabel,
-
-          detail: item.weapon.properties
-            ?.map((property) =>
-              property
-                .split("-")
-                .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-                .join(" "),
-            )
-            .join(" · "),
-        };
-      })
-      .filter((attack): attack is NonNullable<typeof attack> =>
-        Boolean(attack),
       );
-
-    const quickSpells = spellcasting.spells
-      .map((savedSpell) => {
-        const resolved = spellsById[savedSpell.spellId];
-
-        return (
-          resolved ?? {
-            id: savedSpell.spellId,
-
-            spellId: savedSpell.spellId,
-
-            name: savedSpell.name,
-
-            level: savedSpell.level,
-          }
-        );
-      })
-      .sort(
-        (a, b) =>
-          (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name),
-      );
-
-    const conditions =
-      (
-        character as CustomCharacter & {
-          conditions?: string[];
-        }
-      ).conditions ?? [];
-
-    const moneyParts: string[] = [];
-
-    if ((money.pp ?? 0) > 0) {
-      moneyParts.push(`${money.pp} PP`);
-    }
-
-    if ((money.gp ?? 0) > 0) {
-      moneyParts.push(`${money.gp} GP`);
-    }
-
-    if ((money.ep ?? 0) > 0) {
-      moneyParts.push(`${money.ep} EP`);
-    }
-
-    if ((money.sp ?? 0) > 0) {
-      moneyParts.push(`${money.sp} SP`);
-    }
-
-    if ((money.cp ?? 0) > 0 || moneyParts.length === 0) {
-      moneyParts.push(`${money.cp ?? 0} CP`);
-    }
-
-    return (
-      <OverviewDashboard
-        skills={customSkillDefinitions.map((skill) => {
-          const proficiency = skills[skill.id];
-
-          return {
-            id: skill.id,
-
-            name: skill.name,
-
-            ability: skill.ability.toUpperCase(),
-
-            bonus: getSkillBonus(skill.ability, proficiency),
-
-            proficient:
-              proficiency === "proficient" || proficiency === "expertise",
-
-            expertise: proficiency === "expertise",
-          };
-        })}
-        attacks={customAttacks}
-        spells={spellcasting.enabled ? quickSpells : []}
-        conditions={conditions}
-        features={(character.customTraits ?? []).map((trait) => ({
-          id: trait.id,
-
-          name: trait.name,
-
-          source: trait.source,
-
-          description: trait.description,
-        }))}
-        moneyLabel={moneyParts.join(" · ")}
-      />
+    })
+    .sort(
+      (a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name),
     );
-  };
 
-  const renderCombatTab = () => (
-    <SectionCard title="Combat">
-      <div className="grid gap-2 sm:grid-cols-5">
-        <CombatStat label="Armor Class" value={armorClass} />
+  const features = (character.customTraits ?? []).map((trait) => ({
+    id: trait.id,
 
-        <CombatStat label="Hit Points" value={`${currentHp}/${maxHp}`} />
+    name: trait.name,
 
-        <CombatStat label="Speed" value={`${speed} ft`} />
+    description: trait.description,
+  }));
 
-        <CombatStat label="Initiative" value={formatModifier(dexModifier)} />
+  const featureActions = features
+    .filter((feature) => {
+      const text = feature.description?.toLowerCase() ?? "";
 
-        <CombatStat
-          label="Proficiency"
-          value={formatModifier(proficiencyBonus)}
-        />
-      </div>
-    </SectionCard>
-  );
+      return text.includes("as an action") || text.includes("take an action");
+    })
+    .map((feature) => ({
+      id: `action-${feature.id}`,
+
+      name: feature.name,
+
+      description: feature.description,
+    }));
+
+  const featureBonusActions = features
+    .filter((feature) =>
+      feature.description?.toLowerCase().includes("bonus action"),
+    )
+    .map((feature) => ({
+      id: `bonus-${feature.id}`,
+
+      name: feature.name,
+
+      description: feature.description,
+    }));
+
+  const featureReactions = features
+    .filter((feature) =>
+      feature.description?.toLowerCase().includes("reaction"),
+    )
+    .map((feature) => ({
+      id: `reaction-${feature.id}`,
+
+      name: feature.name,
+
+      description: feature.description,
+    }));
+
+  /* =========================================================
+       DETAIL TABS
+    ========================================================= */
 
   const renderFeaturesTab = () => (
     <SectionCard title="Features & Traits">
@@ -373,52 +361,40 @@ const CustomCharacterSheet = ({
     }
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         <SectionCard title="Spellcasting">
           <div className="grid gap-2 sm:grid-cols-3">
-            <CombatStat
-              label="Spellcasting Ability"
+            <CompactStat
+              label="Ability"
               value={
                 spellcasting.ability ? abilityLabels[spellcasting.ability] : "—"
               }
             />
 
-            <CombatStat
-              label="Spell Save DC"
-              value={spellcasting.spellSaveDc}
-            />
+            <CompactStat label="Save DC" value={spellcasting.spellSaveDc} />
 
-            <CombatStat
-              label="Spell Attack Bonus"
+            <CompactStat
+              label="Attack Bonus"
               value={formatModifier(spellcasting.spellAttackBonus)}
             />
           </div>
         </SectionCard>
 
         <SectionCard title="Spell Slots">
-          <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-9">
-            {Array.from(
-              {
-                length: 9,
-              },
-
-              (_, index) => index + 1,
-            ).map((spellLevel) => {
-              const slot = spellcasting.spellSlots[String(spellLevel)];
-
-              return (
-                <div
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(spellcasting.spellSlots)
+              .filter(([, slot]) => slot.max > 0)
+              .map(([spellLevel, slot]) => (
+                <span
                   key={spellLevel}
-                  className="rounded-lg bg-zinc-900/60 px-2 py-2 text-center"
+                  className="rounded-lg bg-zinc-900/60 px-2 py-1 text-[10px] text-zinc-300"
                 >
-                  <p className="text-[9px] text-zinc-600">L{spellLevel}</p>
-
-                  <p className="mt-1 text-xs font-semibold text-white">
-                    {slot?.remaining ?? 0}/{slot?.max ?? 0}
-                  </p>
-                </div>
-              );
-            })}
+                  L{spellLevel}:{" "}
+                  <strong>
+                    {slot.remaining}/{slot.max}
+                  </strong>
+                </span>
+              ))}
           </div>
         </SectionCard>
 
@@ -434,15 +410,13 @@ const CustomCharacterSheet = ({
           return (
             <SectionCard
               key={spellLevel}
-              title={
-                spellLevel === 0 ? "Cantrips" : `Level ${spellLevel} Spells`
-              }
+              title={spellLevel === 0 ? "Cantrips" : `Level ${spellLevel}`}
             >
               <div className="flex flex-wrap gap-2">
                 {levelSpells.map((savedSpell) => {
-                  const resolvedSpell = spellsById[savedSpell.spellId];
+                  const resolved = spellsById[savedSpell.spellId];
 
-                  const tooltipSpell = resolvedSpell ?? {
+                  const tooltipSpell = resolved ?? {
                     id: savedSpell.spellId,
 
                     spellId: savedSpell.spellId,
@@ -454,16 +428,10 @@ const CustomCharacterSheet = ({
 
                   return (
                     <SpellTooltip key={savedSpell.spellId} spell={tooltipSpell}>
-                      <div className="min-w-[150px] rounded-xl border border-white/10 bg-zinc-900/60 px-3 py-2.5 transition hover:bg-zinc-900">
-                        <p className="text-xs font-medium text-white">
+                      <div className="rounded-lg border border-white/10 bg-zinc-900/60 px-2.5 py-2">
+                        <p className="text-[10px] font-semibold text-white">
                           {tooltipSpell.name}
                         </p>
-
-                        {resolvedSpell?.school ? (
-                          <p className="mt-1 text-[10px] text-zinc-600">
-                            {resolvedSpell.school}
-                          </p>
-                        ) : null}
                       </div>
                     </SpellTooltip>
                   );
@@ -477,9 +445,9 @@ const CustomCharacterSheet = ({
   };
 
   const renderNotesTab = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <SectionCard title="Character Details">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           <Info label="Age" value={character.age} />
 
           <Info label="Height" value={character.height} />
@@ -491,13 +459,9 @@ const CustomCharacterSheet = ({
           <Info label="Skin" value={character.skin} />
 
           <Info label="Hair" value={character.hair} />
-        </div>
 
-        {character.alignment ? (
-          <div className="mt-3 border-t border-white/10 pt-3">
-            <Info label="Alignment" value={character.alignment} />
-          </div>
-        ) : null}
+          <Info label="Alignment" value={character.alignment} />
+        </div>
       </SectionCard>
 
       <SectionCard title="Character Appearance">
@@ -514,9 +478,19 @@ const CustomCharacterSheet = ({
     </div>
   );
 
+  const customSpellSlots = Object.entries(spellcasting.spellSlots).map(
+    ([spellLevel, slot]) => ({
+      level: Number(spellLevel),
+
+      max: slot.max,
+
+      remaining: slot.remaining,
+    }),
+  );
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-5 lg:px-6">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 lg:px-6">
         <div className="mb-4">
           <Link
             to={backTo}
@@ -544,27 +518,79 @@ const CustomCharacterSheet = ({
           speed={speed}
           proficiencyBonus={proficiencyBonus}
           passivePerception={passivePerception}
+          passiveInsight={10 + getSkillBonus("wis", skills.insight)}
+          passiveInvestigation={10 + getSkillBonus("int", skills.investigation)}
           abilityScores={abilityScores}
           savingThrowProficiencies={savingThrows}
+          skills={customSkillDefinitions.map((skill) => {
+            const proficiency = skills[skill.id];
+
+            return {
+              id: skill.id,
+
+              name: skill.name,
+
+              ability: skill.ability.toUpperCase(),
+
+              bonus: getSkillBonus(skill.ability, proficiency),
+
+              proficient:
+                proficiency === "proficient" || proficiency === "expertise",
+
+              expertise: proficiency === "expertise",
+            };
+          })}
+          conditions={character.conditions ?? []}
+          heroicInspiration={character.heroicInspiration ?? false}
+          onHeroicInspirationChange={handleSetHeroicInspiration}
+          deathSaves={{
+            successes: character.deathSaves?.successes ?? 0,
+
+            failures: character.deathSaves?.failures ?? 0,
+          }}
+          onDeathSavesChange={handleSetDeathSaves}
+          hitDiceLabel={hitDiceLabel}
+          spellSlots={spellcasting.enabled ? customSpellSlots : []}
+          progress={
+            typeof character.xp === "number"
+              ? {
+                  level,
+
+                  xp: character.xp,
+
+                  nextLevelXp: null,
+
+                  progressPercent: 0,
+                }
+              : null
+          }
           languages={customProficiencies?.languages ?? []}
           armorProficiencies={customProficiencies?.armor ?? []}
           weaponProficiencies={customProficiencies?.weapons ?? []}
           toolProficiencies={customProficiencies?.tools ?? []}
         />
 
-        <CharacterSheetTabs activeTab={activeTab} onChange={setActiveTab} />
+        <CharacterSheetWorkspace
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          playPanel={
+            <OverviewDashboard
+              attacks={customAttacks}
+              spells={spellcasting.enabled ? quickSpells : []}
+              actions={featureActions}
+              bonusActions={featureBonusActions}
+              reactions={featureReactions}
+            />
+          }
+        >
+          {activeTab === "spells" ? renderSpellsTab() : null}
 
-        {activeTab === "overview" && renderOverviewTab()}
+          {activeTab === "inventory" ? renderInventoryTab() : null}
 
-        {activeTab === "combat" && renderCombatTab()}
+          {activeTab === "features" ? renderFeaturesTab() : null}
 
-        {activeTab === "features" && renderFeaturesTab()}
-
-        {activeTab === "inventory" && renderInventoryTab()}
-
-        {activeTab === "spells" && renderSpellsTab()}
-
-        {activeTab === "notes" && renderNotesTab()}
+          {activeTab === "notes" ? renderNotesTab() : null}
+        </CharacterSheetWorkspace>
       </div>
     </div>
   );
@@ -576,18 +602,18 @@ const Info = ({
 }: {
   label: string;
 
-  value?: string;
+  value?: string | null;
 }) => (
   <div>
-    <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+    <p className="text-[8px] font-semibold uppercase tracking-[0.1em] text-zinc-600">
       {label}
     </p>
 
-    <p className="mt-0.5 text-xs text-zinc-300">{value || "—"}</p>
+    <p className="mt-1 text-xs text-zinc-300">{value || "—"}</p>
   </div>
 );
 
-const CombatStat = ({
+const CompactStat = ({
   label,
   value,
 }: {
@@ -595,16 +621,16 @@ const CombatStat = ({
 
   value: string | number;
 }) => (
-  <div className="rounded-xl bg-zinc-900/60 px-3 py-2.5">
-    <p className="text-[9px] uppercase tracking-[0.12em] text-zinc-600">
+  <div className="rounded-lg bg-zinc-900/60 px-3 py-2">
+    <p className="text-[8px] uppercase tracking-[0.1em] text-zinc-600">
       {label}
     </p>
 
-    <p className="mt-1 text-lg font-bold text-white">{value}</p>
+    <p className="mt-1 text-sm font-bold text-white">{value}</p>
   </div>
 );
 
-const LongText = ({ value }: { value?: string }) =>
+const LongText = ({ value }: { value?: string | null }) =>
   value ? (
     <p className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
       {value}
