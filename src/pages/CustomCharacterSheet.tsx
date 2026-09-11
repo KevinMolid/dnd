@@ -12,11 +12,11 @@ import CharacterSheetHeader from "../features/character-sheet/components/Charact
 
 import CharacterQuickStats from "../features/character-sheet/components/CharacterQuickStats";
 
-import SectionCard from "../features/character-sheet/components/SectionCard";
-
 import CharacterProfilePanel from "../features/character-sheet/components/CharacterProfilePanel";
 
 import PlayerNotesPanel from "../features/character-sheet/components/PlayerNotesPanel";
+
+import CustomFeatureTooltip from "../features/character-sheet/components/CustomFeatureTooltip";
 
 import type {
   CharacterSheetTab,
@@ -38,6 +38,7 @@ import {
 import type {
   CustomCharacter,
   CustomProficiencyLevel,
+  CustomTrait,
 } from "../types/customCharacter";
 
 type CustomCharacterSheetProps = {
@@ -100,6 +101,160 @@ const getModifier = (score: number) => Math.floor((score - 10) / 2);
 const getProficiencyMultiplier = (level: CustomProficiencyLevel) =>
   level === "expertise" ? 2 : level === "proficient" ? 1 : 0;
 
+const normalize = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const getWeaponProperties = (item: any) => {
+  const raw = item?.weapon?.properties ?? [];
+
+  return Array.isArray(raw) ? raw.map((property) => String(property)) : [];
+};
+
+const getWeaponAttackAbility = ({
+  item,
+  abilityScores,
+}: {
+  item: any;
+
+  abilityScores: Record<AbilityKey, number>;
+}): AbilityKey => {
+  const properties = getWeaponProperties(item).map(normalize);
+
+  const weapon = item?.weapon as any;
+
+  const weaponType = normalize(
+    String(weapon?.type ?? weapon?.weaponType ?? ""),
+  );
+
+  const hasRangedProperty =
+    properties.includes("ammunition") ||
+    properties.includes("ranged") ||
+    weaponType.includes("ranged");
+
+  if (hasRangedProperty) {
+    return "dex";
+  }
+
+  if (properties.includes("finesse")) {
+    return getModifier(abilityScores.dex) > getModifier(abilityScores.str)
+      ? "dex"
+      : "str";
+  }
+
+  return "str";
+};
+
+const isCustomWeaponProficient = ({
+  item,
+  proficiencies,
+}: {
+  item: any;
+
+  proficiencies: string[];
+}) => {
+  if (proficiencies.length === 0) {
+    return false;
+  }
+
+  const normalizedProficiencies = proficiencies.map(normalize);
+
+  if (
+    normalizedProficiencies.some(
+      (proficiency) =>
+        proficiency === "all-weapons" ||
+        proficiency === "weapons" ||
+        proficiency === "all",
+    )
+  ) {
+    return true;
+  }
+
+  const exactCandidates = [item?.id, item?.baseItemId, item?.name]
+    .filter(Boolean)
+    .map((value) => normalize(String(value)));
+
+  if (
+    exactCandidates.some((candidate) =>
+      normalizedProficiencies.includes(candidate),
+    )
+  ) {
+    return true;
+  }
+
+  const weapon = item?.weapon as any;
+
+  const weaponCategory = normalize(
+    String(
+      weapon?.category ??
+        weapon?.weaponCategory ??
+        weapon?.classification ??
+        "",
+    ),
+  );
+
+  if (
+    weaponCategory.includes("simple") &&
+    normalizedProficiencies.some((proficiency) =>
+      proficiency.includes("simple"),
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    weaponCategory.includes("martial") &&
+    normalizedProficiencies.some((proficiency) =>
+      proficiency.includes("martial"),
+    )
+  ) {
+    return true;
+  }
+
+  return false;
+};
+
+const getWeaponRange = (item: any) => {
+  const range = item?.weapon?.range as
+    | {
+        normal?: number;
+        long?: number | null;
+      }
+    | undefined;
+
+  if (!range || typeof range.normal !== "number") {
+    return null;
+  }
+
+  return {
+    normal: range.normal,
+
+    long: typeof range.long === "number" ? range.long : null,
+  };
+};
+
+const getFeatureSummary = (trait: CustomTrait) => {
+  if (!trait.description) {
+    return "Details";
+  }
+
+  const cleaned = trait.description.replace(/\s+/g, " ").trim();
+
+  const firstSentenceEnd = cleaned.indexOf(".");
+
+  const firstSentence =
+    firstSentenceEnd >= 0 ? cleaned.slice(0, firstSentenceEnd + 1) : cleaned;
+
+  if (firstSentence.length <= 72) {
+    return firstSentence;
+  }
+
+  return `${firstSentence.slice(0, 69)}…`;
+};
+
 const CustomCharacterSheet = ({
   characterId,
   character,
@@ -116,10 +271,15 @@ const CustomCharacterSheet = ({
 }: CustomCharacterSheetProps) => {
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
 
+  const [openFeatureGroups, setOpenFeatureGroups] = useState<
+    Record<string, boolean>
+  >({});
+
   const stats = character.customStats ?? {};
 
   const abilityScores: Record<AbilityKey, number> = {
     ...defaultAbilityScores,
+
     ...(character.abilityScores ?? {}),
   };
 
@@ -155,6 +315,7 @@ const CustomCharacterSheet = ({
 
   const money: Money = {
     ...defaultMoney,
+
     ...(character.money ?? {}),
   };
 
@@ -195,6 +356,10 @@ const CustomCharacterSheet = ({
       }`
     : undefined;
 
+  /* =========================================================
+       ATTACKS
+    ========================================================= */
+
   const customAttacks = (character.equipment ?? [])
     .filter((entry) => entry.equipped || (entry.equippedSlots?.length ?? 0) > 0)
     .map((entry) => {
@@ -206,19 +371,67 @@ const CustomCharacterSheet = ({
 
       const damage = item.weapon.damage;
 
+      const ability = getWeaponAttackAbility({
+        item,
+
+        abilityScores,
+      });
+
+      const proficient = isCustomWeaponProficient({
+        item,
+
+        proficiencies: customProficiencies?.weapons ?? [],
+      });
+
+      const attackBonus =
+        getModifier(abilityScores[ability]) +
+        (proficient ? proficiencyBonus : 0);
+
+      const properties = getWeaponProperties(item);
+
+      const normalizedProperties = properties.map(normalize);
+
+      const equippedSlots = entry.equippedSlots ?? [];
+
+      const wieldMode = entry.wieldMode;
+
+      const isOffHand =
+        wieldMode === "off-hand" || equippedSlots.includes("off-hand");
+
+      const isTwoHanded =
+        wieldMode === "two-handed" ||
+        (equippedSlots.includes("main-hand") &&
+          equippedSlots.includes("off-hand"));
+
+      const isThrown = normalizedProperties.includes("thrown");
+
       return {
         id: entry.instanceId,
 
         name: item.name ?? entry.name ?? "Weapon",
 
-        attackBonus: undefined,
+        attackBonus,
 
         damage: `${damage.dice.count}d${damage.dice.die} ${damage.damageType}`,
 
-        properties: item.weapon.properties ?? [],
+        properties,
+
+        ability,
+
+        isOffHand,
+
+        isTwoHanded,
+
+        isThrown,
+
+        range: getWeaponRange(item),
       };
     })
     .filter((attack): attack is NonNullable<typeof attack> => Boolean(attack));
+
+  /* =========================================================
+       SPELLS
+    ========================================================= */
 
   const quickSpells = spellcasting.spells
     .map((savedSpell) => {
@@ -249,6 +462,10 @@ const CustomCharacterSheet = ({
 
       remaining: Math.max(0, Math.min(slot.max, slot.remaining)),
     }));
+
+  /* =========================================================
+       FEATURES / PLAY ACTIONS
+    ========================================================= */
 
   const features = (character.customTraits ?? []).map((trait) => ({
     id: trait.id,
@@ -296,38 +513,111 @@ const CustomCharacterSheet = ({
       description: feature.description,
     }));
 
-  const renderFeaturesTab = () => (
-    <SectionCard title="Features & Traits">
-      {character.customTraits?.length ? (
-        <div className="grid gap-1.5 sm:grid-cols-2">
-          {character.customTraits.map((trait) => (
-            <div
-              key={trait.id}
-              className="rounded-lg border border-white/[0.07] bg-black/20 px-3 py-2"
+  /* =========================================================
+       FEATURE GROUPS
+    ========================================================= */
+
+  const featureGroups = useMemo(() => {
+    const groups = new Map<string, CustomTrait[]>();
+
+    for (const trait of character.customTraits ?? []) {
+      const source = trait.source?.trim() || "Custom";
+
+      const current = groups.get(source) ?? [];
+
+      current.push(trait);
+
+      groups.set(source, current);
+    }
+
+    return Array.from(groups.entries()).map(([source, traits]) => ({
+      source,
+      traits,
+    }));
+  }, [character.customTraits]);
+
+  const isFeatureGroupOpen = (source: string) =>
+    openFeatureGroups[source] ?? true;
+
+  const toggleFeatureGroup = (source: string) => {
+    setOpenFeatureGroups((current) => ({
+      ...current,
+
+      [source]: !(current[source] ?? true),
+    }));
+  };
+
+  const renderFeaturesTab = () =>
+    featureGroups.length > 0 ? (
+      <div className="grid gap-2 lg:grid-cols-2 lg:items-start">
+        {featureGroups.map((group) => {
+          const open = isFeatureGroupOpen(group.source);
+
+          return (
+            <section
+              key={group.source}
+              className="overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/30"
             >
-              <div className="flex items-start justify-between gap-3">
-                <strong className="text-[10px] text-white">{trait.name}</strong>
-
-                {trait.source ? (
-                  <span className="shrink-0 text-[7px] uppercase tracking-[0.08em] text-zinc-600">
-                    {trait.source}
+              <button
+                type="button"
+                onClick={() => toggleFeatureGroup(group.source)}
+                aria-expanded={open}
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition hover:bg-white/[0.035]"
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span
+                    className={`text-[9px] text-zinc-500 transition-transform ${
+                      open ? "rotate-90" : ""
+                    }`}
+                  >
+                    ▶
                   </span>
-                ) : null}
-              </div>
 
-              {trait.description ? (
-                <p className="mt-1 line-clamp-2 text-[8px] leading-4 text-zinc-500">
-                  {trait.description}
-                </p>
+                  <span className="truncate text-[10px] font-bold uppercase tracking-[0.11em] text-zinc-300">
+                    {group.source}
+                  </span>
+
+                  <span className="shrink-0 text-[8px] uppercase tracking-[0.08em] text-zinc-600">
+                    · Features
+                  </span>
+                </div>
+
+                <span className="text-[8px] font-medium text-zinc-600">
+                  {group.traits.length}
+                </span>
+              </button>
+
+              {open ? (
+                <div className="border-t border-white/[0.06]">
+                  {group.traits.map((trait) => (
+                    <CustomFeatureTooltip key={trait.id} trait={trait}>
+                      <div className="group grid min-h-[38px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(90px,45%)] items-center gap-3 border-b border-white/[0.045] px-3 py-1.5 last:border-b-0 transition hover:bg-white/[0.035]">
+                        <span className="truncate text-[10px] font-semibold text-zinc-200 transition group-hover:text-white">
+                          {trait.name}
+                        </span>
+
+                        <span
+                          title={getFeatureSummary(trait)}
+                          className="block truncate text-right text-[8px] font-medium text-zinc-500"
+                        >
+                          {getFeatureSummary(trait)}
+                        </span>
+                      </div>
+                    </CustomFeatureTooltip>
+                  ))}
+                </div>
               ) : null}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-xs text-zinc-600">No features added.</p>
-      )}
-    </SectionCard>
-  );
+            </section>
+          );
+        })}
+      </div>
+    ) : (
+      <p className="p-3 text-xs text-zinc-600">No features added.</p>
+    );
+
+  /* =========================================================
+       OTHER DETAIL TABS
+    ========================================================= */
 
   const renderInventoryTab = () => (
     <CharacterInventoryEquipment
