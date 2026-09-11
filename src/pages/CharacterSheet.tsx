@@ -502,33 +502,20 @@ const CharacterSheet = () => {
         </SectionCard>
       ) : null}
 
-      <SectionCard
-        title="Features & Traits"
-        right={
-          <div className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-500">
-            {derived.traitGroups.reduce(
-              (total, group) => total + group.traits.length,
-              0,
-            )}{" "}
-            total
-          </div>
-        }
-      >
-        {derived.traitGroups.length > 0 ? (
-          <div className="space-y-2">
-            {derived.traitGroups.map((group) => (
-              <TraitGroupSection
-                key={group.key}
-                group={group}
-                isOpen={openTraitGroups[group.key]}
-                onToggle={() => toggleTraitGroup(group.key)}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-xs text-zinc-600">No traits found.</p>
-        )}
-      </SectionCard>
+      {derived.traitGroups.length > 0 ? (
+        <div className="grid gap-2 lg:grid-cols-2 lg:items-start">
+          {derived.traitGroups.map((group) => (
+            <TraitGroupSection
+              key={group.key}
+              group={group}
+              isOpen={openTraitGroups[group.key]}
+              onToggle={() => toggleTraitGroup(group.key)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="p-3 text-xs text-zinc-600">No traits found.</p>
+      )}
     </div>
   );
 

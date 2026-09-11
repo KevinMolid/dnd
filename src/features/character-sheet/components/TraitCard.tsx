@@ -1,6 +1,9 @@
 import type { Trait } from "../../../rulesets/dnd/dnd2024/types";
-import TraitPill from "./TraitPill";
+
+import TraitTooltip from "./TraitTooltip";
+
 import { formatLabel } from "../utils/characterSheetHelpers";
+
 import { formatUsage, getEffectLabel } from "../utils/traitHelpers";
 
 type TraitCardProps = {
@@ -10,90 +13,122 @@ type TraitCardProps = {
 const TraitCard = ({ trait }: TraitCardProps) => {
   const usageLabel = formatUsage(trait.usage);
 
+  const activationLabel = trait.activation
+    ? formatLabel(trait.activation)
+    : null;
+
+  const effectLabels = trait.effects?.map(getEffectLabel).filter(Boolean) ?? [];
+
+  const summary = getTraitSummary({
+    usageLabel,
+
+    activationLabel,
+
+    effectLabels,
+
+    description: trait.description,
+  });
+
   return (
-    <div className="rounded-2xl border border-white/10 bg-zinc-950/60 p-4">
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-base font-semibold text-white">{trait.name}</p>
+    <TraitTooltip trait={trait}>
+      <div className="group grid min-h-[38px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(90px,45%)] items-center gap-3 border-b border-white/[0.045] px-3 py-1.5 last:border-b-0 transition hover:bg-white/[0.035]">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-[10px] font-semibold text-zinc-200 transition group-hover:text-white">
+              {trait.name}
+            </span>
 
-              {typeof trait.level === "number" && (
-                <TraitPill>Level {trait.level}</TraitPill>
-              )}
-
-              {typeof trait.minLevel === "number" &&
-                typeof trait.level !== "number" && (
-                  <TraitPill>Min Level {trait.minLevel}</TraitPill>
-                )}
-
-              {trait.activation && (
-                <TraitPill>{formatLabel(trait.activation)}</TraitPill>
-              )}
-
-              {usageLabel && <TraitPill tone="accent">{usageLabel}</TraitPill>}
-            </div>
-
-            {trait.description && (
-              <p className="mt-2 text-sm leading-6 text-zinc-400">
-                {trait.description}
-              </p>
-            )}
+            {typeof trait.level === "number" ? (
+              <span className="shrink-0 text-[7px] font-medium text-zinc-600">
+                L{trait.level}
+              </span>
+            ) : typeof trait.minLevel === "number" ? (
+              <span className="shrink-0 text-[7px] font-medium text-zinc-600">
+                L{trait.minLevel}+
+              </span>
+            ) : null}
           </div>
         </div>
 
-        {trait.effects && trait.effects.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {trait.effects.map((effect, index) => (
-              <TraitPill key={`${trait.id}-effect-${index}`}>
-                {getEffectLabel(effect)}
-              </TraitPill>
-            ))}
-          </div>
-        )}
-
-        {trait.choices && trait.choices.length > 0 && (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-              Choices
-            </p>
-
-            <div className="space-y-3">
-              {trait.choices.map((choice) => (
-                <div key={choice.id}>
-                  <p className="text-sm font-medium text-zinc-200">
-                    {choice.name} • Choose {choice.choose}
-                  </p>
-
-                  {choice.options?.length ? (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {choice.options.map((option) => (
-                        <TraitPill key={option.id}>{option.name}</TraitPill>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {trait.notes && trait.notes.length > 0 && (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-              Notes
-            </p>
-
-            <ul className="space-y-1 text-sm text-zinc-400">
-              {trait.notes.map((note, index) => (
-                <li key={`${trait.id}-note-${index}`}>• {note}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <div className="min-w-0 text-right">
+          {summary ? (
+            <span
+              title={summary}
+              className="block truncate text-[8px] font-medium text-zinc-500"
+            >
+              {summary}
+            </span>
+          ) : (
+            <span className="text-[8px] text-zinc-700">Details</span>
+          )}
+        </div>
       </div>
-    </div>
+    </TraitTooltip>
   );
+};
+
+const getTraitSummary = ({
+  usageLabel,
+
+  activationLabel,
+
+  effectLabels,
+
+  description,
+}: {
+  usageLabel: string | null | undefined;
+
+  activationLabel: string | null;
+
+  effectLabels: string[];
+
+  description?: string;
+}) => {
+  /*
+   * Prioritize mechanically useful information.
+   *
+   * Usage is generally more important during play
+   * than prose description.
+   */
+
+  const parts: string[] = [];
+
+  if (activationLabel) {
+    parts.push(activationLabel);
+  }
+
+  if (usageLabel) {
+    parts.push(usageLabel);
+  }
+
+  if (effectLabels.length > 0) {
+    parts.push(effectLabels[0]);
+  }
+
+  if (parts.length > 0) {
+    return parts.slice(0, 2).join(" · ");
+  }
+
+  if (description) {
+    return getShortDescription(description);
+  }
+
+  return null;
+};
+
+const getShortDescription = (value: string) => {
+  const cleaned = value.replace(/\s+/g, " ").trim();
+
+  const firstSentenceEnd = cleaned.indexOf(".");
+
+  const firstSentence =
+    firstSentenceEnd >= 0 ? cleaned.slice(0, firstSentenceEnd + 1) : cleaned;
+
+  if (firstSentence.length <= 70) {
+    return firstSentence;
+  }
+
+  return `${firstSentence.slice(0, 67)}…`;
 };
 
 export default TraitCard;
