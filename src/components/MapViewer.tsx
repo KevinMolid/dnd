@@ -11,7 +11,9 @@ import { useNavigate } from "react-router-dom";
 
 import { useEncounter } from "../context/EncounterContext";
 
-import { itemList, type ItemData } from "../data/items";
+import { allItems } from "../rulesets/dnd/dnd2024/data/items";
+
+import type { Item } from "../rulesets/dnd/dnd2024/types";
 
 import type { Money, PlayerCharacter } from "../data/players";
 
@@ -55,7 +57,7 @@ type LinkedTreasureEntry =
 
       type: "item";
 
-      item: ItemData;
+      item: Item;
     }
   | {
       key: string;
@@ -106,17 +108,50 @@ const normalizeItemText = (value: string) => {
     .trim();
 };
 
-const findLinkedItem = (treasureText: string): ItemData | null => {
-  const normalizedTreasure = normalizeItemText(treasureText);
+const formatItemCategory = (value: string) =>
+  value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+const getTreasureSearchVariants = (value: string) => {
+  const normalized = normalizeItemText(value);
+  const variants = new Set<string>([normalized]);
+
+  /*
+   * The deleted legacy catalog named generated magic weapons "+1 Dagger",
+   * while the canonical catalog uses "Dagger +1". Support both spellings in
+   * existing map treasure text.
+   */
+  const leadingBonus = normalized.match(/^\\+(\\d+)\\s+(.+)$/);
+
+  if (leadingBonus) {
+    variants.add(`${leadingBonus[2]} +${leadingBonus[1]}`);
+  }
+
+  const trailingBonus = normalized.match(/^(.+)\\s+\\+(\\d+)$/);
+
+  if (trailingBonus) {
+    variants.add(`+${trailingBonus[2]} ${trailingBonus[1]}`);
+  }
+
+  return [...variants];
+};
+
+const findLinkedItem = (treasureText: string): Item | null => {
+  const treasureVariants = getTreasureSearchVariants(treasureText);
 
   return (
-    itemList.find((item) => {
-      const normalizedName = normalizeItemText(item.name);
+    allItems.find((item) => {
+      const itemVariants = getTreasureSearchVariants(item.name);
 
-      return (
-        normalizedTreasure === normalizedName ||
-        normalizedTreasure.includes(normalizedName) ||
-        normalizedName.includes(normalizedTreasure)
+      return treasureVariants.some((treasureVariant) =>
+        itemVariants.some(
+          (itemVariant) =>
+            treasureVariant === itemVariant ||
+            treasureVariant.includes(itemVariant) ||
+            itemVariant.includes(treasureVariant),
+        ),
       );
     }) ?? null
   );
@@ -164,7 +199,7 @@ const TreasureLink = ({
 }: {
   text: string;
 
-  item: ItemData;
+  item: Item;
 }) => {
   return (
     <span className="group relative inline-block font-semibold text-white">
@@ -177,30 +212,24 @@ const TreasureLink = ({
 
         <span className="mb-2 flex flex-wrap gap-2 text-xs">
           <span className="rounded bg-white/10 px-2 py-1 text-white/80">
-            {item.category}
+            {formatItemCategory(item.category)}
           </span>
 
-          {item.subtype && (
-            <span className="rounded bg-white/10 px-2 py-1 text-white/80">
-              {item.subtype}
+          {item.magical ? (
+            <span className="rounded bg-violet-500/15 px-2 py-1 text-violet-300">
+              Magical
             </span>
-          )}
+          ) : null}
 
-          {item.rarity && (
-            <span className="rounded bg-yellow-500/15 px-2 py-1 text-yellow-300">
-              {item.rarity}
+          {item.stackable ? (
+            <span className="rounded bg-emerald-500/10 px-2 py-1 text-emerald-300/80">
+              Stackable
             </span>
-          )}
-
-          {item.requiresAttunement && (
-            <span className="rounded bg-blue-500/15 px-2 py-1 text-blue-300">
-              Attunement
-            </span>
-          )}
+          ) : null}
         </span>
 
         <span className="block whitespace-pre-line text-xs leading-5 text-white/75">
-          {item.description}
+          {item.description ?? "No description available."}
         </span>
       </span>
     </span>

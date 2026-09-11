@@ -98,7 +98,7 @@ const magicArmorBaseIds = [
   "plate-armor",
 ] as const;
 
-export const items: Item[] = [
+const rawItems: Item[] = [
   // === WEAPONS ===
   {
     id: "dagger",
@@ -321,7 +321,6 @@ export const items: Item[] = [
     id: "javelin",
     name: "Javelin",
     category: "weapon",
-    stackable: false,
     equippable: {
       slots: ["main-hand", "off-hand"],
       allowedWieldModes: ["main-hand", "off-hand"],
@@ -1226,8 +1225,8 @@ export const items: Item[] = [
 
 { id: "signal-whistle", name: "Signal Whistle", category: "gear" },
 
-{ id: "spell-scroll-cantrip", name: "Spell Scroll (Cantrip)", category: "consumable" },
-{ id: "spell-scroll-level-1", name: "Spell Scroll (Level 1)", category: "consumable" },
+{ id: "spell-scroll-cantrip", name: "Spell Scroll (Cantrip)", category: "consumable", stackable: false },
+{ id: "spell-scroll-level-1", name: "Spell Scroll (Level 1)", category: "consumable", stackable: false },
 
 { id: "iron-spikes", name: "Iron Spikes", category: "gear", stackable: true },
 
@@ -1242,7 +1241,210 @@ export const items: Item[] = [
 { id: "vial", name: "Vial", category: "container", stackable: true },
 
 { id: "waterskin", name: "Waterskin", category: "container" },
+
+  // === MISSING PACK CONTENT ITEMS ===
+  {
+    id: "piton",
+    name: "Piton",
+    category: "gear",
+    stackable: true,
+    description:
+      "A metal spike used with a hammer to secure ropes, climb, or anchor equipment.",
+  },
+  {
+    id: "hempen-rope",
+    name: "Hempen Rope",
+    category: "gear",
+    stackable: true,
+    description:
+      "A 50-foot length of hempen rope suitable for climbing, tying, hauling, and securing equipment.",
+  },
+  {
+    id: "mess-kit",
+    name: "Mess Kit",
+    category: "gear",
+    description:
+      "A compact set of utensils and cookware used for preparing and eating meals while traveling.",
+  },
+
+  // === UNIQUE MAGIC ITEMS MIGRATED FROM THE OLD ITEM CATALOG ===
+  {
+    id: "boots-of-striding-and-springing",
+    name: "Boots of Striding and Springing",
+    category: "gear",
+    magical: true,
+    description:
+      "Your speed while you wear these boots becomes 30 feet unless your walking speed is higher, and your speed is not reduced if you are encumbered or wearing heavy armor. In addition, whenever you jump, you can jump three times the normal distance.",
+  },
+  {
+    id: "gauntlets-of-ogre-power",
+    name: "Gauntlets of Ogre Power",
+    category: "gear",
+    magical: true,
+    description:
+      "While you wear these gauntlets, your Strength becomes 19. If your Strength is already 19 or higher, the gauntlets have no effect on you.",
+  },
+  {
+    id: "potion-of-flying",
+    name: "Potion of Flying",
+    category: "consumable",
+    magical: true,
+    stackable: true,
+    description:
+      "This potion gives you a flying speed equal to your walking speed for 1 hour. If the potion wears off while you are flying and nothing else is holding you aloft, you must use your movement to descend. If you fail to land before 1 minute passes, you fall.",
+  },
+  {
+    id: "potion-of-vitality",
+    name: "Potion of Vitality",
+    category: "consumable",
+    magical: true,
+    stackable: true,
+    description:
+      "Drinking this potion removes any exhaustion you are suffering, cures any disease or poison affecting you, and maximizes the effect of any Hit Die you spend to regain hit points within the next 24 hours.",
+  },
+  {
+    id: "ring-of-protection",
+    name: "Ring of Protection",
+    category: "gear",
+    magical: true,
+    description:
+      "While you are wearing this ring and are attuned to it, you have a +1 bonus to your Armor Class and saving throws.",
+  },
+  {
+    id: "spell-scroll",
+    name: "Spell Scroll",
+    category: "consumable",
+    magical: true,
+    stackable: false,
+    description:
+      "A spell scroll bears the words of a single spell written in a mystical cipher. Once the spell is cast from the scroll, the words fade and the scroll crumbles to dust.",
+  },
+  {
+    id: "spider-staff",
+    name: "Spider Staff",
+    category: "weapon",
+    magical: true,
+    equippable: {
+      slots: ["main-hand", "off-hand"],
+      allowedWieldModes: ["main-hand", "two-handed"],
+    },
+    weapon: {
+      weaponKind: "simple-melee",
+      damage: {
+        dice: { count: 1, die: 6 },
+        damageType: "bludgeoning",
+      },
+      versatileDamage: {
+        dice: { count: 1, die: 8 },
+        damageType: "bludgeoning",
+      },
+      properties: ["versatile"],
+      mastery: "topple",
+    },
+    description:
+      "The top of this black adamantine staff is shaped like a spider. It can be wielded as a quarterstaff and deals an extra 1d6 poison damage on a hit. The staff has 10 charges that can fuel Spider Climb and Web, and it regains charges each day at dusk.",
+  },
+  {
+    id: "staff-of-defense",
+    name: "Staff of Defense",
+    category: "weapon",
+    magical: true,
+    equippable: {
+      slots: ["main-hand", "off-hand"],
+      allowedWieldModes: ["main-hand", "two-handed"],
+    },
+    weapon: {
+      weaponKind: "simple-melee",
+      damage: {
+        dice: { count: 1, die: 6 },
+        damageType: "bludgeoning",
+      },
+      versatileDamage: {
+        dice: { count: 1, die: 8 },
+        damageType: "bludgeoning",
+      },
+      properties: ["versatile"],
+      mastery: "topple",
+    },
+    description:
+      "While holding this magical staff, you have a +1 bonus to Armor Class. The staff has 10 charges that can be used to cast Mage Armor or Shield, and it regains charges each day at dawn.",
+  },
+  {
+    id: "wand-of-magic-missiles",
+    name: "Wand of Magic Missiles",
+    category: "gear",
+    magical: true,
+    description:
+      "This wand has 7 charges. While holding it, you can expend charges to cast Magic Missile. The wand regains expended charges each day at dawn.",
+  },
+  {
+    id: "wand-of-eldritch-blast",
+    name: "Wand of Eldritch Blast",
+    category: "gear",
+    magical: true,
+    description:
+      "This wand has 13 charges. While holding it, you can expend charges to cast Eldritch Blast using Charisma and your proficiency bonus. The wand regains expended charges each day at sunset.",
+  },
+  {
+    id: "horde-sword",
+    name: "Hordesword",
+    category: "weapon",
+    magical: true,
+    equippable: {
+      slots: ["main-hand", "off-hand"],
+      allowedWieldModes: ["main-hand", "off-hand", "two-handed"],
+    },
+    weapon: {
+      weaponKind: "martial-melee",
+      damage: {
+        dice: { count: 1, die: 8 },
+        damageType: "slashing",
+      },
+      versatileDamage: {
+        dice: { count: 1, die: 10 },
+        damageType: "slashing",
+      },
+      properties: ["versatile"],
+      mastery: "sap",
+    },
+    description:
+      "You gain a +2 bonus to attack and damage rolls made with this sword against Orcs, Half-orcs, and Ogres. The blade emits an azure glow when orcish creatures are nearby and flares brightly when spilling orcish blood.",
+  },
 ];
+
+const applyDefaultStackability = (item: Item): Item => {
+  if (typeof item.stackable === "boolean") {
+    return item;
+  }
+
+  /*
+   * Default to stacking ordinary items.
+   *
+   * Separate instances are only required when an item can carry meaningful
+   * per-instance state, such as equipment state, magic-item state, charges,
+   * attunement, or other unique properties.
+   *
+   * This means mundane tools, gear, containers, clothing, consumables,
+   * ammunition, books, rope, kits, instruments, and similar items naturally
+   * render as quantities such as "2× Thieves' Tools".
+   */
+  if (
+    item.equippable ||
+    item.weapon ||
+    item.armor ||
+    item.shield ||
+    item.magical
+  ) {
+    return item;
+  }
+
+  return {
+    ...item,
+    stackable: true,
+  };
+};
+
+export const items: Item[] = rawItems.map(applyDefaultStackability);
 
 const baseItemsById = Object.fromEntries(items.map((item) => [item.id, item]));
 
