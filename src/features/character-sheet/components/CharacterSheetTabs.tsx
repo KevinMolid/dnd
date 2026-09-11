@@ -2,13 +2,11 @@ import type { CharacterSheetTab } from "../types";
 
 type CharacterSheetTabsProps = {
   activeTab: CharacterSheetTab;
-
   onChange: (tab: CharacterSheetTab) => void;
 };
 
 const tabs: Array<{
   id: CharacterSheetTab;
-
   label: string;
 }> = [
   {
@@ -20,6 +18,10 @@ const tabs: Array<{
     label: "Features",
   },
   {
+    id: "character",
+    label: "Character",
+  },
+  {
     id: "notes",
     label: "Notes",
   },
@@ -27,7 +29,6 @@ const tabs: Array<{
 
 const CharacterSheetTabs = ({
   activeTab,
-
   onChange,
 }: CharacterSheetTabsProps) => (
   <div className="shrink-0 border-b border-white/10 bg-black/15 px-2">

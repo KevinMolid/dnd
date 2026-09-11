@@ -33,14 +33,10 @@ export type CustomCharacterTrait = {
 
 export type CustomCharacterStats = {
   armorClass?: number;
-
   currentHp?: number;
   maxHp?: number;
-
   speed?: number;
-
   proficiencyBonus?: number;
-
   hitDie?: string;
   hitDiceRemaining?: number;
 };
@@ -57,24 +53,20 @@ export type CharacterDoc = CharacterSheetData & {
 
   maxHp?: number;
   currentHp?: number;
-
   armorClass?: number;
   speed?: number;
-
   proficiencyBonus?: number;
   initiativeBonus?: number;
 
   skillProficiencies?: string[];
   toolProficiencies?: string[];
   savingThrowProficiencies?: string[];
-
   languages?: string[];
 
   subclassId?: string | null;
 
   money?: Money;
   moneyCp?: any;
-
   equipment?: CharacterEquipmentEntry[];
 
   conditions?: string[];
@@ -82,25 +74,40 @@ export type CharacterDoc = CharacterSheetData & {
   heroicInspiration?: boolean;
 
   deathSaves?: DeathSaves;
-
   deathSaveSuccesses?: number;
   deathSaveFailures?: number;
 
   hitDiceRemaining?: number;
 
-  /**
-   * Guided D&D characters derive their maximum slots
-   * from class progression.
-   *
-   * We therefore only need to persist how many remain.
-   *
-   * Example:
-   * {
-   *   "1": 2,
-   *   "2": 1
-   * }
-   */
   spellSlotsRemaining?: Record<string, number>;
+
+  age?: string | number;
+  height?: string;
+  weight?: string;
+  eyes?: string;
+  skin?: string;
+  hair?: string;
+  alignment?: string;
+
+  characterAppearance?: string;
+  alliesAndOrganizations?: string;
+  characterBackstory?: string;
+
+  personalityTraits?: string;
+  ideals?: string;
+  bonds?: string;
+  flaws?: string;
+
+  /**
+   * Personal play notes.
+   * Deliberately separate from characterBackstory / legacy notes.
+   */
+  playerNotes?: string;
+
+  /**
+   * Legacy/general field retained for older characters.
+   */
+  notes?: string;
 };
 
 export type TraitGroupKey =
@@ -113,69 +120,37 @@ export type TraitGroupKey =
 
 export type TraitGroup = {
   key: TraitGroupKey;
-
   title: string;
-
   subtitle?: string;
-
   traits: Trait[];
 };
 
-/**
- * These are now DETAIL tabs only.
- *
- * Combat and Spells have both been promoted to the
- * permanent Play Panel and are no longer duplicated here.
- */
 export type CharacterSheetTab =
   | "features"
   | "inventory"
+  | "character"
   | "notes";
 
 export type ApplyDecisionInput =
-  | {
-      subclassId: string;
-    }
-  | {
-      featId: string;
-    }
-  | {
-      expertise: Array<
-        SkillId | "thieves-tools"
-      >;
-    }
-  | {
-      language: LanguageId;
-    }
-  | {
-      weaponMastery: WeaponMasteryChoiceId[];
-    };
+  | { subclassId: string }
+  | { featId: string }
+  | { expertise: Array<SkillId | "thieves-tools"> }
+  | { language: LanguageId }
+  | { weaponMastery: WeaponMasteryChoiceId[] };
 
 export type CharacterSheetDerived = {
   className: string;
-
   speciesName: string;
-
   backgroundName: string;
-
   featName: string | null;
-
   subclassName: string | null;
-
   proficiencyBonus: number;
-
   initiativeBonus: number;
-
   initiativeBreakdown: string;
-
   passivePerception: number;
-
   armorClass: number;
-
   speed: number;
-
   currentHp: number;
-
   maxHp: number;
 
   finalAbilityScores: Record<
@@ -185,59 +160,39 @@ export type CharacterSheetDerived = {
 
   skillRows: Array<{
     id: SkillId;
-
     name: string;
-
     ability: AbilityKey;
-
     proficient: boolean;
-
     expertise: boolean;
-
     total: number;
   }>;
 
   saveRows: Array<{
     id: AbilityKey;
-
     name: string;
-
     proficient: boolean;
-
     total: number;
   }>;
 
   skillProficiencies: SkillId[];
-
   savingThrowProficiencies: AbilityKey[];
-
   toolProficiencies: string[];
-
   languages: string[];
-
   resistances: string[];
-
-  expertise: Array<
-    SkillId | "thieves-tools"
-  >;
+  expertise: Array<SkillId | "thieves-tools">;
 
   equippedWeaponAttacks: any[];
 
   genericAttackBonuses: {
     strengthWeapon: number;
-
     finesseOrRanged: number;
-
     unarmed: number;
   };
 
   combatFeatures: Array<{
     id: string;
-
     name: string;
-
     summary: string;
-
     value?: string | null;
   }>;
 
@@ -247,96 +202,64 @@ export type CharacterSheetDerived = {
 
   xpProgress: {
     level: number;
-
     currentLevelXp: number;
-
     nextLevelXp: number | null;
-
     progressXp: number;
-
     neededXp: number;
-
     progressPercent: number;
   };
 
   pendingSteps: any[];
-
   traitGroups: TraitGroup[];
 
   activeSpellcasting: any;
-
   spellcastingAbility: AbilityKey | null;
-
   spellcastingAbilityMod: number | null;
-
   spellSaveDc: number | null;
-
   spellAttackBonus: number | null;
-
   spellSlots: Record<string, number>;
 
   cantripsKnown: number;
-
   spellsKnown: number;
-
   spellsPrepared: number;
-
   missingSpellListCount: number;
-
   spells: any[];
 
   groupedSpells: Array<{
     level: number;
-
     title: string;
-
     spells: any[];
   }>;
 
   selectedCantripCount: number;
-
   selectedLeveledSpellCount: number;
 
   tieflingLegacyName: string | null;
-
   tieflingLegacyCastingAbility: AbilityKey | null;
-
   tieflingLegacyCastingMod: number | null;
-
   tieflingLegacySpellSaveDc: number | null;
-
   tieflingLegacySpellAttackBonus: number | null;
-
   tieflingLegacySpells: any[];
 
   groupedTieflingLegacySpells: Array<{
     level: number;
-
     title: string;
-
     spells: any[];
   }>;
 
   money: Money;
-
   moneyCp: any;
 
   dragonbornAncestryId: string | null;
-
   dragonbornAncestryName: string | null;
-
   dragonbornDamageType: string | null;
-
   dragonbornBreathWeaponDc: number | null;
-
   dragonbornBreathWeaponDamage: string | null;
 };
 
 export type CharacterSheetDataHookResult = {
   character: CharacterDoc | null;
-
   loading: boolean;
-
   error: string;
 
   campaignItemsById: Record<

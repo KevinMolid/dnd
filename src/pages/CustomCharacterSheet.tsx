@@ -14,6 +14,10 @@ import CharacterQuickStats from "../features/character-sheet/components/Characte
 
 import SectionCard from "../features/character-sheet/components/SectionCard";
 
+import CharacterProfilePanel from "../features/character-sheet/components/CharacterProfilePanel";
+
+import PlayerNotesPanel from "../features/character-sheet/components/PlayerNotesPanel";
+
 import type {
   CharacterSheetTab,
   DeathSaves,
@@ -61,41 +65,27 @@ type CustomCharacterSheetProps = {
 
 const abilityLabels: Record<AbilityKey, string> = {
   str: "Strength",
-
   dex: "Dexterity",
-
   con: "Constitution",
-
   int: "Intelligence",
-
   wis: "Wisdom",
-
   cha: "Charisma",
 };
 
 const defaultAbilityScores: Record<AbilityKey, number> = {
   str: 10,
-
   dex: 10,
-
   con: 10,
-
   int: 10,
-
   wis: 10,
-
   cha: 10,
 };
 
 const defaultMoney: Money = {
   cp: 0,
-
   sp: 0,
-
   ep: 0,
-
   gp: 0,
-
   pp: 0,
 };
 
@@ -106,21 +96,13 @@ const getProficiencyMultiplier = (level: CustomProficiencyLevel) =>
 
 const CustomCharacterSheet = ({
   characterId,
-
   character,
-
   backTo,
-
   backLabel,
-
   campaignItemsById,
-
   handleEquipmentChange,
-
   handleSetHeroicInspiration,
-
   handleSetDeathSaves,
-
   handleSetSpellSlotRemaining,
 }: CustomCharacterSheetProps) => {
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
@@ -129,7 +111,6 @@ const CustomCharacterSheet = ({
 
   const abilityScores: Record<AbilityKey, number> = {
     ...defaultAbilityScores,
-
     ...(character.abilityScores ?? {}),
   };
 
@@ -165,7 +146,6 @@ const CustomCharacterSheet = ({
 
   const money: Money = {
     ...defaultMoney,
-
     ...(character.money ?? {}),
   };
 
@@ -206,10 +186,6 @@ const CustomCharacterSheet = ({
       }`
     : undefined;
 
-  /* =========================================================
-       ATTACKS
-    ========================================================= */
-
   const customAttacks = (character.equipment ?? [])
     .filter((entry) => entry.equipped || (entry.equippedSlots?.length ?? 0) > 0)
     .map((entry) => {
@@ -234,10 +210,6 @@ const CustomCharacterSheet = ({
       };
     })
     .filter((attack): attack is NonNullable<typeof attack> => Boolean(attack));
-
-  /* =========================================================
-       SPELLS
-    ========================================================= */
 
   const quickSpells = spellcasting.spells
     .map((savedSpell) => {
@@ -268,10 +240,6 @@ const CustomCharacterSheet = ({
 
       remaining: Math.max(0, Math.min(slot.max, slot.remaining)),
     }));
-
-  /* =========================================================
-       FEATURES / ACTIONS
-    ========================================================= */
 
   const features = (character.customTraits ?? []).map((trait) => ({
     id: trait.id,
@@ -319,31 +287,27 @@ const CustomCharacterSheet = ({
       description: feature.description,
     }));
 
-  /* =========================================================
-       DETAIL TABS
-    ========================================================= */
-
   const renderFeaturesTab = () => (
     <SectionCard title="Features & Traits">
       {character.customTraits?.length ? (
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-1.5 sm:grid-cols-2">
           {character.customTraits.map((trait) => (
             <div
               key={trait.id}
-              className="rounded-xl border border-white/10 bg-zinc-900/60 p-3"
+              className="rounded-lg border border-white/[0.07] bg-black/20 px-3 py-2"
             >
               <div className="flex items-start justify-between gap-3">
-                <strong className="text-sm text-white">{trait.name}</strong>
+                <strong className="text-[10px] text-white">{trait.name}</strong>
 
                 {trait.source ? (
-                  <span className="shrink-0 text-[10px] text-zinc-600">
+                  <span className="shrink-0 text-[7px] uppercase tracking-[0.08em] text-zinc-600">
                     {trait.source}
                   </span>
                 ) : null}
               </div>
 
               {trait.description ? (
-                <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-zinc-400">
+                <p className="mt-1 line-clamp-2 text-[8px] leading-4 text-zinc-500">
                   {trait.description}
                 </p>
               ) : null}
@@ -365,38 +329,30 @@ const CustomCharacterSheet = ({
     />
   );
 
+  const renderCharacterTab = () => (
+    <CharacterProfilePanel
+      age={character.age}
+      height={character.height}
+      weight={character.weight}
+      eyes={character.eyes}
+      skin={character.skin}
+      hair={character.hair}
+      alignment={character.alignment}
+      appearance={character.characterAppearance}
+      connections={character.alliesAndOrganizations}
+      backstory={character.characterBackstory ?? character.notes}
+      personalityTraits={character.personalityTraits}
+      ideals={character.ideals}
+      bonds={character.bonds}
+      flaws={character.flaws}
+    />
+  );
+
   const renderNotesTab = () => (
-    <div className="space-y-3">
-      <SectionCard title="Character Details">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <Info label="Age" value={character.age} />
-
-          <Info label="Height" value={character.height} />
-
-          <Info label="Weight" value={character.weight} />
-
-          <Info label="Eyes" value={character.eyes} />
-
-          <Info label="Skin" value={character.skin} />
-
-          <Info label="Hair" value={character.hair} />
-
-          <Info label="Alignment" value={character.alignment} />
-        </div>
-      </SectionCard>
-
-      <SectionCard title="Character Appearance">
-        <LongText value={character.characterAppearance} />
-      </SectionCard>
-
-      <SectionCard title="Allies & Organizations">
-        <LongText value={character.alliesAndOrganizations} />
-      </SectionCard>
-
-      <SectionCard title="Character Backstory">
-        <LongText value={character.characterBackstory || character.notes} />
-      </SectionCard>
-    </div>
+    <PlayerNotesPanel
+      characterId={characterId}
+      initialValue={character.playerNotes}
+    />
   );
 
   return (
@@ -500,38 +456,13 @@ const CustomCharacterSheet = ({
 
           {activeTab === "features" ? renderFeaturesTab() : null}
 
+          {activeTab === "character" ? renderCharacterTab() : null}
+
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
       </div>
     </div>
   );
 };
-
-const Info = ({
-  label,
-
-  value,
-}: {
-  label: string;
-
-  value?: string | null;
-}) => (
-  <div>
-    <p className="text-[8px] font-semibold uppercase tracking-[0.1em] text-zinc-600">
-      {label}
-    </p>
-
-    <p className="mt-1 text-xs text-zinc-300">{value || "—"}</p>
-  </div>
-);
-
-const LongText = ({ value }: { value?: string | null }) =>
-  value ? (
-    <p className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
-      {value}
-    </p>
-  ) : (
-    <p className="text-xs text-zinc-600">Nothing entered.</p>
-  );
 
 export default CustomCharacterSheet;

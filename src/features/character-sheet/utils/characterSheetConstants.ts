@@ -1,5 +1,11 @@
-import type { AbilityKey, SkillId } from "../../../rulesets/dnd/dnd2024/types";
-import type { CharacterSheetTab } from "../types";
+import type {
+  AbilityKey,
+  SkillId,
+} from "../../../rulesets/dnd/dnd2024/types";
+
+import type {
+  CharacterSheetTab,
+} from "../types";
 
 export const abilityValues: AbilityKey[] = [
   "str",
@@ -11,18 +17,26 @@ export const abilityValues: AbilityKey[] = [
 ];
 
 export const sheetTabs: CharacterSheetTab[] = [
-  "features",
   "inventory",
+  "features",
+  "character",
   "notes",
 ];
 
-export const sheetTabLabels: Record<CharacterSheetTab, string> = {
-  features: "Features",
+export const sheetTabLabels: Record<
+  CharacterSheetTab,
+  string
+> = {
   inventory: "Inventory",
+  features: "Features",
+  character: "Character",
   notes: "Notes",
 };
 
-export const abilityLabels: Record<AbilityKey, string> = {
+export const abilityLabels: Record<
+  AbilityKey,
+  string
+> = {
   str: "STR",
   dex: "DEX",
   con: "CON",
@@ -31,7 +45,10 @@ export const abilityLabels: Record<AbilityKey, string> = {
   cha: "CHA",
 };
 
-export const abilityFullLabels: Record<AbilityKey, string> = {
+export const abilityFullLabels: Record<
+  AbilityKey,
+  string
+> = {
   str: "Strength",
   dex: "Dexterity",
   con: "Constitution",
@@ -40,7 +57,10 @@ export const abilityFullLabels: Record<AbilityKey, string> = {
   cha: "Charisma",
 };
 
-export const skillAbilityMap: Record<SkillId, AbilityKey> = {
+export const skillAbilityMap: Record<
+  SkillId,
+  AbilityKey
+> = {
   acrobatics: "dex",
   "animal-handling": "wis",
   arcana: "int",

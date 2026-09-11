@@ -31,11 +31,8 @@ export type CustomSkillId =
 
 export type CustomTrait = {
   id: string;
-
   name: string;
-
   source?: string;
-
   description?: string;
 };
 
@@ -48,35 +45,26 @@ export type CustomProficiencies = {
   >;
 
   armor: string[];
-
   weapons: string[];
-
   tools: string[];
-
   languages: string[];
 };
 
 export type CustomSpellEntry = {
   spellId: string;
-
   name: string;
-
   level: number;
 };
 
 export type CustomSpellSlot = {
   max: number;
-
   remaining: number;
 };
 
 export type CustomSpellcasting = {
   enabled: boolean;
-
   ability: AbilityKey | null;
-
   spellSaveDc: number;
-
   spellAttackBonus: number;
 
   spellSlots: Record<
@@ -91,7 +79,6 @@ export type CustomCharacter = {
   id?: string;
 
   name: string;
-
   imageUrl?: string;
 
   buildMode: "custom";
@@ -99,23 +86,15 @@ export type CustomCharacter = {
   level?: number;
 
   className?: string;
-
   speciesName?: string;
-
   backgroundName?: string;
-
   alignment?: string;
 
   age?: string;
-
   height?: string;
-
   weight?: string;
-
   eyes?: string;
-
   skin?: string;
-
   hair?: string;
 
   abilityScores?: Record<
@@ -125,148 +104,71 @@ export type CustomCharacter = {
 
   customStats?: {
     armorClass?: number;
-
     currentHp?: number;
-
     maxHp?: number;
-
     speed?: number;
-
     proficiencyBonus?: number;
-
     hitDie?: string;
-
     hitDiceRemaining?: number;
   };
 
   customProficiencies?: CustomProficiencies;
-
   customTraits?: CustomTrait[];
-
   customSpellcasting?: CustomSpellcasting;
 
   characterAppearance?: string;
-
   alliesAndOrganizations?: string;
-
   characterBackstory?: string;
 
+  personalityTraits?: string;
+  ideals?: string;
+  bonds?: string;
+  flaws?: string;
+
+  playerNotes?: string;
+
+  /**
+   * Legacy/general field.
+   */
   notes?: string;
 
   equipment?: CharacterEquipmentEntry[];
-
   money?: Money;
 
   heroicInspiration?: boolean;
 
   deathSaves?: {
     successes: number;
-
     failures: number;
   };
 
   conditions?: string[];
-
   xp?: number;
 };
 
 export const customSkillDefinitions: Array<{
   id: CustomSkillId;
-
   name: string;
-
   ability: AbilityKey;
 }> = [
-  {
-    id: "acrobatics",
-    name: "Acrobatics",
-    ability: "dex",
-  },
-  {
-    id: "animal-handling",
-    name: "Animal Handling",
-    ability: "wis",
-  },
-  {
-    id: "arcana",
-    name: "Arcana",
-    ability: "int",
-  },
-  {
-    id: "athletics",
-    name: "Athletics",
-    ability: "str",
-  },
-  {
-    id: "deception",
-    name: "Deception",
-    ability: "cha",
-  },
-  {
-    id: "history",
-    name: "History",
-    ability: "int",
-  },
-  {
-    id: "insight",
-    name: "Insight",
-    ability: "wis",
-  },
-  {
-    id: "intimidation",
-    name: "Intimidation",
-    ability: "cha",
-  },
-  {
-    id: "investigation",
-    name: "Investigation",
-    ability: "int",
-  },
-  {
-    id: "medicine",
-    name: "Medicine",
-    ability: "wis",
-  },
-  {
-    id: "nature",
-    name: "Nature",
-    ability: "int",
-  },
-  {
-    id: "perception",
-    name: "Perception",
-    ability: "wis",
-  },
-  {
-    id: "performance",
-    name: "Performance",
-    ability: "cha",
-  },
-  {
-    id: "persuasion",
-    name: "Persuasion",
-    ability: "cha",
-  },
-  {
-    id: "religion",
-    name: "Religion",
-    ability: "int",
-  },
-  {
-    id: "sleight-of-hand",
-    name: "Sleight of Hand",
-    ability: "dex",
-  },
-  {
-    id: "stealth",
-    name: "Stealth",
-    ability: "dex",
-  },
-  {
-    id: "survival",
-    name: "Survival",
-    ability: "wis",
-  },
+  { id: "acrobatics", name: "Acrobatics", ability: "dex" },
+  { id: "animal-handling", name: "Animal Handling", ability: "wis" },
+  { id: "arcana", name: "Arcana", ability: "int" },
+  { id: "athletics", name: "Athletics", ability: "str" },
+  { id: "deception", name: "Deception", ability: "cha" },
+  { id: "history", name: "History", ability: "int" },
+  { id: "insight", name: "Insight", ability: "wis" },
+  { id: "intimidation", name: "Intimidation", ability: "cha" },
+  { id: "investigation", name: "Investigation", ability: "int" },
+  { id: "medicine", name: "Medicine", ability: "wis" },
+  { id: "nature", name: "Nature", ability: "int" },
+  { id: "perception", name: "Perception", ability: "wis" },
+  { id: "performance", name: "Performance", ability: "cha" },
+  { id: "persuasion", name: "Persuasion", ability: "cha" },
+  { id: "religion", name: "Religion", ability: "int" },
+  { id: "sleight-of-hand", name: "Sleight of Hand", ability: "dex" },
+  { id: "stealth", name: "Stealth", ability: "dex" },
+  { id: "survival", name: "Survival", ability: "wis" },
 ];
 
 export const createEmptyCustomSkills =
@@ -275,67 +177,41 @@ export const createEmptyCustomSkills =
     CustomProficiencyLevel
   > => ({
     acrobatics: "none",
-
-    "animal-handling":
-      "none",
-
+    "animal-handling": "none",
     arcana: "none",
-
     athletics: "none",
-
     deception: "none",
-
     history: "none",
-
     insight: "none",
-
-    intimidation:
-      "none",
-
-    investigation:
-      "none",
-
+    intimidation: "none",
+    investigation: "none",
     medicine: "none",
-
     nature: "none",
-
     perception: "none",
-
-    performance:
-      "none",
-
+    performance: "none",
     persuasion: "none",
-
     religion: "none",
-
-    "sleight-of-hand":
-      "none",
-
+    "sleight-of-hand": "none",
     stealth: "none",
-
     survival: "none",
   });
 
-export const createEmptySpellSlots =
-  () => {
-    const result: Record<
-      string,
-      CustomSpellSlot
-    > = {};
+export const createEmptySpellSlots = () => {
+  const result: Record<
+    string,
+    CustomSpellSlot
+  > = {};
 
-    for (
-      let level = 1;
-      level <= 9;
-      level += 1
-    ) {
-      result[
-        String(level)
-      ] = {
-        max: 0,
+  for (
+    let level = 1;
+    level <= 9;
+    level += 1
+  ) {
+    result[String(level)] = {
+      max: 0,
+      remaining: 0,
+    };
+  }
 
-        remaining: 0,
-      };
-    }
-
-    return result;
-  };
+  return result;
+};

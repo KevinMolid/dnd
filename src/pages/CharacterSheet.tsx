@@ -29,6 +29,10 @@ import OverviewDashboard from "../features/character-sheet/components/OverviewDa
 
 import TraitGroupSection from "../features/character-sheet/components/TraitGroupSection";
 
+import CharacterProfilePanel from "../features/character-sheet/components/CharacterProfilePanel";
+
+import PlayerNotesPanel from "../features/character-sheet/components/PlayerNotesPanel";
+
 import { abilityFullLabels } from "../features/character-sheet/utils/characterSheetConstants";
 
 import { formatLabel } from "../features/character-sheet/utils/characterSheetHelpers";
@@ -44,46 +48,30 @@ const CharacterSheet = () => {
     Record<TraitGroupKey, boolean>
   >({
     species: true,
-
     class: true,
-
     subclass: true,
-
     background: true,
-
     feats: true,
-
     other: false,
   });
 
   const {
     character,
-
     derived,
-
     loading,
-
     error,
-
     campaignItemsById,
-
     handleEquipmentChange,
-
     handleSetHeroicInspiration,
-
     handleSetDeathSaves,
-
     handleSetSpellSlotRemaining,
-
     handleApplyDecision,
-
     handleCompleteLevelUp,
   } = useCharacterSheetData(characterId);
 
   const navigationState = location.state as
     | {
         from?: string;
-
         label?: string;
       }
     | undefined;
@@ -95,7 +83,6 @@ const CharacterSheet = () => {
   const toggleTraitGroup = (key: TraitGroupKey) => {
     setOpenTraitGroups((current) => ({
       ...current,
-
       [key]: !current[key],
     }));
   };
@@ -197,10 +184,6 @@ const CharacterSheet = () => {
     ? `${character.hitDiceRemaining ?? character.level}/${character.level} ${hitDieText}`
     : undefined;
 
-  /* =========================================================
-     SPELL SLOTS
-  ========================================================= */
-
   const guidedSpellSlots = Object.entries(derived.spellSlots)
     .map(([spellLevel, slotCount]) => {
       const level = Number(spellLevel);
@@ -216,17 +199,11 @@ const CharacterSheet = () => {
 
       return {
         level,
-
         max,
-
         remaining,
       };
     })
     .filter((slot) => slot.max > 0);
-
-  /* =========================================================
-     ATTACKS
-  ========================================================= */
 
   const weaponAttacks = derived.equippedWeaponAttacks.map((attack) => ({
     id: attack.instanceId,
@@ -283,10 +260,6 @@ const CharacterSheet = () => {
 
   const attacks = [...weaponAttacks, ...specialAttacks];
 
-  /* =========================================================
-     SPELLS
-  ========================================================= */
-
   const combinedSpells = [
     ...derived.groupedTieflingLegacySpells.flatMap((group) => group.spells),
 
@@ -306,10 +279,6 @@ const CharacterSheet = () => {
 
     return true;
   });
-
-  /* =========================================================
-     FEATURES / ACTIONS
-  ========================================================= */
 
   const features = derived.traitGroups.flatMap((group) =>
     group.traits.map((trait: any) => ({
@@ -385,12 +354,8 @@ const CharacterSheet = () => {
       value: feature.value ?? undefined,
     }));
 
-  /* =========================================================
-     FEATURES TAB
-  ========================================================= */
-
   const renderFeaturesTab = () => (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {derived.pendingSteps.length > 0 ? (
         <SectionCard title="Level Up">
           <div className="space-y-3">
@@ -532,16 +497,30 @@ const CharacterSheet = () => {
     );
   };
 
+  const renderCharacterTab = () => (
+    <CharacterProfilePanel
+      age={character.age}
+      height={character.height}
+      weight={character.weight}
+      eyes={character.eyes}
+      skin={character.skin}
+      hair={character.hair}
+      alignment={character.alignment}
+      appearance={character.characterAppearance}
+      connections={character.alliesAndOrganizations}
+      backstory={character.characterBackstory ?? character.notes}
+      personalityTraits={character.personalityTraits}
+      ideals={character.ideals}
+      bonds={character.bonds}
+      flaws={character.flaws}
+    />
+  );
+
   const renderNotesTab = () => (
-    <SectionCard title="Notes">
-      {character.notes ? (
-        <p className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
-          {character.notes}
-        </p>
-      ) : (
-        <p className="text-xs text-zinc-600">No notes yet.</p>
-      )}
-    </SectionCard>
+    <PlayerNotesPanel
+      characterId={characterId}
+      initialValue={character.playerNotes}
+    />
   );
 
   return (
@@ -658,6 +637,8 @@ const CharacterSheet = () => {
           {activeTab === "inventory" ? renderInventoryTab() : null}
 
           {activeTab === "features" ? renderFeaturesTab() : null}
+
+          {activeTab === "character" ? renderCharacterTab() : null}
 
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
