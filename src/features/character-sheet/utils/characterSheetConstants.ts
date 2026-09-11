@@ -11,20 +11,14 @@ export const abilityValues: AbilityKey[] = [
 ];
 
 export const sheetTabs: CharacterSheetTab[] = [
-  "overview",
-  "combat",
   "features",
   "inventory",
-  "spells",
   "notes",
 ];
 
 export const sheetTabLabels: Record<CharacterSheetTab, string> = {
-  overview: "Overview",
-  combat: "Combat",
   features: "Features",
   inventory: "Inventory",
-  spells: "Spells",
   notes: "Notes",
 };
 
