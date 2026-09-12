@@ -16,16 +16,9 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
   const navigate = useNavigate();
 
   const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate("/");
-    } catch (err) {
-      console.error("Logout failed", err);
-    }
-  };
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   const displayName =
     appUser?.displayName?.trim() ||
@@ -36,9 +29,27 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
   const email = user?.email || "";
   const profileImage = appUser?.imageUrl?.trim() || "";
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setMenuOpen(false);
+      navigate("/");
+    } catch (err) {
+      console.error("Logout failed", err);
+    }
+  };
+
+  const goToProfile = () => {
+    setMenuOpen(false);
+    navigate("/profile");
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (!menuRef.current) return;
+      if (!menuRef.current) {
+        return;
+      }
+
       if (!menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
       }
@@ -47,6 +58,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setMenuOpen(false);
+        triggerRef.current?.focus();
       }
     };
 
@@ -60,76 +72,74 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 text-white backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 text-white backdrop-blur-xl">
       <Container>
-        <div className="flex items-center justify-between gap-4 py-0">
-          <Link to="/" className="min-w-0">
-            <div className="flex items-center gap-3">
-              <img
-                src={logo}
-                alt="Worldshaper logo"
-                className="h-12 shrink-0 rounded-xl object-cover sm:h-16"
-              />
+        <div className="flex min-h-[72px] items-center justify-between gap-4">
+          {/* =====================================================
+              BRAND
+          ===================================================== */}
 
-              <div className="min-w-0 hidden sm:block">
-                <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                  Worldshaper
-                </p>
-              </div>
-            </div>
+          <Link
+            to="/"
+            aria-label="Lorebound home"
+            className="group flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+          >
+            <img
+              src={logo}
+              alt=""
+              className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-white/10 transition group-hover:ring-white/20"
+            />
+
+            <span className="hidden text-2xl font-bold tracking-tight text-white sm:block">
+              Lorebound
+            </span>
           </Link>
+
+          {/* =====================================================
+              USER AREA
+          ===================================================== */}
 
           {user ? (
             <div className="relative" ref={menuRef}>
               <button
+                ref={triggerRef}
                 type="button"
                 onClick={() => setMenuOpen((prev) => !prev)}
-                className="group flex items-center gap-3 rounded-full border border-white/10 bg-white/5 p-1 pr-3 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/70"
+                className="flex min-h-11 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.035] px-2 py-1.5 text-left transition hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                aria-label="Open profile menu"
+                aria-label="Open account menu"
               >
                 <Avatar
                   name={displayName}
                   src={profileImage}
-                  size="md"
+                  size="sm"
                   shape="circle"
                 />
 
-                <div className="text-left">
-                  <p className="max-w-[180px] truncate text-sm font-semibold text-white">
-                    {loading ? "Loading..." : displayName}
-                  </p>
-                  <p className="max-w-[180px] truncate text-xs text-zinc-400">
-                    {email}
-                  </p>
-                </div>
+                <span className="hidden max-w-[180px] truncate text-sm font-semibold text-zinc-100 sm:block">
+                  {loading ? "Loading..." : displayName}
+                </span>
 
-                <svg
-                  className={`h-4 w-4 text-zinc-400 transition ${
+                <i
+                  className={`fa-solid fa-chevron-down ml-0.5 text-[10px] text-zinc-500 transition-transform ${
                     menuOpen ? "rotate-180" : ""
                   }`}
-                  viewBox="0 0 20 20"
-                  fill="currentColor"
                   aria-hidden="true"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                />
               </button>
 
               <div
-                className={`absolute right-0 top-full z-50 mt-3 w-[min(92vw,20rem)] overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 shadow-2xl ring-1 ring-black/40 transition-all duration-200 ${
+                role="menu"
+                aria-label="Account menu"
+                className={`absolute right-0 top-full z-50 mt-2 w-[min(92vw,18rem)] overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl shadow-black/60 ring-1 ring-black/40 transition-all duration-150 ${
                   menuOpen
                     ? "pointer-events-auto translate-y-0 opacity-100"
-                    : "pointer-events-none -translate-y-2 opacity-0"
+                    : "pointer-events-none -translate-y-1 opacity-0"
                 }`}
               >
-                <div className="border-b border-white/10 bg-white/5 p-2">
-                  <div className="flex items-center gap-3">
+                <div className="border-b border-white/[0.08] px-4 py-3">
+                  <div className="flex min-w-0 items-center gap-3">
                     <Avatar
                       name={displayName}
                       src={profileImage}
@@ -141,91 +151,47 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
                       <p className="truncate text-sm font-semibold text-white">
                         {loading ? "Loading..." : displayName}
                       </p>
-                      <p className="truncate text-xs text-zinc-400">{email}</p>
+
+                      {email ? (
+                        <p className="mt-0.5 truncate text-xs text-zinc-500">
+                          {email}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-1 px-1 py-2">
+                <div className="p-1.5">
                   <button
                     type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate("/profile");
-                    }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-1 text-left text-sm font-medium text-white transition hover:bg-white/10"
+                    role="menuitem"
+                    onClick={goToProfile}
+                    className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-zinc-200 transition hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-zinc-300">
-                      <svg
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path d="M10 2a4 4 0 100 8 4 4 0 000-8zM3 16a5 5 0 015-5h4a5 5 0 015 5v1H3v-1z" />
-                      </svg>
-                    </span>
+                    <i className="fa-regular fa-user w-4 text-center text-zinc-500" />
                     <span>Profile settings</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      navigate("/settings");
-                    }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-1 text-left text-sm font-medium text-white transition hover:bg-white/10"
-                  >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-zinc-300">
-                      <svg
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M11.49 3.17a1 1 0 00-1.98 0l-.12.95a1 1 0 01-.83.86l-.96.14a1 1 0 00-.56 1.7l.69.68a1 1 0 01.28.88l-.17.95a1 1 0 001.45 1.05l.86-.45a1 1 0 01.93 0l.86.45a1 1 0 001.45-1.05l-.17-.95a1 1 0 01.28-.88l.69-.68a1 1 0 00-.56-1.7l-.96-.14a1 1 0 01-.83-.86l-.12-.95zM10 13a3 3 0 100-6 3 3 0 000 6z"
-                          clipRule="evenodd"
-                        />
-                        <path d="M4 11a6 6 0 1112 0 6 6 0 01-12 0z" />
-                      </svg>
-                    </span>
-                    <span>Account settings</span>
-                  </button>
-
-                  <div className="my-1 h-px bg-white/10" />
+                  <div className="my-1 h-px bg-white/[0.08]" />
 
                   <button
                     type="button"
+                    role="menuitem"
                     onClick={handleLogout}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-1 text-left text-sm font-medium text-white transition hover:bg-white/10"
+                    className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-zinc-300 transition hover:bg-rose-500/[0.07] hover:text-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
                   >
-                    <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/5 text-white">
-                      <svg
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M3 4.75A1.75 1.75 0 014.75 3h5.5a.75.75 0 010 1.5h-5.5a.25.25 0 00-.25.25v10.5c0 .138.112.25.25.25h5.5a.75.75 0 010 1.5h-5.5A1.75 1.75 0 013 15.25V4.75zm9.22 2.47a.75.75 0 011.06 0l2.25 2.25a.75.75 0 010 1.06l-2.25 2.25a.75.75 0 11-1.06-1.06l.97-.97H8.75a.75.75 0 010-1.5h4.44l-.97-.97a.75.75 0 010-1.06z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </span>
+                    <i className="fa-solid fa-arrow-right-from-bracket w-4 text-center text-zinc-500" />
                     <span>Log out</span>
                   </button>
                 </div>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onOpenLogin}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+                className="min-h-10 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
               >
                 Log in
               </button>
@@ -233,7 +199,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
               <button
                 type="button"
                 onClick={onOpenSignup}
-                className="rounded-xl bg-cyan-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-600"
+                className="min-h-10 rounded-lg border border-white/15 bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
               >
                 Sign up
               </button>
