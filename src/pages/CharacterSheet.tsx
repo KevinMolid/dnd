@@ -95,10 +95,6 @@ const CharacterSheet = () => {
       ? `/campaigns/${character.campaignId}/characters`
       : "/");
 
-  const backLabel =
-    navigationState?.label ??
-    (character?.campaignId ? "Back to campaign" : "Back to home");
-
   const toggleTraitGroup = (key: TraitGroupKey) => {
     setOpenTraitGroups((current) => ({
       ...current,
@@ -141,7 +137,7 @@ const CharacterSheet = () => {
         characterId={characterId}
         character={character as any}
         backTo={backTo}
-        backLabel={backLabel}
+        backLabel="Back"
         campaignItemsById={campaignItemsById}
         handleEquipmentChange={handleEquipmentChange}
         handleSetCurrentHp={handleSetCurrentHp}
@@ -581,6 +577,7 @@ const CharacterSheet = () => {
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 lg:px-6">
         <CharacterBreadcrumbs
+          characterId={characterId}
           characterName={character.name}
           campaignId={character.campaignId}
           fallbackTo={backTo}

@@ -1,32 +1,70 @@
+import { useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 type CharacterBreadcrumbsProps = {
+  characterId?: string;
   characterName: string;
   campaignId?: string | null;
   fallbackTo?: string;
 };
 
 const CharacterBreadcrumbs = ({
+  characterId,
   characterName,
   campaignId,
   fallbackTo = "/",
 }: CharacterBreadcrumbsProps) => {
   const navigate = useNavigate();
 
-  const handleBack = () => {
-    /*
-     * Prefer real browser history so "Back" returns to the page
-     * the user actually opened the character sheet from.
-     *
-     * fallbackTo still gives direct/deep-linked character sheets
-     * a safe in-app destination.
-     */
-    if (window.history.length > 1) {
-      navigate(-1);
+  const storageKey = useMemo(
+    () =>
+      characterId ? `rphub:character-sheet:return-to:${characterId}` : null,
+    [characterId],
+  );
+
+  /*
+   * The first destination recorded for this character-sheet visit is kept
+   * through Sheet -> Edit -> Save -> Sheet.
+   *
+   * It is cleared only when the user actually leaves through the Back button
+   * or one of these breadcrumbs, so Edit can never become the return target.
+   */
+  useEffect(() => {
+    if (!storageKey) {
       return;
     }
 
-    navigate(fallbackTo);
+    const existing = sessionStorage.getItem(storageKey);
+
+    if (!existing) {
+      sessionStorage.setItem(storageKey, fallbackTo);
+    }
+  }, [fallbackTo, storageKey]);
+
+  const getReturnTo = () => {
+    if (!storageKey) {
+      return fallbackTo;
+    }
+
+    return sessionStorage.getItem(storageKey) ?? fallbackTo;
+  };
+
+  const clearStoredReturnTo = () => {
+    if (storageKey) {
+      sessionStorage.removeItem(storageKey);
+    }
+  };
+
+  const handleBack = () => {
+    const returnTo = getReturnTo();
+
+    clearStoredReturnTo();
+
+    navigate(returnTo);
+  };
+
+  const handleBreadcrumbNavigation = () => {
+    clearStoredReturnTo();
   };
 
   return (
@@ -45,7 +83,11 @@ const CharacterBreadcrumbs = ({
         aria-label="Breadcrumb"
         className="flex min-w-0 flex-wrap items-center gap-1.5 text-zinc-500"
       >
-        <Link to="/" className="transition hover:text-zinc-200">
+        <Link
+          to="/"
+          onClick={handleBreadcrumbNavigation}
+          className="transition hover:text-zinc-200"
+        >
           Home
         </Link>
 
@@ -55,6 +97,7 @@ const CharacterBreadcrumbs = ({
 
             <Link
               to={`/campaigns/${campaignId}`}
+              onClick={handleBreadcrumbNavigation}
               className="transition hover:text-zinc-200"
             >
               Campaign
@@ -64,6 +107,7 @@ const CharacterBreadcrumbs = ({
 
             <Link
               to={`/campaigns/${campaignId}/characters`}
+              onClick={handleBreadcrumbNavigation}
               className="transition hover:text-zinc-200"
             >
               Characters
