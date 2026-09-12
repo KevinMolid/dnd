@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 
 import Container from "./Container";
 import Avatar from "./Avatar";
-import logo from "/images/WorldshaperLogo.jpg";
+import logo from "/images/Lorebound.png";
 import { useAuth } from "../context/AuthContext";
 
 type HeaderProps = {
@@ -46,9 +46,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (!menuRef.current) {
-        return;
-      }
+      if (!menuRef.current) return;
 
       if (!menuRef.current.contains(event.target as Node)) {
         setMenuOpen(false);
@@ -74,7 +72,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 text-white backdrop-blur-xl">
       <Container>
-        <div className="flex min-h-[72px] items-center justify-between gap-4">
+        <div className="flex min-h-[80px] items-center justify-between gap-4">
           {/* =====================================================
               BRAND
           ===================================================== */}
@@ -82,15 +80,20 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
           <Link
             to="/"
             aria-label="Lorebound home"
-            className="group flex min-w-0 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+            className="flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
           >
             <img
               src={logo}
               alt=""
-              className="h-11 w-11 shrink-0 rounded-xl object-cover ring-1 ring-white/10 transition group-hover:ring-white/20"
+              className="h-14 w-14 shrink-0 object-contain sm:h-16 sm:w-16"
             />
 
-            <span className="hidden text-2xl font-bold tracking-tight text-white sm:block">
+            <span
+              className="hidden text-[30px] font-medium leading-none tracking-[-0.035em] text-zinc-100 sm:block"
+              style={{
+                fontFamily: 'Georgia, "Times New Roman", Times, serif',
+              }}
+            >
               Lorebound
             </span>
           </Link>

@@ -1,14 +1,16 @@
+import type { ReactNode } from "react";
+
 type Props = {
-  children: React.ReactNode;
+  children: ReactNode;
+  className?: string;
 };
 
-const Container = ({ children }: Props) => {
+const Container = ({ children, className = "" }: Props) => {
   return (
     <div
-      className="px-4 md:px-12 py-4 flex justify-center
-    "
+      className={`mx-auto w-full max-w-[1280px] px-4 sm:px-6 lg:px-8 ${className}`}
     >
-      <div className="flex-grow max-w-[1280px]">{children}</div>
+      {children}
     </div>
   );
 };
