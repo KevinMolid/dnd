@@ -489,7 +489,10 @@ export default function MapWorkspaceModule({
       });
     }
 
-    setDetailsExpanded(false);
+    /*
+     * Keep the details panel in its current state.
+     * If it is open, it now switches to map overview information.
+     */
 
     setEncounterStartedMessage(null);
   };

@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
+
+import { doc, getDoc } from "firebase/firestore";
 
 import ReactGridLayout, {
   useContainerWidth,
   type Layout,
   type LayoutItem,
 } from "react-grid-layout";
+
+import { db } from "../firebase";
+
+import logo from "/images/Lorebound.png";
 
 import { MODULE_REGISTRY } from "../features/workspace/moduleRegistry";
 
@@ -15,11 +21,14 @@ import type {
   WorkspaceModuleType,
 } from "../features/workspace/workspaceTypes";
 
+import type { CampaignDoc } from "../types/campaign";
+
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
 type SavedWorkspace = {
   modules: WorkspaceModule[];
+
   layout: LayoutItem[];
 };
 
@@ -134,7 +143,11 @@ function loadWorkspace(campaignId: string): SavedWorkspace | null {
 
 function saveWorkspace(campaignId: string, workspace: SavedWorkspace) {
   try {
-    localStorage.setItem(getStorageKey(campaignId), JSON.stringify(workspace));
+    localStorage.setItem(
+      getStorageKey(campaignId),
+
+      JSON.stringify(workspace),
+    );
   } catch (error) {
     console.error("Failed to save workspace", error);
   }
@@ -187,6 +200,7 @@ function WorkspaceModuleCard({
             <button
               type="button"
               title="Remove module"
+              aria-label={`Remove ${module.title}`}
               onClick={() => onRemove(module.id)}
               className="workspace-no-drag flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
             >
@@ -216,6 +230,8 @@ export default function DMWorkspacePage() {
 
   const { width, containerRef, mounted } = useContainerWidth();
 
+  const [campaignName, setCampaignName] = useState<string>("Campaign");
+
   const [modules, setModules] = useState<WorkspaceModule[]>(DEFAULT_MODULES);
 
   const [layout, setLayout] = useState<LayoutItem[]>(DEFAULT_LAYOUT);
@@ -226,6 +242,48 @@ export default function DMWorkspacePage() {
 
   const [hasLoaded, setHasLoaded] = useState(false);
 
+  /*
+   * Only fetch the one piece of campaign data this
+   * shell actually needs: the campaign name.
+   *
+   * We deliberately do not use useCampaignPageData()
+   * here because that hook subscribes to characters,
+   * users, members, journal entries, etc.
+   */
+  useEffect(() => {
+    if (!campaignId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadCampaignName = async () => {
+      try {
+        const snapshot = await getDoc(doc(db, "campaigns", campaignId));
+
+        if (cancelled || !snapshot.exists()) {
+          return;
+        }
+
+        const data = snapshot.data() as CampaignDoc;
+
+        const name = data.name?.trim();
+
+        if (name) {
+          setCampaignName(name);
+        }
+      } catch (error) {
+        console.error("Failed to load workspace campaign name:", error);
+      }
+    };
+
+    loadCampaignName();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignId]);
+
   useEffect(() => {
     if (!campaignId) {
       return;
@@ -235,6 +293,7 @@ export default function DMWorkspacePage() {
 
     if (saved) {
       setModules(saved.modules);
+
       setLayout(saved.layout);
     }
 
@@ -279,8 +338,11 @@ export default function DMWorkspacePage() {
 
     const module: WorkspaceModule = {
       id,
+
       type,
+
       title: definition.title,
+
       config: {},
     };
 
@@ -288,12 +350,15 @@ export default function DMWorkspacePage() {
       i: id,
 
       x: 0,
+
       y: Infinity,
 
       w: definition.defaultW,
+
       h: definition.defaultH,
 
       minW: definition.minW,
+
       minH: definition.minH,
     };
 
@@ -320,6 +385,7 @@ export default function DMWorkspacePage() {
     }
 
     setModules(DEFAULT_MODULES);
+
     setLayout(DEFAULT_LAYOUT);
 
     setShowModulePicker(false);
@@ -338,6 +404,7 @@ export default function DMWorkspacePage() {
           />
         </div>
       )),
+
     [modules, campaignId, editing],
   );
 
@@ -349,39 +416,92 @@ export default function DMWorkspacePage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 backdrop-blur">
-        <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 px-2 py-1.5">
+      {/* =====================================================
+          COMPACT WORKSPACE SHELL
+      ===================================================== */}
+
+      <header className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 backdrop-blur-xl">
+        <div className="flex h-10 min-w-0 items-center justify-between gap-3 px-2">
+          {/* Navigation / breadcrumbs */}
+
           <div className="flex min-w-0 items-center gap-2">
-            <h1 className="truncate text-sm font-bold text-white">
-              DM Workspace
-            </h1>
+            <Link
+              to="/"
+              title="Lorebound home"
+              aria-label="Lorebound home"
+              className="flex shrink-0 items-center gap-1.5 rounded-md transition hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            >
+              <img
+                src={logo}
+                alt=""
+                className="h-7 w-7 shrink-0 object-contain"
+              />
+
+              <span
+                className="hidden text-sm font-semibold text-zinc-100 sm:block"
+                style={{
+                  fontFamily: 'Georgia, "Times New Roman", Times, serif',
+                }}
+              >
+                Lorebound
+              </span>
+            </Link>
+
+            <i
+              className="fa-solid fa-chevron-right shrink-0 text-[8px] text-zinc-700"
+              aria-hidden="true"
+            />
+
+            <Link
+              to={`/campaigns/${campaignId}`}
+              title={`Open ${campaignName}`}
+              className="min-w-0 truncate text-xs font-semibold text-zinc-300 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+            >
+              {campaignName}
+            </Link>
+
+            <i
+              className="fa-solid fa-chevron-right shrink-0 text-[8px] text-zinc-700"
+              aria-hidden="true"
+            />
+
+            <span
+              aria-current="page"
+              className="shrink-0 text-xs font-medium text-zinc-500"
+            >
+              Workspace
+            </span>
 
             {editing ? (
-              <span className="rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-300">
+              <span className="hidden shrink-0 rounded border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-amber-300 sm:inline">
                 Editing
               </span>
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
+          {/* Workspace controls */}
+
+          <div className="flex shrink-0 items-center gap-1.5">
             {editing ? (
               <>
                 <button
                   type="button"
                   onClick={() => setShowModulePicker(true)}
-                  className="flex h-8 items-center rounded-md bg-emerald-500 px-2.5 text-xs font-semibold text-white transition hover:bg-emerald-400"
+                  className="flex h-7 items-center rounded-md bg-emerald-500 px-2.5 text-[11px] font-semibold text-white transition hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300/50"
                 >
-                  <i className="fa-solid fa-plus mr-1.5" />
-                  Module
+                  <i className="fa-solid fa-plus mr-1.5 text-[9px]" />
+
+                  <span className="hidden sm:inline">Module</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleResetWorkspace}
-                  className="flex h-8 items-center rounded-md border border-white/10 bg-white/5 px-2.5 text-xs text-zinc-300 transition hover:bg-white/10"
+                  className="flex h-7 items-center rounded-md border border-white/10 bg-white/5 px-2.5 text-[11px] text-zinc-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                 >
-                  <i className="fa-solid fa-arrow-rotate-left mr-1.5" />
-                  Reset
+                  <i className="fa-solid fa-arrow-rotate-left mr-1.5 text-[9px]" />
+
+                  <span className="hidden sm:inline">Reset</span>
                 </button>
               </>
             ) : null}
@@ -389,21 +509,27 @@ export default function DMWorkspacePage() {
             <button
               type="button"
               onClick={() => setEditing((current) => !current)}
-              className={`flex h-8 items-center rounded-md px-2.5 text-xs font-semibold transition ${
+              className={`flex h-7 items-center rounded-md px-2.5 text-[11px] font-semibold transition focus-visible:outline-none focus-visible:ring-2 ${
                 editing
-                  ? "bg-emerald-500 text-white hover:bg-emerald-400"
-                  : "border border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
+                  ? "bg-emerald-500 text-white hover:bg-emerald-400 focus-visible:ring-emerald-300/50"
+                  : "border border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10 hover:text-white focus-visible:ring-white/30"
               }`}
             >
               <i
-                className={`fa-solid ${editing ? "fa-check" : "fa-pen"} mr-1.5`}
+                className={`fa-solid ${
+                  editing ? "fa-check" : "fa-pen"
+                } mr-1.5 text-[9px]`}
               />
 
               {editing ? "Done" : "Edit layout"}
             </button>
           </div>
         </div>
-      </div>
+      </header>
+
+      {/* =====================================================
+          GRID
+      ===================================================== */}
 
       <main className="p-2">
         <div
@@ -449,6 +575,10 @@ export default function DMWorkspacePage() {
         </div>
       </main>
 
+      {/* =====================================================
+          MODULE PICKER
+      ===================================================== */}
+
       {showModulePicker ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm"
@@ -470,6 +600,7 @@ export default function DMWorkspacePage() {
               <button
                 type="button"
                 onClick={() => setShowModulePicker(false)}
+                aria-label="Close module picker"
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sm text-zinc-400 transition hover:bg-white/10 hover:text-white"
               >
                 <i className="fa-solid fa-xmark" />
