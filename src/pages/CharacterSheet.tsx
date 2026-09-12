@@ -69,6 +69,7 @@ const CharacterSheet = () => {
     handleSetDeathSaves,
     handleSetCurrentHp,
     handleSetConditions,
+    handleSetDefenses,
     handleSetSpellSlotRemaining,
     handleSetPlayerNotes,
 
@@ -137,6 +138,7 @@ const CharacterSheet = () => {
         handleEquipmentChange={handleEquipmentChange}
         handleSetCurrentHp={handleSetCurrentHp}
         handleSetConditions={handleSetConditions}
+        handleSetDefenses={handleSetDefenses}
         handleSetHeroicInspiration={handleSetHeroicInspiration}
         handleSetDeathSaves={handleSetDeathSaves}
         handleSetSpellSlotRemaining={handleSetSpellSlotRemaining}
@@ -273,7 +275,7 @@ const CharacterSheet = () => {
 
     attackBonus: derived.genericAttackBonuses.unarmed,
 
-    damage: `${Math.max(1, 1 + unarmedStrengthModifier)} bludgeoning`,
+    damage: `${Math.max(0, 1 + unarmedStrengthModifier)} bludgeoning`,
 
     isOffHand: false,
 
@@ -314,6 +316,14 @@ const CharacterSheet = () => {
       : [];
 
   const attacks = [unarmedAttack, ...weaponAttacks, ...specialAttacks];
+
+  const derivedDefenses = derived.resistances.map(
+    (resistance) => `${formatLabel(resistance)} Resistance`,
+  );
+
+  const manualDefenses = character.defenses ?? [];
+
+  const defenses = Array.from(new Set([...derivedDefenses, ...manualDefenses]));
 
   const combinedSpells = [
     ...derived.groupedTieflingLegacySpells.flatMap((group) => group.spells),
@@ -631,9 +641,9 @@ const CharacterSheet = () => {
           }))}
           conditions={character.conditions ?? []}
           onConditionsChange={handleSetConditions}
-          defenses={derived.resistances.map(
-            (resistance) => `${formatLabel(resistance)} Resistance`,
-          )}
+          defenses={defenses}
+          lockedDefenses={derivedDefenses}
+          onDefensesChange={handleSetDefenses}
           heroicInspiration={character.heroicInspiration ?? false}
           onHeroicInspirationChange={handleSetHeroicInspiration}
           deathSaves={{

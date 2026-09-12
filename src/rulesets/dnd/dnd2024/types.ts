@@ -1403,6 +1403,8 @@ export type CharacterSheetData = {
 
   abilityScores: AbilityScores;
 
+  defenses?: string[];
+
   alignment?: string;
   notes?: string;
 

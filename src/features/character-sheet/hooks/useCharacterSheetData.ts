@@ -529,6 +529,64 @@ const handleSetConditions = async (
   }
 };
 
+  const handleSetDefenses = async (
+    nextDefenses: string[],
+  ) => {
+    if (!character || !characterId) {
+      return;
+    }
+
+    const previousDefenses =
+      character.defenses ?? [];
+
+    const normalizedDefenses = Array.from(
+      new Set(
+        nextDefenses
+          .map((defense) => defense.trim())
+          .filter(Boolean),
+      ),
+    );
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+            defenses: normalizedDefenses,
+          }
+        : current,
+    );
+
+    try {
+      await updateDoc(
+        doc(db, "characters", characterId),
+        {
+          defenses: normalizedDefenses,
+          updatedAt: serverTimestamp(),
+        },
+      );
+    } catch (err) {
+      console.error(
+        "Failed to update defenses:",
+        err,
+      );
+
+      setCharacter((current) =>
+        current
+          ? {
+              ...current,
+              defenses: previousDefenses,
+            }
+          : current,
+      );
+
+      setError(
+        "Failed to update defenses.",
+      );
+
+      throw err;
+    }
+  };
+
   const handleSetPlayerNotes = async (
   notes: string,
 ) => {
@@ -3393,6 +3451,8 @@ const handleSetConditions = async (
     handleSetCurrentHp,
 
     handleSetConditions,
+
+    handleSetDefenses,
 
     handleSetPlayerNotes,
 

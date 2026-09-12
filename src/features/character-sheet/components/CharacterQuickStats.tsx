@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import CharacterRestControls from "./CharacterRestControls";
+import DefensesControl from "./DefensesControl";
 
 import type { ShortRestResult } from "../types";
 
@@ -60,6 +61,8 @@ type CharacterQuickStatsProps = {
   conditions?: string[];
   onConditionsChange?: (conditions: string[]) => void | Promise<void>;
   defenses?: string[];
+  lockedDefenses?: string[];
+  onDefensesChange?: (defenses: string[]) => void | Promise<void>;
   heroicInspiration?: boolean;
   onHeroicInspirationChange?: (value: boolean) => void | Promise<void>;
   deathSaves?: DeathSaves;
@@ -113,6 +116,8 @@ const CharacterQuickStats = ({
   conditions = [],
   onConditionsChange,
   defenses = [],
+  lockedDefenses = [],
+  onDefensesChange,
   heroicInspiration = false,
   onHeroicInspirationChange,
   deathSaves = { successes: 0, failures: 0 },
@@ -263,19 +268,11 @@ const CharacterQuickStats = ({
             onChange={onConditionsChange}
           />
 
-          <StateRow label="Defenses">
-            {defenses.length > 0 ? (
-              <div className="flex flex-wrap gap-1">
-                {defenses.map((defense) => (
-                  <StatePill key={defense} tone="defense">
-                    {defense}
-                  </StatePill>
-                ))}
-              </div>
-            ) : (
-              <EmptyValue />
-            )}
-          </StateRow>
+          <DefensesControl
+            defenses={defenses}
+            lockedDefenses={lockedDefenses}
+            onChange={onDefensesChange}
+          />
 
           <div className="mt-2 border-t border-white/[0.06] pt-2">
             <div className="flex items-center justify-between gap-3">
@@ -945,19 +942,6 @@ const ConditionsControl = ({
     </>
   );
 };
-
-const StateRow = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) => (
-  <div className="mt-2 grid grid-cols-[70px_minmax(0,1fr)] items-center gap-2 border-t border-white/[0.06] pt-2">
-    <SmallLabel>{label}</SmallLabel>
-    <div className="min-w-0">{children}</div>
-  </div>
-);
 
 const StatePill = ({
   tone,

@@ -107,6 +107,7 @@ export type CharacterDoc = CharacterSheetData & {
   equipment?: CharacterEquipmentEntry[];
 
   conditions?: string[];
+  defenses?: string[];
 
   heroicInspiration?: boolean;
 
@@ -299,6 +300,10 @@ export type CharacterSheetDataHookResult = {
   ) => Promise<ShortRestResult>;
 
   handleLongRest: () => Promise<void>;
+
+  handleSetDefenses: (
+    defenses: string[],
+  ) => Promise<void>;
 
   handleEquipmentChange: (
     nextEquipment: CharacterEquipmentEntry[],

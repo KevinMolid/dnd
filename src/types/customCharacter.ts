@@ -151,6 +151,7 @@ export type CustomCharacter = {
     failures: number;
   };
 
+  defenses?: string[];
   conditions?: string[];
   xp?: number;
 };

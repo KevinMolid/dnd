@@ -62,6 +62,8 @@ type CustomCharacterSheetProps = {
 
   handleSetConditions: (conditions: string[]) => Promise<void>;
 
+  handleSetDefenses: (defenses: string[]) => Promise<void>;
+
   handleEquipmentChange: (equipment: any[]) => void | Promise<void>;
 
   handleSetHeroicInspiration: (value: boolean) => Promise<void>;
@@ -273,6 +275,7 @@ const CustomCharacterSheet = ({
   handleEquipmentChange,
   handleSetCurrentHp,
   handleSetConditions,
+  handleSetDefenses,
   handleSetHeroicInspiration,
   handleSetDeathSaves,
   handleSetSpellSlotRemaining,
@@ -393,7 +396,7 @@ const CustomCharacterSheet = ({
 
     attackBonus: unarmedStrengthModifier + proficiencyBonus,
 
-    damage: `${Math.max(1, 1 + unarmedStrengthModifier)} bludgeoning`,
+    damage: `${Math.max(0, 1 + unarmedStrengthModifier)} bludgeoning`,
 
     properties: [`Grapple DC ${unarmedSaveDc}`, `Shove DC ${unarmedSaveDc}`],
 
@@ -739,6 +742,8 @@ const CustomCharacterSheet = ({
           })}
           conditions={character.conditions ?? []}
           onConditionsChange={handleSetConditions}
+          defenses={character.defenses ?? []}
+          onDefensesChange={handleSetDefenses}
           heroicInspiration={character.heroicInspiration ?? false}
           onHeroicInspirationChange={handleSetHeroicInspiration}
           deathSaves={{
