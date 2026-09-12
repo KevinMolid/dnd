@@ -72,9 +72,7 @@ function App() {
   const [authMode, setAuthMode] = useState<AuthModalMode>("login");
 
   const authModalTitle = useMemo(() => {
-    return authMode === "login"
-      ? "Log in to Worldshaper"
-      : "Create your account";
+    return authMode === "login" ? "Log in to Lorebound" : "Create your account";
   }, [authMode]);
 
   const openLoginModal = () => {

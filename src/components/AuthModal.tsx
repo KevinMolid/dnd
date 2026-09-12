@@ -1,4 +1,7 @@
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
+
+import logo from "/images/Lorebound.png";
 
 type AuthModalMode = "login" | "signup";
 
@@ -11,107 +14,166 @@ type AuthModalProps = {
   children: ReactNode;
 };
 
-function AuthModal({
+const AuthModal = ({
   open,
   title,
   mode,
   onClose,
   onSwitchMode,
   children,
-}: AuthModalProps) {
+}: AuthModalProps) => {
   useEffect(() => {
     if (!open) return;
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const onKeyDown = (event: KeyboardEvent) => {
+    const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onClose();
       }
     };
 
-    document.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleEscape);
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
+
+  const isLogin = mode === "login";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <button
-        type="button"
-        aria-label="Close modal backdrop"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-      />
+    <div
+      className="fixed inset-0 z-[100] overflow-y-auto bg-black/75 p-4 backdrop-blur-[6px] sm:p-6"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div
+        className="flex min-h-full items-start justify-center py-4 sm:items-center sm:py-6"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <section
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auth-modal-title"
+          className="w-full max-w-[520px] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl shadow-black/70"
+        >
+          <h2 id="auth-modal-title" className="sr-only">
+            {title}
+          </h2>
 
-      <div className="relative z-10 w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 shadow-2xl">
-        <div className="border-b border-white/10 bg-white/5 px-5 py-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-lg font-bold text-white">{title}</p>
-              <p className="mt-1 text-sm text-zinc-400">
-                Enter Worldshaper and start shaping your campaign.
-              </p>
+          {/* =====================================================
+            BRAND / MODE
+        ===================================================== */}
+
+          <div className="border-b border-white/[0.08] px-5 pb-4 pt-5 sm:px-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <img
+                  src={logo}
+                  alt=""
+                  className="h-20 w-20 shrink-0 object-contain"
+                />
+
+                <div className="min-w-0">
+                  <p
+                    className="text-[28px] font-medium leading-none tracking-[-0.035em] text-zinc-100"
+                    style={{
+                      fontFamily: 'Georgia, "Times New Roman", Times, serif',
+                    }}
+                  >
+                    Lorebound
+                  </p>
+
+                  <p className="mt-1.5 text-xs text-zinc-500">
+                    CAMPAIGNS · CHARACTERS · STORIES
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+              >
+                <i className="fa-solid fa-xmark text-base" />
+              </button>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 rounded-xl border border-white/10 bg-black/20 p-1">
+              <button
+                type="button"
+                onClick={() => onSwitchMode("login")}
+                className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25 ${
+                  isLogin
+                    ? "bg-white/[0.10] text-white shadow-sm"
+                    : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200"
+                }`}
+              >
+                Log in
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSwitchMode("signup")}
+                className={`min-h-10 rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25 ${
+                  !isLogin
+                    ? "bg-white/[0.10] text-white shadow-sm"
+                    : "text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200"
+                }`}
+              >
+                Sign up
+              </button>
+            </div>
+          </div>
+
+          {/* =====================================================
+            FORM CONTENT
+        ===================================================== */}
+
+          <div className="px-5 py-5 sm:px-6 sm:py-6">{children}</div>
+
+          {/* =====================================================
+            SECONDARY MODE SWITCH
+        ===================================================== */}
+
+          <div className="px-5 pb-5 sm:px-6 sm:pb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.08]" />
+
+              <span className="text-xs text-zinc-600">
+                {isLogin ? "New to Lorebound?" : "Already have an account?"}
+              </span>
+
+              <div className="h-px flex-1 bg-white/[0.08]" />
             </div>
 
             <button
               type="button"
-              onClick={onClose}
-              className="rounded-xl border border-white/10 bg-white/5 p-2 text-zinc-300 transition hover:bg-white/10 hover:text-white"
-              aria-label="Close auth modal"
+              onClick={() => onSwitchMode(isLogin ? "signup" : "login")}
+              className="mt-3 min-h-11 w-full rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/25"
             >
-              <svg
-                className="h-5 w-5"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4.22 4.22a.75.75 0 011.06 0L10 8.94l4.72-4.72a.75.75 0 111.06 1.06L11.06 10l4.72 4.72a.75.75 0 11-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 01-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 010-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
+              {isLogin ? "Create an account" : "Log in instead"}
             </button>
           </div>
-
-          <div className="mt-4 flex rounded-2xl border border-white/10 bg-black/20 p-1">
-            <button
-              type="button"
-              onClick={() => onSwitchMode("login")}
-              className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                mode === "login"
-                  ? "bg-white/10 text-white"
-                  : "text-zinc-300 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              Log in
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onSwitchMode("signup")}
-              className={`flex-1 rounded-xl px-3 py-2 text-sm font-semibold transition ${
-                mode === "signup"
-                  ? "bg-white/10 text-white"
-                  : "text-zinc-300 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              Sign up
-            </button>
-          </div>
-        </div>
-
-        <div className="max-h-[75vh] overflow-y-auto p-5">{children}</div>
+        </section>
       </div>
     </div>
   );
-}
+};
 
 export default AuthModal;

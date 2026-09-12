@@ -1,5 +1,7 @@
 import Container from "../components/Container";
 
+import logo from "/images/Lorebound.png";
+
 type LandingPageProps = {
   onOpenLogin: () => void;
   onOpenSignup: () => void;
@@ -7,75 +9,85 @@ type LandingPageProps = {
 
 const features = [
   {
-    title: "Connected campaigns",
+    title: "Campaigns",
     description:
-      "Keep your maps, NPCs, encounters, journals, handouts, and party data in one connected system.",
-    icon: <i className="fa-solid fa-diagram-project"></i>,
+      "Keep your party, maps, handouts, journal, NPCs, monsters, and encounters connected.",
+    icon: <i className="fa-solid fa-book-open"></i>,
   },
   {
-    title: "Run encounters faster",
+    title: "Characters",
     description:
-      "Track combat, initiative, conditions, HP, and party state without losing momentum at the table.",
-    icon: <i className="fa-solid fa-angles-right"></i>,
+      "Create characters, manage sheets, equipment, spells, progression, and everything needed during play.",
+    icon: <i className="fa-solid fa-users"></i>,
   },
   {
-    title: "Build memorable NPCs",
+    title: "Run the game",
     description:
-      "Create roleplay-ready NPCs with public details, secrets, goals, motivations, and linked campaign context.",
-    icon: <i className="fa-solid fa-user-group"></i>,
-  },
-  {
-    title: "Organize the whole world",
-    description:
-      "Use maps, journal entries, handouts, quests, characters, and campaign pages to keep everything accessible.",
-    icon: <i className="fa-regular fa-map"></i>,
+      "Track encounters, party state, conditions, HP, maps, and campaign information without leaving the table.",
+    icon: <i className="fa-solid fa-dice-d20"></i>,
   },
 ];
 
 function LandingPage({ onOpenLogin, onOpenSignup }: LandingPageProps) {
   return (
-    <div className="relative overflow-hidden bg-zinc-950 text-white">
-      <div className="absolute inset-0">
-        <div className="absolute left-1/2 top-[-120px] h-[360px] w-[360px] -translate-x-1/2 rounded-full bg-cyan-400/10 blur-3xl" />
-        <div className="absolute right-[5%] top-[25%] h-[260px] w-[260px] rounded-full bg-violet-500/10 blur-3xl" />
-        <div className="absolute bottom-[10%] left-[8%] h-[220px] w-[220px] rounded-full bg-sky-500/10 blur-3xl" />
+    <div className="relative min-h-[calc(100vh-80px)] overflow-hidden bg-zinc-950 text-zinc-100">
+      {/* =====================================================
+          SUBTLE BRAND GLOW
+      ===================================================== */}
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[460px]"
+      >
+        <div className="absolute left-1/2 top-[-260px] h-[520px] w-[720px] -translate-x-1/2 rounded-full bg-amber-200/[0.035] blur-3xl" />
       </div>
 
       <Container>
-        <section className="relative py-20 sm:py-28">
-          <div className="mx-auto max-w-5xl text-center">
-            <div className="inline-flex items-center rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-1 text-sm font-medium text-cyan-200">
-              Built for Dungeon Masters
-            </div>
+        {/* =====================================================
+            HERO
+        ===================================================== */}
 
-            <h1 className="mt-6 text-5xl font-black tracking-tight text-white sm:text-6xl lg:text-7xl">
-              Shape your world.
-              <br />
-              Run it from one system.
-            </h1>
+        <section className="relative py-14 sm:py-20">
+          <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+            <img
+              src={logo}
+              alt=""
+              className="h-20 w-20 object-contain sm:h-24 sm:w-24"
+            />
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-zinc-300 sm:text-xl">
-              <span className="font-semibold text-white">
-                Your entire campaign, in one system.
-              </span>{" "}
-              Worldshaper brings together encounters, NPCs, maps, journals,
-              handouts, and party management so your prep and play stay
-              connected.
+            <p
+              className="mt-3 text-4xl font-medium tracking-[-0.035em] text-zinc-100 sm:text-5xl"
+              style={{
+                fontFamily: 'Georgia, "Times New Roman", Times, serif',
+              }}
+            >
+              Lorebound
             </p>
 
-            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <h1 className="mt-8 text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl">
+              Get your campaign going.
+              <br />
+              <span className="text-amber-100">Get Lorebound.</span>
+            </h1>
+
+            <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">
+              One place for campaigns, characters, maps, encounters, journals,
+              handouts, NPCs, monsters, and everything your table needs.
+            </p>
+
+            <div className="mt-8 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row">
               <button
                 type="button"
                 onClick={onOpenSignup}
-                className="w-full rounded-2xl bg-cyan-700 px-6 py-3 text-base font-bold text-white transition hover:bg-cyan-600 sm:w-auto"
+                className="min-h-11 w-full rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 sm:w-auto"
               >
-                Start shaping your campaign
+                Create account
               </button>
 
               <button
                 type="button"
                 onClick={onOpenLogin}
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-6 py-3 text-base font-semibold text-white transition hover:bg-white/10 sm:w-auto"
+                className="min-h-11 w-full rounded-lg border border-white/10 bg-white/[0.04] px-5 py-2.5 text-sm font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:w-auto"
               >
                 Log in
               </button>
@@ -83,22 +95,26 @@ function LandingPage({ onOpenLogin, onOpenSignup }: LandingPageProps) {
           </div>
         </section>
 
-        <section className="relative pb-20 sm:pb-28">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {/* =====================================================
+            CORE FEATURES
+        ===================================================== */}
+
+        <section className="relative pb-8 sm:pb-12">
+          <div className="grid gap-3 md:grid-cols-3">
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-[0_10px_40px_rgba(0,0,0,0.25)] backdrop-blur"
+                className="rounded-2xl border border-white/[0.08] bg-zinc-900/35 p-5"
               >
-                <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-700/20 text-cyan-400">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-amber-200/10 bg-amber-100/[0.05] text-sm text-amber-100">
                   {feature.icon}
                 </div>
 
-                <h2 className="mt-4 text-xl font-bold text-white">
+                <h2 className="mt-4 text-lg font-semibold text-white">
                   {feature.title}
                 </h2>
 
-                <p className="mt-3 text-sm leading-7 text-zinc-300">
+                <p className="mt-2 text-sm leading-6 text-zinc-400">
                   {feature.description}
                 </p>
               </div>
@@ -106,56 +122,50 @@ function LandingPage({ onOpenLogin, onOpenSignup }: LandingPageProps) {
           </div>
         </section>
 
-        <section className="relative pb-24">
-          <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-8 sm:p-10">
-            <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
+        {/* =====================================================
+            SECONDARY PITCH
+        ===================================================== */}
+
+        <section className="relative pb-16 sm:pb-20">
+          <div className="rounded-2xl border border-white/[0.08] bg-zinc-900/30 p-5 sm:p-6">
+            <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
               <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">
-                  Why Worldshaper
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100/70">
+                  Everything connected
                 </p>
 
-                <h2 className="mt-4 text-3xl font-black tracking-tight text-white sm:text-4xl">
-                  Stop juggling disconnected tools.
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white sm:text-3xl">
+                  Less time managing tools.
+                  <br />
+                  More time playing.
                 </h2>
 
-                <p className="mt-4 max-w-2xl text-base leading-8 text-zinc-300 sm:text-lg">
-                  Worldshaper is built for GMs who want one place to prep,
-                  organize, and run their campaigns. Build a living world where
-                  your NPCs, encounters, maps, and campaign notes all belong to
-                  the same system.
+                <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400 sm:text-base">
+                  Lorebound keeps the parts of your campaign together instead of
+                  scattering them across notes, spreadsheets, character tools,
+                  and separate encounter trackers.
                 </p>
               </div>
 
-              <div className="rounded-3xl border border-white/10 bg-black/30 p-6">
-                <div className="space-y-4">
-                  {[
-                    "Create and manage campaigns",
-                    "Run encounters with party state",
-                    "Build linked NPCs and locations",
-                    "Store journals, handouts, and maps",
-                    "Keep player characters organized",
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-start gap-3 rounded-2xl bg-white/5 p-3"
-                    >
-                      <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-700/50 text-sm font-bold text-cyan-400">
-                        ✓
-                      </span>
-                      <span className="text-sm leading-6 text-zinc-200">
-                        {item}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              <div className="grid gap-2">
+                {[
+                  "Campaign and party management",
+                  "Characters and progression",
+                  "Maps and encounter tools",
+                  "NPCs, monsters, and handouts",
+                  "Journal and campaign history",
+                ].map((item) => (
+                  <div
+                    key={item}
+                    className="flex min-h-11 items-center gap-3 rounded-lg border border-white/[0.07] bg-black/15 px-3 py-2"
+                  >
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center text-xs text-amber-100">
+                      <i className="fa-solid fa-check"></i>
+                    </span>
 
-                <button
-                  type="button"
-                  onClick={onOpenSignup}
-                  className="mt-6 w-full rounded-2xl bg-cyan-700 px-5 py-3 text-sm font-bold text-white transition hover:bg-cyan-600"
-                >
-                  Create Free Account
-                </button>
+                    <span className="text-sm text-zinc-300">{item}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
