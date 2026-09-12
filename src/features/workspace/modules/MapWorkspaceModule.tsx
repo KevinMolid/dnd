@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 
-import MapCanvas from "../../../components/maps/MapCanvas";
+import MapCanvas, {
+  type MapCanvasHandle,
+} from "../../../components/maps/MapCanvas";
 
 import { useEncounter } from "../../../context/EncounterContext";
 
@@ -24,15 +26,10 @@ import type { WorkspaceModuleRenderProps } from "../workspaceTypes";
 
 type EnvironmentRollResult = {
   roomId: number;
-
   roomName: string;
-
   roll: number;
-
   previousLevel: number;
-
   targetLevel: number;
-
   nextLevel: number;
 };
 
@@ -89,11 +86,7 @@ const getDefaultEnvironmentLevel = (effect: EnvironmentEffect) => {
   return levels[0]?.value ?? 0;
 };
 
-const getEnvironmentLevelName = (
-  effect: EnvironmentEffect,
-
-  value: number,
-) => {
+const getEnvironmentLevelName = (effect: EnvironmentEffect, value: number) => {
   return (
     effect.levels.find((level) => level.value === value)?.name ??
     `Level ${value}`
@@ -102,7 +95,6 @@ const getEnvironmentLevelName = (
 
 const getRoomEnvironmentLevel = (
   room: CampaignMapRoom,
-
   effect: EnvironmentEffect,
 ) => {
   return room.environment?.[effect.id] ?? getDefaultEnvironmentLevel(effect);
@@ -110,9 +102,7 @@ const getRoomEnvironmentLevel = (
 
 const moveTowardsTarget = (
   effect: EnvironmentEffect,
-
   currentValue: number,
-
   targetValue: number,
 ) => {
   const levels = getSortedLevels(effect);
@@ -136,21 +126,13 @@ const moveTowardsTarget = (
   const maxChange = Math.max(0, effect.maxChangePerRoll);
 
   if (targetIndex > currentIndex) {
-    const nextIndex = Math.min(
-      currentIndex + maxChange,
-
-      targetIndex,
-    );
+    const nextIndex = Math.min(currentIndex + maxChange, targetIndex);
 
     return levels[nextIndex].value;
   }
 
   if (targetIndex < currentIndex) {
-    const nextIndex = Math.max(
-      currentIndex - maxChange,
-
-      targetIndex,
-    );
+    const nextIndex = Math.max(currentIndex - maxChange, targetIndex);
 
     return levels[nextIndex].value;
   }
@@ -161,9 +143,13 @@ const moveTowardsTarget = (
 export default function MapWorkspaceModule({
   module,
   campaignId,
+  editing,
   updateModule,
+  removeModule,
 }: WorkspaceModuleRenderProps) {
   const navigate = useNavigate();
+
+  const mapCanvasRef = useRef<MapCanvasHandle | null>(null);
 
   const { maps, loading } = useCampaignMaps(campaignId);
 
@@ -171,13 +157,7 @@ export default function MapWorkspaceModule({
 
   const { loadEncounterTemplate } = useEncounter();
 
-  const {
-    activeLocation,
-
-    selectEntity,
-
-    setActiveLocation,
-  } = useWorkspace();
+  const { activeLocation, selectEntity, setActiveLocation } = useWorkspace();
 
   const [hoveredRoomId, setHoveredRoomId] = useState<number | null>(null);
 
@@ -290,10 +270,6 @@ export default function MapWorkspaceModule({
   const monstersByName = useMemo(() => {
     const monsterMap = new Map<string, (typeof allMonsters)[number]>();
 
-    /*
-     * Prefer campaign-specific monsters when
-     * two monsters share the same visible name.
-     */
     const sorted = [...allMonsters].sort((a, b) => {
       if (a.source === "campaign" && b.source !== "campaign") {
         return -1;
@@ -318,9 +294,6 @@ export default function MapWorkspaceModule({
   }, [allMonsters]);
 
   const getLinkedMonster = (mapMonster: MapMonster) => {
-    /*
-     * Prefer the stable reference.
-     */
     if (mapMonster.monsterKey) {
       const exactMatch = allMonsters.find(
         (monster) =>
@@ -332,16 +305,9 @@ export default function MapWorkspaceModule({
       }
     }
 
-    /*
-     * Backward compatibility for older maps.
-     */
     return monstersByName.get(normalizeMonsterName(mapMonster.name)) ?? null;
   };
 
-  /*
-   * Backfill stable monster keys onto older map
-   * entries when the name can be resolved.
-   */
   useEffect(() => {
     if (!selectedMap || allMonsters.length === 0) {
       return;
@@ -468,23 +434,11 @@ export default function MapWorkspaceModule({
       },
     });
 
-    /*
-     * Deliberately do NOT clear activeLocation.
-     *
-     * Viewing another map does not necessarily
-     * mean the party physically moved.
-     */
-
     setHoveredRoomId(null);
-
     setDetailsExpanded(false);
-
     setEnvironmentOpen(false);
-
     setLastRollResults([]);
-
     setEnvironmentError(null);
-
     setEncounterStartedMessage(null);
   };
 
@@ -507,21 +461,19 @@ export default function MapWorkspaceModule({
       },
     });
 
-    /*
-     * Explicit room selection means:
-     * this is now the party's active location.
-     */
     setActiveLocation({
       mapId: selectedMap.id,
-
       mapTitle: selectedMap.title,
-
       roomId: room.id,
-
       roomName: room.name,
     });
 
-    setDetailsExpanded(false);
+    /*
+     * Do not change detailsExpanded here.
+     *
+     * If the information panel is open, keep it open
+     * and simply show the newly selected area's data.
+     */
 
     setEncounterStartedMessage(null);
   };
@@ -537,21 +489,17 @@ export default function MapWorkspaceModule({
       });
     }
 
-    /*
-     * Deliberately do NOT clear activeLocation.
-     *
-     * Overview is a viewing state,
-     * not a declaration that the party moved.
-     */
-
     setDetailsExpanded(false);
 
     setEncounterStartedMessage(null);
   };
 
+  const fitMapToViewport = () => {
+    mapCanvasRef.current?.fitToViewport();
+  };
+
   const saveEnvironmentRooms = async (
     nextRooms: CampaignMapRoom[],
-
     previousRooms: CampaignMapRoom[],
   ) => {
     if (!selectedMap) {
@@ -581,7 +529,6 @@ export default function MapWorkspaceModule({
 
   const changeRoomEnvironmentLevel = async (
     roomId: number,
-
     direction: -1 | 1,
   ) => {
     if (!activeEffect || isEnvironmentSaving) {
@@ -611,12 +558,7 @@ export default function MapWorkspaceModule({
 
       const nextIndex = Math.max(
         0,
-
-        Math.min(
-          levels.length - 1,
-
-          currentIndex + direction,
-        ),
+        Math.min(levels.length - 1, currentIndex + direction),
       );
 
       const nextValue = levels[nextIndex].value;
@@ -661,15 +603,10 @@ export default function MapWorkspaceModule({
 
       results.push({
         roomId: room.id,
-
         roomName: room.name,
-
         roll,
-
         previousLevel: currentLevel,
-
         targetLevel,
-
         nextLevel,
       });
 
@@ -717,15 +654,10 @@ export default function MapWorkspaceModule({
 
       results.push({
         roomId: room.id,
-
         roomName: room.name,
-
         roll,
-
         previousLevel: currentLevel,
-
         targetLevel,
-
         nextLevel,
       });
 
@@ -799,11 +731,11 @@ export default function MapWorkspaceModule({
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-zinc-950/20 text-sm text-zinc-500">
+      <div className="flex h-full items-center justify-center bg-zinc-950/20 text-sm text-zinc-400">
         <div className="text-center">
-          <i className="fa-solid fa-map mb-3 text-2xl text-emerald-400/30" />
+          <i className="fa-solid fa-map mb-3 text-2xl text-emerald-400/40" />
 
-          <div>Loading maps...</div>
+          <div className="font-medium">Loading maps...</div>
         </div>
       </div>
     );
@@ -813,13 +745,13 @@ export default function MapWorkspaceModule({
     return (
       <div className="flex h-full items-center justify-center bg-zinc-950/20 p-5 text-center">
         <div>
-          <i className="fa-solid fa-map text-3xl text-zinc-700" />
+          <i className="fa-solid fa-map text-3xl text-zinc-600" />
 
-          <p className="mt-3 text-sm font-semibold text-zinc-300">
+          <p className="mt-3 text-sm font-semibold text-zinc-200">
             No campaign maps
           </p>
 
-          <p className="mt-1 max-w-xs text-xs leading-5 text-zinc-600">
+          <p className="mt-1 max-w-xs text-xs leading-5 text-zinc-500">
             Create a map from the campaign Maps page and it will become
             available here automatically.
           </p>
@@ -843,29 +775,40 @@ export default function MapWorkspaceModule({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-zinc-950/20">
-      {/* Toolbar */}
+      {/* Integrated module header */}
 
-      <div className="workspace-no-drag relative flex h-10 shrink-0 items-center gap-2 border-b border-white/10 bg-black/20 px-2">
-        {/* Map selector */}
+      <div
+        className={`workspace-drag-handle relative flex h-10 shrink-0 items-center gap-2 border-b border-white/10 bg-white/[0.025] px-2.5 ${
+          editing ? "cursor-grab active:cursor-grabbing" : ""
+        }`}
+      >
+        <i className="fa-solid fa-map shrink-0 text-[11px] text-emerald-400" />
 
-        <div className="relative min-w-0 flex-1">
-          <i className="fa-solid fa-map pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[10px] text-emerald-400" />
+        {/* Map title / selector */}
 
+        <div className="relative min-w-0 flex-[1.15]">
           <select
             value={selectedMap.id}
             onChange={(event) => selectMap(event.target.value)}
             title="Select map"
-            className="h-7 w-full min-w-0 appearance-none truncate rounded-lg border border-white/10 bg-white/5 py-1 pl-7 pr-7 text-xs font-semibold text-zinc-200 outline-none transition hover:bg-white/10 focus:border-emerald-500/30"
+            aria-label="Select map"
+            className="workspace-no-drag h-8 w-full min-w-0 appearance-none truncate border-0 bg-transparent py-0.5 pr-7 text-xs font-semibold text-zinc-100 outline-none transition hover:text-white"
           >
             {maps.map((map) => (
-              <option key={map.id} value={map.id} className="bg-zinc-900">
+              <option
+                key={map.id}
+                value={map.id}
+                className="bg-zinc-900 text-zinc-100"
+              >
                 {map.title}
               </option>
             ))}
           </select>
 
-          <i className="fa-solid fa-chevron-down pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[8px] text-zinc-600" />
+          <i className="fa-solid fa-chevron-down pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500" />
         </div>
+
+        <div className="h-5 w-px shrink-0 bg-white/10" />
 
         {/* Area selector */}
 
@@ -884,7 +827,8 @@ export default function MapWorkspaceModule({
               selectRoom(Number(value));
             }}
             title="Select area"
-            className="h-7 w-full min-w-0 appearance-none truncate rounded-lg border border-white/10 bg-white/5 py-1 pl-2.5 pr-7 text-xs text-zinc-400 outline-none transition hover:bg-white/10 focus:border-emerald-500/30"
+            aria-label="Select map area"
+            className="workspace-no-drag h-8 w-full min-w-0 appearance-none truncate rounded-md border border-white/10 bg-white/5 py-0.5 pl-2.5 pr-7 text-xs font-semibold text-zinc-200 outline-none transition hover:bg-white/10 hover:text-white focus:border-emerald-500/40"
           >
             <option value="" className="bg-zinc-900">
               Overview
@@ -900,7 +844,7 @@ export default function MapWorkspaceModule({
               ))}
           </select>
 
-          <i className="fa-solid fa-chevron-down pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[8px] text-zinc-600" />
+          <i className="fa-solid fa-chevron-down pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500" />
         </div>
 
         {/* Environment */}
@@ -910,19 +854,32 @@ export default function MapWorkspaceModule({
             type="button"
             onClick={() => setEnvironmentOpen((current) => !current)}
             title={`${activeEffect.name} controls`}
-            className={`flex h-7 shrink-0 items-center gap-1.5 rounded-lg border px-2 transition ${
+            aria-label={`${activeEffect.name} controls`}
+            className={`workspace-no-drag flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2 transition ${
               environmentOpen
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
             }`}
           >
             <i className="fa-solid fa-cloud text-[10px]" />
 
-            <span className="hidden max-w-24 truncate text-[9px] font-semibold xl:inline">
+            <span className="hidden max-w-28 truncate text-[10px] font-semibold xl:inline">
               {selectedRoomEnvironmentName ?? activeEffect.name}
             </span>
           </button>
         ) : null}
+
+        {/* Fit map */}
+
+        <button
+          type="button"
+          onClick={fitMapToViewport}
+          title="Fit map"
+          aria-label="Fit map to available space"
+          className="workspace-no-drag flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+        >
+          <i className="fa-solid fa-expand text-[11px]" />
+        </button>
 
         {/* Open full viewer */}
 
@@ -932,27 +889,34 @@ export default function MapWorkspaceModule({
             navigate(`/campaigns/${campaignId}/maps/${selectedMap.id}`)
           }
           title="Open full map viewer"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+          aria-label="Open full map viewer"
+          className="workspace-no-drag flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
         >
-          <i className="fa-solid fa-up-right-from-square text-[10px]" />
+          <i className="fa-solid fa-up-right-from-square text-[11px]" />
         </button>
 
-        {/* Overview */}
+        {/* Remove module */}
 
-        <button
-          type="button"
-          onClick={showOverview}
-          disabled={selectedRoomId === null}
-          title="Map overview"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white disabled:cursor-default disabled:opacity-25"
-        >
-          <i className="fa-solid fa-house text-[10px]" />
-        </button>
+        {editing ? (
+          <>
+            <div className="h-5 w-px shrink-0 bg-white/10" />
+
+            <button
+              type="button"
+              onClick={() => removeModule(module.id)}
+              title="Remove module"
+              aria-label="Remove map module"
+              className="workspace-no-drag flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-rose-500/10 hover:text-rose-300"
+            >
+              <i className="fa-solid fa-xmark text-xs" />
+            </button>
+          </>
+        ) : null}
 
         {/* Environment popup */}
 
         {environmentOpen && activeEffect ? (
-          <div className="absolute right-2 top-9 z-50 flex max-h-[min(520px,75vh)] w-[min(390px,calc(100%-16px))] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl">
+          <div className="workspace-no-drag absolute right-2 top-9 z-50 flex max-h-[min(520px,75vh)] w-[min(390px,calc(100%-16px))] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl">
             <div className="shrink-0 border-b border-white/10 p-3">
               <div className="flex items-start gap-3">
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-300">
@@ -960,7 +924,7 @@ export default function MapWorkspaceModule({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-400/70">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
                     Environment
                   </div>
 
@@ -972,7 +936,7 @@ export default function MapWorkspaceModule({
                 <button
                   type="button"
                   onClick={() => setEnvironmentOpen(false)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-white/10 hover:text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/10 hover:text-white"
                 >
                   <i className="fa-solid fa-xmark" />
                 </button>
@@ -1003,7 +967,7 @@ export default function MapWorkspaceModule({
               {selectedRoom && selectedRoomEnvironmentLevel !== null ? (
                 <div className="mb-3 flex items-center gap-3 rounded-lg border border-white/5 bg-black/20 p-2.5">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[10px] text-zinc-500">
+                    <div className="truncate text-[11px] text-zinc-400">
                       {selectedRoom.id}. {selectedRoom.name}
                     </div>
 
@@ -1027,12 +991,12 @@ export default function MapWorkspaceModule({
                           onClick={() =>
                             changeRoomEnvironmentLevel(selectedRoom.id, -1)
                           }
-                          className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-300 transition hover:bg-white/10 disabled:opacity-25"
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 disabled:opacity-25"
                         >
                           −
                         </button>
 
-                        <div className="min-w-7 text-center text-xs font-bold text-white">
+                        <div className="min-w-7 text-center text-sm font-bold text-white">
                           {selectedRoomEnvironmentLevel}
                         </div>
 
@@ -1046,7 +1010,7 @@ export default function MapWorkspaceModule({
                           onClick={() =>
                             changeRoomEnvironmentLevel(selectedRoom.id, 1)
                           }
-                          className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-300 transition hover:bg-white/10 disabled:opacity-25"
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 disabled:opacity-25"
                         >
                           +
                         </button>
@@ -1074,14 +1038,14 @@ export default function MapWorkspaceModule({
                   type="button"
                   onClick={randomizeEnvironmentForAllAreas}
                   disabled={isEnvironmentSaving || roomStates.length === 0}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10 disabled:opacity-40"
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/10 disabled:opacity-40"
                 >
                   <i className="fa-solid fa-shuffle mr-1.5" />
                   Randomize
                 </button>
               </div>
 
-              <p className="mt-2 text-[9px] leading-4 text-zinc-600">
+              <p className="mt-2 text-[10px] leading-4 text-zinc-500">
                 Roll moves each area at most {activeEffect.maxChangePerRoll}{" "}
                 level
                 {activeEffect.maxChangePerRoll === 1 ? "" : "s"} toward its
@@ -1089,14 +1053,14 @@ export default function MapWorkspaceModule({
               </p>
 
               {environmentError ? (
-                <div className="mt-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-2 text-[10px] text-rose-300">
+                <div className="mt-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-2 text-[11px] text-rose-300">
                   {environmentError}
                 </div>
               ) : null}
             </div>
 
             <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-2">
-              <div className="mb-2 px-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+              <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                 Areas
               </div>
 
@@ -1125,7 +1089,7 @@ export default function MapWorkspaceModule({
                         key={room.id}
                         className={`flex items-center gap-2 rounded-lg border p-2 ${
                           selectedRoomId === room.id
-                            ? "border-emerald-500/20 bg-emerald-500/[0.06]"
+                            ? "border-emerald-500/25 bg-emerald-500/[0.07]"
                             : "border-white/5 bg-black/10"
                         }`}
                       >
@@ -1134,11 +1098,11 @@ export default function MapWorkspaceModule({
                           onClick={() => selectRoom(room.id)}
                           className="min-w-0 flex-1 text-left"
                         >
-                          <div className="truncate text-[10px] font-semibold text-zinc-300">
+                          <div className="truncate text-xs font-semibold text-zinc-200">
                             {room.id}. {room.name}
                           </div>
 
-                          <div className="mt-0.5 truncate text-[9px] text-emerald-300/70">
+                          <div className="mt-0.5 truncate text-[10px] font-medium text-emerald-300/80">
                             {getEnvironmentLevelName(
                               activeEffect,
                               currentValue,
@@ -1152,12 +1116,12 @@ export default function MapWorkspaceModule({
                           onClick={() =>
                             changeRoomEnvironmentLevel(room.id, -1)
                           }
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-[10px] text-zinc-400 hover:bg-white/10 disabled:opacity-20"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-xs text-zinc-300 hover:bg-white/10 disabled:opacity-20"
                         >
                           −
                         </button>
 
-                        <div className="w-5 shrink-0 text-center text-[10px] font-bold text-zinc-300">
+                        <div className="w-5 shrink-0 text-center text-xs font-bold text-zinc-200">
                           {currentValue}
                         </div>
 
@@ -1168,7 +1132,7 @@ export default function MapWorkspaceModule({
                             isEnvironmentSaving
                           }
                           onClick={() => changeRoomEnvironmentLevel(room.id, 1)}
-                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-[10px] text-zinc-400 hover:bg-white/10 disabled:opacity-20"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-xs text-zinc-300 hover:bg-white/10 disabled:opacity-20"
                         >
                           +
                         </button>
@@ -1179,7 +1143,7 @@ export default function MapWorkspaceModule({
 
               {lastRollResults.length > 0 ? (
                 <div className="mt-4 border-t border-white/10 pt-3">
-                  <div className="mb-2 px-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+                  <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                     Last Roll
                   </div>
 
@@ -1195,16 +1159,16 @@ export default function MapWorkspaceModule({
                           className="w-full rounded-lg border border-white/5 bg-black/10 px-2.5 py-2 text-left transition hover:bg-white/5"
                         >
                           <div className="flex items-center gap-2">
-                            <span className="min-w-0 flex-1 truncate text-[10px] font-semibold text-zinc-300">
+                            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-zinc-200">
                               {result.roomId}. {result.roomName}
                             </span>
 
-                            <span className="shrink-0 text-[9px] font-bold text-emerald-300">
+                            <span className="shrink-0 text-[10px] font-bold text-emerald-300">
                               d{activeEffect.diceSides}: {result.roll}
                             </span>
                           </div>
 
-                          <div className="mt-1 text-[9px] text-zinc-500">
+                          <div className="mt-1 text-[10px] text-zinc-400">
                             {getEnvironmentLevelName(
                               activeEffect,
                               result.previousLevel,
@@ -1219,7 +1183,7 @@ export default function MapWorkspaceModule({
                           </div>
 
                           {result.targetLevel !== result.nextLevel ? (
-                            <div className="mt-0.5 text-[8px] text-zinc-700">
+                            <div className="mt-0.5 text-[9px] text-zinc-500">
                               Target:{" "}
                               {getEnvironmentLevelName(
                                 activeEffect,
@@ -1240,8 +1204,9 @@ export default function MapWorkspaceModule({
 
       {/* Map */}
 
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1 overflow-hidden">
         <MapCanvas
+          ref={mapCanvasRef}
           map={selectedMap}
           rooms={roomStates}
           selectedRoomId={selectedRoomId}
@@ -1256,11 +1221,10 @@ export default function MapWorkspaceModule({
 
             return getEnvironmentLevelName(
               activeEffect,
-
               getRoomEnvironmentLevel(room, activeEffect),
             );
           }}
-          className="h-full p-2"
+          className="h-full w-full"
         />
       </div>
 
@@ -1270,13 +1234,14 @@ export default function MapWorkspaceModule({
         <button
           type="button"
           onClick={() => setDetailsExpanded((current) => !current)}
-          className="flex h-10 w-full items-center gap-2 px-3 text-left transition hover:bg-white/[0.03]"
+          aria-expanded={detailsExpanded}
+          className="flex h-9 w-full items-center gap-2 px-2.5 text-left transition hover:bg-white/[0.03]"
         >
           <div
             className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
               selectedRoom
                 ? "bg-emerald-500/10 text-emerald-300"
-                : "bg-white/5 text-zinc-500"
+                : "bg-white/5 text-zinc-400"
             }`}
           >
             <i
@@ -1288,51 +1253,45 @@ export default function MapWorkspaceModule({
 
           <div className="min-w-0 flex-1">
             {selectedRoom ? (
-              <>
-                <div className="flex min-w-0 items-center gap-2">
-                  <div className="truncate text-xs font-semibold text-zinc-200">
-                    {selectedRoom.id}. {selectedRoom.name}
-                  </div>
-
-                  {isCurrentWorkspaceLocation ? (
-                    <span className="shrink-0 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-emerald-300">
-                      Current
-                    </span>
-                  ) : null}
-
-                  {selectedRoomEnvironmentName ? (
-                    <span className="shrink-0 rounded-full border border-sky-500/15 bg-sky-500/[0.07] px-1.5 py-0.5 text-[8px] font-semibold text-sky-300">
-                      {selectedRoomEnvironmentName}
-                    </span>
-                  ) : null}
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="truncate text-xs font-bold text-zinc-100">
+                  {selectedRoom.id}. {selectedRoom.name}
                 </div>
 
-                {roomSummary ? (
-                  <div className="truncate text-[9px] text-zinc-600">
-                    {roomSummary}
-                  </div>
+                {isCurrentWorkspaceLocation ? (
+                  <span className="shrink-0 rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
+                    Current
+                  </span>
                 ) : null}
-              </>
+
+                {selectedRoomEnvironmentName ? (
+                  <span className="shrink-0 rounded border border-sky-500/20 bg-sky-500/[0.08] px-1.5 py-0.5 text-[9px] font-semibold text-sky-300">
+                    {selectedRoomEnvironmentName}
+                  </span>
+                ) : null}
+
+                {roomSummary ? (
+                  <span className="hidden min-w-0 truncate text-[10px] text-zinc-500 xl:inline">
+                    · {roomSummary}
+                  </span>
+                ) : null}
+              </div>
             ) : (
-              <>
-                <div className="truncate text-xs font-semibold text-zinc-300">
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="truncate text-xs font-bold text-zinc-100">
                   {selectedMap.title}
                 </div>
 
-                <div className="truncate text-[9px] text-zinc-600">
-                  Overview · {roomStates.length}{" "}
+                <div className="shrink-0 text-[10px] text-zinc-500">
+                  · {roomStates.length}{" "}
                   {roomStates.length === 1 ? "area" : "areas"}
                 </div>
-              </>
+              </div>
             )}
           </div>
 
-          <span className="shrink-0 text-[9px] uppercase tracking-wider text-zinc-600">
-            Details
-          </span>
-
           <i
-            className={`fa-solid fa-chevron-up shrink-0 text-[9px] text-zinc-600 transition-transform ${
+            className={`fa-solid fa-chevron-up shrink-0 text-[9px] text-zinc-500 transition-transform ${
               detailsExpanded ? "rotate-180" : ""
             }`}
           />
@@ -1344,18 +1303,18 @@ export default function MapWorkspaceModule({
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-400/70">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
                       Area {selectedRoom.id}
                     </div>
 
                     {isCurrentWorkspaceLocation ? (
-                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-bold uppercase text-emerald-300">
+                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-300">
                         Active location
                       </span>
                     ) : null}
                   </div>
 
-                  <h3 className="mt-0.5 text-sm font-bold text-white">
+                  <h3 className="mt-0.5 text-base font-bold text-white">
                     {selectedRoom.name}
                   </h3>
                 </div>
@@ -1366,12 +1325,12 @@ export default function MapWorkspaceModule({
                     onClick={() => setEnvironmentOpen(true)}
                     className="flex w-full items-center gap-3 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.05] p-2.5 text-left transition hover:bg-emerald-500/[0.09]"
                   >
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-300">
-                      <i className="fa-solid fa-cloud text-[10px]" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-300">
+                      <i className="fa-solid fa-cloud text-xs" />
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <div className="text-[9px] uppercase tracking-wide text-emerald-300/60">
+                      <div className="text-[10px] uppercase tracking-wide text-emerald-300/70">
                         {activeEffect.name}
                       </div>
 
@@ -1380,12 +1339,12 @@ export default function MapWorkspaceModule({
                       </div>
                     </div>
 
-                    <i className="fa-solid fa-sliders text-[9px] text-zinc-600" />
+                    <i className="fa-solid fa-sliders text-[10px] text-zinc-500" />
                   </button>
                 ) : null}
 
                 {encounterStartedMessage ? (
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-[11px] text-emerald-300">
+                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-xs text-emerald-300">
                     <i className="fa-solid fa-check mr-1.5" />
 
                     {encounterStartedMessage}
@@ -1394,7 +1353,7 @@ export default function MapWorkspaceModule({
 
                 {selectedRoom.readAloud ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
                       Read aloud
                     </div>
 
@@ -1406,7 +1365,7 @@ export default function MapWorkspaceModule({
 
                 {selectedRoom.description?.length ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       Description
                     </div>
 
@@ -1417,11 +1376,11 @@ export default function MapWorkspaceModule({
                 {selectedRoom.monsters?.length ? (
                   <section>
                     <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                         Monsters
                       </div>
 
-                      <div className="text-[9px] text-zinc-700">
+                      <div className="text-[10px] text-zinc-500">
                         Click to inspect
                       </div>
                     </div>
@@ -1437,17 +1396,17 @@ export default function MapWorkspaceModule({
                               className="rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2"
                             >
                               <div className="flex items-center gap-2">
-                                <div className="min-w-0 flex-1 text-xs font-semibold text-zinc-400">
+                                <div className="min-w-0 flex-1 text-xs font-semibold text-zinc-300">
                                   {monster.count ? `${monster.count}× ` : ""}
 
                                   {monster.name}
                                 </div>
 
-                                <i className="fa-solid fa-link-slash shrink-0 text-[9px] text-zinc-700" />
+                                <i className="fa-solid fa-link-slash shrink-0 text-[10px] text-zinc-600" />
                               </div>
 
                               {monster.notes ? (
-                                <div className="mt-1 text-[10px] leading-4 text-zinc-500">
+                                <div className="mt-1 text-[11px] leading-4 text-zinc-400">
                                   {monster.notes}
                                 </div>
                               ) : null}
@@ -1463,7 +1422,7 @@ export default function MapWorkspaceModule({
                             title={`Inspect ${linkedMonster.name}`}
                             className="group flex w-full items-start gap-2 rounded-lg border border-amber-500/10 bg-amber-500/[0.035] px-2.5 py-2 text-left transition hover:border-amber-500/25 hover:bg-amber-500/[0.08]"
                           >
-                            <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black/30">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black/30">
                               {linkedMonster.img ? (
                                 <img
                                   src={linkedMonster.img}
@@ -1471,7 +1430,7 @@ export default function MapWorkspaceModule({
                                   className="h-full w-full object-cover"
                                 />
                               ) : (
-                                <i className="fa-solid fa-dragon text-[10px] text-amber-300/50" />
+                                <i className="fa-solid fa-dragon text-xs text-amber-300/50" />
                               )}
                             </div>
 
@@ -1482,14 +1441,14 @@ export default function MapWorkspaceModule({
                                 {monster.name}
                               </div>
 
-                              <div className="mt-0.5 text-[9px] text-zinc-600">
+                              <div className="mt-0.5 text-[10px] text-zinc-500">
                                 CR {linkedMonster.challengeRating} · AC{" "}
                                 {linkedMonster.armorClass} · HP{" "}
                                 {linkedMonster.hp}
                               </div>
 
                               {monster.notes ? (
-                                <div className="mt-1 text-[10px] leading-4 text-zinc-500">
+                                <div className="mt-1 text-[11px] leading-4 text-zinc-400">
                                   {monster.notes}
                                 </div>
                               ) : null}
@@ -1503,7 +1462,7 @@ export default function MapWorkspaceModule({
 
                 {selectedRoom.developments?.length ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       Developments
                     </div>
 
@@ -1513,7 +1472,7 @@ export default function MapWorkspaceModule({
 
                 {selectedRoom.captives?.length ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       Captives
                     </div>
 
@@ -1523,7 +1482,7 @@ export default function MapWorkspaceModule({
 
                 {selectedRoom.treasure?.length ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       Treasure
                     </div>
 
@@ -1541,7 +1500,7 @@ export default function MapWorkspaceModule({
 
                 {selectedRoom.experience ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       Experience
                     </div>
 
@@ -1553,7 +1512,7 @@ export default function MapWorkspaceModule({
 
                 {selectedRoom.notes?.length ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-violet-300/70">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-300/80">
                       DM Notes
                     </div>
 
@@ -1581,7 +1540,7 @@ export default function MapWorkspaceModule({
                           Area Encounter
                         </div>
 
-                        <div className="mt-0.5 text-[10px] leading-4 text-zinc-500">
+                        <div className="mt-0.5 text-[11px] leading-4 text-zinc-400">
                           Load this encounter directly into the workspace
                           tracker.
                         </div>
@@ -1601,7 +1560,7 @@ export default function MapWorkspaceModule({
 
                 {selectedRoom.exits?.length ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       Connected Areas
                     </div>
 
@@ -1616,7 +1575,7 @@ export default function MapWorkspaceModule({
                             key={exitRoomId}
                             type="button"
                             onClick={() => selectRoom(exitRoomId)}
-                            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-zinc-200 transition hover:bg-white/10 hover:text-white"
                           >
                             {exitRoomId}
 
@@ -1631,18 +1590,18 @@ export default function MapWorkspaceModule({
             ) : (
               <div className="space-y-4">
                 <div>
-                  <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-400/70">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
                     Map Overview
                   </div>
 
-                  <h3 className="mt-0.5 text-sm font-bold text-white">
+                  <h3 className="mt-0.5 text-base font-bold text-white">
                     {selectedMap.title}
                   </h3>
                 </div>
 
                 {selectedMap.readAloud ? (
                   <section>
-                    <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
                       Read aloud
                     </div>
 
@@ -1655,14 +1614,14 @@ export default function MapWorkspaceModule({
                 {mapDescription.length ? (
                   <section>{renderParagraphs(mapDescription)}</section>
                 ) : (
-                  <p className="text-xs text-zinc-600">
+                  <p className="text-xs text-zinc-500">
                     No general description has been added to this map.
                   </p>
                 )}
 
                 {roomStates.length ? (
                   <section>
-                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       Areas
                     </div>
 
@@ -1686,17 +1645,17 @@ export default function MapWorkspaceModule({
                               onClick={() => selectRoom(room.id)}
                               className="flex min-w-0 items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2 text-left transition hover:bg-white/[0.07]"
                             >
-                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10 text-[9px] font-bold text-zinc-300">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-zinc-200">
                                 {room.id}
                               </span>
 
                               <div className="min-w-0 flex-1">
-                                <div className="truncate text-[11px] font-medium text-zinc-300">
+                                <div className="truncate text-xs font-semibold text-zinc-200">
                                   {room.name}
                                 </div>
 
                                 {environmentName ? (
-                                  <div className="truncate text-[8px] text-emerald-300/60">
+                                  <div className="truncate text-[10px] font-medium text-emerald-300/80">
                                     {environmentName}
                                   </div>
                                 ) : null}

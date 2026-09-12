@@ -49,45 +49,51 @@ const DEFAULT_MODULES: WorkspaceModule[] = [
   },
 ];
 
+/*
+ * 24-column workspace.
+ *
+ * These defaults are intentionally only a starting point.
+ * The workspace is designed to be manually resized by the DM.
+ */
 const DEFAULT_LAYOUT: LayoutItem[] = [
   {
     i: "default-map",
     x: 0,
     y: 0,
-    w: 7,
-    h: 10,
-    minW: 3,
-    minH: 4,
+    w: 14,
+    h: 20,
+    minW: 6,
+    minH: 6,
   },
 
   {
     i: "default-encounter",
-    x: 7,
+    x: 14,
     y: 0,
-    w: 5,
-    h: 7,
-    minW: 3,
-    minH: 4,
-  },
-
-  {
-    i: "default-monster",
-    x: 7,
-    y: 7,
-    w: 5,
+    w: 10,
     h: 10,
-    minW: 3,
+    minW: 6,
     minH: 5,
   },
 
   {
     i: "default-notes",
-    x: 0,
+    x: 14,
     y: 10,
-    w: 7,
-    h: 5,
-    minW: 2,
-    minH: 3,
+    w: 6,
+    h: 10,
+    minW: 4,
+    minH: 4,
+  },
+
+  {
+    i: "default-monster",
+    x: 20,
+    y: 10,
+    w: 4,
+    h: 10,
+    minW: 4,
+    minH: 5,
   },
 ];
 
@@ -160,17 +166,19 @@ function WorkspaceModuleCard({
   const showHeader = definition.showHeader !== false;
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 shadow-xl">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-white/10 bg-zinc-900">
       {showHeader ? (
         <div
-          className={`workspace-drag-handle flex h-11 shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.03] px-3 ${
+          className={`workspace-drag-handle flex h-9 shrink-0 items-center justify-between border-b border-white/10 bg-white/[0.025] px-2.5 ${
             editing ? "cursor-grab active:cursor-grabbing" : ""
           }`}
         >
           <div className="flex min-w-0 items-center gap-2">
-            <i className={`${definition.icon} text-sm text-emerald-400`} />
+            <i
+              className={`${definition.icon} shrink-0 text-xs text-emerald-400`}
+            />
 
-            <span className="truncate text-sm font-semibold text-zinc-100">
+            <span className="truncate text-xs font-semibold text-zinc-100">
               {module.title}
             </span>
           </div>
@@ -180,7 +188,7 @@ function WorkspaceModuleCard({
               type="button"
               title="Remove module"
               onClick={() => onRemove(module.id)}
-              className="workspace-no-drag flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
+              className="workspace-no-drag flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
             >
               <i className="fa-solid fa-xmark" />
             </button>
@@ -334,45 +342,45 @@ export default function DMWorkspacePage() {
   );
 
   if (!campaignId) {
-    return <div className="p-6 text-rose-400">No campaign selected.</div>;
+    return (
+      <div className="p-4 text-sm text-rose-400">No campaign selected.</div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 backdrop-blur">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <div>
-              <h1 className="text-lg font-bold text-white">DM Workspace</h1>
-
-              <p className="text-xs text-zinc-500">Campaign workspace</p>
-            </div>
+        <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 px-2 py-1.5">
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="truncate text-sm font-bold text-white">
+              DM Workspace
+            </h1>
 
             {editing ? (
-              <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-xs font-medium text-amber-300">
-                Editing layout
+              <span className="rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-1 text-[11px] font-medium text-amber-300">
+                Editing
               </span>
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             {editing ? (
               <>
                 <button
                   type="button"
                   onClick={() => setShowModulePicker(true)}
-                  className="rounded-xl bg-emerald-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400"
+                  className="flex h-8 items-center rounded-md bg-emerald-500 px-2.5 text-xs font-semibold text-white transition hover:bg-emerald-400"
                 >
-                  <i className="fa-solid fa-plus mr-2" />
-                  Add module
+                  <i className="fa-solid fa-plus mr-1.5" />
+                  Module
                 </button>
 
                 <button
                   type="button"
                   onClick={handleResetWorkspace}
-                  className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 transition hover:bg-white/10"
+                  className="flex h-8 items-center rounded-md border border-white/10 bg-white/5 px-2.5 text-xs text-zinc-300 transition hover:bg-white/10"
                 >
-                  <i className="fa-solid fa-arrow-rotate-left mr-2" />
+                  <i className="fa-solid fa-arrow-rotate-left mr-1.5" />
                   Reset
                 </button>
               </>
@@ -381,14 +389,14 @@ export default function DMWorkspacePage() {
             <button
               type="button"
               onClick={() => setEditing((current) => !current)}
-              className={`rounded-xl px-3 py-2 text-sm font-semibold transition ${
+              className={`flex h-8 items-center rounded-md px-2.5 text-xs font-semibold transition ${
                 editing
                   ? "bg-emerald-500 text-white hover:bg-emerald-400"
                   : "border border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
               }`}
             >
               <i
-                className={`fa-solid ${editing ? "fa-check" : "fa-pen"} mr-2`}
+                className={`fa-solid ${editing ? "fa-check" : "fa-pen"} mr-1.5`}
               />
 
               {editing ? "Done" : "Edit layout"}
@@ -397,10 +405,10 @@ export default function DMWorkspacePage() {
         </div>
       </div>
 
-      <main className="p-3 md:p-4">
+      <main className="p-2">
         <div
           ref={containerRef as React.Ref<HTMLDivElement>}
-          className={editing ? "rounded-2xl bg-white/[0.015]" : ""}
+          className={editing ? "rounded-lg bg-white/[0.015]" : ""}
         >
           {mounted && hasLoaded ? (
             <ReactGridLayout
@@ -408,11 +416,11 @@ export default function DMWorkspacePage() {
               width={width}
               onLayoutChange={handleLayoutChange}
               gridConfig={{
-                cols: 12,
+                cols: 24,
 
-                rowHeight: 40,
+                rowHeight: 28,
 
-                margin: [12, 12],
+                margin: [8, 8],
 
                 containerPadding: [0, 0],
               }}
@@ -427,13 +435,14 @@ export default function DMWorkspacePage() {
               }}
               resizeConfig={{
                 enabled: editing,
+
                 handles: ["se"],
               }}
             >
               {renderedModules}
             </ReactGridLayout>
           ) : (
-            <div className="flex min-h-[400px] items-center justify-center text-sm text-zinc-500">
+            <div className="flex min-h-[300px] items-center justify-center text-xs text-zinc-500">
               Loading workspace...
             </div>
           )}
@@ -442,49 +451,49 @@ export default function DMWorkspacePage() {
 
       {showModulePicker ? (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-3 backdrop-blur-sm"
           onMouseDown={() => setShowModulePicker(false)}
         >
           <div
-            className="w-full max-w-xl rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl"
+            className="max-h-[calc(100vh-24px)] w-full max-w-xl overflow-y-auto rounded-xl border border-white/10 bg-zinc-900 p-4 shadow-2xl"
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <h2 className="text-xl font-bold text-white">Add module</h2>
+                <h2 className="text-base font-bold text-white">Add module</h2>
 
-                <p className="mt-1 text-sm text-zinc-400">
-                  Choose something to add to this workspace.
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  Add another tool to the workspace.
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setShowModulePicker(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-sm text-zinc-400 transition hover:bg-white/10 hover:text-white"
               >
                 <i className="fa-solid fa-xmark" />
               </button>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {Object.values(MODULE_REGISTRY).map((definition) => (
                 <button
                   key={definition.type}
                   type="button"
                   onClick={() => handleAddModule(definition.type)}
-                  className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-4 text-left transition hover:border-emerald-500/30 hover:bg-emerald-500/5"
+                  className="group flex items-center gap-3 rounded-lg border border-white/10 bg-black/20 p-3 text-left transition hover:border-emerald-500/30 hover:bg-emerald-500/5"
                 >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/5 text-zinc-400 transition group-hover:bg-emerald-500/10 group-hover:text-emerald-300">
-                    <i className={`${definition.icon} text-lg`} />
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white/5 text-zinc-400 transition group-hover:bg-emerald-500/10 group-hover:text-emerald-300">
+                    <i className={`${definition.icon} text-sm`} />
                   </div>
 
                   <div className="min-w-0">
-                    <div className="font-semibold text-white">
+                    <div className="text-sm font-semibold text-white">
                       {definition.title}
                     </div>
 
-                    <div className="mt-1 text-xs text-zinc-500">
+                    <div className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-zinc-500">
                       {definition.description}
                     </div>
                   </div>

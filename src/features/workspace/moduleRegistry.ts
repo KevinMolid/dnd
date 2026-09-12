@@ -51,29 +51,22 @@ export const MODULE_REGISTRY: Record<
   ModuleDefinition
 > = {
   map: {
-    type: "map",
+  type: "map",
+  title: "Map",
+  description:
+    "Campaign map, areas, environment and location controls.",
+  icon: "fa-solid fa-map",
 
-    title: "Map",
+  component: MapWorkspaceModule,
 
-    description:
-      "Keep an interactive campaign map visible during play.",
+  showHeader: false,
 
-    icon:
-      "fa-solid fa-map",
+  defaultW: 14,
+  defaultH: 20,
 
-    defaultW: 7,
-
-    defaultH: 10,
-
-    minW: 3,
-
-    minH: 5,
-
-    showHeader: true,
-
-    component:
-      MapWorkspaceModule,
-  },
+  minW: 6,
+  minH: 6,
+},
 
   encounter: {
     type: "encounter",
