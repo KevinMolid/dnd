@@ -4,6 +4,7 @@ export type WorkspaceModuleType =
   | "monster"
   | "npc"
   | "character"
+  | "partyControl"
   | "randomEncounter"
   | "notes";
 

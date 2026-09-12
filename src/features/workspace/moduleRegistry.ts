@@ -10,6 +10,8 @@ import NpcWorkspaceModule from "./modules/NpcWorkspaceModule";
 
 import CharacterWorkspaceModule from "./modules/CharacterWorkspaceModule";
 
+import PartyControlWorkspaceModule from "./modules/PartyControlWorkspaceModule";
+
 import MapWorkspaceModule from "./modules/MapWorkspaceModule";
 
 import RandomEncounterWorkspaceModule from "./modules/RandomEncounterWorkspaceModule";
@@ -120,7 +122,7 @@ export const MODULE_REGISTRY: Record<
 
     minH: 6,
 
-    showHeader: true,
+    showHeader: false,
 
     component:
       MonsterWorkspaceModule,
@@ -170,17 +172,40 @@ export const MODULE_REGISTRY: Record<
 
     minH: 5,
 
-    /*
-     * Character owns its own integrated header.
-     *
-     * The selected character name replaces the generic
-     * "Character" title and the pin/follow/open controls
-     * live in the same bar.
-     */
     showHeader: false,
 
     component:
       CharacterWorkspaceModule,
+  },
+
+  partyControl: {
+    type:
+      "partyControl",
+
+    title:
+      "Party Control",
+
+    description:
+      "Monitor the active party, passive senses, HP and conditions.",
+
+    icon:
+      "fa-solid fa-users",
+
+    /*
+     * Party Control owns its own compact integrated header.
+     */
+    showHeader: false,
+
+    defaultW: 6,
+
+    defaultH: 14,
+
+    minW: 4,
+
+    minH: 6,
+
+    component:
+      PartyControlWorkspaceModule,
   },
 
   randomEncounter: {
