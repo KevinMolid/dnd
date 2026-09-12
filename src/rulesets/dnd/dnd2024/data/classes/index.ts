@@ -7,7 +7,8 @@ import { fighter } from "./fighter";
 import { paladin } from "./paladin/paladin";
 import { ranger } from "./ranger/ranger";
 import { rogue } from "./rogue/rogue";
+import { warlock } from "./warlock/warlock";
 import { wizard } from "./wizard/wizard";
 
 
-export const classes: CharacterClass[] = [barbarian, bard, cleric, druid, fighter, paladin, ranger, rogue, wizard];
+export const classes: CharacterClass[] = [barbarian, bard, cleric, druid, fighter, paladin, ranger, rogue, warlock, wizard];

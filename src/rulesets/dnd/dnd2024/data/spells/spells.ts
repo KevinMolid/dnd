@@ -271,6 +271,56 @@ export const spells: Spell[] = [
   higherLevel:
     "The number of unexpended Hit Dice you can roll increases by one for each spell slot level above 2.",
 },
+{
+  id: "armor-of-agathys",
+  name: "Armor of Agathys",
+  level: 1,
+  school: "Abjuration",
+
+  castingTime: "Bonus Action",
+  range: "Self",
+  components: "V, S, M (a shard of blue glass)",
+  duration: "1 hour",
+  classes: ["warlock"],
+
+  description:
+    "Protective magical frost surrounds you.",
+
+  benefits:
+    "You gain 5 Temporary Hit Points.",
+
+  effects:
+    "If a creature hits you with a melee attack roll before the spell ends, the creature takes 5 Cold damage.",
+
+  endConditions:
+    "The spell ends early if you have no Temporary Hit Points.",
+
+  higherLevel:
+    "When cast with a higher-level spell slot, both the Temporary Hit Points and the Cold damage increase by 5 for each slot level above 1.",
+},
+{
+  id: "arms-of-hadar",
+  name: "Arms of Hadar",
+  level: 1,
+  school: "Conjuration",
+
+  castingTime: "Action",
+  range: "Self",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["warlock"],
+
+  description:
+    "You invoke the power of Hadar, causing tendrils to erupt from yourself in a 10-foot Emanation.",
+
+  savingThrows: "Strength",
+
+  effects:
+    "Each creature in the area must make a Strength saving throw. On a failed save, a creature takes 2d6 Necrotic damage and can't take Reactions until the start of its next turn. On a successful save, a creature takes half as much damage only.",
+
+  higherLevel:
+    "When cast with a higher-level spell slot, the damage increases by 1d6 for each slot level above 1.",
+},
   { id: "astral-projection", name: "Astral Projection", level: 9, school: "Necromancy" },
 {
     id: "augury",
@@ -1020,6 +1070,19 @@ export const spells: Spell[] = [
   ],
 },
   { id: "earthquake", name: "Earthquake", level: 8, school: "Transmutation", concentration: true },
+  {
+  id: "eldritch-blast",
+  name: "Eldritch Blast",
+  level: 0,
+  school: "Evocation",
+  castingTime: "Action",
+  range: "120 feet",
+  components: "V, S",
+  duration: "Instantaneous",
+  description:
+    "You hurl a beam of crackling energy. Make a ranged spell attack against one creature or object in range. On a hit, the target takes 1d10 Force damage. The spell creates more than one beam when you reach higher levels: two beams at level 5, three beams at level 11, and four beams at level 17. You can direct the beams at the same target or at different ones. Make a separate attack roll for each beam.",
+  classes: ["Warlock"],
+},
   { id: "elemental-weapon", name: "Elemental Weapon", level: 3, school: "Transmutation", concentration: true },
   {
   id: "elementalism",
@@ -1151,6 +1214,29 @@ export const spells: Spell[] = [
     "Each creature in the area when you cast the spell must succeed on a Strength saving throw or have the Restrained condition until the spell ends.",
   control:
     "A Restrained creature can take an action to make a Strength (Athletics) check against your spell save DC. On a success, it frees itself and is no longer Restrained.",
+},
+{
+  id: "enthrall",
+  name: "Enthrall",
+  level: 2,
+  school: "Enchantment",
+
+  castingTime: "Action",
+  range: "60 feet",
+  components: "V, S",
+  duration: "1 minute",
+  classes: ["bard", "warlock"],
+
+  description:
+    "You weave a distracting string of words, forcing creatures of your choice that you can see within range to make a Wisdom saving throw.",
+
+  savingThrows: "Wisdom",
+
+  limitations:
+    "A creature automatically succeeds on the saving throw if you or your companions are fighting it.",
+
+  penalties:
+    "On a failed save, the target has a -10 penalty to Wisdom (Perception) checks and Passive Perception until the spell ends.",
 },
   { id: "etherealness", name: "Etherealness", level: 7, school: "Conjuration" },
   {
@@ -1607,6 +1693,34 @@ export const spells: Spell[] = [
     higherLevel:
       "You can target one additional creature for each spell slot level above 1.",
   },
+  {
+  id: "hex",
+  name: "Hex",
+  level: 1,
+  school: "Enchantment",
+  concentration: true,
+
+  castingTime: "Bonus Action",
+  range: "90 feet",
+  components: "V, S, M (the petrified eye of a newt)",
+  duration: "Concentration, up to 1 hour",
+  classes: ["warlock"],
+
+  description:
+    "You place a curse on one creature that you can see within range.",
+
+  effects:
+    "Until the spell ends, you deal an extra 1d6 Necrotic damage to the target whenever you hit it with an attack roll.",
+
+  penalties:
+    "Choose one ability when you cast the spell. The target has Disadvantage on ability checks made with the chosen ability.",
+
+  control:
+    "If the target drops to 0 Hit Points before the spell ends, you can take a Bonus Action on a later turn to curse a new creature.",
+
+  higherLevel:
+    "When cast with a level 2 spell slot, you can maintain Concentration for up to 4 hours. With a level 3 or 4 spell slot, you can maintain Concentration for up to 8 hours. With a level 5+ spell slot, you can maintain Concentration for up to 24 hours.",
+},
   {
   id: "hold-person",
   name: "Hold Person",

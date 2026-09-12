@@ -376,7 +376,39 @@ const CustomCharacterSheet = ({
        ATTACKS
     ========================================================= */
 
-  const customAttacks = (character.equipment ?? [])
+  /*
+   * Unarmed Strike is always available, even when no weapon is equipped.
+   *
+   * Custom characters use their manually entered Strength score and
+   * Proficiency Bonus for the standard D&D 2024 Unarmed Strike.
+   */
+  const unarmedStrengthModifier = getModifier(abilityScores.str);
+
+  const unarmedSaveDc = 8 + proficiencyBonus + unarmedStrengthModifier;
+
+  const unarmedAttack = {
+    id: "unarmed-strike",
+
+    name: "Unarmed Strike",
+
+    attackBonus: unarmedStrengthModifier + proficiencyBonus,
+
+    damage: `${Math.max(1, 1 + unarmedStrengthModifier)} bludgeoning`,
+
+    properties: [`Grapple DC ${unarmedSaveDc}`, `Shove DC ${unarmedSaveDc}`],
+
+    ability: "str" as AbilityKey,
+
+    isOffHand: false,
+
+    isTwoHanded: false,
+
+    isThrown: false,
+
+    range: null,
+  };
+
+  const weaponAttacks = (character.equipment ?? [])
     .filter((entry) => entry.equipped || (entry.equippedSlots?.length ?? 0) > 0)
     .map((entry) => {
       const item = resolveItemFromEquipmentEntry(entry, campaignItemsById);
@@ -444,6 +476,8 @@ const CustomCharacterSheet = ({
       };
     })
     .filter((attack): attack is NonNullable<typeof attack> => Boolean(attack));
+
+  const customAttacks = [unarmedAttack, ...weaponAttacks];
 
   /* =========================================================
        SPELLS

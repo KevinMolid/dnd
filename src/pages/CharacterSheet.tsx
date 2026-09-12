@@ -250,6 +250,46 @@ const CharacterSheet = () => {
       : null,
   }));
 
+  /*
+   * D&D 2024 characters can always make an Unarmed Strike.
+   *
+   * Base damage is 1 + Strength modifier bludgeoning damage.
+   * The attack roll uses Strength + Proficiency Bonus.
+   *
+   * Grapple and Shove use the same Unarmed Strike but force a
+   * Strength or Dexterity saving throw against:
+   * 8 + Strength modifier + Proficiency Bonus.
+   */
+  const unarmedStrengthModifier = Math.floor(
+    (derived.finalAbilityScores.str - 10) / 2,
+  );
+
+  const unarmedSaveDc = 8 + derived.proficiencyBonus + unarmedStrengthModifier;
+
+  const unarmedAttack = {
+    id: "unarmed-strike",
+
+    name: "Unarmed Strike",
+
+    attackBonus: derived.genericAttackBonuses.unarmed,
+
+    damage: `${Math.max(1, 1 + unarmedStrengthModifier)} bludgeoning`,
+
+    isOffHand: false,
+
+    isThrown: false,
+
+    isTwoHanded: false,
+
+    properties: [`Grapple DC ${unarmedSaveDc}`, `Shove DC ${unarmedSaveDc}`],
+
+    ability: "str" as AbilityKey,
+
+    mastery: undefined,
+
+    range: null,
+  };
+
   const specialAttacks =
     derived.dragonbornAncestryName && derived.dragonbornDamageType
       ? [
@@ -273,7 +313,7 @@ const CharacterSheet = () => {
         ]
       : [];
 
-  const attacks = [...weaponAttacks, ...specialAttacks];
+  const attacks = [unarmedAttack, ...weaponAttacks, ...specialAttacks];
 
   const combinedSpells = [
     ...derived.groupedTieflingLegacySpells.flatMap((group) => group.spells),
