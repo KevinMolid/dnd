@@ -671,11 +671,56 @@ export const spells: Spell[] = [
   },
   { id: "confusion", name: "Confusion", level: 4, school: "Enchantment", concentration: true },
   { id: "conjure-animals", name: "Conjure Animals", level: 3, school: "Conjuration", concentration: true },
+  {
+  id: "conjure-barrage",
+  name: "Conjure Barrage",
+  level: 3,
+  school: "Conjuration",
+
+  castingTime: "Action",
+  range: "Self",
+  components:
+    "V, S, M (a Melee or Ranged weapon worth at least 1 CP)",
+  duration: "Instantaneous",
+  classes: ["Ranger"],
+
+  description:
+    "You brandish the weapon used to cast the spell and conjure a barrage of similar spectral weapons or ammunition that launches forward in a 60-foot Cone.",
+
+  savingThrows: "Dexterity",
+
+  effects:
+    "Each creature of your choice that you can see in the Cone must make a Dexterity saving throw, taking 5d8 Force damage on a failed save or half as much damage on a successful one.",
+
+  higherLevel:
+    "When cast with a higher-level spell slot, the damage increases by 1d8 for each slot level above 3.",
+},
   { id: "conjure-beings", name: "Conjure Beings", level: 4, school: "Conjuration", concentration: true },
   { id: "conjure-celestial", name: "Conjure Celestial", level: 7, school: "Conjuration", concentration: true },
   { id: "conjure-elemental", name: "Conjure Elemental", level: 5, school: "Conjuration", concentration: true },
   { id: "conjure-fey", name: "Conjure Fey", level: 6, school: "Conjuration", concentration: true },
   { id: "conjure-minor-elementals", name: "Conjure Minor Elementals", level: 4, school: "Conjuration", concentration: true },
+  {
+  id: "conjure-volley",
+  name: "Conjure Volley",
+  level: 5,
+  school: "Conjuration",
+
+  castingTime: "Action",
+  range: "150 feet",
+  components:
+    "V, S, M (a Melee or Ranged weapon worth at least 1 CP)",
+  duration: "Instantaneous",
+  classes: ["Ranger"],
+
+  description:
+    "You brandish the weapon used to cast the spell and choose a point within range. A volley of similar spectral weapons or ammunition falls around that point.",
+
+  savingThrows: "Dexterity",
+
+  effects:
+    "Each creature of your choice that you can see in a 40-foot-radius, 20-foot-high Cylinder centered on the chosen point must make a Dexterity saving throw. A creature takes 8d8 Force damage on a failed save or half as much damage on a successful one.",
+},
   { id: "conjure-woodland-beings", name: "Conjure Woodland Beings", level: 4, school: "Conjuration", concentration: true },
   { id: "cone-of-cold", name: "Cone of Cold", level: 5, school: "Evocation" },
   { id: "contagion", name: "Contagion", level: 5, school: "Necromancy" },
@@ -700,6 +745,38 @@ export const spells: Spell[] = [
   },
   { id: "control-water", name: "Control Water", level: 4, school: "Transmutation", concentration: true },
   { id: "control-weather", name: "Control Weather", level: 8, school: "Transmutation", concentration: true },
+  {
+  id: "cordon-of-arrows",
+  name: "Cordon of Arrows",
+  level: 2,
+  school: "Transmutation",
+
+  castingTime: "Action",
+  range: "Touch",
+  components: "V, S, M (an ornamental braid)",
+  duration: "8 hours",
+  classes: ["Ranger"],
+
+  description:
+    "You touch up to four nonmagical Arrows or Bolts and plant them in the ground in your space, enchanting them to attack intruders.",
+
+  triggers:
+    "Whenever a creature other than you enters a space within 30 feet of the ammunition for the first time on a turn or ends its turn there, one piece of ammunition flies up to strike it.",
+
+  savingThrows: "Dexterity",
+
+  effects:
+    "The creature must succeed on a Dexterity saving throw or take 2d4 Piercing damage. The piece of ammunition is then destroyed.",
+
+  control:
+    "When you cast the spell, you can designate any creatures you choose for the spell to ignore.",
+
+  endConditions:
+    "The spell ends when none of the enchanted ammunition remains planted in the ground.",
+
+  higherLevel:
+    "When cast with a higher-level spell slot, the number of pieces of ammunition you can affect increases by two for each slot level above 2.",
+},
   { id: "create-food-and-water", name: "Create Food and Water", level: 3, school: "Conjuration" },
   {
     id: "create-or-destroy-water",
@@ -1427,6 +1504,30 @@ export const spells: Spell[] = [
     special:
       "As a Bonus Action on your later turns, you can change the direction in which the line blasts from you.",
   },
+  {
+  id: "hail-of-thorns",
+  name: "Hail of Thorns",
+  level: 1,
+  school: "Conjuration",
+
+  castingTime:
+    "Bonus Action, which you take immediately after hitting a creature with a Ranged weapon",
+  range: "Self",
+  components: "V",
+  duration: "Instantaneous",
+  classes: ["Ranger"],
+
+  description:
+    "As you hit the creature, a magical rain of thorns bursts from your Ranged weapon or ammunition.",
+
+  savingThrows: "Dexterity",
+
+  effects:
+    "The target of the attack and each creature within 5 feet of it must make a Dexterity saving throw. A creature takes 1d10 Piercing damage on a failed save or half as much damage on a successful one.",
+
+  higherLevel:
+    "When cast with a higher-level spell slot, the damage increases by 1d10 for each slot level above 1.",
+},
   { id: "hallow", name: "Hallow", level: 5, school: "Abjuration" },
   { id: "hallucinatory-terrain", name: "Hallucinatory Terrain", level: 4, school: "Illusion" },
   { id: "harm", name: "Harm", level: 6, school: "Necromancy" },
@@ -1731,6 +1832,33 @@ export const spells: Spell[] = [
       "The spell ends if you cast it again.",
   },
   {
+  id: "lightning-arrow",
+  name: "Lightning Arrow",
+  level: 3,
+  school: "Transmutation",
+
+  castingTime:
+    "Bonus Action, which you take immediately after hitting or missing a target with a ranged attack using a weapon",
+  range: "Self",
+  components: "V, S",
+  duration: "Instantaneous",
+  classes: ["Ranger"],
+
+  description:
+    "As your ranged attack hits or misses, the weapon or ammunition transforms into a bolt of lightning.",
+
+  effects:
+    "Instead of the attack's normal damage and other effects, the target takes 4d8 Lightning damage on a hit or half as much damage on a miss.",
+
+  savingThrows: "Dexterity",
+
+  special:
+    "Each creature within 10 feet of the target must make a Dexterity saving throw, taking 2d8 Lightning damage on a failed save or half as much damage on a successful one. The weapon or ammunition then returns to its normal form.",
+
+  higherLevel:
+    "When cast with a higher-level spell slot, both the primary and secondary damage increase by 1d8 for each slot level above 3.",
+},
+  {
     id: "locate-animals-or-plants",
     name: "Locate Animals or Plants",
     level: 2,
@@ -2030,6 +2158,28 @@ export const spells: Spell[] = [
     "When cast with a higher-level spell slot, the damage increases by 1d10 for each slot level above 2.",
 },
   { id: "move-earth", name: "Move Earth", level: 6, school: "Transmutation", concentration: true },
+  {
+  id: "nondetection",
+  name: "Nondetection",
+  level: 3,
+  school: "Abjuration",
+
+  castingTime: "Action",
+  range: "Touch",
+  components:
+    "V, S, M (a pinch of diamond dust worth 25+ GP, which the spell consumes)",
+  duration: "8 hours",
+  classes: ["Bard", "Ranger", "Wizard"],
+
+  description:
+    "You hide a target you touch from Divination magic for the duration.",
+
+  effects:
+    "The target can't be targeted by Divination spells or perceived through magical scrying sensors.",
+
+  limitations:
+    "The target can be a willing creature, a place, or an object no larger than 10 feet in any dimension.",
+},
   { id: "nystuls-magic-aura", name: "Nystul's Magic Aura", level: 2, school: "Illusion" },
 {
   id: "pass-without-trace",
@@ -2680,6 +2830,27 @@ export const spells: Spell[] = [
     cantripUpgrade:
       "The damage increases by 1d8 when you reach levels 5 (2d8), 11 (3d8), and 17 (4d8).",
   },
+  {
+  id: "steel-wind-strike",
+  name: "Steel Wind Strike",
+  level: 5,
+  school: "Conjuration",
+
+  castingTime: "Action",
+  range: "30 feet",
+  components: "S, M (a Melee weapon worth 1+ SP)",
+  duration: "Instantaneous",
+  classes: ["Ranger", "Wizard"],
+
+  description:
+    "You flourish the weapon used to cast the spell and vanish, striking multiple creatures with supernatural speed.",
+
+  effects:
+    "Choose up to five creatures you can see within range. Make a melee spell attack against each target. On a hit, the target takes 6d10 Force damage.",
+
+  special:
+    "After making the attacks, you teleport to an unoccupied space you can see within 5 feet of one of the targets.",
+},
     { id: "stone-shape", name: "Stone Shape", level: 4, school: "Transmutation" },
   { id: "stoneskin", name: "Stoneskin", level: 4, school: "Transmutation", concentration: true },
   { id: "storm-of-vengeance", name: "Storm of Vengeance", level: 9, school: "Conjuration", concentration: true },
@@ -2738,6 +2909,28 @@ export const spells: Spell[] = [
   { id: "summon-fey", name: "Summon Fey", level: 3, school: "Conjuration", concentration: true },
   { id: "sunbeam", name: "Sunbeam", level: 6, school: "Evocation", concentration: true },
   { id: "sunburst", name: "Sunburst", level: 8, school: "Evocation" },
+  {
+  id: "swift-quiver",
+  name: "Swift Quiver",
+  level: 5,
+  school: "Transmutation",
+  concentration: true,
+
+  castingTime: "Bonus Action",
+  range: "Self",
+  components: "V, S, M (a Quiver worth 1+ GP)",
+  duration: "Concentration, up to 1 minute",
+  classes: ["Ranger"],
+
+  description:
+    "Magic continually supplies ammunition for your ranged weapon, allowing you to fire with supernatural speed.",
+
+  effects:
+    "When you cast the spell, and as a Bonus Action on each of your turns until the spell ends, you can make two attacks with a weapon that fires Arrows or Bolts, such as a Longbow or Light Crossbow.",
+
+  special:
+    "The spell magically creates the ammunition needed for each attack. Each created Arrow or Bolt deals damage like normal nonmagical ammunition of its kind and disintegrates immediately after it hits or misses.",
+},
 {
   id: "tashas-hideous-laughter",
   name: "Tasha's Hideous Laughter",
