@@ -235,21 +235,20 @@ export default function SpellTooltip({
                 </div>
 
                 {pinned && (
-                  <span
-                    title="Pinned"
-                    className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-1 text-[9px] text-amber-300"
+                  <button
+                    type="button"
+                    title="Unpin spell"
+                    aria-label={`Unpin ${spell.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      closeTooltip();
+                    }}
+                    className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-300 transition hover:border-amber-400/35 hover:bg-amber-500/15 hover:text-amber-200"
                   >
                     <i className="fa-solid fa-thumbtack" />
-                  </span>
+                  </button>
                 )}
               </div>
-
-              {spell.classes && spell.classes.length > 0 && (
-                <div className="mt-2 text-xs text-slate-300">
-                  <span className="font-semibold text-slate-200">Classes:</span>{" "}
-                  {spell.classes.join(", ")}
-                </div>
-              )}
             </div>
 
             <div className="space-y-1.5">
@@ -322,10 +321,6 @@ export default function SpellTooltip({
                 </div>
               </div>
             )}
-
-            <div className="border-t border-white/10 pt-2 text-[9px] text-zinc-600">
-              Click the spell to {pinned ? "unpin" : "pin"} this card.
-            </div>
           </div>
         </div>,
         document.body,

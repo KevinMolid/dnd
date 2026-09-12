@@ -32,6 +32,7 @@ const TextSection = ({ label, value }: { label: string; value?: string }) => {
       <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
         {label}
       </div>
+
       <p className="text-sm leading-6 text-zinc-300">{value}</p>
     </div>
   );
@@ -83,13 +84,6 @@ export default function SpellPreviewCard({
                   {formatSpellLevel(spell.level)}
                   {spell.school ? ` · ${spell.school}` : ""}
                 </p>
-
-                {spell.classes && spell.classes.length > 0 && (
-                  <p className="mt-2 text-sm text-zinc-400">
-                    <span className="font-medium text-zinc-300">Classes:</span>{" "}
-                    {spell.classes.join(", ")}
-                  </p>
-                )}
               </div>
 
               <div className="space-y-2">
@@ -137,6 +131,7 @@ export default function SpellPreviewCard({
                         <p className="text-sm font-medium text-white">
                           {option.name}
                         </p>
+
                         <p className="mt-1 text-sm leading-6 text-zinc-400">
                           {option.text}
                         </p>
@@ -152,6 +147,7 @@ export default function SpellPreviewCard({
                 <p className="text-sm font-medium text-white">
                   No spell selected
                 </p>
+
                 <p className="mt-2 text-sm leading-6 text-zinc-500">
                   {emptyText}
                 </p>
