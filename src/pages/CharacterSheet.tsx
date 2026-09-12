@@ -21,6 +21,8 @@ import SectionCard from "../features/character-sheet/components/SectionCard";
 
 import CharacterSheetHeader from "../features/character-sheet/components/CharacterSheetHeader";
 
+import CharacterBreadcrumbs from "../features/character-sheet/components/CharacterBreadcrumbs";
+
 import CharacterQuickStats from "../features/character-sheet/components/CharacterQuickStats";
 
 import CharacterSheetWorkspace from "../features/character-sheet/components/CharacterSheetWorkspace";
@@ -87,9 +89,15 @@ const CharacterSheet = () => {
       }
     | undefined;
 
-  const backTo = navigationState?.from ?? "/";
+  const backTo =
+    navigationState?.from ??
+    (character?.campaignId
+      ? `/campaigns/${character.campaignId}/characters`
+      : "/");
 
-  const backLabel = navigationState?.label ?? "Back to home";
+  const backLabel =
+    navigationState?.label ??
+    (character?.campaignId ? "Back to campaign" : "Back to home");
 
   const toggleTraitGroup = (key: TraitGroupKey) => {
     setOpenTraitGroups((current) => ({
@@ -572,14 +580,11 @@ const CharacterSheet = () => {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 lg:px-6">
-        <div className="mb-4">
-          <Link
-            to={backTo}
-            className="text-xs text-zinc-400 transition hover:text-white"
-          >
-            ← {backLabel}
-          </Link>
-        </div>
+        <CharacterBreadcrumbs
+          characterName={character.name}
+          campaignId={character.campaignId}
+          fallbackTo={backTo}
+        />
 
         <CharacterSheetHeader
           characterId={characterId}

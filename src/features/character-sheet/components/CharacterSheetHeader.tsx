@@ -49,26 +49,21 @@ const CharacterSheetHeader = ({
             {name}
           </h1>
 
-          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-            <span className="font-medium text-zinc-200">Level {level}</span>
+          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
+            <span className="font-semibold text-zinc-100">Level {level}</span>
 
             {speciesName ? (
-              <>
-                <span className="text-zinc-700">•</span>
-                <span className="text-zinc-300">{speciesName}</span>
-              </>
+              <span className="font-medium text-zinc-200">{speciesName}</span>
             ) : null}
 
             {classLabel ? (
-              <>
-                <span className="text-zinc-700">•</span>
-                <span className="font-medium text-zinc-200">{classLabel}</span>
-              </>
+              <span className="font-semibold text-zinc-100">{classLabel}</span>
             ) : null}
 
             {backgroundName ? (
               <>
-                <span className="text-zinc-700">•</span>
+                <span className="mx-0.5 text-zinc-600">•</span>
+
                 <span className="text-zinc-500">
                   {backgroundName} background
                 </span>

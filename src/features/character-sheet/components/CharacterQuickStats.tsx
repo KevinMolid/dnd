@@ -364,13 +364,38 @@ const SkillRow = ({ skill }: { skill: CharacterQuickSkill }) => (
             ? "Proficient"
             : "Not proficient"
       }
-      className={`w-3 shrink-0 text-center text-[7px] ${
-        skill.proficient || skill.expertise
-          ? "text-emerald-400"
-          : "text-zinc-600"
-      }`}
+      className="flex w-5 shrink-0 items-center justify-center gap-[2px]"
+      aria-label={
+        skill.expertise
+          ? "Expertise"
+          : skill.proficient
+            ? "Proficient"
+            : "Not proficient"
+      }
     >
-      {skill.expertise ? "●●" : skill.proficient ? "●" : "○"}
+      {skill.expertise ? (
+        <>
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 rounded-full border border-emerald-400 bg-emerald-400"
+          />
+
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 rounded-full border border-emerald-400 bg-emerald-400"
+          />
+        </>
+      ) : skill.proficient ? (
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 rounded-full border border-emerald-400 bg-emerald-400"
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="h-2 w-2 rounded-full border border-white/25 bg-transparent"
+        />
+      )}
     </span>
 
     <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-zinc-200">

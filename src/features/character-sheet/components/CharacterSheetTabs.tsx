@@ -44,8 +44,8 @@ const CharacterSheetTabs = ({
             key={tab.id}
             type="button"
             onClick={() => onChange(tab.id)}
-            className={`relative shrink-0 px-3 py-3 text-[11px] font-semibold transition ${
-              active ? "text-white" : "text-zinc-500 hover:text-zinc-200"
+            className={`relative shrink-0 px-3.5 py-3 text-xs font-semibold transition ${
+              active ? "text-white" : "text-zinc-400 hover:text-zinc-100"
             }`}
           >
             {tab.label}

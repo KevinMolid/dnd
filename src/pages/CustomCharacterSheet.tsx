@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
 
-import { Link } from "react-router-dom";
-
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
 
 import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
@@ -9,6 +7,8 @@ import OverviewDashboard from "../features/character-sheet/components/OverviewDa
 import CharacterSheetWorkspace from "../features/character-sheet/components/CharacterSheetWorkspace";
 
 import CharacterSheetHeader from "../features/character-sheet/components/CharacterSheetHeader";
+
+import CharacterBreadcrumbs from "../features/character-sheet/components/CharacterBreadcrumbs";
 
 import CharacterQuickStats from "../features/character-sheet/components/CharacterQuickStats";
 
@@ -271,7 +271,6 @@ const CustomCharacterSheet = ({
   characterId,
   character,
   backTo,
-  backLabel,
   campaignItemsById,
   handleSetPlayerNotes,
   handleEquipmentChange,
@@ -630,14 +629,14 @@ const CustomCharacterSheet = ({
                 <div className="border-t border-white/[0.06]">
                   {group.traits.map((trait) => (
                     <CustomFeatureTooltip key={trait.id} trait={trait}>
-                      <div className="group grid min-h-[38px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(90px,45%)] items-center gap-3 border-b border-white/[0.045] px-3 py-1.5 last:border-b-0 transition hover:bg-white/[0.035]">
-                        <span className="truncate text-[10px] font-semibold text-zinc-200 transition group-hover:text-white">
+                      <div className="group grid min-h-[44px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(120px,46%)] items-center gap-3 border-b border-white/[0.045] px-3 py-2 last:border-b-0 transition hover:bg-white/[0.04]">
+                        <span className="truncate text-xs font-semibold text-zinc-100 transition group-hover:text-white">
                           {trait.name}
                         </span>
 
                         <span
                           title={getFeatureSummary(trait)}
-                          className="block truncate text-right text-[8px] font-medium text-zinc-500"
+                          className="block truncate text-right text-[10px] font-medium text-zinc-400"
                         >
                           {getFeatureSummary(trait)}
                         </span>
@@ -696,14 +695,11 @@ const CustomCharacterSheet = ({
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 lg:px-6">
-        <div className="mb-4">
-          <Link
-            to={backTo}
-            className="text-xs text-zinc-400 transition hover:text-white"
-          >
-            ← {backLabel}
-          </Link>
-        </div>
+        <CharacterBreadcrumbs
+          characterName={character.name}
+          campaignId={character.campaignId}
+          fallbackTo={backTo}
+        />
 
         <CharacterSheetHeader
           characterId={characterId}

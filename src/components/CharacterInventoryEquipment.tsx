@@ -338,7 +338,7 @@ const CharacterInventoryEquipment = ({
   };
 
   return (
-    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_250px]">
+    <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
       {/* =====================================================
           INVENTORY
       ===================================================== */}
@@ -357,7 +357,7 @@ const CharacterInventoryEquipment = ({
             ))}
           </div>
         ) : (
-          <p className="px-4 py-4 text-[10px] text-zinc-600">
+          <p className="px-4 py-4 text-xs text-zinc-500">
             No equipment added yet.
           </p>
         )}
@@ -376,87 +376,100 @@ const CharacterInventoryEquipment = ({
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
           <SectionLabel>Equipped</SectionLabel>
 
-          <div className="mt-2 divide-y divide-white/[0.055]">
-            {equipmentSlotOrder.map((slot) => {
-              const equippedItem = equippedBySlot[slot];
+          {equipmentSlotOrder.some((slot) => equippedBySlot[slot]) ? (
+            <div className="mt-2 divide-y divide-white/[0.055]">
+              {equipmentSlotOrder
+                .filter((slot) => equippedBySlot[slot])
+                .map((slot) => {
+                  const equippedItem = equippedBySlot[slot]!;
 
-              const resolvedItem = equippedItem
-                ? resolveItemFromEquipmentEntry(equippedItem, campaignItemsById)
-                : null;
+                  const resolvedItem = resolveItemFromEquipmentEntry(
+                    equippedItem,
+                    campaignItemsById,
+                  );
 
-              const displayId = equippedItem
-                ? getEntryDisplayId(equippedItem)
-                : undefined;
+                  const displayId = getEntryDisplayId(equippedItem);
 
-              const itemName = equippedItem
-                ? (resolvedItem?.name ??
-                  equippedItem.name ??
-                  (displayId ? formatLabel(displayId) : "Unknown Item"))
-                : "—";
+                  const itemName =
+                    resolvedItem?.name ??
+                    equippedItem.name ??
+                    (displayId ? formatLabel(displayId) : "Unknown Item");
 
-              const occupiedSlots = equippedItem?.equippedSlots ?? [];
-              const isPrimarySlot = !!equippedItem && occupiedSlots[0] === slot;
+                  const occupiedSlots = equippedItem.equippedSlots ?? [];
+                  const isPrimarySlot = occupiedSlots[0] === slot;
 
-              const itemContent = (
-                <div className="min-w-0">
-                  <p
-                    className={`truncate text-[9px] font-medium ${
-                      equippedItem ? "text-zinc-200" : "text-zinc-700"
-                    }`}
-                    title={equippedItem ? itemName : undefined}
-                  >
-                    {itemName}
-                  </p>
+                  /*
+                   * Multi-slot equipment should only be rendered once.
+                   * The first occupied slot becomes its visual home.
+                   */
+                  if (!isPrimarySlot) {
+                    return null;
+                  }
 
-                  {equippedItem && occupiedSlots.length > 1 && isPrimarySlot ? (
-                    <p className="mt-0.5 text-[7px] text-zinc-600">
-                      {occupiedSlots
-                        .map(
-                          (occupiedSlot) => equipmentSlotLabels[occupiedSlot],
-                        )
-                        .join(" · ")}
-                    </p>
-                  ) : null}
-                </div>
-              );
+                  const itemContent = (
+                    <div className="min-w-0">
+                      <p
+                        className="truncate text-[11px] font-medium text-zinc-200"
+                        title={itemName}
+                      >
+                        {itemName}
+                      </p>
 
-              return (
-                <div
-                  key={slot}
-                  className="grid min-h-[34px] grid-cols-[74px_minmax(0,1fr)_auto] items-center gap-2 py-1.5 first:pt-0 last:pb-0"
-                >
-                  <span className="text-[7px] font-semibold uppercase tracking-[0.09em] text-zinc-600">
-                    {equipmentSlotLabels[slot]}
-                  </span>
+                      {occupiedSlots.length > 1 ? (
+                        <p className="mt-1 text-[9px] font-medium text-zinc-500">
+                          {equippedItem.wieldMode === "two-handed"
+                            ? "Two-Handed"
+                            : occupiedSlots
+                                .map(
+                                  (occupiedSlot) =>
+                                    equipmentSlotLabels[occupiedSlot],
+                                )
+                                .join(" · ")}
+                        </p>
+                      ) : null}
+                    </div>
+                  );
 
-                  {equippedItem && resolvedItem ? (
-                    <ItemTooltip
-                      item={resolvedItem}
-                      className="min-w-0 max-w-full"
+                  return (
+                    <div
+                      key={slot}
+                      className="grid min-h-[44px] grid-cols-[112px_minmax(0,1fr)] items-start gap-2 py-2 first:pt-0 last:pb-0"
                     >
-                      <div className="min-w-0 cursor-pointer rounded px-1 py-0.5 -ml-1 transition hover:bg-white/[0.04]">
-                        {itemContent}
+                      <span className="whitespace-nowrap pt-1 text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-500">
+                        {equipmentSlotLabels[slot]}
+                      </span>
+
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+                        <div className="min-w-0 flex-1">
+                          {resolvedItem ? (
+                            <ItemTooltip
+                              item={resolvedItem}
+                              className="min-w-0 max-w-full"
+                            >
+                              <div className="-ml-1 min-w-0 cursor-pointer rounded px-1 py-0.5 transition hover:bg-white/[0.04]">
+                                {itemContent}
+                              </div>
+                            </ItemTooltip>
+                          ) : (
+                            itemContent
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleUnequip(equippedItem.instanceId)}
+                          className="shrink-0 rounded-md border border-rose-500/15 bg-rose-500/[0.05] px-2 py-1 text-[9px] font-semibold text-rose-300/85 transition hover:bg-rose-500/10 hover:text-rose-200"
+                        >
+                          Unequip
+                        </button>
                       </div>
-                    </ItemTooltip>
-                  ) : (
-                    itemContent
-                  )}
-
-                  {equippedItem && isPrimarySlot ? (
-                    <button
-                      type="button"
-                      onClick={() => handleUnequip(equippedItem.instanceId)}
-                      className="rounded-md border border-rose-500/15 bg-rose-500/[0.05] px-1.5 py-0.5 text-[7px] font-semibold text-rose-300/75 transition hover:bg-rose-500/10 hover:text-rose-200"
-                    >
-                      Unequip
-                    </button>
-                  ) : (
-                    <span />
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <p className="mt-2 text-[10px] text-zinc-500">No items equipped.</p>
+          )}
         </section>
       </div>
     </div>
@@ -511,31 +524,31 @@ const InventoryRow = ({
   const itemContent = (
     <div className="min-w-0">
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <p className="truncate text-[10px] font-semibold text-zinc-100">
+        <p className="truncate text-xs font-semibold text-zinc-100">
           {totalQuantity}× {itemName}
         </p>
 
         {category ? (
-          <span className="text-[7px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-500">
             {category}
           </span>
         ) : null}
 
         {entry.source === "campaign" ? (
-          <span className="text-[7px] font-semibold uppercase tracking-[0.08em] text-violet-400/70">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.07em] text-violet-300/80">
             Campaign
           </span>
         ) : null}
       </div>
 
       {resolvedItem?.shortDescription ? (
-        <p className="mt-0.5 line-clamp-1 text-[8px] text-zinc-600">
+        <p className="mt-1 line-clamp-1 text-[10px] text-zinc-500">
           {resolvedItem.shortDescription}
         </p>
       ) : null}
 
       {!resolvedItem ? (
-        <p className="mt-0.5 text-[8px] text-amber-400/70">
+        <p className="mt-1 text-[10px] text-amber-300/80">
           Unknown item data · {displayId}
         </p>
       ) : null}
@@ -543,7 +556,7 @@ const InventoryRow = ({
   );
 
   return (
-    <div className="grid min-h-[38px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 transition hover:bg-white/[0.025]">
+    <div className="grid min-h-[44px] grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-3 py-1.5 transition hover:bg-white/[0.025]">
       {resolvedItem ? (
         <ItemTooltip item={resolvedItem} className="min-w-0 max-w-full">
           <div className="min-w-0 cursor-pointer">{itemContent}</div>
@@ -559,7 +572,7 @@ const InventoryRow = ({
             onClick={() => onUseItem(row)}
             disabled={totalQuantity <= 0}
             title={`Use one ${itemName}`}
-            className="rounded-md border border-emerald-500/15 bg-emerald-500/[0.06] px-1.5 py-0.5 text-[7px] font-semibold text-emerald-300/80 transition hover:border-emerald-500/25 hover:bg-emerald-500/10 hover:text-emerald-200 disabled:cursor-default disabled:opacity-30"
+            className="rounded-md border border-emerald-500/15 bg-emerald-500/[0.06] px-2 py-1 text-[9px] font-semibold text-emerald-300/90 transition hover:border-emerald-500/25 hover:bg-emerald-500/10 hover:text-emerald-200 disabled:cursor-default disabled:opacity-30"
           >
             Use
           </button>
@@ -582,7 +595,7 @@ const InventoryRow = ({
                 onClick={() =>
                   onEquip(entry.instanceId, rulesItemId, action.mode)
                 }
-                className="rounded-md border border-white/[0.08] bg-black/20 px-1.5 py-0.5 text-[7px] font-semibold text-zinc-400 transition hover:border-white/15 hover:text-zinc-200"
+                className="rounded-md border border-white/[0.08] bg-black/20 px-2 py-1 text-[9px] font-semibold text-zinc-300 transition hover:border-white/15 hover:text-zinc-200"
               >
                 {getCompactActionLabel(action.label)}
               </button>
@@ -604,7 +617,7 @@ const QuantityControl = ({
   onIncrease: () => void;
 }) => (
   <div
-    className="flex h-5 items-center overflow-hidden rounded-md border border-white/[0.08] bg-black/20"
+    className="flex h-7 items-center overflow-hidden rounded-md border border-white/[0.08] bg-black/20"
     aria-label="Item quantity controls"
   >
     <button
@@ -612,12 +625,12 @@ const QuantityControl = ({
       onClick={onDecrease}
       title={quantity <= 1 ? "Remove item" : "Decrease quantity"}
       aria-label={quantity <= 1 ? "Remove item" : "Decrease quantity"}
-      className="flex h-full w-5 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+      className="flex h-full w-7 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
     >
       −
     </button>
 
-    <span className="min-w-[24px] border-x border-white/[0.06] px-1 text-center text-[7px] font-semibold tabular-nums text-zinc-400">
+    <span className="min-w-[30px] border-x border-white/[0.06] px-1 text-center text-[9px] font-semibold tabular-nums text-zinc-300">
       {quantity}
     </span>
 
@@ -626,7 +639,7 @@ const QuantityControl = ({
       onClick={onIncrease}
       title="Increase quantity"
       aria-label="Increase quantity"
-      className="flex h-full w-5 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+      className="flex h-full w-7 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
     >
       +
     </button>
@@ -652,13 +665,10 @@ const MoneySummary = ({ money }: { money: Required<Money> }) => {
   return (
     <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
       {visible.map(({ key, label, className }, index) => (
-        <span
-          key={key}
-          className="inline-flex items-baseline gap-1 text-[10px]"
-        >
+        <span key={key} className="inline-flex items-baseline gap-1 text-xs">
           {index > 0 ? <span className="mr-1 text-zinc-700">·</span> : null}
           <strong className="text-zinc-100">{money[key]}</strong>
-          <span className={`text-[8px] font-semibold ${className}`}>
+          <span className={`text-[10px] font-semibold ${className}`}>
             {label}
           </span>
         </span>
@@ -685,7 +695,7 @@ const getCompactActionLabel = (label: string) => {
 };
 
 const SectionLabel = ({ children }: { children: ReactNode }) => (
-  <h2 className="text-[9px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+  <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
     {children}
   </h2>
 );

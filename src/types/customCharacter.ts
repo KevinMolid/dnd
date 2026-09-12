@@ -87,6 +87,9 @@ export type CustomSpellcasting = {
 export type CustomCharacter = {
   id?: string;
 
+  ownerId?: string;
+  campaignId?: string;
+
   name: string;
   imageUrl?: string;
 

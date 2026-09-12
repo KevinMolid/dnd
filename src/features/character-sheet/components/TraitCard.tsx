@@ -31,19 +31,19 @@ const TraitCard = ({ trait }: TraitCardProps) => {
 
   return (
     <TraitTooltip trait={trait}>
-      <div className="group grid min-h-[38px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(90px,45%)] items-center gap-3 border-b border-white/[0.045] px-3 py-1.5 last:border-b-0 transition hover:bg-white/[0.035]">
+      <div className="group grid min-h-[44px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(120px,46%)] items-center gap-3 border-b border-white/[0.045] px-3 py-2 last:border-b-0 transition hover:bg-white/[0.04]">
         <div className="min-w-0">
-          <div className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-[10px] font-semibold text-zinc-200 transition group-hover:text-white">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="truncate text-xs font-semibold text-zinc-100 transition group-hover:text-white">
               {trait.name}
             </span>
 
             {typeof trait.level === "number" ? (
-              <span className="shrink-0 text-[7px] font-medium text-zinc-600">
+              <span className="shrink-0 text-[9px] font-medium text-zinc-500">
                 L{trait.level}
               </span>
             ) : typeof trait.minLevel === "number" ? (
-              <span className="shrink-0 text-[7px] font-medium text-zinc-600">
+              <span className="shrink-0 text-[9px] font-medium text-zinc-500">
                 L{trait.minLevel}+
               </span>
             ) : null}
@@ -54,12 +54,12 @@ const TraitCard = ({ trait }: TraitCardProps) => {
           {summary ? (
             <span
               title={summary}
-              className="block truncate text-[8px] font-medium text-zinc-500"
+              className="block truncate text-[10px] font-medium text-zinc-400"
             >
               {summary}
             </span>
           ) : (
-            <span className="text-[8px] text-zinc-700">Details</span>
+            <span className="text-[10px] text-zinc-500">Details</span>
           )}
         </div>
       </div>
@@ -84,13 +84,6 @@ const getTraitSummary = ({
 
   description?: string;
 }) => {
-  /*
-   * Prioritize mechanically useful information.
-   *
-   * Usage is generally more important during play
-   * than prose description.
-   */
-
   const parts: string[] = [];
 
   if (activationLabel) {
