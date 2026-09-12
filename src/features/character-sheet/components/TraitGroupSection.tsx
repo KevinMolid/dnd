@@ -12,23 +12,16 @@ type TraitGroupSectionProps = {
 
 const groupLabels: Record<TraitGroup["key"], string> = {
   species: "Species",
-
   class: "Class",
-
   subclass: "Subclass",
-
   background: "Background",
-
   feats: "Feats",
-
   other: "Other",
 };
 
 const TraitGroupSection = ({
   group,
-
   isOpen,
-
   onToggle,
 }: TraitGroupSectionProps) => {
   return (
@@ -37,27 +30,27 @@ const TraitGroupSection = ({
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition hover:bg-white/[0.035]"
+        className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-white/[0.045]"
       >
         <div className="flex min-w-0 items-center gap-2">
           <span
-            className={`text-[9px] text-zinc-500 transition-transform ${
+            className={`text-[10px] text-zinc-400 transition-transform ${
               isOpen ? "rotate-90" : ""
             }`}
           >
             ▶
           </span>
 
-          <span className="truncate text-[10px] font-bold uppercase tracking-[0.11em] text-zinc-300">
+          <span className="truncate text-xs font-bold uppercase tracking-[0.09em] text-zinc-200">
             {group.title}
           </span>
 
-          <span className="shrink-0 text-[8px] uppercase tracking-[0.08em] text-zinc-600">
+          <span className="shrink-0 text-[10px] uppercase tracking-[0.07em] text-zinc-500">
             · {groupLabels[group.key]}
           </span>
         </div>
 
-        <span className="shrink-0 text-[8px] font-medium text-zinc-600">
+        <span className="shrink-0 text-[10px] font-medium text-zinc-500">
           {group.traits.length}
         </span>
       </button>

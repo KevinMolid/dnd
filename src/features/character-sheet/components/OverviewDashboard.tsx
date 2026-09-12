@@ -268,7 +268,7 @@ const OverviewDashboard = ({
                 key={tab.id}
                 type="button"
                 onClick={() => setActivePlayTab(tab.id)}
-                className={`relative px-3 py-3 text-[10px] font-semibold transition ${
+                className={`relative px-3 py-3 text-xs font-semibold transition ${
                   active ? "text-white" : "text-zinc-500 hover:text-zinc-200"
                 }`}
               >
@@ -381,9 +381,9 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
         : "—";
 
   return (
-    <div className="py-3 first:pt-0 last:pb-0">
-      <div className="grid grid-cols-[minmax(0,1fr)_46px_88px] items-end gap-2">
-        <p className="truncate text-[11px] font-semibold text-white">
+    <div className="py-3.5 first:pt-0 last:pb-0">
+      <div className="grid grid-cols-[minmax(0,1fr)_54px_96px] items-end gap-2">
+        <p className="truncate text-sm font-semibold text-white">
           {attack.name}
         </p>
 
@@ -398,13 +398,13 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
         <div className="text-right">
           <TinyLabel>Damage</TinyLabel>
 
-          <p className="mt-0.5 whitespace-nowrap text-[10px] font-bold leading-none text-zinc-100">
+          <p className="mt-0.5 whitespace-nowrap text-xs font-bold leading-none text-zinc-100">
             {attack.damage ?? "—"}
           </p>
         </div>
       </div>
 
-      <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[8px] font-medium">
+      <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] font-medium">
         {attackRoleLabels[role] ? (
           <>
             <AttackRoleLabel role={role}>
@@ -440,7 +440,7 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
       attack.mastery ||
       attack.usageLabel ||
       secondaryProperties.length > 0 ? (
-        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[7px] text-zinc-600">
+        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[9px] text-zinc-500">
           {attack.ability ? <span>{abilityLabels[attack.ability]}</span> : null}
 
           {attack.ability && attack.mastery ? <Separator /> : null}
@@ -564,11 +564,11 @@ const SpellsPanel = ({
               }
             >
               <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="text-[8px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
                   Spell Slots
                 </span>
 
-                <span className="text-[7px] text-zinc-600">
+                <span className="text-[9px] text-zinc-500">
                   Click to use or restore
                 </span>
               </div>
@@ -593,11 +593,11 @@ const SpellsPanel = ({
           className="border-b border-white/[0.06] p-3 last:border-b-0"
         >
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-[8px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
               {Number(level) === 0 ? "Cantrips" : `Level ${level}`}
             </span>
 
-            <span className="text-[7px] text-zinc-700">
+            <span className="text-[11px] text-zinc-500">
               {levelSpells.length}
             </span>
           </div>
@@ -609,14 +609,14 @@ const SpellsPanel = ({
                 spell={spell}
               >
                 <div className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5 transition hover:border-white/15 hover:bg-white/[0.05]">
-                  <span className="whitespace-nowrap text-[9px] font-semibold text-white">
+                  <span className="whitespace-nowrap text-[11px] font-semibold text-white">
                     {spell.name}
                   </span>
 
                   {spell.concentration ? (
                     <span
                       title="Concentration"
-                      className="text-[7px] font-bold text-fuchsia-400"
+                      className="text-[9px] font-bold text-fuchsia-300"
                     >
                       C
                     </span>
@@ -625,7 +625,7 @@ const SpellsPanel = ({
                   {spell.ritual ? (
                     <span
                       title="Ritual"
-                      className="text-[7px] font-bold text-sky-400"
+                      className="text-[9px] font-bold text-sky-300"
                     >
                       R
                     </span>
@@ -650,11 +650,11 @@ const SpellcastingStat = ({
   value: string | number;
 }) => (
   <div className="rounded-lg bg-black/20 px-2 py-2">
-    <span className="text-[7px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+    <span className="text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-500">
       {label}
     </span>
 
-    <p className="mt-1 truncate text-[11px] font-bold text-zinc-200">{value}</p>
+    <p className="mt-1 truncate text-sm font-bold text-zinc-100">{value}</p>
   </div>
 );
 
@@ -687,7 +687,7 @@ const SpellSlotRow = ({
 
   return (
     <div className="grid grid-cols-[42px_minmax(0,1fr)_30px] items-center gap-2">
-      <span className="text-[8px] font-semibold text-zinc-400">
+      <span className="text-[10px] font-semibold text-zinc-300">
         L{slot.level}
       </span>
 
@@ -721,7 +721,7 @@ const SpellSlotRow = ({
         )}
       </div>
 
-      <span className="text-right text-[8px] font-semibold text-zinc-500">
+      <span className="text-right text-[10px] font-semibold text-zinc-400">
         {remaining}/{slot.max}
       </span>
     </div>
@@ -792,7 +792,7 @@ const ActionSection = ({
   actions: OverviewAction[];
 }) => (
   <section className="p-3">
-    <h3 className="mb-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+    <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
       {title}
     </h3>
 
@@ -803,19 +803,17 @@ const ActionSection = ({
           className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2"
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="text-[10px] font-semibold text-zinc-200">
-              {action.name}
-            </p>
+            <p className="text-xs font-semibold text-zinc-100">{action.name}</p>
 
             {action.value ? (
-              <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-semibold text-emerald-300">
+              <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
                 {action.value}
               </span>
             ) : null}
           </div>
 
           {action.description ? (
-            <p className="mt-1 text-[8px] leading-4 text-zinc-500">
+            <p className="mt-1 text-[10px] leading-5 text-zinc-400">
               {action.description}
             </p>
           ) : null}
@@ -847,7 +845,7 @@ const AttackRoleLabel = ({
 
   return (
     <span
-      className={`text-[7px] font-bold uppercase tracking-[0.08em] ${className}`}
+      className={`text-[9px] font-bold uppercase tracking-[0.07em] ${className}`}
     >
       {children}
     </span>
@@ -866,7 +864,7 @@ const PanelSection = ({
   children: ReactNode;
 }) => (
   <section className="p-3">
-    <h2 className="mb-2 text-[9px] font-semibold uppercase tracking-[0.15em] text-zinc-500">
+    <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-zinc-400">
       {title}
     </h2>
 
@@ -875,13 +873,13 @@ const PanelSection = ({
 );
 
 const TinyLabel = ({ children }: { children: ReactNode }) => (
-  <span className="text-[6px] font-semibold uppercase tracking-[0.08em] text-zinc-600">
+  <span className="text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-500">
     {children}
   </span>
 );
 
 const EmptyText = ({ children }: { children: ReactNode }) => (
-  <p className="text-[9px] text-zinc-600">{children}</p>
+  <p className="text-[11px] text-zinc-500">{children}</p>
 );
 
 export default OverviewDashboard;

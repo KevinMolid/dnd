@@ -237,9 +237,7 @@ const CustomCharacterCreator = ({
 
   const [customMaxHp, setCustomMaxHp] = useState(initialStats.maxHp ?? 10);
 
-  const [customCurrentHp, setCustomCurrentHp] = useState(
-    initialStats.currentHp ?? initialStats.maxHp ?? 10,
-  );
+  const [customHitDie, setCustomHitDie] = useState(initialStats.hitDie ?? "d8");
 
   const [customSpeed, setCustomSpeed] = useState(initialStats.speed ?? 30);
 
@@ -674,12 +672,12 @@ const CustomCharacterCreator = ({
       return "Level must be at least 1.";
     }
 
-    if (customCurrentHp < 0) {
-      return "Current HP cannot be negative.";
-    }
-
     if (customMaxHp < 0) {
       return "Maximum HP cannot be negative.";
+    }
+
+    if (!["d4", "d6", "d8", "d10", "d12"].includes(customHitDie)) {
+      return "Please choose a valid Hit Die.";
     }
 
     if (visibleTraits.some((trait) => !trait.name.trim())) {
@@ -687,6 +685,38 @@ const CustomCharacterCreator = ({
     }
 
     return "";
+  };
+
+  /*
+   * Current HP and remaining Hit Dice are live-state values.
+   *
+   * Creation:
+   * - Current HP starts at Max HP.
+   * - Hit Dice start fully restored at the character's level.
+   *
+   * Editing:
+   * - Preserve the character's current HP, but clamp it to the new Max HP.
+   * - Preserve spent Hit Dice, but clamp remaining dice to the new level.
+   */
+  const getSavedCurrentHp = () => {
+    if (!isEditing) {
+      return customMaxHp;
+    }
+
+    const previousCurrentHp =
+      initialStats.currentHp ?? initialStats.maxHp ?? customMaxHp;
+
+    return Math.max(0, Math.min(customMaxHp, previousCurrentHp));
+  };
+
+  const getSavedHitDiceRemaining = () => {
+    if (!isEditing) {
+      return Math.max(0, customLevel);
+    }
+
+    const previousRemaining = initialStats.hitDiceRemaining ?? customLevel;
+
+    return Math.max(0, Math.min(customLevel, previousRemaining));
   };
 
   const buildCustomCharacterPayload = () => ({
@@ -723,9 +753,13 @@ const CustomCharacterCreator = ({
     customStats: {
       armorClass: customArmorClass,
 
-      currentHp: customCurrentHp,
+      currentHp: getSavedCurrentHp(),
 
       maxHp: customMaxHp,
+
+      hitDie: customHitDie,
+
+      hitDiceRemaining: getSavedHitDiceRemaining(),
 
       speed: customSpeed,
 
@@ -1102,18 +1136,27 @@ const CustomCharacterCreator = ({
                   />
 
                   <NumberInput
-                    label="Current HP"
-                    value={customCurrentHp}
-                    min={0}
-                    onChange={setCustomCurrentHp}
-                  />
-
-                  <NumberInput
                     label="Max HP"
                     value={customMaxHp}
                     min={0}
                     onChange={setCustomMaxHp}
                   />
+
+                  <label className="block">
+                    <span className="text-sm text-zinc-300">Hit Die</span>
+
+                    <select
+                      value={customHitDie}
+                      onChange={(event) => setCustomHitDie(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-white outline-none focus:border-white/25"
+                    >
+                      <option value="d4">d4</option>
+                      <option value="d6">d6</option>
+                      <option value="d8">d8</option>
+                      <option value="d10">d10</option>
+                      <option value="d12">d12</option>
+                    </select>
+                  </label>
 
                   <NumberInput
                     label="Speed"
@@ -1128,6 +1171,11 @@ const CustomCharacterCreator = ({
                     onChange={setCustomProficiencyBonus}
                   />
                 </div>
+
+                <p className="mt-3 text-xs leading-5 text-zinc-500">
+                  New characters start at full HP with one Hit Die per level.
+                  When editing, current HP and spent Hit Dice are preserved.
+                </p>
               </Card>
 
               {/* SAVES */}
@@ -1803,7 +1851,7 @@ const CustomCharacterCreator = ({
               <div className="mt-5 grid grid-cols-2 gap-2">
                 <MiniStat
                   label="HP"
-                  value={`${customCurrentHp}/${customMaxHp}`}
+                  value={`${getSavedCurrentHp()}/${customMaxHp}`}
                 />
 
                 <MiniStat label="AC" value={customArmorClass} />

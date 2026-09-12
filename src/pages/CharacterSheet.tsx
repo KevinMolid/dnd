@@ -590,27 +590,24 @@ const CharacterSheet = () => {
           className={derived.className}
           subclassName={derived.subclassName}
           backgroundName={derived.backgroundName}
-        />
-
-        <CharacterQuickStats
+          currentHp={derived.currentHp}
+          maxHp={derived.maxHp}
           rest={{
             hitDieSize:
               typeof classDefinition?.hitDie === "number"
                 ? classDefinition.hitDie
                 : Number(classDefinition?.hitDie) || undefined,
-
             hitDiceRemaining: character.hitDiceRemaining ?? character.level,
-
             hitDiceMax: character.level,
-
             constitutionModifier: Math.floor(
               (derived.finalAbilityScores.con - 10) / 2,
             ),
-
             onShortRest: handleShortRest,
-
             onLongRest: handleLongRest,
           }}
+        />
+
+        <CharacterQuickStats
           currentHp={derived.currentHp}
           maxHp={derived.maxHp}
           onCurrentHpChange={handleSetCurrentHp}

@@ -33,6 +33,8 @@ import type { AbilityKey, Money } from "../rulesets/dnd/dnd2024/types";
 
 import { spells } from "../rulesets/dnd/dnd2024/data/spells";
 
+import { getXpProgressWithinLevel } from "../rulesets/dnd/dnd2024/xpProgression";
+
 import {
   createEmptyCustomSkills,
   createEmptySpellSlots,
@@ -297,6 +299,10 @@ const CustomCharacterSheet = ({
   };
 
   const level = character.level ?? 1;
+
+  const xp = character.xp ?? 0;
+
+  const xpProgress = getXpProgressWithinLevel(xp);
 
   const armorClass = stats.armorClass ?? 10;
 
@@ -707,6 +713,16 @@ const CustomCharacterSheet = ({
           speciesName={character.speciesName}
           className={character.className}
           backgroundName={character.backgroundName}
+          currentHp={currentHp}
+          maxHp={maxHp}
+          rest={{
+            hitDieSize: customHitDieSize,
+            hitDiceRemaining: stats.hitDiceRemaining ?? level,
+            hitDiceMax: level,
+            constitutionModifier,
+            onShortRest: handleShortRest,
+            onLongRest: handleLongRest,
+          }}
         />
 
         <CharacterQuickStats
@@ -753,18 +769,11 @@ const CustomCharacterSheet = ({
           }}
           onDeathSavesChange={handleSetDeathSaves}
           hitDiceLabel={hitDiceLabel}
-          rest={{
-            hitDieSize: customHitDieSize,
-
-            hitDiceRemaining: stats.hitDiceRemaining ?? level,
-
-            hitDiceMax: level,
-
-            constitutionModifier,
-
-            onShortRest: handleShortRest,
-
-            onLongRest: handleLongRest,
+          progress={{
+            level: xpProgress.level,
+            xp,
+            nextLevelXp: xpProgress.nextLevelXp,
+            progressPercent: xpProgress.progressPercent,
           }}
           languages={customProficiencies?.languages ?? []}
           armorProficiencies={customProficiencies?.armor ?? []}

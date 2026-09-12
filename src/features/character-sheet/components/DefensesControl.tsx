@@ -87,7 +87,7 @@ const DefensesControl = ({
   return (
     <>
       <div className="mt-2 grid grid-cols-[70px_minmax(0,1fr)_auto] items-center gap-2 border-t border-white/[0.06] pt-2">
-        <span className="text-[7px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400">
           Defenses
         </span>
 
@@ -112,7 +112,7 @@ const DefensesControl = ({
           type="button"
           disabled={!onChange}
           onClick={() => setOpen(true)}
-          className={`rounded-md border px-1.5 py-0.5 text-[7px] font-semibold transition ${
+          className={`rounded-md border px-2 py-1 text-[9px] font-semibold transition ${
             onChange
               ? "border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:border-white/15 hover:bg-white/[0.07] hover:text-zinc-200"
               : "cursor-default border-transparent text-zinc-700"

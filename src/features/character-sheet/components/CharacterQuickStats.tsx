@@ -2,10 +2,7 @@ import { type ReactNode, useEffect, useState } from "react";
 
 import { createPortal } from "react-dom";
 
-import CharacterRestControls from "./CharacterRestControls";
 import DefensesControl from "./DefensesControl";
-
-import type { ShortRestResult } from "../types";
 
 import type { AbilityKey } from "../../../rulesets/dnd/dnd2024/types";
 
@@ -30,17 +27,6 @@ type CharacterProgress = {
   xp: number;
   nextLevelXp: number | null;
   progressPercent: number;
-};
-
-type CharacterRestConfig = {
-  hitDieSize?: number;
-  hitDiceRemaining?: number;
-  hitDiceMax?: number;
-  constitutionModifier?: number;
-
-  onShortRest: (hitDiceToSpend: number) => Promise<ShortRestResult>;
-
-  onLongRest: () => Promise<void>;
 };
 
 type CharacterQuickStatsProps = {
@@ -73,7 +59,6 @@ type CharacterQuickStatsProps = {
   armorProficiencies?: string[];
   weaponProficiencies?: string[];
   toolProficiencies?: string[];
-  rest?: CharacterRestConfig;
 };
 
 const abilities: Array<{ id: AbilityKey; label: string }> = [
@@ -123,7 +108,6 @@ const CharacterQuickStats = ({
   deathSaves = { successes: 0, failures: 0 },
   onDeathSavesChange,
   hitDiceLabel,
-  rest,
   progress,
   languages = [],
   armorProficiencies = [],
@@ -152,9 +136,9 @@ const CharacterQuickStats = ({
               return (
                 <div
                   key={ability.id}
-                  className="grid min-h-[32px] grid-cols-[38px_48px_minmax(0,1fr)] items-center gap-2 py-1.5"
+                  className="grid min-h-[36px] grid-cols-[38px_48px_minmax(0,1fr)] items-center gap-2 py-1.5"
                 >
-                  <span className="text-[10px] font-bold tracking-[0.08em] text-zinc-300">
+                  <span className="text-xs font-bold tracking-[0.06em] text-zinc-200">
                     {ability.label}
                   </span>
 
@@ -165,17 +149,17 @@ const CharacterQuickStats = ({
                   <div className="flex min-w-0 items-center justify-end gap-1.5">
                     <span
                       title={`Ability score ${score}`}
-                      className="text-[8px] text-zinc-600"
+                      className="text-[10px] text-zinc-500"
                     >
                       {score}
                     </span>
 
-                    <span className="text-[8px] font-medium text-zinc-500">
+                    <span className="text-[10px] font-medium text-zinc-400">
                       Save
                     </span>
 
                     <span
-                      className={`text-[10px] font-semibold ${
+                      className={`text-xs font-semibold ${
                         proficient ? "text-emerald-300" : "text-zinc-300"
                       }`}
                     >
@@ -183,7 +167,7 @@ const CharacterQuickStats = ({
                     </span>
 
                     {proficient ? (
-                      <span className="text-[7px] font-bold uppercase tracking-[0.08em] text-emerald-500">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.07em] text-emerald-400">
                         Prof
                       </span>
                     ) : null}
@@ -207,19 +191,6 @@ const CharacterQuickStats = ({
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3 xl:row-span-2">
           <div className="flex items-center justify-between gap-2">
             <SectionLabel>Live State</SectionLabel>
-
-            {rest ? (
-              <CharacterRestControls
-                currentHp={currentHp}
-                maxHp={maxHp}
-                hitDieSize={rest.hitDieSize}
-                hitDiceRemaining={rest.hitDiceRemaining}
-                hitDiceMax={rest.hitDiceMax}
-                constitutionModifier={rest.constitutionModifier}
-                onShortRest={rest.onShortRest}
-                onLongRest={rest.onLongRest}
-              />
-            ) : null}
           </div>
 
           <div className="mt-2 grid grid-cols-6 gap-1">
@@ -254,8 +225,16 @@ const CharacterQuickStats = ({
 
             <InteractiveCoreStat
               label="Inspiration"
-              value={heroicInspiration ? "●" : "○"}
-              subValue={heroicInspiration ? "Ready" : "None"}
+              value={
+                <span
+                  aria-hidden="true"
+                  className={`inline-block h-3.5 w-3.5 rounded-full border ${
+                    heroicInspiration
+                      ? "border-sky-300 bg-sky-300"
+                      : "border-white/25 bg-transparent"
+                  }`}
+                />
+              }
               active={heroicInspiration}
               className="col-span-3"
               onClick={() => onHeroicInspirationChange?.(!heroicInspiration)}
@@ -330,11 +309,11 @@ const CharacterQuickStats = ({
           {progress ? (
             <div className="mt-2 border-t border-white/[0.06] pt-2">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[7px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400">
                   {nextLevel ? `XP to Level ${nextLevel}` : "XP"}
                 </span>
 
-                <span className="text-[8px] font-semibold text-zinc-300">
+                <span className="text-[10px] font-semibold text-zinc-200">
                   {progress.xp}
                   {progress.nextLevelXp !== null
                     ? ` / ${progress.nextLevelXp}`
@@ -376,7 +355,7 @@ const CharacterQuickStats = ({
 };
 
 const SkillRow = ({ skill }: { skill: CharacterQuickSkill }) => (
-  <div className="flex min-h-[23px] min-w-0 items-center gap-1.5 border-b border-white/[0.035] py-0.5">
+  <div className="flex min-h-[30px] min-w-0 items-center gap-1.5 border-b border-white/[0.035] py-1">
     <span
       title={
         skill.expertise
@@ -388,21 +367,21 @@ const SkillRow = ({ skill }: { skill: CharacterQuickSkill }) => (
       className={`w-3 shrink-0 text-center text-[7px] ${
         skill.proficient || skill.expertise
           ? "text-emerald-400"
-          : "text-zinc-700"
+          : "text-zinc-600"
       }`}
     >
       {skill.expertise ? "●●" : skill.proficient ? "●" : "○"}
     </span>
 
-    <span className="min-w-0 flex-1 truncate text-[9px] font-medium text-zinc-300">
+    <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-zinc-200">
       {skill.name}
     </span>
 
-    <span className="text-[7px] font-semibold uppercase text-zinc-600">
+    <span className="text-[9px] font-semibold uppercase text-zinc-500">
       {skill.ability}
     </span>
 
-    <span className="w-6 shrink-0 text-right text-[10px] font-bold text-white">
+    <span className="w-6 shrink-0 text-right text-xs font-bold text-white">
       {formatModifier(skill.bonus)}
     </span>
   </div>
@@ -474,7 +453,7 @@ const CoreStat = ({
   className = "",
 }: {
   label: string;
-  value: string | number;
+  value: ReactNode;
   subValue?: string;
   title?: string;
   tone?: CoreTone;
@@ -488,7 +467,7 @@ const CoreStat = ({
       className={`flex min-h-[52px] flex-col justify-center rounded-lg border px-2 py-1.5 ${classes.background} ${classes.border} ${className}`}
     >
       <span
-        className={`text-[7px] font-bold uppercase tracking-[0.08em] ${classes.label}`}
+        className={`text-[9px] font-bold uppercase tracking-[0.07em] ${classes.label}`}
       >
         {label}
       </span>
@@ -498,7 +477,7 @@ const CoreStat = ({
       </span>
 
       {subValue ? (
-        <span className="mt-1 text-[7px] font-medium text-zinc-500">
+        <span className="mt-1 text-[9px] font-medium text-zinc-400">
           {subValue}
         </span>
       ) : null}
@@ -572,7 +551,7 @@ const HpStat = ({
         }`}
       >
         <span
-          className={`text-[7px] font-bold uppercase tracking-[0.08em] ${classes.label}`}
+          className={`text-[9px] font-bold uppercase tracking-[0.07em] ${classes.label}`}
         >
           HP
         </span>
@@ -582,7 +561,7 @@ const HpStat = ({
         </span>
 
         {hitDiceLabel ? (
-          <span className="mt-1 text-[7px] font-medium text-zinc-500">
+          <span className="mt-1 text-[9px] font-medium text-zinc-400">
             HD {hitDiceLabel}
           </span>
         ) : null}
@@ -593,11 +572,9 @@ const HpStat = ({
             <div className="fixed bottom-4 right-4 z-[140] w-[280px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
               <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-3 py-2.5">
                 <div>
-                  <p className="text-[10px] font-semibold text-white">
-                    Hit Points
-                  </p>
+                  <p className="text-xs font-semibold text-white">Hit Points</p>
 
-                  <p className="mt-0.5 text-[8px] text-zinc-600">
+                  <p className="mt-0.5 text-[10px] text-zinc-500">
                     Current / Max
                   </p>
                 </div>
@@ -648,7 +625,7 @@ const HpStat = ({
                 </div>
 
                 <div>
-                  <label className="text-[7px] font-semibold uppercase tracking-[0.1em] text-zinc-600">
+                  <label className="text-[9px] font-semibold uppercase tracking-[0.09em] text-zinc-500">
                     Set Current HP
                   </label>
 
@@ -671,14 +648,14 @@ const HpStat = ({
                       type="button"
                       onClick={submitDraft}
                       disabled={saving}
-                      className="rounded-lg bg-white px-3 py-2 text-[9px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg bg-white px-3 py-2 text-[11px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Set
                     </button>
                   </div>
                 </div>
 
-                <div className="flex justify-between border-t border-white/[0.06] pt-2 text-[7px] text-zinc-600">
+                <div className="flex justify-between border-t border-white/[0.06] pt-2 text-[9px] text-zinc-500">
                   <span>Minimum 0</span>
                   <span>Maximum {maxHp}</span>
                 </div>
@@ -704,7 +681,7 @@ const HpAdjustButton = ({
     type="button"
     onClick={onClick}
     disabled={disabled}
-    className="rounded-lg border border-white/[0.08] bg-white/[0.035] py-2 text-[10px] font-bold text-zinc-300 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+    className="rounded-lg border border-white/[0.08] bg-white/[0.035] py-2 text-xs font-bold text-zinc-200 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
   >
     {label}
   </button>
@@ -720,7 +697,7 @@ const InteractiveCoreStat = ({
   className = "",
 }: {
   label: string;
-  value: string | number;
+  value: ReactNode;
   subValue?: string;
   active: boolean;
   onClick: () => void;
@@ -744,7 +721,7 @@ const InteractiveCoreStat = ({
     } ${disabled ? "cursor-default" : "cursor-pointer"} ${className}`}
   >
     <span
-      className={`text-[7px] font-bold uppercase tracking-[0.08em] ${
+      className={`text-[9px] font-bold uppercase tracking-[0.07em] ${
         active ? "text-sky-300" : "text-zinc-400"
       }`}
     >
@@ -760,7 +737,7 @@ const InteractiveCoreStat = ({
     </span>
 
     {subValue ? (
-      <span className="mt-1 text-[7px] font-medium text-zinc-500">
+      <span className="mt-1 text-[9px] font-medium text-zinc-400">
         {subValue}
       </span>
     ) : null}
@@ -852,10 +829,10 @@ const ConditionsControl = ({
           type="button"
           disabled={!onChange}
           onClick={() => setOpen(true)}
-          className={`rounded-md border px-1.5 py-0.5 text-[7px] font-semibold transition ${
+          className={`rounded-md border px-1.5 py-1 text-[7px] font-semibold transition ${
             onChange
               ? "border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:border-white/15 hover:bg-white/[0.07] hover:text-zinc-200"
-              : "cursor-default border-transparent text-zinc-700"
+              : "cursor-default border-transparent text-zinc-600"
           }`}
         >
           Edit
@@ -867,11 +844,9 @@ const ConditionsControl = ({
             <div className="fixed bottom-4 right-4 z-[140] w-[320px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
               <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-3 py-2.5">
                 <div>
-                  <p className="text-[10px] font-semibold text-white">
-                    Conditions
-                  </p>
+                  <p className="text-xs font-semibold text-white">Conditions</p>
 
-                  <p className="mt-0.5 text-[8px] text-zinc-600">
+                  <p className="mt-0.5 text-[10px] text-zinc-500">
                     {conditions.length === 0
                       ? "No active conditions"
                       : `${conditions.length} active`}
@@ -900,7 +875,7 @@ const ConditionsControl = ({
                         type="button"
                         disabled={!onChange || saving}
                         onClick={() => void toggleCondition(condition)}
-                        className={`flex min-h-[32px] items-center justify-between rounded-md border px-2 py-1.5 text-left text-[9px] font-medium transition ${
+                        className={`flex min-h-[36px] items-center justify-between rounded-md border px-2 py-1.5 text-left text-[9px] font-medium transition ${
                           active
                             ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
                             : "border-white/[0.06] bg-white/[0.025] text-zinc-500 hover:border-white/10 hover:bg-white/[0.055] hover:text-zinc-300"
@@ -921,7 +896,7 @@ const ConditionsControl = ({
                 </div>
 
                 <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-2">
-                  <span className="text-[7px] text-zinc-600">
+                  <span className="text-[9px] text-zinc-500">
                     Changes save immediately
                   </span>
 
@@ -957,7 +932,7 @@ const StatePill = ({
 
   return (
     <span
-      className={`inline-flex rounded-md border px-1.5 py-0.5 text-[8px] font-medium ${classes}`}
+      className={`inline-flex rounded-md border px-1.5 py-1 text-[10px] font-medium ${classes}`}
     >
       {children}
     </span>
@@ -991,7 +966,7 @@ const DeathSaveRow = ({
   return (
     <div className="flex items-center gap-1">
       <span
-        className={`text-[7px] uppercase tracking-[0.06em] ${
+        className={`text-[9px] uppercase tracking-[0.05em] ${
           amount > 0
             ? type === "success"
               ? "text-emerald-400"
@@ -1030,8 +1005,8 @@ const DeathSaveRow = ({
 };
 
 const SenseValue = ({ label, value }: { label: string; value: number }) => (
-  <span className="text-[8px] text-zinc-500">
-    {label} <strong className="font-semibold text-zinc-300">{value}</strong>
+  <span className="text-[11px] font-medium text-zinc-400">
+    {label} <strong className="font-bold text-zinc-100">{value}</strong>
   </span>
 );
 
@@ -1046,13 +1021,13 @@ const ProficiencyRow = ({
 
   return (
     <div className="grid min-w-0 grid-cols-[72px_minmax(0,1fr)] items-start gap-2">
-      <span className="text-[7px] font-semibold uppercase tracking-[0.09em] text-zinc-600">
+      <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
         {label}
       </span>
 
       <span
         title={formatted.length ? formatted.join(" · ") : undefined}
-        className="min-w-0 text-[9px] font-medium leading-4 text-zinc-300"
+        className="min-w-0 text-[11px] font-medium leading-5 text-zinc-200"
       >
         {formatted.length ? formatted.join(" · ") : "—"}
       </span>
@@ -1061,17 +1036,19 @@ const ProficiencyRow = ({
 };
 
 const SectionLabel = ({ children }: { children: ReactNode }) => (
-  <h2 className="text-[9px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+  <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
     {children}
   </h2>
 );
 
 const SmallLabel = ({ children }: { children: ReactNode }) => (
-  <span className="text-[7px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+  <span className="text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-400">
     {children}
   </span>
 );
 
-const EmptyValue = () => <span className="text-[8px] text-zinc-600">None</span>;
+const EmptyValue = () => (
+  <span className="text-[10px] text-zinc-500">None</span>
+);
 
 export default CharacterQuickStats;

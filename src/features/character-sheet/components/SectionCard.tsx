@@ -17,7 +17,7 @@ const SectionCard = ({ title, children, right }: SectionCardProps) => {
         {right}
       </div>
 
-      {children}
+      <div className="text-sm text-zinc-200">{children}</div>
     </section>
   );
 };

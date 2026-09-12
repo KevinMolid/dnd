@@ -22,14 +22,10 @@ const CharacterSheetWorkspace = ({
 }: CharacterSheetWorkspaceProps) => {
   return (
     <div className="grid gap-3 xl:grid-cols-[360px_minmax(0,1fr)]">
-      {/* =====================================================
-          PLAY PANEL
-      ===================================================== */}
-
       <aside className="min-w-0">
         <section className="flex h-[560px] min-w-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900/35">
-          <div className="shrink-0 border-b border-white/10 bg-black/15 px-3 py-2">
-            <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-zinc-500">
+          <div className="shrink-0 border-b border-white/10 bg-black/15 px-3 py-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-400">
               Play Panel
             </p>
           </div>
@@ -38,14 +34,10 @@ const CharacterSheetWorkspace = ({
         </section>
       </aside>
 
-      {/* =====================================================
-          DETAIL WORKSPACE
-      ===================================================== */}
-
       <section className="flex h-[560px] min-w-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900/35">
         <CharacterSheetTabs activeTab={activeTab} onChange={onTabChange} />
 
-        <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-3.5">
           {children}
         </div>
       </section>
