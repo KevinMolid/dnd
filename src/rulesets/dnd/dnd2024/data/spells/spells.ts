@@ -1029,6 +1029,35 @@ export const spells: Spell[] = [
       "A targeted object must not be worn or carried. If the target is an unwilling creature, it can make a Constitution saving throw. On a successful save, the spell has no effect.",
   },
   {
+  id: "ensnaring-strike",
+  name: "Ensnaring Strike",
+  level: 1,
+  school: "Conjuration",
+  concentration: true,
+
+  castingTime:
+    "Bonus Action, which you take immediately after hitting a creature with a weapon",
+  range: "Self",
+  components: "V",
+  duration: "Concentration, up to 1 minute",
+  classes: ["Ranger"],
+
+  description:
+    "As you hit the target, grasping vines appear on it, and it makes a Strength saving throw. A Large or larger creature has Advantage on this save.",
+
+  effects:
+    "On a failed save, the target has the Restrained condition until the spell ends. On a successful save, the vines shrivel away, and the spell ends.",
+
+  conditions:
+    "While Restrained, the target takes 1d6 Piercing damage at the start of each of its turns.",
+
+  control:
+    "The target or a creature within reach of it can take an action to make a Strength (Athletics) check against your spell save DC. On a success, the spell ends.",
+
+  higherLevel:
+    "When cast with a higher-level spell slot, the damage increases by 1d6 for each slot level above 1.",
+},
+  {
   id: "entangle",
   name: "Entangle",
   level: 1,
@@ -1496,6 +1525,34 @@ export const spells: Spell[] = [
     "When cast with a higher-level spell slot, you can target one additional Humanoid for each slot level above 2.",
 },
   { id: "holy-aura", name: "Holy Aura", level: 8, school: "Abjuration", concentration: true },
+  {
+  id: "hunters-mark",
+  name: "Hunter's Mark",
+  level: 1,
+  school: "Divination",
+  concentration: true,
+
+  castingTime: "Bonus Action",
+  range: "90 feet",
+  components: "V",
+  duration: "Concentration, up to 1 hour",
+  classes: ["Ranger"],
+
+  description:
+    "You magically mark one creature you can see within range as your quarry.",
+
+  effects:
+    "Until the spell ends, whenever you hit the marked creature with an attack roll, you deal an extra 1d6 Force damage to it.",
+
+  benefits:
+    "You have Advantage on Wisdom (Perception or Survival) checks you make to find the marked creature.",
+
+  control:
+    "If the marked creature drops to 0 Hit Points before the spell ends, you can take a Bonus Action on a later turn to move the mark to a new creature you can see within range.",
+
+  higherLevel:
+    "When cast with a level 3–4 spell slot, you can maintain Concentration on the spell for up to 8 hours. When cast with a level 5+ spell slot, you can maintain Concentration on the spell for up to 24 hours.",
+},
 {
     id: "ice-knife",
     name: "Ice Knife",

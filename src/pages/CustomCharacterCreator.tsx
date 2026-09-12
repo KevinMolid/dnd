@@ -194,6 +194,13 @@ const CustomCharacterCreator = ({
 
   const [alignment, setAlignment] = useState(initialCharacter?.alignment ?? "");
 
+  const [age, setAge] = useState(initialCharacter?.age ?? "");
+  const [height, setHeight] = useState(initialCharacter?.height ?? "");
+  const [weight, setWeight] = useState(initialCharacter?.weight ?? "");
+  const [eyes, setEyes] = useState(initialCharacter?.eyes ?? "");
+  const [skin, setSkin] = useState(initialCharacter?.skin ?? "");
+  const [hair, setHair] = useState(initialCharacter?.hair ?? "");
+
   const [characterAppearance, setCharacterAppearance] = useState(
     initialCharacter?.characterAppearance ?? "",
   );
@@ -205,6 +212,16 @@ const CustomCharacterCreator = ({
   const [characterBackstory, setCharacterBackstory] = useState(
     initialCharacter?.characterBackstory ?? initialCharacter?.notes ?? "",
   );
+
+  const [personalityTraits, setPersonalityTraits] = useState(
+    initialCharacter?.personalityTraits ?? "",
+  );
+
+  const [ideals, setIdeals] = useState(initialCharacter?.ideals ?? "");
+
+  const [bonds, setBonds] = useState(initialCharacter?.bonds ?? "");
+
+  const [flaws, setFlaws] = useState(initialCharacter?.flaws ?? "");
 
   const [abilityScores, setAbilityScores] = useState<
     Record<AbilityKey, number>
@@ -478,14 +495,20 @@ const CustomCharacterCreator = ({
     );
   };
 
-  const addCatalogItem = (itemId: string) => {
+  const addCatalogItem = (itemId: string, quantity = 1) => {
     const item = itemsById[itemId];
 
     if (!item) {
       return;
     }
 
+    const safeQuantity = Math.max(1, Math.floor(quantity) || 1);
+
     setEquipment((current) => {
+      /*
+       * Stackable items are stored as one inventory entry.
+       * This makes quantities such as 20 arrows practical.
+       */
       if (item.stackable) {
         const existing = current.find(
           (entry) =>
@@ -500,18 +523,43 @@ const CustomCharacterCreator = ({
               ? {
                   ...entry,
 
-                  quantity: entry.quantity + 1,
+                  quantity: entry.quantity + safeQuantity,
                 }
               : entry,
           );
         }
+
+        return [
+          ...current,
+
+          {
+            instanceId: createEquipmentInstanceId(itemId, current),
+
+            source: "base",
+
+            itemId,
+
+            name: item.name,
+
+            quantity: safeQuantity,
+
+            equipped: false,
+
+            equippedSlots: [],
+          },
+        ];
       }
 
-      return [
-        ...current,
+      /*
+       * Preserve the existing behavior for non-stackable equipment:
+       * multiple copies get distinct instance IDs so they can later be
+       * equipped and managed independently.
+       */
+      const next = [...current];
 
-        {
-          instanceId: createEquipmentInstanceId(itemId, current),
+      for (let index = 0; index < safeQuantity; index += 1) {
+        next.push({
+          instanceId: createEquipmentInstanceId(itemId, next),
 
           source: "base",
 
@@ -524,8 +572,10 @@ const CustomCharacterCreator = ({
           equipped: false,
 
           equippedSlots: [],
-        },
-      ];
+        });
+      }
+
+      return next;
     });
   };
 
@@ -661,6 +711,13 @@ const CustomCharacterCreator = ({
 
     alignment: alignment.trim(),
 
+    age: age.trim(),
+    height: height.trim(),
+    weight: weight.trim(),
+    eyes: eyes.trim(),
+    skin: skin.trim(),
+    hair: hair.trim(),
+
     abilityScores,
 
     customStats: {
@@ -720,6 +777,14 @@ const CustomCharacterCreator = ({
     alliesAndOrganizations: alliesAndOrganizations.trim(),
 
     characterBackstory: characterBackstory.trim(),
+
+    personalityTraits: personalityTraits.trim(),
+
+    ideals: ideals.trim(),
+
+    bonds: bonds.trim(),
+
+    flaws: flaws.trim(),
 
     equipment,
 
@@ -1639,7 +1704,35 @@ const CustomCharacterCreator = ({
               {/* DETAILS */}
 
               <Card title="Character Details">
-                <div className="space-y-5">
+                <div className="space-y-6">
+                  <div>
+                    <p className="mb-3 text-sm font-medium text-zinc-300">
+                      Physical Details
+                    </p>
+
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <TextInput label="Age" value={age} onChange={setAge} />
+
+                      <TextInput
+                        label="Height"
+                        value={height}
+                        onChange={setHeight}
+                      />
+
+                      <TextInput
+                        label="Weight"
+                        value={weight}
+                        onChange={setWeight}
+                      />
+
+                      <TextInput label="Eyes" value={eyes} onChange={setEyes} />
+
+                      <TextInput label="Skin" value={skin} onChange={setSkin} />
+
+                      <TextInput label="Hair" value={hair} onChange={setHair} />
+                    </div>
+                  </div>
+
                   <Textarea
                     label="Character Appearance"
                     value={characterAppearance}
@@ -1660,6 +1753,36 @@ const CustomCharacterCreator = ({
                     onChange={setCharacterBackstory}
                     rows={10}
                   />
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Textarea
+                      label="Personality Traits"
+                      value={personalityTraits}
+                      onChange={setPersonalityTraits}
+                      rows={5}
+                    />
+
+                    <Textarea
+                      label="Ideals"
+                      value={ideals}
+                      onChange={setIdeals}
+                      rows={5}
+                    />
+
+                    <Textarea
+                      label="Bonds"
+                      value={bonds}
+                      onChange={setBonds}
+                      rows={5}
+                    />
+
+                    <Textarea
+                      label="Flaws"
+                      value={flaws}
+                      onChange={setFlaws}
+                      rows={5}
+                    />
+                  </div>
                 </div>
               </Card>
             </div>

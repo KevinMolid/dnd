@@ -1418,4 +1418,20 @@ export type CharacterSheetData = {
 
   createdAt?: unknown;
   updatedAt?: unknown;
+
+  age?: string;
+  height?: string;
+  weight?: string;
+  eyes?: string;
+  skin?: string;
+  hair?: string;
+
+  characterAppearance?: string;
+  alliesAndOrganizations?: string;
+  characterBackstory?: string;
+
+  personalityTraits?: string;
+  ideals?: string;
+  bonds?: string;
+  flaws?: string;
 };
