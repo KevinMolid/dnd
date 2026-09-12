@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { doc, getDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
+import CampaignImageCropEditor from "../components/CampaignImageCropEditor";
 import type {
   CampaignDoc,
   CampaignMemberDoc,
@@ -54,6 +55,10 @@ const CampaignSettingsPage = () => {
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imagePositionX, setImagePositionX] = useState(50);
+  const [imagePositionY, setImagePositionY] = useState(50);
+  const [imageZoom, setImageZoom] = useState(1);
   const [system, setSystem] = useState<CampaignSystem>("dnd2024");
   const [visibility, setVisibility] = useState<"private" | "public">("private");
   const [archived, setArchived] = useState(false);
@@ -113,6 +118,10 @@ const CampaignSettingsPage = () => {
         setMyMembership(memberData);
         setName(campaignData.name ?? "");
         setDescription(campaignData.description ?? "");
+        setImageUrl(campaignData.imageUrl ?? "");
+        setImagePositionX(campaignData.imagePositionX ?? 50);
+        setImagePositionY(campaignData.imagePositionY ?? 50);
+        setImageZoom(campaignData.imageZoom ?? 1);
         setSystem((campaignData.system ?? "dnd2024") as CampaignSystem);
         setVisibility(
           campaignData.visibility === "public" ? "public" : "private",
@@ -146,6 +155,7 @@ const CampaignSettingsPage = () => {
 
     const trimmedName = name.trim();
     const trimmedDescription = description.trim();
+    const trimmedImageUrl = imageUrl.trim();
 
     if (trimmedName.length < 3) {
       setError("Campaign name must be at least 3 characters long.");
@@ -160,6 +170,10 @@ const CampaignSettingsPage = () => {
       await updateDoc(doc(db, "campaigns", campaignId), {
         name: trimmedName,
         description: trimmedDescription,
+        imageUrl: trimmedImageUrl,
+        imagePositionX,
+        imagePositionY,
+        imageZoom,
         system,
         systemLabel,
         visibility,
@@ -173,6 +187,10 @@ const CampaignSettingsPage = () => {
               ...prev,
               name: trimmedName,
               description: trimmedDescription,
+              imageUrl: trimmedImageUrl,
+              imagePositionX,
+              imagePositionY,
+              imageZoom,
               system,
               systemLabel,
               visibility,
@@ -405,6 +423,24 @@ const CampaignSettingsPage = () => {
                 </div>
               </div>
 
+              <CampaignImageCropEditor
+                imageUrl={imageUrl}
+                positionX={imagePositionX}
+                positionY={imagePositionY}
+                zoom={imageZoom}
+                onImageUrlChange={(value) => {
+                  setImageUrl(value);
+                  setImagePositionX(50);
+                  setImagePositionY(50);
+                  setImageZoom(1);
+                }}
+                onPositionChange={(x, y) => {
+                  setImagePositionX(x);
+                  setImagePositionY(y);
+                }}
+                onZoomChange={setImageZoom}
+              />
+
               <div>
                 <span className="mb-2 block text-sm font-medium text-zinc-200">
                   Ruleset / system
@@ -559,6 +595,23 @@ const CampaignSettingsPage = () => {
               </p>
 
               <div className="mt-5 space-y-3">
+                {imageUrl.trim() && (
+                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/70">
+                    <div className="relative aspect-[16/7] w-full overflow-hidden">
+                      <img
+                        src={imageUrl.trim()}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                        style={{
+                          objectPosition: `${imagePositionX}% ${imagePositionY}%`,
+                          transform: `scale(${imageZoom})`,
+                          transformOrigin: `${imagePositionX}% ${imagePositionY}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
                   <p className="text-sm text-zinc-400">Title</p>
                   <p className="mt-1 text-base font-semibold text-white">

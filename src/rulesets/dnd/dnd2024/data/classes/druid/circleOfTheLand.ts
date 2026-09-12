@@ -93,6 +93,15 @@ export const circleOfTheLand: CharacterSubclass = {
         name: "Nature’s Sanctuary",
         level: 14,
         activation: "action",
+        actions: [
+          {
+            id: "move-natures-sanctuary",
+            name: "Move Nature's Sanctuary",
+            activation: "bonus-action",
+            description:
+              "Move the Cube up to 60 feet to ground within 120 feet of yourself.",
+          },
+        ],
         description:
           "As a Magic action, you can expend a use of your Wild Shape and cause spectral trees and vines to appear in a 15-foot Cube on the ground within 120 feet of yourself.",
         notes: [

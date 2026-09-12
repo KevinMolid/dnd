@@ -38,6 +38,15 @@ export const circleOfTheStars: CharacterSubclass = {
         name: "Starry Form",
         level: 3,
         activation: "bonus-action",
+        actions: [
+          {
+            id: "archer-attack",
+            name: "Archer Starry Attack",
+            activation: "bonus-action",
+            description:
+              "While Archer is active, make the ranged spell attack...",
+          },
+        ],
         description:
           "You can expend a use of Wild Shape to take on a luminous starry form instead of shape-shifting.",
         notes: [

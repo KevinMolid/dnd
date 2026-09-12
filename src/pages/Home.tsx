@@ -29,6 +29,10 @@ type Campaign = {
   name: string;
   role: CampaignRole;
   system?: string;
+  imageUrl?: string;
+  imagePositionX?: number;
+  imagePositionY?: number;
+  imageZoom?: number;
   lastPlayed?: string;
 };
 
@@ -168,6 +172,10 @@ const Home = () => {
                 name: campaignData.name,
                 role: memberData.role,
                 system: campaignData.systemLabel ?? campaignData.system,
+                imageUrl: campaignData.imageUrl?.trim() || undefined,
+                imagePositionX: campaignData.imagePositionX ?? 50,
+                imagePositionY: campaignData.imagePositionY ?? 50,
+                imageZoom: campaignData.imageZoom ?? 1,
               };
             }),
           );
@@ -385,28 +393,53 @@ const Home = () => {
                     className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
                   >
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-semibold text-white sm:text-lg">
-                            {campaign.name}
-                          </h3>
-
-                          <span
-                            className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
-                              campaign.role,
-                            )}`}
-                          >
-                            {formatRoleLabel(campaign.role)}
-                          </span>
+                      <div className="flex min-w-0 items-center gap-4">
+                        <div className="h-20 w-28 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                          {campaign.imageUrl ? (
+                            <img
+                              src={campaign.imageUrl}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              style={{
+                                objectPosition: `${campaign.imagePositionX ?? 50}% ${
+                                  campaign.imagePositionY ?? 50
+                                }%`,
+                                transform: `scale(${campaign.imageZoom ?? 1})`,
+                                transformOrigin: `${campaign.imagePositionX ?? 50}% ${
+                                  campaign.imagePositionY ?? 50
+                                }%`,
+                              }}
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-zinc-700">
+                              <i className="fa-solid fa-dice-d20 text-2xl" />
+                            </div>
+                          )}
                         </div>
 
-                        <p className="mt-2 text-sm text-zinc-400">
-                          {campaign.system ?? "Tabletop RPG"}
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="text-base font-semibold text-white sm:text-lg">
+                              {campaign.name}
+                            </h3>
 
-                          {campaign.lastPlayed
-                            ? ` • Last active ${campaign.lastPlayed}`
-                            : ""}
-                        </p>
+                            <span
+                              className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
+                                campaign.role,
+                              )}`}
+                            >
+                              {formatRoleLabel(campaign.role)}
+                            </span>
+                          </div>
+
+                          <p className="mt-2 text-sm text-zinc-400">
+                            {campaign.system ?? "Tabletop RPG"}
+
+                            {campaign.lastPlayed
+                              ? ` • Last active ${campaign.lastPlayed}`
+                              : ""}
+                          </p>
+                        </div>
                       </div>
 
                       <div className="flex gap-2">

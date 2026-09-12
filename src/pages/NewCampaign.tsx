@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
+import CampaignImageCropEditor from "../components/CampaignImageCropEditor";
 
 type CampaignSystem = "dnd2024" | "dnd5e" | "pathfinder2e" | "custom";
 
@@ -45,6 +46,10 @@ const NewCampaign = () => {
   const [name, setName] = useState("");
   const [system, setSystem] = useState<CampaignSystem>("dnd2024");
   const [description, setDescription] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imagePositionX, setImagePositionX] = useState(50);
+  const [imagePositionY, setImagePositionY] = useState(50);
+  const [imageZoom, setImageZoom] = useState(1);
   const [isPublic, setIsPublic] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -67,6 +72,7 @@ const NewCampaign = () => {
 
     const trimmedName = name.trim();
     const trimmedDescription = description.trim();
+    const trimmedImageUrl = imageUrl.trim();
 
     if (trimmedName.length < 3) {
       setError("Campaign name must be at least 3 characters long.");
@@ -93,6 +99,10 @@ const NewCampaign = () => {
         system,
         systemLabel: selectedSystem?.label ?? system,
         description: trimmedDescription,
+        imageUrl: trimmedImageUrl,
+        imagePositionX,
+        imagePositionY,
+        imageZoom,
         visibility: isPublic ? "public" : "private",
         ownerUid: user.uid,
         createdByUid: user.uid,
@@ -252,6 +262,26 @@ const NewCampaign = () => {
                     {description.length}/500
                   </p>
                 </div>
+              </div>
+
+              <div className="lg:col-span-2">
+                <CampaignImageCropEditor
+                  imageUrl={imageUrl}
+                  positionX={imagePositionX}
+                  positionY={imagePositionY}
+                  zoom={imageZoom}
+                  onImageUrlChange={(value) => {
+                    setImageUrl(value);
+                    setImagePositionX(50);
+                    setImagePositionY(50);
+                    setImageZoom(1);
+                  }}
+                  onPositionChange={(x, y) => {
+                    setImagePositionX(x);
+                    setImagePositionY(y);
+                  }}
+                  onZoomChange={setImageZoom}
+                />
               </div>
 
               <div className="lg:col-span-2">

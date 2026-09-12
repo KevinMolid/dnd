@@ -14,6 +14,10 @@ export type CampaignDoc = {
   createdAt: unknown;
   updatedAt: unknown;
   archived?: boolean;
+  imageUrl?: string;
+  imagePositionX?: number;
+  imagePositionY?: number;
+  imageZoom?: number;
 };
 
 export type CampaignMemberDoc = {

@@ -25,6 +25,15 @@ export const trickeryDomain: CharacterSubclass = {
         name: "Invoke Duplicity",
         level: 3,
         activation: "bonus-action",
+        actions: [
+          {
+            id: "move-duplicate",
+            name: "Move Duplicate",
+            activation: "bonus-action",
+            description:
+              "Move the illusion up to 30 feet...",
+          },
+        ],
         description:
           "As a Bonus Action, you can expend one use of your Channel Divinity to create a perfect visual illusion of yourself in an unoccupied space you can see within 30 feet of yourself.",
         notes: [
