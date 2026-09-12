@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Link, useLocation, useParams } from "react-router-dom";
 import {
   collection,
   doc,
@@ -18,8 +18,6 @@ import { classesById, speciesById } from "../rulesets/dnd/dnd2024/helpers";
 
 import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
 
-import ClaimableCharactersSection from "../features/campaigns/components/ClaimableCharactersSection";
-
 import Avatar from "../components/Avatar";
 
 type PageState = "loading" | "ready" | "not-found" | "forbidden" | "error";
@@ -28,30 +26,18 @@ type CampaignCharacterStatus = "inactive" | "active";
 
 type CharacterDoc = {
   ownerUid?: string | null;
-
   createdByUid?: string | null;
-
   campaignId?: string | null;
-
   campaignStatus?: CampaignCharacterStatus;
-
   buildMode?: string;
-
   name?: string;
-
   level?: number;
 
-  /*
-   * Guided D&D character fields
-   */
   classId?: string;
   speciesId?: string;
   backgroundId?: string;
   originFeatId?: string | null;
 
-  /*
-   * Custom character fields
-   */
   className?: string;
   speciesName?: string;
   backgroundName?: string;
@@ -80,25 +66,18 @@ type CampaignCharacter = {
   id: string;
 
   ownerUid: string | null;
-
   createdByUid?: string | null;
 
   ownerName?: string;
-
   ownerEmail?: string;
 
   campaignId: string | null;
-
   campaignStatus: CampaignCharacterStatus;
 
   name: string;
-
   race?: string;
-
   className?: string;
-
   level?: number;
-
   imageUrl?: string;
 };
 
@@ -129,12 +108,22 @@ const getCharacterClassName = (data: CharacterDoc) => {
   return data.className?.trim() || undefined;
 };
 
+const getCharacterSummary = (character: CampaignCharacter) =>
+  [
+    character.level ? `Level ${character.level}` : null,
+    character.race,
+    character.className,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
 const CampaignCharactersPage = () => {
   const { campaignId } = useParams<{
     campaignId: string;
   }>();
 
   const { user } = useAuth();
+  const location = useLocation();
 
   const [pageState, setPageState] = useState<PageState>("loading");
 
@@ -162,16 +151,10 @@ const CampaignCharactersPage = () => {
 
   const [busyCharacterId, setBusyCharacterId] = useState<string | null>(null);
 
-  const claimableCharacters = useMemo(
-    () => campaignCharacters.filter((character) => character.ownerUid === null),
-    [campaignCharacters],
-  );
-
   useEffect(() => {
     const loadAccess = async () => {
       if (!user || !campaignId) {
         setPageState("forbidden");
-
         return;
       }
 
@@ -179,7 +162,6 @@ const CampaignCharactersPage = () => {
 
       try {
         const campaignRef = doc(db, "campaigns", campaignId);
-
         const memberRef = doc(db, "campaigns", campaignId, "members", user.uid);
 
         const [campaignSnap, memberSnap] = await Promise.all([
@@ -189,27 +171,20 @@ const CampaignCharactersPage = () => {
 
         if (!campaignSnap.exists()) {
           setCampaign(null);
-
           setMyMembership(null);
-
           setPageState("not-found");
-
           return;
         }
 
         if (!memberSnap.exists()) {
           setCampaign(null);
-
           setMyMembership(null);
-
           setPageState("forbidden");
-
           return;
         }
 
         setCampaign({
           id: campaignSnap.id,
-
           ...(campaignSnap.data() as CampaignDoc),
         });
 
@@ -220,9 +195,7 @@ const CampaignCharactersPage = () => {
         console.error("Failed to load campaign characters page:", error);
 
         setCampaign(null);
-
         setMyMembership(null);
-
         setPageState("error");
       }
     };
@@ -244,7 +217,6 @@ const CampaignCharactersPage = () => {
 
     const unsub = onSnapshot(
       q,
-
       async (snapshot) => {
         try {
           const nextCharacters = await Promise.all(
@@ -252,7 +224,6 @@ const CampaignCharactersPage = () => {
               const data = characterSnap.data() as CharacterDoc;
 
               let ownerName = "";
-
               let ownerEmail = "";
 
               if (data.ownerUid) {
@@ -265,7 +236,6 @@ const CampaignCharactersPage = () => {
                     const ownerData = ownerSnap.data() as AppUserDoc;
 
                     ownerName = ownerData.displayName ?? "";
-
                     ownerEmail = ownerData.email ?? "";
                   }
                 } catch (error) {
@@ -275,27 +245,16 @@ const CampaignCharactersPage = () => {
 
               return {
                 id: characterSnap.id,
-
                 ownerUid: data.ownerUid ?? null,
-
                 createdByUid: data.createdByUid ?? null,
-
                 ownerName,
-
                 ownerEmail,
-
                 campaignId: data.campaignId ?? null,
-
                 campaignStatus: getCampaignStatus(data.campaignStatus),
-
                 name: data.name?.trim() || "Unnamed Character",
-
                 race: getCharacterRace(data),
-
                 className: getCharacterClassName(data),
-
                 level: typeof data.level === "number" ? data.level : undefined,
-
                 imageUrl: data.imageUrl?.trim() || undefined,
               } satisfies CampaignCharacter;
             }),
@@ -304,22 +263,18 @@ const CampaignCharactersPage = () => {
           nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
 
           setCampaignCharacters(nextCharacters);
-
           setCampaignCharactersLoading(false);
         } catch (error) {
           console.error("Failed to load campaign characters:", error);
 
           setCampaignCharacters([]);
-
           setCampaignCharactersLoading(false);
         }
       },
-
       (error) => {
         console.error("Failed to load campaign characters:", error);
 
         setCampaignCharacters([]);
-
         setCampaignCharactersLoading(false);
       },
     );
@@ -341,7 +296,6 @@ const CampaignCharactersPage = () => {
 
     const unsub = onSnapshot(
       q,
-
       (snapshot) => {
         const nextCharacters: CampaignCharacter[] = snapshot.docs.map(
           (characterSnap) => {
@@ -349,27 +303,16 @@ const CampaignCharactersPage = () => {
 
             return {
               id: characterSnap.id,
-
               ownerUid: data.ownerUid ?? null,
-
               createdByUid: data.createdByUid ?? null,
-
               ownerName: "",
-
               ownerEmail: user.email ?? "",
-
               campaignId: data.campaignId ?? null,
-
               campaignStatus: getCampaignStatus(data.campaignStatus),
-
               name: data.name?.trim() || "Unnamed Character",
-
               race: getCharacterRace(data),
-
               className: getCharacterClassName(data),
-
               level: typeof data.level === "number" ? data.level : undefined,
-
               imageUrl: data.imageUrl?.trim() || undefined,
             };
           },
@@ -378,15 +321,12 @@ const CampaignCharactersPage = () => {
         nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
 
         setMyCharacters(nextCharacters);
-
         setMyCharactersLoading(false);
       },
-
       (error) => {
         console.error("Failed to load your characters:", error);
 
         setMyCharacters([]);
-
         setMyCharactersLoading(false);
       },
     );
@@ -396,31 +336,34 @@ const CampaignCharactersPage = () => {
 
   const isGm = myMembership?.role === "gm" || myMembership?.role === "co-gm";
 
-  const myAvailableCharacters = useMemo(
-    () =>
-      myCharacters.filter((character) => character.campaignId !== campaignId),
-    [campaignId, myCharacters],
-  );
-
-  const myAssignedCharacters = useMemo(
+  /*
+   * "Your characters" should only show characters that can actually be
+   * attached to this campaign. Characters assigned to another campaign are
+   * deliberately hidden.
+   */
+  const myCampaignCharacters = useMemo(
     () =>
       myCharacters.filter((character) => character.campaignId === campaignId),
     [campaignId, myCharacters],
   );
 
-  const activeCampaignCharacters = useMemo(
+  const myAvailableCharacters = useMemo(
+    () => myCharacters.filter((character) => character.campaignId === null),
+    [myCharacters],
+  );
+
+  const activeCount = useMemo(
     () =>
       campaignCharacters.filter(
         (character) => character.campaignStatus === "active",
-      ),
+      ).length,
     [campaignCharacters],
   );
 
-  const inactiveCampaignCharacters = useMemo(
+  const claimableCount = useMemo(
     () =>
-      campaignCharacters.filter(
-        (character) => character.campaignStatus !== "active",
-      ),
+      campaignCharacters.filter((character) => character.ownerUid === null)
+        .length,
     [campaignCharacters],
   );
 
@@ -436,7 +379,6 @@ const CampaignCharactersPage = () => {
 
       await updateDoc(characterRef, {
         campaignId,
-
         campaignStatus: "inactive",
       });
     } catch (error) {
@@ -456,7 +398,6 @@ const CampaignCharactersPage = () => {
 
       await updateDoc(characterRef, {
         campaignId: null,
-
         campaignStatus: "inactive",
       });
     } catch (error) {
@@ -470,7 +411,6 @@ const CampaignCharactersPage = () => {
 
   const handleSetCampaignStatus = async (
     characterId: string,
-
     nextStatus: CampaignCharacterStatus,
   ) => {
     setBusyCharacterId(characterId);
@@ -500,7 +440,6 @@ const CampaignCharactersPage = () => {
     try {
       await runTransaction(db, async (transaction) => {
         const characterRef = doc(db, "characters", characterId);
-
         const characterSnap = await transaction.get(characterRef);
 
         if (!characterSnap.exists()) {
@@ -540,7 +479,6 @@ const CampaignCharactersPage = () => {
 
       await updateDoc(characterRef, {
         ownerUid: null,
-
         campaignStatus: "inactive",
       });
     } catch (error) {
@@ -554,293 +492,246 @@ const CampaignCharactersPage = () => {
 
   if (pageState === "loading") {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <p className="text-sm text-zinc-400">Loading characters...</p>
-          </div>
-        </div>
-      </div>
+      <PageMessage>
+        <p className="text-sm text-zinc-400">Loading characters...</p>
+      </PageMessage>
     );
   }
 
   if (pageState === "not-found") {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <h1 className="text-2xl font-bold text-white">
-              Campaign not found
-            </h1>
+      <PageMessage>
+        <h1 className="text-xl font-bold text-white">Campaign not found</h1>
 
-            <p className="mt-3 text-sm text-zinc-400">
-              The campaign you tried to open does not exist.
-            </p>
+        <p className="mt-2 text-sm text-zinc-400">
+          The campaign you tried to open does not exist.
+        </p>
 
-            <div className="mt-6">
-              <Link
-                to="/"
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Back to home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+        <Link
+          to="/"
+          className="mt-4 inline-flex rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+        >
+          Back to home
+        </Link>
+      </PageMessage>
     );
   }
 
   if (pageState === "forbidden") {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <h1 className="text-2xl font-bold text-white">Access denied</h1>
+      <PageMessage>
+        <h1 className="text-xl font-bold text-white">Access denied</h1>
 
-            <p className="mt-3 text-sm text-zinc-400">
-              You do not have access to this campaign.
-            </p>
+        <p className="mt-2 text-sm text-zinc-400">
+          You do not have access to this campaign.
+        </p>
 
-            <div className="mt-6">
-              <Link
-                to="/"
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Back to home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+        <Link
+          to="/"
+          className="mt-4 inline-flex rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+        >
+          Back to home
+        </Link>
+      </PageMessage>
     );
   }
 
   if (pageState === "error" || !campaign || !myMembership) {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center">
-            <h1 className="text-2xl font-bold text-white">
-              Something went wrong
-            </h1>
+      <PageMessage tone="error">
+        <h1 className="text-xl font-bold text-white">Something went wrong</h1>
 
-            <p className="mt-3 text-sm text-red-200/80">
-              We could not load the campaign characters page right now.
-            </p>
+        <p className="mt-2 text-sm text-red-200/80">
+          We could not load the campaign characters page right now.
+        </p>
 
-            <div className="mt-6">
-              <Link
-                to="/"
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Back to home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
+        <Link
+          to="/"
+          className="mt-4 inline-flex rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+        >
+          Back to home
+        </Link>
+      </PageMessage>
     );
   }
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-7xl py-6 sm:py-8">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <Link
               to={`/campaigns/${campaign.id}`}
-              className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
+              className="inline-flex items-center text-xs text-zinc-400 transition hover:text-white"
             >
               ← Back to campaign
             </Link>
 
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
               Characters
             </h1>
 
-            <p className="mt-2 text-sm text-zinc-400">
-              View the roster for{" "}
-              <span className="font-medium text-white">{campaign.name}</span>.
-            </p>
+            <p className="mt-1 text-xs text-zinc-500">{campaign.name}</p>
           </div>
 
-          {isGm && (
+          {isGm ? (
             <Link
               to={`/characters/new?campaignId=${campaign.id}&campaignMode=unassigned`}
-              className="inline-flex rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+              className="inline-flex rounded-lg bg-white px-3 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200"
             >
               Create campaign character
             </Link>
-          )}
+          ) : null}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-white sm:text-2xl">
-                  Campaign characters
-                </h2>
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
+          <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-white">
+                Campaign characters
+              </h2>
 
-                <p className="mt-1 text-sm text-zinc-400">
-                  Characters that exist in this campaign, whether active or
-                  inactive.
-                </p>
-              </div>
+              <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
+                <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-emerald-300">
+                  {activeCount} active
+                </span>
 
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">
-                {activeCampaignCharacters.length} active •{" "}
-                {inactiveCampaignCharacters.length} inactive
+                {claimableCount > 0 ? (
+                  <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-0.5 text-amber-300">
+                    {claimableCount} claimable
+                  </span>
+                ) : null}
               </div>
             </div>
 
             {campaignCharactersLoading ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
-                <p className="text-sm text-zinc-400">
-                  Loading campaign characters...
-                </p>
-              </div>
+              <EmptyState>Loading campaign characters…</EmptyState>
             ) : campaignCharacters.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
-                <p className="text-sm text-zinc-300">
-                  No characters have been assigned yet.
-                </p>
-
-                <p className="mt-2 text-sm text-zinc-500">
-                  Players can attach their own characters or claim unassigned
-                  campaign characters.
-                </p>
-              </div>
+              <EmptyState>No campaign characters yet.</EmptyState>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 {campaignCharacters.map((character) => {
                   const isOwnCharacter = character.ownerUid === user?.uid;
-
-                  const canRemove = isOwnCharacter || isGm;
-
-                  const isClaimable = !character.ownerUid;
-
+                  const isClaimable = character.ownerUid === null;
                   const isActive = character.campaignStatus === "active";
+                  const isBusy = busyCharacterId === character.id;
 
-                  const summary = [character.race, character.className]
-                    .filter(Boolean)
-                    .join(" • ");
+                  const canOpen = isGm || isOwnCharacter;
+                  const canRemove = isGm || isOwnCharacter;
 
                   return (
                     <div
                       key={character.id}
-                      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4 transition hover:border-white/20 hover:bg-zinc-900"
+                      className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5 transition hover:border-white/15 hover:bg-white/[0.025]"
                     >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex min-w-0 items-center gap-3">
                           <Avatar
                             src={character.imageUrl}
                             name={character.name}
-                            className="h-14 w-14 shrink-0 rounded-xl"
+                            className="h-10 w-10 shrink-0 rounded-lg"
                           />
 
                           <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-semibold text-white sm:text-lg">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <h3 className="truncate text-xs font-semibold text-white">
                                 {character.name}
                               </h3>
 
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-xs ${
-                                  isActive
-                                    ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
-                                    : "border border-white/10 bg-white/5 text-zinc-300"
-                                }`}
-                              >
-                                {isActive ? "Active" : "Inactive"}
-                              </span>
+                              <StatusBadge active={isActive} />
 
                               {isClaimable ? (
-                                <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300">
-                                  Unassigned
+                                <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
+                                  Claimable
                                 </span>
                               ) : isOwnCharacter ? (
-                                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
+                                <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
                                   Yours
                                 </span>
                               ) : null}
                             </div>
 
-                            {(summary || character.level) && (
-                              <p className="mt-2 text-sm text-zinc-400">
-                                {summary}
-
-                                {summary && character.level ? " • " : ""}
-
-                                {character.level
-                                  ? `Level ${character.level}`
-                                  : ""}
-                              </p>
-                            )}
-
-                            <p className="mt-1 text-sm text-zinc-500">
-                              {isClaimable
-                                ? "Available for a player to claim"
-                                : `Player: ${
-                                    character.ownerName ||
-                                    character.ownerEmail ||
-                                    character.ownerUid
-                                  }`}
+                            <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                              {getCharacterSummary(character) || "Character"}
                             </p>
+
+                            {!isClaimable && character.ownerUid ? (
+                              <p className="mt-0.5 truncate text-[9px] text-zinc-600">
+                                {character.ownerName ||
+                                  character.ownerEmail ||
+                                  "Assigned player"}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                          {isGm && (
+                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                          {canOpen ? (
                             <Link
                               to={`/characters/${character.id}`}
-                              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                              state={{
+                                from: `${location.pathname}${location.search}`,
+                              }}
+                              className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
                             >
                               Open
                             </Link>
-                          )}
+                          ) : null}
 
-                          {isGm && (
+                          {isClaimable ? (
+                            <button
+                              type="button"
+                              onClick={() => handleClaimCharacter(character.id)}
+                              disabled={isBusy}
+                              className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              {isBusy ? "Claiming…" : "Claim"}
+                            </button>
+                          ) : null}
+
+                          {isGm ? (
                             <>
                               <button
+                                type="button"
                                 onClick={() =>
                                   handleSetCampaignStatus(
                                     character.id,
                                     isActive ? "inactive" : "active",
                                   )
                                 }
-                                disabled={busyCharacterId === character.id}
-                                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={isBusy}
+                                className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
                               >
                                 {isActive ? "Set inactive" : "Set active"}
                               </button>
 
-                              {!isClaimable && (
+                              {!isClaimable ? (
                                 <button
+                                  type="button"
                                   onClick={() =>
                                     handleMakeCharacterClaimable(character.id)
                                   }
-                                  disabled={busyCharacterId === character.id}
-                                  className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                                  disabled={isBusy}
+                                  className="rounded-md border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.12] disabled:opacity-50"
                                 >
                                   Make claimable
                                 </button>
-                              )}
+                              ) : null}
                             </>
-                          )}
+                          ) : null}
 
-                          {canRemove && (
+                          {canRemove && !isClaimable ? (
                             <button
+                              type="button"
                               onClick={() =>
                                 handleRemoveFromCampaign(character.id)
                               }
-                              disabled={busyCharacterId === character.id}
-                              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              disabled={isBusy}
+                              className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
                             >
                               Remove
                             </button>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </div>
@@ -850,252 +741,151 @@ const CampaignCharactersPage = () => {
             )}
           </section>
 
-          <aside className="space-y-6">
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-              <h2 className="text-xl font-semibold text-white">
-                Your characters
-              </h2>
+          <aside>
+            <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-white">
+                  Your characters
+                </h2>
 
-              <p className="mt-1 text-sm text-zinc-400">
-                Attach one of your existing characters to this campaign.
-              </p>
+                <Link
+                  to="/characters/new"
+                  className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  Create
+                </Link>
+              </div>
 
               {myCharactersLoading ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-5 text-center">
-                  <p className="text-sm text-zinc-400">
-                    Loading your characters...
-                  </p>
-                </div>
-              ) : myCharacters.length === 0 ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-5 text-center">
-                  <p className="text-sm text-zinc-300">
-                    You have no characters yet.
-                  </p>
-
-                  <Link
-                    to="/characters/new"
-                    className="mt-4 inline-flex rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-                  >
-                    Create character
-                  </Link>
+                <div className="mt-3">
+                  <EmptyState>Loading your characters…</EmptyState>
                 </div>
               ) : (
-                <>
-                  <div className="mt-5 space-y-3">
-                    {myAvailableCharacters.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-5 text-center">
-                        <p className="text-sm text-zinc-300">
-                          No unassigned characters available.
-                        </p>
-                      </div>
-                    ) : (
-                      myAvailableCharacters.map((character) => {
-                        const summary = [character.race, character.className]
-                          .filter(Boolean)
-                          .join(" • ");
+                <div className="mt-3 space-y-4">
+                  {myCampaignCharacters.length > 0 ? (
+                    <div>
+                      <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                        This campaign
+                      </h3>
 
-                        return (
+                      <div className="mt-2 space-y-1.5">
+                        {myCampaignCharacters.map((character) => (
                           <div
                             key={character.id}
-                            className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                            className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5"
                           >
-                            <div className="flex items-center gap-4">
+                            <div className="flex min-w-0 items-center gap-3">
                               <Avatar
                                 src={character.imageUrl}
                                 name={character.name}
-                                className="h-12 w-12 shrink-0 rounded-xl"
+                                className="h-9 w-9 shrink-0 rounded-lg"
                               />
 
-                              <div className="min-w-0">
-                                <h3 className="text-base font-semibold text-white">
-                                  {character.name}
-                                </h3>
-
-                                {(summary || character.level) && (
-                                  <p className="mt-2 text-sm text-zinc-400">
-                                    {summary}
-
-                                    {summary && character.level ? " • " : ""}
-
-                                    {character.level
-                                      ? `Level ${character.level}`
-                                      : ""}
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <p className="truncate text-xs font-semibold text-white">
+                                    {character.name}
                                   </p>
-                                )}
+
+                                  <StatusBadge
+                                    active={
+                                      character.campaignStatus === "active"
+                                    }
+                                  />
+                                </div>
+
+                                <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                                  {getCharacterSummary(character) ||
+                                    "Character"}
+                                </p>
                               </div>
                             </div>
 
-                            <div className="mt-4 flex gap-2">
-                              <button
-                                onClick={() =>
-                                  handleAssignToCampaign(character.id)
-                                }
-                                disabled={
-                                  busyCharacterId === character.id ||
-                                  character.campaignId !== null
-                                }
-                                className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Attach to campaign
-                              </button>
-
+                            <div className="mt-2">
                               <Link
                                 to={`/characters/${character.id}`}
-                                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+                                state={{
+                                  from: `${location.pathname}${location.search}`,
+                                }}
+                                className="inline-flex rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                               >
                                 Open
                               </Link>
                             </div>
                           </div>
-                        );
-                      })
-                    )}
-                  </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
 
-                  {myAssignedCharacters.length > 0 && (
-                    <div className="mt-6">
-                      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                        Already in this campaign
-                      </h3>
+                  <div>
+                    <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                      Available
+                    </h3>
 
-                      <div className="mt-3 space-y-3">
-                        {myAssignedCharacters.map((character) => {
-                          const summary = [character.race, character.className]
-                            .filter(Boolean)
-                            .join(" • ");
+                    {myAvailableCharacters.length === 0 ? (
+                      <div className="mt-2">
+                        <EmptyState>No available characters.</EmptyState>
+                      </div>
+                    ) : (
+                      <div className="mt-2 space-y-1.5">
+                        {myAvailableCharacters.map((character) => {
+                          const isBusy = busyCharacterId === character.id;
 
                           return (
                             <div
                               key={character.id}
-                              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                              className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5"
                             >
-                              <div className="flex items-center gap-4">
+                              <div className="flex min-w-0 items-center gap-3">
                                 <Avatar
                                   src={character.imageUrl}
                                   name={character.name}
-                                  className="h-12 w-12 shrink-0 rounded-xl"
+                                  className="h-9 w-9 shrink-0 rounded-lg"
                                 />
 
-                                <div className="min-w-0">
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <h4 className="text-base font-semibold text-white">
-                                      {character.name}
-                                    </h4>
+                                <div className="min-w-0 flex-1">
+                                  <p className="truncate text-xs font-semibold text-white">
+                                    {character.name}
+                                  </p>
 
-                                    <span
-                                      className={`rounded-full px-2.5 py-1 text-xs ${
-                                        character.campaignStatus === "active"
-                                          ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-300"
-                                          : "border border-white/10 bg-white/5 text-zinc-300"
-                                      }`}
-                                    >
-                                      {character.campaignStatus === "active"
-                                        ? "Active"
-                                        : "Inactive"}
-                                    </span>
-                                  </div>
-
-                                  {(summary || character.level) && (
-                                    <p className="mt-2 text-sm text-zinc-400">
-                                      {summary}
-
-                                      {summary && character.level ? " • " : ""}
-
-                                      {character.level
-                                        ? `Level ${character.level}`
-                                        : ""}
-                                    </p>
-                                  )}
+                                  <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                                    {getCharacterSummary(character) ||
+                                      "Character"}
+                                  </p>
                                 </div>
                               </div>
 
-                              <div className="mt-4 flex flex-wrap gap-2">
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleAssignToCampaign(character.id)
+                                  }
+                                  disabled={isBusy}
+                                  className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                  {isBusy ? "Attaching…" : "Attach"}
+                                </button>
+
                                 <Link
                                   to={`/characters/${character.id}`}
-                                  className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                                  state={{
+                                    from: `${location.pathname}${location.search}`,
+                                  }}
+                                  className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                                 >
                                   Open
                                 </Link>
-
-                                <button
-                                  onClick={() =>
-                                    handleMakeCharacterClaimable(character.id)
-                                  }
-                                  disabled={busyCharacterId === character.id}
-                                  className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-200 transition hover:bg-amber-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                  Make claimable
-                                </button>
-
-                                <button
-                                  onClick={() =>
-                                    handleRemoveFromCampaign(character.id)
-                                  }
-                                  disabled={busyCharacterId === character.id}
-                                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                  Remove
-                                </button>
                               </div>
                             </div>
                           );
                         })}
                       </div>
-                    </div>
-                  )}
-                </>
+                    )}
+                  </div>
+                </div>
               )}
-            </section>
-
-            <ClaimableCharactersSection
-              characters={claimableCharacters}
-              loading={campaignCharactersLoading}
-              isGm={isGm}
-              busyCharacterId={busyCharacterId}
-              onClaimCharacter={handleClaimCharacter}
-            />
-
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-              <h2 className="text-xl font-semibold text-white">
-                What this page does
-              </h2>
-
-              <p className="mt-1 text-sm text-zinc-400">
-                A quick overview of the current character flow.
-              </p>
-
-              <div className="mt-5 space-y-3">
-                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                  <p className="text-sm font-medium text-white">
-                    Characters can exist without being active
-                  </p>
-
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Only active characters appear in the party controls.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                  <p className="text-sm font-medium text-white">
-                    GMs can create unassigned campaign characters
-                  </p>
-
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Players can later claim those characters and become their
-                    owner.
-                  </p>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                  <p className="text-sm font-medium text-white">
-                    Players can still attach their own characters
-                  </p>
-
-                  <p className="mt-1 text-sm text-zinc-400">
-                    A character can only belong to one campaign at a time.
-                  </p>
-                </div>
-              </div>
             </section>
           </aside>
         </div>
@@ -1103,5 +893,45 @@ const CampaignCharactersPage = () => {
     </div>
   );
 };
+
+const StatusBadge = ({ active }: { active: boolean }) => (
+  <span
+    className={`rounded-md border px-1.5 py-0.5 text-[9px] font-medium ${
+      active
+        ? "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-300"
+        : "border-white/10 bg-white/[0.03] text-zinc-500"
+    }`}
+  >
+    {active ? "Active" : "Inactive"}
+  </span>
+);
+
+const EmptyState = ({ children }: { children: string }) => (
+  <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/10 px-3 py-4 text-center">
+    <p className="text-[11px] text-zinc-500">{children}</p>
+  </div>
+);
+
+const PageMessage = ({
+  children,
+  tone = "default",
+}: {
+  children: ReactNode;
+  tone?: "default" | "error";
+}) => (
+  <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+      <div
+        className={`rounded-xl border p-6 text-center ${
+          tone === "error"
+            ? "border-red-500/20 bg-red-500/[0.08]"
+            : "border-white/10 bg-zinc-900/35"
+        }`}
+      >
+        {children}
+      </div>
+    </div>
+  </div>
+);
 
 export default CampaignCharactersPage;

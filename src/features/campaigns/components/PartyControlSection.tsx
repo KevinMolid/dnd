@@ -54,31 +54,27 @@ const PartyControlSection = ({
   );
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-      <div className="mb-5 flex items-center justify-between">
+    <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+      <div className="mb-3 flex items-center justify-between">
         <div className="w-full">
           <div className="flex w-full justify-between">
-            <h2 className="text-xl font-semibold text-white sm:text-2xl">
-              Active party
+            <h2 className="text-base font-semibold text-white">
+              Party overview
             </h2>
 
             {isGm && (
               <button
                 onClick={onOpenAwardXpModal}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm font-medium text-white transition hover:bg-white/10"
+                className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
               >
                 Award XP
               </button>
             )}
           </div>
-
-          <p className="mt-1 text-sm text-zinc-400">
-            Live overview and quick controls for active characters only.
-          </p>
         </div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-1.5">
         {characters.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
             <p className="text-sm text-zinc-300">
@@ -114,19 +110,19 @@ const PartyControlSection = ({
             return (
               <div
                 key={character.id}
-                className="rounded-2xl border border-white/10 bg-zinc-900/70 px-4 py-4 transition hover:border-white/15"
+                className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2 transition hover:border-white/15 hover:bg-white/[0.025]"
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0 flex items-center gap-3">
                     <Avatar
                       name={character.name}
                       src={character.imageUrl}
-                      size="lg"
+                      className="h-10 w-10 shrink-0 rounded-lg"
                     />
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-white sm:text-base">
+                        <p className="truncate text-xs font-semibold text-white">
                           {character.name}
                         </p>
 
@@ -134,36 +130,29 @@ const PartyControlSection = ({
                           currentUserId === character.ownerUid && (
                             <button
                               onClick={() => onOpenLevelUp(character)}
-                              className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 text-[11px] font-medium text-amber-300 transition hover:bg-amber-400/15"
+                              className="rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-300 transition hover:bg-amber-400/15"
                             >
                               Level up
                             </button>
                           )}
                       </div>
 
-                      <p className="mt-1 truncate text-xs text-zinc-500">
-                        {character.ownerUid
-                          ? `Played by ${
-                              character.ownerName ||
-                              character.ownerEmail ||
-                              "Unknown player"
-                            }`
-                          : "Unassigned character"}
-                      </p>
-
-                      <p className="mt-1 truncate text-xs text-zinc-400">
-                        {[character.race, character.className]
+                      <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                        {[
+                          character.level ? `Level ${character.level}` : null,
+                          character.race,
+                          character.className,
+                        ]
                           .filter(Boolean)
-                          .join(" • ")}
-                        {character.level ? ` • Lv ${character.level}` : ""}
+                          .join(" ")}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 lg:items-end">
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                       <span
-                        className={`rounded-full border px-2.5 py-1 ${
+                        className={`rounded-full border px-2 py-0.5 ${
                           hpPercent <= 25
                             ? "border-red-500/20 bg-red-500/10 text-red-300"
                             : hpPercent <= 50
@@ -174,51 +163,23 @@ const PartyControlSection = ({
                         <i className="fa-solid fa-heart"></i> {hp}/{maxHp}
                       </span>
 
-                      <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-blue-300">
+                      <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-blue-300">
                         {xpProgressLabel}
                       </span>
                     </div>
-
-                    <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          hpPercent <= 25
-                            ? "bg-red-400"
-                            : hpPercent <= 50
-                              ? "bg-amber-400"
-                              : "bg-emerald-400"
-                        }`}
-                        style={{ width: `${hpPercent}%` }}
-                      />
-                    </div>
-
-                    {xpData.nextLevelXp !== null && (
-                      <div className="h-0.5 w-full max-w-[220px] overflow-hidden rounded-full bg-white/10">
-                        <div
-                          className="h-full rounded-full bg-blue-400 transition-all"
-                          style={{
-                            width: `${Math.max(
-                              0,
-                              Math.min(100, xpData.progressPercent ?? 0),
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    )}
 
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       {(character.conditions ?? []).length > 0 ? (
                         (character.conditions ?? []).map((condition) => (
                           <span
                             key={condition}
-                            className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300"
+                            className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-300"
                           >
                             {condition}
                           </span>
                         ))
                       ) : (
-                        <>
-                        </>
+                        <></>
                       )}
 
                       {isGm && (
@@ -228,7 +189,7 @@ const PartyControlSection = ({
                               prev === character.id ? null : character.id,
                             )
                           }
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-white transition hover:bg-white/10"
+                          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
                         >
                           {isExpanded ? "Close" : "Manage"}
                         </button>
@@ -241,7 +202,7 @@ const PartyControlSection = ({
                             from: `${location.pathname}${location.search}`,
                             label: "Back to campaign",
                           }}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                         >
                           Open
                         </Link>
@@ -251,14 +212,14 @@ const PartyControlSection = ({
                 </div>
 
                 {isGm && isExpanded && (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <div className="grid gap-3 lg:grid-cols-3">
-                      <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                        <p className="text-xs font-medium text-zinc-400">
+                  <div className="mt-2 border-t border-white/[0.06] pt-2.5">
+                    <div className="grid gap-2 md:grid-cols-3">
+                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                           Adjust HP
                         </p>
 
-                        <div className="mt-3 flex items-center gap-2">
+                        <div className="mt-2 flex items-center gap-1.5">
                           <button
                             onClick={() =>
                               setHpAdjustments((prev) => ({
@@ -266,7 +227,7 @@ const PartyControlSection = ({
                                 [character.id]: (prev[character.id] ?? 0) - 1,
                               }))
                             }
-                            className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-sm text-white transition hover:bg-white/10"
+                            className="h-8 w-8 rounded-md border border-white/[0.08] bg-black/20 text-sm text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
                           >
                             −
                           </button>
@@ -280,7 +241,7 @@ const PartyControlSection = ({
                                 [character.id]: Number(e.target.value) || 0,
                               }))
                             }
-                            className="h-9 w-20 rounded-lg border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none"
+                            className="h-8 w-16 rounded-md border border-white/[0.08] bg-black/25 px-2 text-xs font-semibold text-white outline-none focus:border-white/20"
                           />
 
                           <button
@@ -290,7 +251,7 @@ const PartyControlSection = ({
                                 [character.id]: (prev[character.id] ?? 0) + 1,
                               }))
                             }
-                            className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-sm text-white transition hover:bg-white/10"
+                            className="h-8 w-8 rounded-md border border-white/[0.08] bg-black/20 text-sm text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
                           >
                             +
                           </button>
@@ -311,19 +272,19 @@ const PartyControlSection = ({
                                 [character.id]: 0,
                               }));
                             }}
-                            className="ml-auto rounded-lg bg-white px-3 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                            className="ml-auto rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
                           >
                             Apply
                           </button>
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                        <p className="text-xs font-medium text-zinc-400">
+                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                           Award XP
                         </p>
 
-                        <div className="mt-3 flex items-center gap-2">
+                        <div className="mt-2 flex items-center gap-1.5">
                           <input
                             type="number"
                             value={pendingXpDelta}
@@ -333,7 +294,7 @@ const PartyControlSection = ({
                                 [character.id]: Number(e.target.value) || 0,
                               }))
                             }
-                            className="h-9 w-24 rounded-lg border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none"
+                            className="h-8 w-20 rounded-md border border-white/[0.08] bg-black/25 px-2 text-xs font-semibold text-white outline-none focus:border-white/20"
                             placeholder="0"
                           />
 
@@ -349,7 +310,7 @@ const PartyControlSection = ({
                                 [character.id]: 0,
                               }));
                             }}
-                            className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                            className="rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
                           >
                             Apply
                           </button>
@@ -357,7 +318,7 @@ const PartyControlSection = ({
                       </div>
 
                       <div className="relative rounded-xl border border-white/10 bg-white/5 p-3">
-                        <p className="text-xs font-medium text-zinc-400">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                           Conditions
                         </p>
 
@@ -367,7 +328,7 @@ const PartyControlSection = ({
                               prev === character.id ? null : character.id,
                             )
                           }
-                          className="mt-3 inline-flex h-9 items-center rounded-lg border border-white/10 bg-zinc-950 px-3 text-xs text-white transition hover:bg-white/10"
+                          className="mt-2 inline-flex h-8 items-center rounded-md border border-white/[0.08] bg-black/25 px-2.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
                         >
                           Edit conditions
                         </button>

@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { type ReactNode } from "react";
 
 type CampaignQuickActionsProps = {
   campaignId: string;
@@ -9,26 +8,8 @@ type CampaignQuickActionsProps = {
   onCreateCustomItem: () => void;
 };
 
-type QuickActionCardProps = {
-  title: string;
-  description: string;
-  children: ReactNode;
-};
-
-const QuickActionCard = ({ description, children }: QuickActionCardProps) => {
-  return (
-    <div className="group relative min-w-0">
-      {children}
-
-      <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-56 -translate-x-1/2 rounded-xl border border-white/10 bg-zinc-950/95 p-3 text-xs text-zinc-300 shadow-2xl group-hover:block">
-        {description}
-      </div>
-    </div>
-  );
-};
-
-const baseActionClassName =
-  "shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600";
+const actionClass =
+  "inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white";
 
 const CampaignQuickActions = ({
   campaignId,
@@ -37,89 +18,49 @@ const CampaignQuickActions = ({
   onCreateCustomItem,
 }: CampaignQuickActionsProps) => {
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-semibold text-white sm:text-2xl">
-            Quick actions
-          </h2>
-          <p className="mt-1 text-sm text-zinc-400">
-            Fast access to common campaign tools.
-          </p>
-        </div>
-      </div>
+    <section className="flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-zinc-900/35 px-3 py-2.5">
+      <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+        {isGm ? "GM Tools" : "Quick Links"}
+      </span>
 
-      <div className="flex flex-wrap gap-2">
-        {isGm ? (
-          <>
-            <button
-              type="button"
-              onClick={onRewardItems}
-              className={baseActionClassName}
-            >
-              <i className="fa-solid fa-trophy"></i> Award items
-            </button>
+      {isGm ? (
+        <>
+          <button type="button" onClick={onRewardItems} className={actionClass}>
+            <i className="fa-solid fa-trophy text-[9px]" />
+            Award items
+          </button>
 
-            <button
-              type="button"
-              onClick={onCreateCustomItem}
-              className={baseActionClassName}
-            >
-              <i className="fa-solid fa-plus"></i> Create item
-            </button>
-          </>
-        ) : (
-          <>
-            <QuickActionCard
-              title="Character"
-              description="Open the character you are using in this campaign."
-            >
-              <Link
-                to={`/campaigns/${campaignId}/characters`}
-                className={baseActionClassName}
-              >
-                Character
-              </Link>
-            </QuickActionCard>
-
-            <QuickActionCard
-              title="Journal"
-              description="Review revealed notes, summaries, and campaign events."
-            >
-              <Link
-                to={`/campaigns/${campaignId}/journal`}
-                className={baseActionClassName}
-              >
-                Journal
-              </Link>
-            </QuickActionCard>
-
-            <QuickActionCard
-              title="Maps"
-              description="See the maps and locations the GM has revealed."
-            >
-              <Link
-                to={`/campaigns/${campaignId}/maps`}
-                className={baseActionClassName}
-              >
-                Maps
-              </Link>
-            </QuickActionCard>
-
-            <QuickActionCard
-              title="Handouts"
-              description="Open letters, clues, lore, and other shared information."
-            >
-              <Link
-                to={`/campaigns/${campaignId}/handouts`}
-                className={baseActionClassName}
-              >
-                Handouts
-              </Link>
-            </QuickActionCard>
-          </>
-        )}
-      </div>
+          <button
+            type="button"
+            onClick={onCreateCustomItem}
+            className={actionClass}
+          >
+            <i className="fa-solid fa-plus text-[9px]" />
+            Create item
+          </button>
+        </>
+      ) : (
+        <>
+          <Link
+            to={`/campaigns/${campaignId}/characters`}
+            className={actionClass}
+          >
+            Character
+          </Link>
+          <Link to={`/campaigns/${campaignId}/journal`} className={actionClass}>
+            Journal
+          </Link>
+          <Link to={`/campaigns/${campaignId}/maps`} className={actionClass}>
+            Maps
+          </Link>
+          <Link
+            to={`/campaigns/${campaignId}/handouts`}
+            className={actionClass}
+          >
+            Handouts
+          </Link>
+        </>
+      )}
     </section>
   );
 };

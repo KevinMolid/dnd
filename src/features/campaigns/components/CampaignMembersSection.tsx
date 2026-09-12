@@ -19,70 +19,66 @@ const CampaignMembersSection = ({
   onInvitePlayers,
 }: CampaignMembersSectionProps) => {
   return (
-    <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-      <h2 className="text-xl font-semibold text-white">Players</h2>
-      <p className="mt-1 text-sm text-zinc-400">
-        Members currently in this campaign.
-      </p>
+    <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-white">Players</h2>
+        </div>
+
+        {isGm ? (
+          <button
+            type="button"
+            onClick={onInvitePlayers}
+            className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            Invite
+          </button>
+        ) : null}
+      </div>
 
       {loading ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-5 text-center">
-          <p className="text-sm text-zinc-400">Loading players...</p>
-        </div>
+        <p className="mt-3 text-[11px] text-zinc-500">Loading players…</p>
       ) : members.length === 0 ? (
-        <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-5 text-center">
-          <p className="text-sm text-zinc-300">
-            No members found in this campaign.
-          </p>
-        </div>
+        <p className="mt-3 text-[11px] text-zinc-500">No members yet.</p>
       ) : (
-        <div className="mt-5 space-y-3">
+        <div className="mt-3 divide-y divide-white/[0.055]">
           {members.map((member) => (
             <div
               key={member.uid}
-              className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+              className="flex min-w-0 items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0 flex items-center gap-3">
-                  <Avatar
-                    name={
-                      member.displayName?.trim() || member.email || member.uid
-                    }
-                    src={member.imageUrl?.trim() || ""}
-                    size="md"
-                    shape="circle"
-                  />
+              <div className="flex min-w-0 items-center gap-2.5">
+                <Avatar
+                  name={
+                    member.displayName?.trim() || member.email || member.uid
+                  }
+                  src={member.imageUrl?.trim() || ""}
+                  className="h-8 w-8 shrink-0 rounded-full"
+                />
 
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-white">
-                      {member.displayName || member.email || member.uid}
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-semibold text-zinc-100">
+                    {member.displayName || member.email || member.uid}
+                  </p>
+
+                  {member.email ? (
+                    <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                      {member.email}
                     </p>
-                    <p className="mt-1 truncate text-sm text-zinc-400">
-                      {member.email || "No email available"}
-                    </p>
-                  </div>
+                  ) : null}
                 </div>
-
-                <span
-                  className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${getRoleBadgeClass(
-                    member.role,
-                  )}`}
-                >
-                  {formatRoleLabel(member.role)}
-                </span>
               </div>
+
+              <span
+                className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-semibold ${getRoleBadgeClass(
+                  member.role,
+                )}`}
+              >
+                {formatRoleLabel(member.role)}
+              </span>
             </div>
           ))}
         </div>
-      )}
-
-      {isGm && (
-        <button
-          onClick={onInvitePlayers}
-          className="mt-5 w-full rounded-2xl bg-cyan-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-cyan-600"
-        >
-          Invite players
-        </button>
       )}
     </section>
   );

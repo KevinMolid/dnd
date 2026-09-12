@@ -20,7 +20,6 @@ import CampaignMembersSection from "../features/campaigns/components/CampaignMem
 import CampaignQuickActions from "../features/campaigns/components/CampaignQuickActions";
 import PartyControlSection from "../features/campaigns/components/PartyControlSection";
 import CampaignRecentActivitySection from "../features/campaigns/components/CampaignRecentActivitySection";
-import ClaimableCharactersSection from "../features/campaigns/components/ClaimableCharactersSection";
 import InactiveOwnedCharactersSection from "../features/campaigns/components/InactiveOwnedCharactersSection";
 import useCampaignPageData, {
   type CampaignCharacter,
@@ -50,7 +49,6 @@ const CampaignPage = () => {
     updateCharacterXp,
     toggleCondition,
     handleLevelUp,
-    handleClaimCharacter,
     handleSetCharacterActive,
     handleRewardCharacters,
   } = useCampaignPageData(campaignId);
@@ -97,11 +95,6 @@ const CampaignPage = () => {
 
     return () => unsub();
   }, [campaignId, pageState]);
-
-  const claimableCharacters = useMemo(
-    () => campaignCharacters.filter((character) => character.ownerUid === null),
-    [campaignCharacters],
-  );
 
   const activeCampaignCharacters = useMemo(
     () =>
@@ -295,8 +288,8 @@ const CampaignPage = () => {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="space-y-6">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
+          <div className="space-y-3">
             {isGm && (
               <CampaignQuickActions
                 campaignId={campaign.id}
@@ -321,15 +314,6 @@ const CampaignPage = () => {
               onToggleCondition={toggleCondition}
             />
 
-            {claimableCharacters.length > 0 && (
-              <ClaimableCharactersSection
-                characters={claimableCharacters}
-                loading={false}
-                isGm={isGm}
-                onClaimCharacter={handleClaimCharacter}
-              />
-            )}
-
             {myInactiveCampaignCharacters.length > 0 && (
               <InactiveOwnedCharactersSection
                 characters={myInactiveCampaignCharacters}
@@ -339,7 +323,7 @@ const CampaignPage = () => {
             )}
           </div>
 
-          <aside className="space-y-6">
+          <aside className="space-y-3">
             <CampaignRecentActivitySection
               campaignId={campaign.id}
               loading={latestJournalEntryLoading}
