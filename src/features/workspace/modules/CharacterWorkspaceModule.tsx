@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 
@@ -138,6 +138,7 @@ const getLiveHp = (character: WorkspaceCharacter) => {
 
     return {
       currentHp: Math.max(0, currentHp),
+
       maxHp: Math.max(1, maxHp),
     };
   }
@@ -147,11 +148,13 @@ const getLiveHp = (character: WorkspaceCharacter) => {
 
     return {
       currentHp: hp.currentHp,
+
       maxHp: hp.maxHp,
     };
   } catch {
     return {
       currentHp: character.currentHp ?? 0,
+
       maxHp: Math.max(1, character.maxHp ?? 1),
     };
   }
@@ -187,8 +190,11 @@ const getCharacterMoney = (character: WorkspaceCharacter) => {
   const copper = Math.max(0, Math.floor((character as any).moneyCp ?? 0));
 
   const gp = Math.floor(copper / 100);
+
   const remainderAfterGp = copper % 100;
+
   const sp = Math.floor(remainderAfterGp / 10);
+
   const cp = remainderAfterGp % 10;
 
   return {
@@ -237,7 +243,9 @@ const CharacterRow = ({
 
   const subtitle = [
     character.race ?? character.speciesName,
+
     character.className,
+
     character.level ? `Level ${character.level}` : undefined,
   ]
     .filter(Boolean)
@@ -260,25 +268,25 @@ const CharacterRow = ({
           {character.name}
         </div>
 
-        <div className="mt-0.5 truncate text-[9px] text-zinc-600">
+        <div className="mt-0.5 truncate text-[10px] text-zinc-500">
           {subtitle || "Player Character"}
         </div>
       </div>
 
       <div className="shrink-0 text-right">
-        <div className="text-[9px] font-semibold text-zinc-400">
+        <div className="text-[10px] font-semibold text-zinc-300">
           HP {hp.currentHp}/{hp.maxHp}
         </div>
 
         {character.conditions?.length ? (
-          <div className="mt-0.5 text-[8px] text-rose-400">
+          <div className="mt-0.5 text-[9px] text-rose-400">
             {character.conditions.length} condition
             {character.conditions.length === 1 ? "" : "s"}
           </div>
         ) : null}
       </div>
 
-      <i className="fa-solid fa-chevron-right shrink-0 text-[8px] text-zinc-700 transition group-hover:text-zinc-400" />
+      <i className="fa-solid fa-chevron-right shrink-0 text-[9px] text-zinc-600 transition group-hover:text-zinc-300" />
     </button>
   );
 };
@@ -286,97 +294,109 @@ const CharacterRow = ({
 export default function CharacterWorkspaceModule({
   module,
   campaignId,
+  editing,
   updateModule,
+  removeModule,
 }: WorkspaceModuleRenderProps) {
   const navigate = useNavigate();
 
   const {
     campaignCharacters: rawCampaignCharacters,
+
     campaignCharactersLoading,
+
     updateCharacter,
+
     toggleCondition,
   } = useCampaignPageData(campaignId);
 
   const campaignCharacters = rawCampaignCharacters as WorkspaceCharacter[];
 
-  const { selectedCharacter, selectedCharacterId, selectCharacter } =
-    useWorkspace();
+  const { selectedCharacter, selectCharacter } = useWorkspace();
 
   const [browserOpen, setBrowserOpen] = useState(false);
+
   const [search, setSearch] = useState("");
+
   const [portraitOpen, setPortraitOpen] = useState(false);
+
   const [equipmentOpen, setEquipmentOpen] = useState(false);
+
   const [conditionsOpen, setConditionsOpen] = useState(false);
 
-  const mode: CharacterModuleMode = module.config?.characterMode ?? "follow";
+  /*
+   * Match MonsterWorkspaceModule:
+   *
+   * The saved module config is the authoritative pinned
+   * selection.
+   *
+   * Defaulting to pinned also makes a saved character ID
+   * useful even if an older workspace does not yet contain
+   * characterMode.
+   */
+  const mode: CharacterModuleMode = module.config?.characterMode ?? "pinned";
 
-  const visibleCharacterId =
+  /*
+   * Persisted/pinned character.
+   *
+   * This comes ONLY from module.config, exactly like
+   * pinnedMonster in MonsterWorkspaceModule.
+   */
+  const pinnedCharacter = useMemo(() => {
+    const characterId = module.config?.selectedCharacterId;
+
+    if (!characterId) {
+      return null;
+    }
+
+    return (
+      campaignCharacters.find((character) => character.id === characterId) ??
+      null
+    );
+  }, [campaignCharacters, module.config?.selectedCharacterId]);
+
+  /*
+   * Character currently selected by WorkspaceContext.
+   *
+   * This is relevant only while following.
+   */
+  const followedCharacter = useMemo(() => {
+    const characterId = selectedCharacter?.characterId;
+
+    if (!characterId) {
+      return null;
+    }
+
+    return (
+      campaignCharacters.find((character) => character.id === characterId) ??
+      null
+    );
+  }, [campaignCharacters, selectedCharacter]);
+
+  /*
+   * Exact same fallback behavior as Monster:
+   *
+   * Follow:
+   * workspace selection first, persisted character second.
+   *
+   * Pinned:
+   * persisted character only.
+   */
+  const displayedCharacter =
     mode === "follow"
-      ? (selectedCharacterId ?? module.config?.selectedCharacterId)
-      : module.config?.selectedCharacterId;
+      ? (followedCharacter ?? pinnedCharacter)
+      : pinnedCharacter;
 
+  const displayedCharacterId = displayedCharacter?.id;
+
+  /*
+   * Only show encounter/manual state if the Workspace
+   * selection is actually the character being displayed.
+   */
   const visibleCharacterSelection =
-    mode === "follow" && selectedCharacter?.characterId === visibleCharacterId
+    mode === "follow" && selectedCharacter?.characterId === displayedCharacterId
       ? selectedCharacter
       : null;
-
-  const selectedCharacterDoc = useMemo(
-    () =>
-      campaignCharacters.find(
-        (character) => character.id === visibleCharacterId,
-      ) ?? null,
-    [campaignCharacters, visibleCharacterId],
-  );
-
-  useEffect(() => {
-    if (mode !== "follow" || !selectedCharacterId) {
-      return;
-    }
-
-    if (module.config?.selectedCharacterId === selectedCharacterId) {
-      return;
-    }
-
-    updateModule(module.id, {
-      config: {
-        ...module.config,
-        selectedCharacterId,
-      },
-    });
-  }, [mode, selectedCharacterId, module.id, module.config, updateModule]);
-
-  useEffect(() => {
-    if (campaignCharactersLoading) {
-      return;
-    }
-
-    const storedId = module.config?.selectedCharacterId;
-
-    if (!storedId) {
-      return;
-    }
-
-    const exists = campaignCharacters.some(
-      (character) => character.id === storedId,
-    );
-
-    if (exists) {
-      return;
-    }
-
-    updateModule(module.id, {
-      config: {
-        ...module.config,
-        selectedCharacterId: undefined,
-      },
-    });
-  }, [
-    campaignCharacters,
-    campaignCharactersLoading,
-    module.id,
-    module.config,
-    updateModule,
-  ]);
 
   const filteredCharacters = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -400,34 +420,68 @@ export default function CharacterWorkspaceModule({
     );
   }, [campaignCharacters, search]);
 
-  const inspectCharacter = (character: WorkspaceCharacter) => {
-    updateModule(module.id, {
-      config: {
-        ...module.config,
-        selectedCharacterId: character.id,
-      },
-    });
+  /*
+   * Same behavior as selectMonster().
+   *
+   * PINNED:
+   * replace the persisted pinned character.
+   *
+   * FOLLOW:
+   * retain this character as the module fallback AND
+   * create a manual Workspace selection.
+   */
+  const selectCharacterFromBrowser = (character: WorkspaceCharacter) => {
+    if (mode === "pinned") {
+      updateModule(module.id, {
+        config: {
+          ...module.config,
 
-    if (mode === "follow") {
+          characterMode: "pinned",
+
+          selectedCharacterId: character.id,
+        },
+      });
+    } else {
+      updateModule(module.id, {
+        config: {
+          ...module.config,
+
+          characterMode: "follow",
+
+          selectedCharacterId: character.id,
+        },
+      });
+
       selectCharacter(character.id, {
         encounterStatus: "manual",
       });
     }
 
     setBrowserOpen(false);
+
     setEquipmentOpen(false);
+
     setConditionsOpen(false);
+
     setSearch("");
   };
 
+  /*
+   * Same pin/follow behavior as MonsterWorkspaceModule.
+   *
+   * Follow -> Pin freezes the character CURRENTLY VISIBLE,
+   * not merely whatever happened to be saved previously.
+   */
   const setMode = (nextMode: CharacterModuleMode) => {
     if (nextMode === "pinned") {
       updateModule(module.id, {
         config: {
           ...module.config,
+
           characterMode: "pinned",
+
           selectedCharacterId:
-            visibleCharacterId ?? module.config?.selectedCharacterId,
+            displayedCharacterId ?? module.config?.selectedCharacterId,
         },
       });
 
@@ -439,7 +493,16 @@ export default function CharacterWorkspaceModule({
     updateModule(module.id, {
       config: {
         ...module.config,
+
         characterMode: "follow",
+
+        /*
+         * Keep the last displayed character as the
+         * persisted fallback, just like the Monster
+         * module retains selectedMonsterKey.
+         */
+        selectedCharacterId:
+          displayedCharacterId ?? module.config?.selectedCharacterId,
       },
     });
 
@@ -468,34 +531,49 @@ export default function CharacterWorkspaceModule({
     );
   }
 
-  if (browserOpen || !selectedCharacterDoc) {
+  /*
+   * ==========================================================
+   * CHARACTER BROWSER
+   * ==========================================================
+   */
+
+  if (browserOpen) {
     return (
       <div className="flex h-full min-h-0 flex-col">
-        <div className="workspace-no-drag flex h-10 shrink-0 items-center gap-1.5 border-b border-white/10 bg-black/20 px-2">
-          <button
-            type="button"
-            onClick={() => setBrowserOpen(false)}
-            disabled={!selectedCharacterDoc}
-            title="Back to character"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white disabled:opacity-25"
-          >
-            <i className="fa-solid fa-arrow-left text-[9px]" />
-          </button>
+        <div
+          className={`workspace-drag-handle flex h-9 shrink-0 items-center gap-1.5 border-b border-white/10 bg-white/[0.025] px-2.5 ${
+            editing ? "cursor-grab active:cursor-grabbing" : ""
+          }`}
+        >
+          <i className="fa-solid fa-user-shield shrink-0 text-xs text-emerald-400" />
 
-          <div className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-200">
+          <div className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-100">
             Choose Character
           </div>
 
-          <div className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5">
+          {displayedCharacter ? (
+            <button
+              type="button"
+              onClick={() => setBrowserOpen(false)}
+              title="Back to character"
+              aria-label="Back to character"
+              className="workspace-no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+            >
+              <i className="fa-solid fa-arrow-left text-[10px]" />
+            </button>
+          ) : null}
+
+          <div className="workspace-no-drag flex shrink-0 rounded-md border border-white/10 bg-black/20 p-0.5">
             <button
               type="button"
               onClick={() => setMode("pinned")}
-              disabled={!selectedCharacterDoc}
+              disabled={!displayedCharacter}
               title="Pin current character"
-              className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] transition disabled:opacity-25 ${
+              aria-label="Pin current character"
+              className={`flex h-6 w-6 items-center justify-center rounded text-[9px] transition disabled:opacity-25 ${
                 mode === "pinned"
                   ? "bg-amber-500/15 text-amber-300"
-                  : "text-zinc-600 hover:text-zinc-300"
+                  : "text-zinc-500 hover:text-zinc-200"
               }`}
             >
               <i className="fa-solid fa-thumbtack" />
@@ -505,10 +583,11 @@ export default function CharacterWorkspaceModule({
               type="button"
               onClick={() => setMode("follow")}
               title="Follow character selections and encounter turns"
-              className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] transition ${
+              aria-label="Follow character selections and encounter turns"
+              className={`flex h-6 w-6 items-center justify-center rounded text-[9px] transition ${
                 mode === "follow"
                   ? "bg-sky-500/15 text-sky-300"
-                  : "text-zinc-600 hover:text-zinc-300"
+                  : "text-zinc-500 hover:text-zinc-200"
               }`}
             >
               <i className="fa-solid fa-crosshairs" />
@@ -519,29 +598,43 @@ export default function CharacterWorkspaceModule({
             type="button"
             onClick={() => navigate(`/campaigns/${campaignId}/characters`)}
             title="Open campaign characters"
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+            aria-label="Open campaign characters"
+            className="workspace-no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
           >
-            <i className="fa-solid fa-up-right-from-square text-[9px]" />
+            <i className="fa-solid fa-up-right-from-square text-[10px]" />
           </button>
+
+          {editing ? (
+            <button
+              type="button"
+              onClick={() => removeModule(module.id)}
+              title="Remove module"
+              aria-label="Remove character module"
+              className="workspace-no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
+            >
+              <i className="fa-solid fa-xmark text-[10px]" />
+            </button>
+          ) : null}
         </div>
 
         <div className="workspace-no-drag shrink-0 p-2">
           <div className="relative">
-            <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[9px] text-zinc-600" />
+            <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-zinc-500" />
 
             <input
               autoFocus
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search characters..."
-              className="h-8 w-full rounded-lg border border-white/10 bg-black/30 py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/30"
+              aria-label="Search characters"
+              className="h-8 w-full rounded-lg border border-white/10 bg-black/30 py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder:text-zinc-500 focus:border-emerald-500/30"
             />
           </div>
         </div>
 
         <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto border-t border-white/5">
           {filteredCharacters.length === 0 ? (
-            <div className="p-5 text-center text-xs text-zinc-600">
+            <div className="p-5 text-center text-xs text-zinc-500">
               No matching characters.
             </div>
           ) : (
@@ -549,7 +642,7 @@ export default function CharacterWorkspaceModule({
               <CharacterRow
                 key={character.id}
                 character={character}
-                onClick={() => inspectCharacter(character)}
+                onClick={() => selectCharacterFromBrowser(character)}
               />
             ))
           )}
@@ -558,19 +651,122 @@ export default function CharacterWorkspaceModule({
     );
   }
 
-  const hp = getLiveHp(selectedCharacterDoc);
-  const armorClass = getArmorClass(selectedCharacterDoc);
-  const initiative = getInitiativeBonus(selectedCharacterDoc);
-  const proficiency = getCharacterProficiencyBonus(selectedCharacterDoc);
-  const speed = getCharacterSpeed(selectedCharacterDoc);
-  const money = getCharacterMoney(selectedCharacterDoc);
+  /*
+   * ==========================================================
+   * NO CHARACTER
+   * ==========================================================
+   */
+
+  if (!displayedCharacter) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div
+          className={`workspace-drag-handle flex h-9 shrink-0 items-center gap-1.5 border-b border-white/10 bg-white/[0.025] px-2.5 ${
+            editing ? "cursor-grab active:cursor-grabbing" : ""
+          }`}
+        >
+          <i className="fa-solid fa-user-shield shrink-0 text-xs text-emerald-400" />
+
+          <div className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-100">
+            Character
+          </div>
+
+          <div className="workspace-no-drag flex shrink-0 rounded-md border border-white/10 bg-black/20 p-0.5">
+            <button
+              type="button"
+              disabled
+              title="Pin current character"
+              className="flex h-6 w-6 items-center justify-center rounded text-[9px] text-zinc-600 opacity-25"
+            >
+              <i className="fa-solid fa-thumbtack" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode("follow")}
+              title="Follow character selections and encounter turns"
+              className={`flex h-6 w-6 items-center justify-center rounded text-[9px] transition ${
+                mode === "follow"
+                  ? "bg-sky-500/15 text-sky-300"
+                  : "text-zinc-500 hover:text-zinc-200"
+              }`}
+            >
+              <i className="fa-solid fa-crosshairs" />
+            </button>
+          </div>
+
+          {editing ? (
+            <button
+              type="button"
+              onClick={() => removeModule(module.id)}
+              title="Remove module"
+              className="workspace-no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
+            >
+              <i className="fa-solid fa-xmark text-[10px]" />
+            </button>
+          ) : null}
+        </div>
+
+        <div className="flex min-h-0 flex-1 items-center justify-center p-5 text-center">
+          <div>
+            <i
+              className={`fa-solid ${
+                mode === "follow"
+                  ? "fa-crosshairs text-sky-400/20"
+                  : "fa-user-shield text-emerald-400/20"
+              } text-3xl`}
+            />
+
+            <p className="mt-3 text-sm font-semibold text-zinc-300">
+              {mode === "follow"
+                ? "Waiting for character"
+                : "No character pinned"}
+            </p>
+
+            {mode === "follow" ? (
+              <p className="mt-1 max-w-xs text-xs leading-5 text-zinc-500">
+                The active player, next player, or a manually inspected
+                character will appear here.
+              </p>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setBrowserOpen(true)}
+              className="mt-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10 hover:text-white"
+            >
+              Choose Character
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  /*
+   * ==========================================================
+   * CHARACTER SHEET
+   * ==========================================================
+   */
+
+  const hp = getLiveHp(displayedCharacter);
+
+  const armorClass = getArmorClass(displayedCharacter);
+
+  const initiative = getInitiativeBonus(displayedCharacter);
+
+  const proficiency = getCharacterProficiencyBonus(displayedCharacter);
+
+  const speed = getCharacterSpeed(displayedCharacter);
+
+  const money = getCharacterMoney(displayedCharacter);
 
   const subtitle = [
-    selectedCharacterDoc.race ?? selectedCharacterDoc.speciesName,
-    selectedCharacterDoc.className,
-    selectedCharacterDoc.level
-      ? `Level ${selectedCharacterDoc.level}`
-      : undefined,
+    displayedCharacter.race ?? displayedCharacter.speciesName,
+
+    displayedCharacter.className,
+
+    displayedCharacter.level ? `Level ${displayedCharacter.level}` : undefined,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -583,10 +779,11 @@ export default function CharacterWorkspaceModule({
   const setHp = async (nextHp: number) => {
     const safeHp = Math.max(0, Math.min(hp.maxHp, Math.floor(nextHp)));
 
-    if (isCustomCharacter(selectedCharacterDoc)) {
-      await updateCharacter(selectedCharacterDoc.id, {
+    if (isCustomCharacter(displayedCharacter)) {
+      await updateCharacter(displayedCharacter.id, {
         customStats: {
-          ...(selectedCharacterDoc.customStats ?? {}),
+          ...(displayedCharacter.customStats ?? {}),
+
           currentHp: safeHp,
         },
       } as any);
@@ -594,18 +791,19 @@ export default function CharacterWorkspaceModule({
       return;
     }
 
-    await updateCharacter(selectedCharacterDoc.id, {
+    await updateCharacter(displayedCharacter.id, {
       currentHp: safeHp,
     });
   };
 
-  const equipment = (selectedCharacterDoc.equipment ??
+  const equipment = (displayedCharacter.equipment ??
     []) as CharacterEquipmentEntry[];
 
   const getStatusBadge = () => {
     if (mode === "pinned") {
       return {
         text: "Pinned",
+
         className: "border-amber-500/15 bg-amber-500/[0.07] text-amber-300",
       };
     }
@@ -613,6 +811,7 @@ export default function CharacterWorkspaceModule({
     if (visibleCharacterSelection?.encounterStatus === "active") {
       return {
         text: "Current Turn",
+
         className: "border-emerald-500/20 bg-emerald-500/10 text-emerald-300",
       };
     }
@@ -620,6 +819,7 @@ export default function CharacterWorkspaceModule({
     if (visibleCharacterSelection?.encounterStatus === "up-next") {
       return {
         text: "Up Next",
+
         className: "border-sky-500/20 bg-sky-500/10 text-sky-300",
       };
     }
@@ -627,12 +827,14 @@ export default function CharacterWorkspaceModule({
     if (visibleCharacterSelection?.encounterStatus === "manual") {
       return {
         text: "Inspecting",
+
         className: "border-violet-500/20 bg-violet-500/10 text-violet-300",
       };
     }
 
     return {
       text: "Follow",
+
       className: "border-sky-500/15 bg-sky-500/[0.07] text-sky-300",
     };
   };
@@ -641,29 +843,44 @@ export default function CharacterWorkspaceModule({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col">
-      <div className="workspace-no-drag flex h-10 shrink-0 items-center gap-1.5 border-b border-white/10 bg-black/20 px-2">
+      {/* Integrated header */}
+
+      <div
+        className={`workspace-drag-handle flex h-9 shrink-0 items-center gap-1.5 border-b border-white/10 bg-white/[0.025] px-2.5 ${
+          editing ? "cursor-grab active:cursor-grabbing" : ""
+        }`}
+      >
+        <i className="fa-solid fa-user-shield shrink-0 text-xs text-emerald-400" />
+
         <button
           type="button"
           onClick={() => setBrowserOpen(true)}
           title="Browse characters"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+          className="workspace-no-drag min-w-0 flex-1 truncate text-left text-xs font-semibold text-zinc-100 transition hover:text-white"
         >
-          <i className="fa-solid fa-list text-[9px]" />
+          {displayedCharacter.name}
         </button>
 
-        <div className="min-w-0 flex-1 truncate text-xs font-semibold text-zinc-200">
-          {selectedCharacterDoc.name}
-        </div>
+        <button
+          type="button"
+          onClick={() => setBrowserOpen(true)}
+          title="Browse characters"
+          aria-label="Browse characters"
+          className="workspace-no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
+        >
+          <i className="fa-solid fa-list text-[10px]" />
+        </button>
 
-        <div className="flex shrink-0 rounded-lg border border-white/10 bg-black/20 p-0.5">
+        <div className="workspace-no-drag flex shrink-0 rounded-md border border-white/10 bg-black/20 p-0.5">
           <button
             type="button"
             onClick={() => setMode("pinned")}
             title="Pin this character"
-            className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] transition ${
+            aria-label="Pin this character"
+            className={`flex h-6 w-6 items-center justify-center rounded text-[9px] transition ${
               mode === "pinned"
                 ? "bg-amber-500/15 text-amber-300"
-                : "text-zinc-600 hover:text-zinc-300"
+                : "text-zinc-500 hover:text-zinc-200"
             }`}
           >
             <i className="fa-solid fa-thumbtack" />
@@ -673,10 +890,11 @@ export default function CharacterWorkspaceModule({
             type="button"
             onClick={() => setMode("follow")}
             title="Follow character selections and encounter turns"
-            className={`flex h-6 w-6 items-center justify-center rounded-md text-[9px] transition ${
+            aria-label="Follow character selections and encounter turns"
+            className={`flex h-6 w-6 items-center justify-center rounded text-[9px] transition ${
               mode === "follow"
                 ? "bg-sky-500/15 text-sky-300"
-                : "text-zinc-600 hover:text-zinc-300"
+                : "text-zinc-500 hover:text-zinc-200"
             }`}
           >
             <i className="fa-solid fa-crosshairs" />
@@ -685,26 +903,42 @@ export default function CharacterWorkspaceModule({
 
         <button
           type="button"
-          onClick={() => navigate(`/characters/${selectedCharacterDoc.id}`)}
+          onClick={() => navigate(`/characters/${displayedCharacter.id}`)}
           title="Open full character sheet"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+          aria-label="Open full character sheet"
+          className="workspace-no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
         >
-          <i className="fa-solid fa-up-right-from-square text-[9px]" />
+          <i className="fa-solid fa-up-right-from-square text-[10px]" />
         </button>
+
+        {editing ? (
+          <button
+            type="button"
+            onClick={() => removeModule(module.id)}
+            title="Remove module"
+            aria-label="Remove character module"
+            className="workspace-no-drag flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
+          >
+            <i className="fa-solid fa-xmark text-[10px]" />
+          </button>
+        ) : null}
       </div>
 
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
+        {/* Identity */}
+
         <section className="border-b border-white/10 p-3">
           <div className="flex items-start gap-3">
             <button
               type="button"
-              disabled={!selectedCharacterDoc.imageUrl}
+              disabled={!displayedCharacter.imageUrl}
               onClick={() => setPortraitOpen(true)}
               className="shrink-0 disabled:cursor-default"
+              aria-label={`Open portrait for ${displayedCharacter.name}`}
             >
               <Avatar
-                src={selectedCharacterDoc.imageUrl}
-                name={selectedCharacterDoc.name}
+                src={displayedCharacter.imageUrl}
+                name={displayedCharacter.name}
                 className="h-16 w-16 rounded-xl"
               />
             </button>
@@ -712,11 +946,11 @@ export default function CharacterWorkspaceModule({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <h2 className="truncate text-base font-bold text-white">
-                  {selectedCharacterDoc.name}
+                  {displayedCharacter.name}
                 </h2>
 
                 <span
-                  className={`rounded-full border px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${statusBadge.className}`}
+                  className={`rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${statusBadge.className}`}
                 >
                   {statusBadge.text}
                 </span>
@@ -726,17 +960,17 @@ export default function CharacterWorkspaceModule({
                 {subtitle || "Player Character"}
               </div>
 
-              {selectedCharacterDoc.ownerName ? (
-                <div className="mt-1 truncate text-[9px] text-zinc-600">
-                  Player: {selectedCharacterDoc.ownerName}
+              {displayedCharacter.ownerName ? (
+                <div className="mt-1 truncate text-[10px] text-zinc-500">
+                  Player: {displayedCharacter.ownerName}
                 </div>
               ) : null}
 
               <div className="mt-2 flex flex-wrap gap-1">
-                {selectedCharacterDoc.conditions?.map((condition) => (
+                {displayedCharacter.conditions?.map((condition) => (
                   <span
                     key={condition}
-                    className="rounded-md border border-rose-500/15 bg-rose-500/[0.07] px-1.5 py-0.5 text-[8px] font-medium text-rose-300"
+                    className="rounded-md border border-rose-500/15 bg-rose-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-rose-300"
                   >
                     {condition}
                   </span>
@@ -746,10 +980,12 @@ export default function CharacterWorkspaceModule({
           </div>
         </section>
 
+        {/* Core stats */}
+
         <section className="border-b border-white/10 p-3">
           <div className="grid grid-cols-4 gap-2">
             <div className="rounded-lg border border-rose-500/10 bg-rose-500/[0.04] p-2 text-center">
-              <div className="text-[8px] font-bold uppercase text-rose-300/60">
+              <div className="text-[9px] font-bold uppercase text-rose-300/70">
                 HP
               </div>
 
@@ -759,7 +995,7 @@ export default function CharacterWorkspaceModule({
             </div>
 
             <div className="rounded-lg border border-sky-500/10 bg-sky-500/[0.04] p-2 text-center">
-              <div className="text-[8px] font-bold uppercase text-sky-300/60">
+              <div className="text-[9px] font-bold uppercase text-sky-300/70">
                 AC
               </div>
 
@@ -769,7 +1005,7 @@ export default function CharacterWorkspaceModule({
             </div>
 
             <div className="rounded-lg border border-amber-500/10 bg-amber-500/[0.04] p-2 text-center">
-              <div className="text-[8px] font-bold uppercase text-amber-300/60">
+              <div className="text-[9px] font-bold uppercase text-amber-300/70">
                 Initiative
               </div>
 
@@ -779,7 +1015,7 @@ export default function CharacterWorkspaceModule({
             </div>
 
             <div className="rounded-lg border border-emerald-500/10 bg-emerald-500/[0.04] p-2 text-center">
-              <div className="text-[8px] font-bold uppercase text-emerald-300/60">
+              <div className="text-[9px] font-bold uppercase text-emerald-300/70">
                 Speed
               </div>
 
@@ -808,6 +1044,7 @@ export default function CharacterWorkspaceModule({
             <button
               type="button"
               onClick={() => setHp(hp.currentHp - 1)}
+              aria-label="Decrease hit points by 1"
               className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/20 text-xs text-rose-300 hover:bg-rose-500/10"
             >
               −
@@ -816,6 +1053,7 @@ export default function CharacterWorkspaceModule({
             <input
               type="number"
               value={hp.currentHp}
+              aria-label="Current hit points"
               onChange={(event) => setHp(Number(event.target.value))}
               className="h-7 w-14 rounded-md border border-white/10 bg-black/30 text-center text-xs font-semibold text-white outline-none"
             />
@@ -823,6 +1061,7 @@ export default function CharacterWorkspaceModule({
             <button
               type="button"
               onClick={() => setHp(hp.currentHp + 1)}
+              aria-label="Increase hit points by 1"
               className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/20 text-xs text-emerald-300 hover:bg-emerald-500/10"
             >
               +
@@ -830,15 +1069,17 @@ export default function CharacterWorkspaceModule({
           </div>
         </section>
 
+        {/* Ability scores */}
+
         <section className="border-b border-white/10 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-600">
+            <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-zinc-500">
               Ability Scores
             </div>
 
-            <div className="text-[9px] text-zinc-600">
+            <div className="text-[10px] text-zinc-500">
               PB{" "}
-              <span className="font-semibold text-zinc-400">
+              <span className="font-semibold text-zinc-300">
                 {formatModifier(proficiency)}
               </span>
             </div>
@@ -846,25 +1087,26 @@ export default function CharacterWorkspaceModule({
 
           <div className="grid grid-cols-6 gap-1">
             {ABILITIES.map((ability) => {
-              const score = getAbilityScore(selectedCharacterDoc, ability.id);
+              const score = getAbilityScore(displayedCharacter, ability.id);
 
               const modifier = getAbilityModifier(score);
 
               return (
                 <div
                   key={ability.id}
+                  title={`${ability.label}: ${score} (${formatModifier(modifier)})`}
                   className="rounded-lg border border-white/5 bg-white/[0.025] px-1 py-2 text-center"
                 >
-                  <div className="text-[8px] font-bold text-zinc-600">
+                  <div className="text-[9px] font-bold uppercase text-zinc-500">
                     {ability.label}
                   </div>
 
-                  <div className="mt-0.5 text-xs font-bold text-white">
-                    {score}
+                  <div className="mt-0.5 text-base font-bold leading-none text-white">
+                    {formatModifier(modifier)}
                   </div>
 
-                  <div className="text-[9px] text-zinc-400">
-                    {formatModifier(modifier)}
+                  <div className="mt-1 text-[9px] font-medium leading-none text-zinc-500">
+                    {score}
                   </div>
                 </div>
               );
@@ -872,10 +1114,13 @@ export default function CharacterWorkspaceModule({
           </div>
         </section>
 
+        {/* Conditions */}
+
         <section className="border-b border-white/10">
           <button
             type="button"
             onClick={() => setConditionsOpen((current) => !current)}
+            aria-expanded={conditionsOpen}
             className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-white/[0.025]"
           >
             <i className="fa-solid fa-heart-pulse w-4 text-[10px] text-rose-400" />
@@ -884,12 +1129,12 @@ export default function CharacterWorkspaceModule({
               Conditions
             </span>
 
-            <span className="text-[9px] text-zinc-600">
-              {selectedCharacterDoc.conditions?.length ?? 0}
+            <span className="text-[10px] text-zinc-500">
+              {displayedCharacter.conditions?.length ?? 0}
             </span>
 
             <i
-              className={`fa-solid fa-chevron-down text-[8px] text-zinc-600 transition ${
+              className={`fa-solid fa-chevron-down text-[9px] text-zinc-500 transition ${
                 conditionsOpen ? "rotate-180" : ""
               }`}
             />
@@ -899,16 +1144,16 @@ export default function CharacterWorkspaceModule({
             <div className="grid grid-cols-2 gap-1.5 border-t border-white/5 p-2">
               {ALL_CONDITIONS.map((condition) => {
                 const active =
-                  selectedCharacterDoc.conditions?.includes(condition) ?? false;
+                  displayedCharacter.conditions?.includes(condition) ?? false;
 
                 return (
                   <button
                     key={condition}
                     type="button"
                     onClick={() =>
-                      toggleCondition(selectedCharacterDoc, condition)
+                      toggleCondition(displayedCharacter, condition)
                     }
-                    className={`rounded-md border px-2 py-1.5 text-left text-[9px] font-medium transition ${
+                    className={`rounded-md border px-2 py-1.5 text-left text-[10px] font-medium transition ${
                       active
                         ? "border-rose-500/20 bg-rose-500/10 text-rose-300"
                         : "border-white/5 bg-white/[0.025] text-zinc-500 hover:bg-white/[0.06] hover:text-zinc-300"
@@ -922,10 +1167,13 @@ export default function CharacterWorkspaceModule({
           ) : null}
         </section>
 
+        {/* Equipment */}
+
         <section className="border-b border-white/10">
           <button
             type="button"
             onClick={() => setEquipmentOpen((current) => !current)}
+            aria-expanded={equipmentOpen}
             className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-white/[0.025]"
           >
             <i className="fa-solid fa-backpack w-4 text-[10px] text-amber-400" />
@@ -934,10 +1182,12 @@ export default function CharacterWorkspaceModule({
               Equipment
             </span>
 
-            <span className="text-[9px] text-zinc-600">{equipment.length}</span>
+            <span className="text-[10px] text-zinc-500">
+              {equipment.length}
+            </span>
 
             <i
-              className={`fa-solid fa-chevron-down text-[8px] text-zinc-600 transition ${
+              className={`fa-solid fa-chevron-down text-[9px] text-zinc-500 transition ${
                 equipmentOpen ? "rotate-180" : ""
               }`}
             />
@@ -946,7 +1196,7 @@ export default function CharacterWorkspaceModule({
           {equipmentOpen ? (
             <div className="border-t border-white/5">
               {equipment.length === 0 ? (
-                <div className="p-3 text-xs text-zinc-600">No equipment.</div>
+                <div className="p-3 text-xs text-zinc-500">No equipment.</div>
               ) : (
                 equipment.map((item) => (
                   <div
@@ -954,18 +1204,18 @@ export default function CharacterWorkspaceModule({
                     className="flex items-center gap-2 border-b border-white/5 px-3 py-2 last:border-b-0"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[10px] font-medium text-zinc-300">
+                      <div className="truncate text-[11px] font-medium text-zinc-300">
                         {item.name}
                       </div>
 
-                      <div className="mt-0.5 text-[8px] text-zinc-600">
+                      <div className="mt-0.5 text-[9px] text-zinc-500">
                         Qty {item.quantity}
                         {item.equipped ? " · Equipped" : ""}
                       </div>
                     </div>
 
                     {item.equipped ? (
-                      <i className="fa-solid fa-shield-halved text-[8px] text-emerald-400" />
+                      <i className="fa-solid fa-shield-halved text-[9px] text-emerald-400" />
                     ) : null}
                   </div>
                 ))
@@ -974,19 +1224,21 @@ export default function CharacterWorkspaceModule({
           ) : null}
         </section>
 
+        {/* XP / Money */}
+
         <section className="grid grid-cols-2 gap-2 p-3">
           <div className="rounded-lg border border-white/5 bg-white/[0.025] p-2">
-            <div className="text-[8px] font-bold uppercase text-zinc-600">
+            <div className="text-[9px] font-bold uppercase text-zinc-500">
               XP
             </div>
 
             <div className="mt-0.5 text-xs font-semibold text-zinc-300">
-              {selectedCharacterDoc.xp ?? 0}
+              {displayedCharacter.xp ?? 0}
             </div>
           </div>
 
           <div className="rounded-lg border border-white/5 bg-white/[0.025] p-2">
-            <div className="text-[8px] font-bold uppercase text-zinc-600">
+            <div className="text-[9px] font-bold uppercase text-zinc-500">
               Money
             </div>
 
@@ -995,7 +1247,7 @@ export default function CharacterWorkspaceModule({
             </div>
           </div>
 
-          {selectedCharacterDoc.levelUpAvailable ? (
+          {displayedCharacter.levelUpAvailable ? (
             <div className="col-span-2 rounded-lg border border-amber-500/15 bg-amber-500/[0.05] px-2.5 py-2 text-[10px] font-semibold text-amber-300">
               <i className="fa-solid fa-arrow-up mr-1.5" />
               Level up available
@@ -1004,7 +1256,9 @@ export default function CharacterWorkspaceModule({
         </section>
       </div>
 
-      {portraitOpen && selectedCharacterDoc.imageUrl ? (
+      {/* Portrait viewer */}
+
+      {portraitOpen && displayedCharacter.imageUrl ? (
         <div
           className="workspace-no-drag absolute inset-0 z-50 flex items-center justify-center bg-black/85 p-3"
           onMouseDown={() => setPortraitOpen(false)}
@@ -1012,14 +1266,15 @@ export default function CharacterWorkspaceModule({
           <button
             type="button"
             onClick={() => setPortraitOpen(false)}
+            aria-label="Close portrait"
             className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-zinc-300 hover:text-white"
           >
             <i className="fa-solid fa-xmark" />
           </button>
 
           <img
-            src={selectedCharacterDoc.imageUrl}
-            alt={selectedCharacterDoc.name}
+            src={displayedCharacter.imageUrl}
+            alt={displayedCharacter.name}
             onMouseDown={(event) => event.stopPropagation()}
             className="max-h-full max-w-full rounded-xl object-contain shadow-2xl"
           />

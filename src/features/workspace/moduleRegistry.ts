@@ -51,22 +51,29 @@ export const MODULE_REGISTRY: Record<
   ModuleDefinition
 > = {
   map: {
-  type: "map",
-  title: "Map",
-  description:
-    "Campaign map, areas, environment and location controls.",
-  icon: "fa-solid fa-map",
+    type: "map",
 
-  component: MapWorkspaceModule,
+    title: "Map",
 
-  showHeader: false,
+    description:
+      "Campaign map, areas, environment and location controls.",
 
-  defaultW: 14,
-  defaultH: 20,
+    icon:
+      "fa-solid fa-map",
 
-  minW: 6,
-  minH: 6,
-},
+    component:
+      MapWorkspaceModule,
+
+    showHeader: false,
+
+    defaultW: 14,
+
+    defaultH: 20,
+
+    minW: 6,
+
+    minH: 6,
+  },
 
   encounter: {
     type: "encounter",
@@ -163,16 +170,25 @@ export const MODULE_REGISTRY: Record<
 
     minH: 5,
 
-    showHeader: true,
+    /*
+     * Character owns its own integrated header.
+     *
+     * The selected character name replaces the generic
+     * "Character" title and the pin/follow/open controls
+     * live in the same bar.
+     */
+    showHeader: false,
 
     component:
       CharacterWorkspaceModule,
   },
 
   randomEncounter: {
-    type: "randomEncounter",
+    type:
+      "randomEncounter",
 
-    title: "Random Encounter",
+    title:
+      "Random Encounter",
 
     description:
       "Roll campaign-specific combat encounters, events and discoveries.",
