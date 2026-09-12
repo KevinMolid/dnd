@@ -122,14 +122,6 @@ export const warlock: CharacterClass = {
         "Spells that another Warlock feature says are always prepared do not count against this limit.",
       ],
     },
-    recommendedCantrips: [
-      { spellId: "eldritch-blast", spellLevel: 0 },
-      { spellId: "prestidigitation", spellLevel: 0 },
-    ],
-    recommendedSpells: [
-      { spellId: "charm-person", spellLevel: 1 },
-      { spellId: "hex", spellLevel: 1 },
-    ],
     notes: [
       "You regain all expended Pact Magic spell slots when you finish a Short or Long Rest.",
       "All your Pact Magic spell slots are the same level, as shown in the Warlock Features table.",
