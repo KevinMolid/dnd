@@ -6,10 +6,9 @@ import { cleric } from "./classes/cleric";
 import { druid } from "./classes/druid";
 import { fighter } from "./classes/fighter";
 import { paladin } from "./classes/paladin";
+import { ranger } from "./classes/ranger";
 import { rogue } from "./classes/rogue";
 import { wizard } from "./classes/wizard";
-
-// add more
 
 export const classes: CharacterClass[] = [
   barbarian,
@@ -18,6 +17,7 @@ export const classes: CharacterClass[] = [
   druid,
   fighter,
   paladin,
+  ranger,
   rogue,
   wizard,
 ];
