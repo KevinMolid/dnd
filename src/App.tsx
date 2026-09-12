@@ -16,6 +16,7 @@ import NewCharacter from "./pages/NewCharacter.tsx";
 import CharacterSheet from "./pages/CharacterSheet";
 import NewCampaign from "./pages/NewCampaign";
 import CampaignPage from "./pages/CampaignPage";
+import CampaignLayout from "./pages/CampaignLayout";
 import InvitePage from "./pages/InvitePage";
 import CampaignMembersPage from "./pages/CampaignMembersPage";
 import CampaignCharactersPage from "./pages/CampaignCharactersPage";
@@ -57,13 +58,6 @@ function CampaignEncounterScope({ children }: { children: ReactNode }) {
     return <div className="p-6 text-rose-400">No campaign selected.</div>;
   }
 
-  /*
-   * key forces React to create a completely new
-   * EncounterProvider when changing campaigns.
-   *
-   * Campaign A and Campaign B can therefore never
-   * accidentally retain the same in-memory encounter.
-   */
   return (
     <EncounterProvider key={campaignId} campaignId={campaignId}>
       {children}
@@ -75,7 +69,6 @@ function App() {
   const { user, loading } = useAuth();
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
-
   const [authMode, setAuthMode] = useState<AuthModalMode>("login");
 
   const authModalTitle = useMemo(() => {
@@ -127,53 +120,39 @@ function App() {
               <Route index element={<Home />} />
 
               <Route path="/profile" element={<ProfileSettingsPage />} />
-
               <Route path="tips" element={<Tips />} />
-
               <Route path="reglene" element={<Reglene />} />
-
               <Route path="karakterer" element={<Karakterer />} />
-
               <Route path="stats" element={<Stats />} />
-
               <Route path="/quests" element={<Quests />} />
 
               <Route path="/characters/new" element={<NewCharacter />} />
-
               <Route
                 path="/characters/:characterId"
                 element={<CharacterSheet />}
               />
-
               <Route
                 path="/characters/:characterId/edit"
                 element={<EditCharacter />}
               />
 
               <Route path="/campaigns/new" element={<NewCampaign />} />
-
-              <Route path="/campaigns/:campaignId" element={<CampaignPage />} />
-
               <Route path="/invite/:inviteToken" element={<InvitePage />} />
 
-              <Route
-                path="/campaigns/:campaignId/members"
-                element={<CampaignMembersPage />}
-              />
+              {/* Player-facing campaign shell */}
+              <Route path="/campaigns/:campaignId" element={<CampaignLayout />}>
+                <Route index element={<CampaignPage />} />
+                <Route path="handouts" element={<HandoutsPage />} />
+                <Route path="characters" element={<CampaignCharactersPage />} />
+                <Route path="journal" element={<CampaignJournalPage />} />
+                <Route path="maps" element={<CampaignMapsPage />} />
+                <Route path="members" element={<CampaignMembersPage />} />
+              </Route>
 
-              <Route
-                path="/campaigns/:campaignId/characters"
-                element={<CampaignCharactersPage />}
-              />
-
+              {/* Full-page campaign tools */}
               <Route
                 path="/campaigns/:campaignId/settings"
                 element={<CampaignSettingsPage />}
-              />
-
-              <Route
-                path="/campaigns/:campaignId/maps"
-                element={<CampaignMapsPage />}
               />
 
               <Route
@@ -186,22 +165,12 @@ function App() {
               />
 
               <Route
-                path="/campaigns/:campaignId/journal"
-                element={<CampaignJournalPage />}
-              />
-
-              <Route
                 path="/campaigns/:campaignId/encounter"
                 element={
                   <CampaignEncounterScope>
                     <Encounter />
                   </CampaignEncounterScope>
                 }
-              />
-
-              <Route
-                path="/campaigns/:campaignId/handouts"
-                element={<HandoutsPage />}
               />
 
               <Route

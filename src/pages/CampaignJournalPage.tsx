@@ -358,7 +358,7 @@ const CampaignJournalPage = () => {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+          <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
             <p className="text-sm text-zinc-400">Loading journal...</p>
           </div>
         </div>
@@ -370,7 +370,7 @@ const CampaignJournalPage = () => {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
         <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+          <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
             <h1 className="text-2xl font-bold text-white">
               Campaign not found
             </h1>
@@ -395,7 +395,7 @@ const CampaignJournalPage = () => {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
         <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
+          <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
             <h1 className="text-2xl font-bold text-white">Access denied</h1>
             <p className="mt-3 text-sm text-zinc-400">
               You do not have access to this campaign.
@@ -447,168 +447,106 @@ const CampaignJournalPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-7xl py-6 sm:py-8">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <Link
-            to={`/campaigns/${campaign.id}`}
-            className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-white">Journal</h2>
+
+        {isGm ? (
+          <button
+            type="button"
+            onClick={openCreateEditor}
+            className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
           >
-            ← Back to campaign
-          </Link>
+            New journal entry
+          </button>
+        ) : null}
+      </div>
 
-          {isGm && (
-            <button
-              onClick={openCreateEditor}
-              className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-            >
-              New journal entry
-            </button>
-          )}
-        </div>
-
-        <section className="mb-6 rounded-3xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-6 shadow-2xl sm:p-8">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                Campaign journal
-              </p>
-
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                {campaign.name}
-              </h1>
-
-              <p className="mt-3 text-sm leading-6 text-zinc-400 sm:text-base">
-                Keep track of sessions, lore, quests, and notes.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <div className="mb-6 grid grid-cols-1 gap-3 rounded-3xl border border-white/10 bg-white/5 p-4 md:grid-cols-4">
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-sm text-zinc-300">Search</label>
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search title, content, or tags..."
-              className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm text-zinc-300">Type</label>
-            <select
-              value={typeFilter}
-              onChange={(e) =>
-                setTypeFilter(e.target.value as JournalEntryType | "all")
-              }
-              className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
-            >
-              <option value="all">All</option>
-              {JOURNAL_ENTRY_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {getJournalTypeLabel(type)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm text-zinc-300">Sort</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
-            >
-              <option value="updatedDesc">Recently updated</option>
-              <option value="updatedAsc">Oldest updated</option>
-              <option value="sessionAsc">Session number ↑</option>
-              <option value="sessionDesc">Session number ↓</option>
-              <option value="titleAsc">Title A–Z</option>
-            </select>
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-zinc-300 md:col-span-4">
-            <input
-              type="checkbox"
-              checked={onlyPinned}
-              onChange={(e) => setOnlyPinned(e.target.checked)}
-            />
-            Only show pinned entries
+      <div className="mb-3 grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-zinc-900/35 p-3 md:grid-cols-4">
+        <div className="md:col-span-2">
+          <label className="mb-1 block text-[10px] font-medium text-zinc-400">
+            Search
           </label>
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search title, content, or tags..."
+            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
+          />
         </div>
 
-        {journalLoading ? (
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <p className="text-sm text-zinc-400">Loading entries...</p>
-          </div>
-        ) : filteredEntries.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-white/15 bg-white/5 p-8 text-center">
-            <h2 className="text-lg font-semibold text-white">
-              No journal entries
-            </h2>
-            <p className="mt-2 text-sm text-zinc-400">
-              {isGm
-                ? "Create your first entry to start documenting the campaign."
-                : "There are no journal entries available for you yet."}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-8">
-            {pinnedEntries.length > 0 && (
-              <section>
-                <h2 className="mb-3 text-lg font-semibold text-white">
-                  Pinned
-                </h2>
-                <div className="space-y-4">
-                  {pinnedEntries.map((entry) => (
-                    <article
-                      key={entry.id}
-                      className="rounded-3xl border border-amber-400/20 bg-white/5 p-5 shadow-xl"
-                    >
-                      <EntryCardHeader
-                        entry={entry}
-                        isGm={isGm}
-                        selectedPlayerNames={getSelectedPlayerNames(entry)}
-                        onEdit={() => openEditEditor(entry)}
-                        onDelete={() => handleDelete(entry)}
-                        onTogglePinned={() => handleTogglePinned(entry)}
-                        onTogglePublished={() => handleTogglePublished(entry)}
-                      />
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-zinc-400">
+            Type
+          </label>
+          <select
+            value={typeFilter}
+            onChange={(e) =>
+              setTypeFilter(e.target.value as JournalEntryType | "all")
+            }
+            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
+          >
+            <option value="all">All</option>
+            {JOURNAL_ENTRY_TYPES.map((type) => (
+              <option key={type} value={type}>
+                {getJournalTypeLabel(type)}
+              </option>
+            ))}
+          </select>
+        </div>
 
-                      <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-200">
-                        {entry.content}
-                      </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-medium text-zinc-400">
+            Sort
+          </label>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
+          >
+            <option value="updatedDesc">Recently updated</option>
+            <option value="updatedAsc">Oldest updated</option>
+            <option value="sessionAsc">Session number ↑</option>
+            <option value="sessionDesc">Session number ↓</option>
+            <option value="titleAsc">Title A–Z</option>
+          </select>
+        </div>
 
-                      {entry.tags.length > 0 && (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {entry.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="rounded-full border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-zinc-300"
-                            >
-                              #{tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </article>
-                  ))}
-                </div>
-              </section>
-            )}
+        <label className="flex items-center gap-2 text-sm text-zinc-300 md:col-span-4">
+          <input
+            type="checkbox"
+            checked={onlyPinned}
+            onChange={(e) => setOnlyPinned(e.target.checked)}
+          />
+          Only show pinned entries
+        </label>
+      </div>
 
+      {journalLoading ? (
+        <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
+          <p className="text-sm text-zinc-400">Loading entries...</p>
+        </div>
+      ) : filteredEntries.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-white/10 bg-zinc-900/25 p-6 text-center">
+          <h2 className="text-lg font-semibold text-white">
+            No journal entries
+          </h2>
+          <p className="mt-2 text-sm text-zinc-400">
+            {isGm
+              ? "Create your first entry to start documenting the campaign."
+              : "There are no journal entries available for you yet."}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {pinnedEntries.length > 0 && (
             <section>
-              <h2 className="mb-3 text-lg font-semibold text-white">
-                {onlyPinned ? "Pinned entries" : "Entries"}
-              </h2>
-
+              <h2 className="mb-3 text-lg font-semibold text-white">Pinned</h2>
               <div className="space-y-4">
-                {regularEntries.map((entry) => (
+                {pinnedEntries.map((entry) => (
                   <article
                     key={entry.id}
-                    className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl"
+                    className="rounded-xl border border-amber-400/20 bg-zinc-900/35 p-4"
                   >
                     <EntryCardHeader
                       entry={entry}
@@ -640,9 +578,51 @@ const CampaignJournalPage = () => {
                 ))}
               </div>
             </section>
-          </div>
-        )}
-      </div>
+          )}
+
+          <section>
+            <h2 className="mb-3 text-lg font-semibold text-white">
+              {onlyPinned ? "Pinned entries" : "Entries"}
+            </h2>
+
+            <div className="space-y-4">
+              {regularEntries.map((entry) => (
+                <article
+                  key={entry.id}
+                  className="rounded-xl border border-white/10 bg-zinc-900/35 p-4"
+                >
+                  <EntryCardHeader
+                    entry={entry}
+                    isGm={isGm}
+                    selectedPlayerNames={getSelectedPlayerNames(entry)}
+                    onEdit={() => openEditEditor(entry)}
+                    onDelete={() => handleDelete(entry)}
+                    onTogglePinned={() => handleTogglePinned(entry)}
+                    onTogglePublished={() => handleTogglePublished(entry)}
+                  />
+
+                  <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-200">
+                    {entry.content}
+                  </div>
+
+                  {entry.tags.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {entry.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-zinc-300"
+                        >
+                          #{tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
 
       {editorOpen && isGm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
@@ -667,7 +647,7 @@ const CampaignJournalPage = () => {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm text-zinc-300">
+                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
                   Title
                 </label>
                 <input
@@ -675,12 +655,14 @@ const CampaignJournalPage = () => {
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, title: e.target.value }))
                   }
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm text-zinc-300">Type</label>
+                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
+                  Type
+                </label>
                 <select
                   value={form.type}
                   onChange={(e) =>
@@ -689,7 +671,7 @@ const CampaignJournalPage = () => {
                       type: e.target.value as JournalEntryType,
                     }))
                   }
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
                 >
                   {JOURNAL_ENTRY_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -700,7 +682,7 @@ const CampaignJournalPage = () => {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm text-zinc-300">
+                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
                   Visibility
                 </label>
                 <select
@@ -711,7 +693,7 @@ const CampaignJournalPage = () => {
                       visibility: e.target.value as JournalEntry["visibility"],
                     }))
                   }
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
                 >
                   <option value="dm">DM only</option>
                   <option value="allPlayers">All players</option>
@@ -720,7 +702,7 @@ const CampaignJournalPage = () => {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm text-zinc-300">
+                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
                   Session number
                 </label>
                 <input
@@ -734,12 +716,12 @@ const CampaignJournalPage = () => {
                         : null,
                     }))
                   }
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm text-zinc-300">
+                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
                   Session date
                 </label>
                 <input
@@ -751,19 +733,21 @@ const CampaignJournalPage = () => {
                       sessionDate: e.target.value || null,
                     }))
                   }
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm text-zinc-300">Tags</label>
+                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
+                  Tags
+                </label>
                 <input
                   value={form.tagsText}
                   onChange={(e) =>
                     setForm((prev) => ({ ...prev, tagsText: e.target.value }))
                   }
                   placeholder="e.g. Phandalin, Redbrands, Goblins"
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
                 />
               </div>
 
@@ -814,7 +798,7 @@ const CampaignJournalPage = () => {
               )}
 
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm text-zinc-300">
+                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
                   Content
                 </label>
                 <textarea
@@ -823,7 +807,7 @@ const CampaignJournalPage = () => {
                     setForm((prev) => ({ ...prev, content: e.target.value }))
                   }
                   rows={12}
-                  className="w-full rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-white outline-none focus:border-white/20"
+                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
                   placeholder={`Summary:
 - 
 

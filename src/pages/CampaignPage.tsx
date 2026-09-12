@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   addDoc,
   collection,
@@ -15,7 +15,6 @@ import AwardXpModal from "../components/awardXpModal";
 import RewardItemsModal from "../features/campaigns/components/RewardItemsModal";
 import CreateCampaignItemModal from "../features/campaigns/components/CreateCampaignItemModal";
 
-import CampaignHeader from "../features/campaigns/components/CampaignHeader";
 import CampaignMembersSection from "../features/campaigns/components/CampaignMembersSection";
 import CampaignQuickActions from "../features/campaigns/components/CampaignQuickActions";
 import PartyControlSection from "../features/campaigns/components/PartyControlSection";
@@ -31,15 +30,12 @@ import type {
 
 const CampaignPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
-  const navigate = useNavigate();
-
   const {
     user,
     pageState,
     campaign,
     membership,
     isGm,
-    systemLabel,
     campaignCharacters,
     members,
     membersLoading,
@@ -272,72 +268,62 @@ const CampaignPage = () => {
   }));
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-7xl py-6 sm:py-8">
-        <CampaignHeader
-          campaign={campaign}
-          membership={membership}
-          systemLabel={systemLabel}
-          isGm={isGm}
-          onOpenSettings={() => navigate(`/campaigns/${campaign.id}/settings`)}
-        />
-
-        {createCustomItemError && (
-          <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {createCustomItemError}
-          </div>
-        )}
-
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
-          <div className="space-y-3">
-            {isGm && (
-              <CampaignQuickActions
-                campaignId={campaign.id}
-                isGm={isGm}
-                onCreateHandout={() => setCreateHandoutOpen(true)}
-                onRewardItems={() => setRewardItemsOpen(true)}
-                onCreateCustomItem={() => {
-                  setCreateCustomItemError("");
-                  setCreateCustomItemOpen(true);
-                }}
-              />
-            )}
-
-            <PartyControlSection
-              characters={activeCampaignCharacters}
-              isGm={isGm}
-              currentUserId={user?.uid ?? null}
-              onOpenLevelUp={setLevelUpCharacter}
-              onOpenAwardXpModal={() => setXpModalOpen(true)}
-              onUpdateCharacter={updateCharacter}
-              onUpdateCharacterXp={updateCharacterXp}
-              onToggleCondition={toggleCondition}
-            />
-
-            {myInactiveCampaignCharacters.length > 0 && (
-              <InactiveOwnedCharactersSection
-                characters={myInactiveCampaignCharacters}
-                loading={false}
-                onActivateCharacter={handleSetCharacterActive}
-              />
-            )}
-          </div>
-
-          <aside className="space-y-3">
-            <CampaignRecentActivitySection
-              campaignId={campaign.id}
-              loading={latestJournalEntryLoading}
-              latestJournalEntry={latestJournalEntry}
-            />
-
-            <CampaignMembersSection
-              members={members}
-              loading={membersLoading}
-              isGm={isGm}
-              onInvitePlayers={() => setInviteModalOpen(true)}
-            />
-          </aside>
+    <>
+      {createCustomItemError && (
+        <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {createCustomItemError}
         </div>
+      )}
+
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
+        <div className="space-y-3">
+          {isGm && (
+            <CampaignQuickActions
+              campaignId={campaign.id}
+              isGm={isGm}
+              onCreateHandout={() => setCreateHandoutOpen(true)}
+              onRewardItems={() => setRewardItemsOpen(true)}
+              onCreateCustomItem={() => {
+                setCreateCustomItemError("");
+                setCreateCustomItemOpen(true);
+              }}
+            />
+          )}
+
+          <PartyControlSection
+            characters={activeCampaignCharacters}
+            isGm={isGm}
+            currentUserId={user?.uid ?? null}
+            onOpenLevelUp={setLevelUpCharacter}
+            onOpenAwardXpModal={() => setXpModalOpen(true)}
+            onUpdateCharacter={updateCharacter}
+            onUpdateCharacterXp={updateCharacterXp}
+            onToggleCondition={toggleCondition}
+          />
+
+          {myInactiveCampaignCharacters.length > 0 && (
+            <InactiveOwnedCharactersSection
+              characters={myInactiveCampaignCharacters}
+              loading={false}
+              onActivateCharacter={handleSetCharacterActive}
+            />
+          )}
+        </div>
+
+        <aside className="space-y-3">
+          <CampaignRecentActivitySection
+            campaignId={campaign.id}
+            loading={latestJournalEntryLoading}
+            latestJournalEntry={latestJournalEntry}
+          />
+
+          <CampaignMembersSection
+            members={members}
+            loading={membersLoading}
+            isGm={isGm}
+            onInvitePlayers={() => setInviteModalOpen(true)}
+          />
+        </aside>
       </div>
 
       {campaign && isGm && (
@@ -401,7 +387,7 @@ const CampaignPage = () => {
           players={playerOptions}
         />
       ) : null}
-    </div>
+    </>
   );
 };
 

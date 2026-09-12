@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   collection,
   deleteDoc,
@@ -314,250 +314,265 @@ const CampaignMembersPage = () => {
   };
 
   if (pageState === "loading") {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <p className="text-sm text-zinc-400">Loading members...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageMessage>Loading members…</PageMessage>;
   }
 
   if (pageState === "not-found") {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <h1 className="text-2xl font-bold text-white">
-              Campaign not found
-            </h1>
-            <p className="mt-3 text-sm text-zinc-400">
-              The campaign you tried to open does not exist.
-            </p>
-            <div className="mt-6">
-              <Link
-                to="/"
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Back to home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageMessage>Campaign not found.</PageMessage>;
   }
 
   if (pageState === "forbidden") {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
-            <h1 className="text-2xl font-bold text-white">Access denied</h1>
-            <p className="mt-3 text-sm text-zinc-400">
-              You do not have access to this campaign.
-            </p>
-            <div className="mt-6">
-              <Link
-                to="/"
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Back to home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageMessage>You do not have access to this campaign.</PageMessage>;
   }
 
   if (pageState === "error" || !campaign || !myMembership) {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center">
-            <h1 className="text-2xl font-bold text-white">
-              Something went wrong
-            </h1>
-            <p className="mt-3 text-sm text-red-200/80">
-              We could not load the members page right now.
-            </p>
-            <div className="mt-6">
-              <Link
-                to="/"
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Back to home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageMessage error>Could not load campaign members.</PageMessage>;
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Link
-              to={`/campaigns/${campaign.id}`}
-              className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
-            >
-              ← Back to campaign
-            </Link>
+    <>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-white">Players</h2>
 
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
-              Members
-            </h1>
+        {isGm ? (
+          <button
+            type="button"
+            onClick={() => setInviteModalOpen(true)}
+            className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+          >
+            Invite players
+          </button>
+        ) : null}
+      </div>
 
-            <p className="mt-2 text-sm text-zinc-400">
-              Manage players, roles, and invite links for{" "}
-              <span className="font-medium text-white">{campaign.name}</span>.
-            </p>
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,0.85fr)]">
+        <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-white">
+              Campaign members
+            </h3>
+
+            <span className="text-[10px] text-zinc-500">
+              {members.length} member{members.length === 1 ? "" : "s"}
+            </span>
           </div>
 
-          {isGm && (
-            <button
-              onClick={() => setInviteModalOpen(true)}
-              className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-            >
-              Invite players
-            </button>
+          {membersLoading ? (
+            <EmptyState>Loading members…</EmptyState>
+          ) : members.length === 0 ? (
+            <EmptyState>No members found.</EmptyState>
+          ) : (
+            <div className="space-y-1.5">
+              {members.map((member) => {
+                const isOwner = member.uid === campaign.ownerUid;
+                const isSelf = user?.uid === member.uid;
+                const canEditRole =
+                  isGm && !isOwner && !isSelf && member.role !== "gm";
+                const canRemove = isGm && !isOwner && !isSelf;
+
+                return (
+                  <div
+                    key={member.id}
+                    className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5 transition hover:border-white/15 hover:bg-white/[0.025]"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar
+                          name={
+                            member.displayName || member.email || member.uid
+                          }
+                          src={member.imageUrl || ""}
+                          className="h-10 w-10 shrink-0 rounded-full"
+                        />
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h4 className="truncate text-xs font-semibold text-white">
+                              {member.displayName || member.email || member.uid}
+                            </h4>
+
+                            <span
+                              className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${getRoleBadgeClass(
+                                member.role,
+                              )}`}
+                            >
+                              {formatRoleLabel(member.role)}
+                            </span>
+
+                            {isOwner ? (
+                              <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-500">
+                                Owner
+                              </span>
+                            ) : null}
+
+                            {isSelf ? (
+                              <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] text-sky-300">
+                                You
+                              </span>
+                            ) : null}
+                          </div>
+
+                          <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                            {member.email || member.uid}
+                          </p>
+
+                          <p className="mt-0.5 text-[9px] text-zinc-600">
+                            Joined {formatDateTime(member.joinedAt)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {isGm && (canEditRole || canRemove) ? (
+                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                          {canEditRole ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSetRole(
+                                  member,
+                                  member.role === "player" ? "co-gm" : "player",
+                                )
+                              }
+                              disabled={busyKey === `role-${member.id}`}
+                              className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
+                            >
+                              {member.role === "player"
+                                ? "Make co-GM"
+                                : "Set as player"}
+                            </button>
+                          ) : null}
+
+                          {canRemove ? (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMember(member)}
+                              disabled={busyKey === `remove-${member.id}`}
+                              className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
+                            >
+                              Remove
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
-        </div>
+        </section>
 
-        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-white sm:text-2xl">
-                  Campaign members
-                </h2>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Everyone who currently has access to this campaign.
-                </p>
-              </div>
+        <aside className="space-y-3">
+          <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-white">Your access</h3>
 
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">
-                {members.length} member{members.length === 1 ? "" : "s"}
-              </div>
+              <span
+                className={`rounded-md px-2 py-0.5 text-[9px] font-semibold ${getRoleBadgeClass(
+                  myMembership.role,
+                )}`}
+              >
+                {formatRoleLabel(myMembership.role)}
+              </span>
+            </div>
+          </section>
+
+          <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-semibold text-white">
+                Active invites
+              </h3>
+
+              <span className="text-[10px] text-zinc-500">
+                {activeInvites.length}
+              </span>
             </div>
 
-            {membersLoading ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
-                <p className="text-sm text-zinc-400">Loading members...</p>
+            {invitesLoading ? (
+              <div className="mt-3">
+                <EmptyState>Loading invites…</EmptyState>
               </div>
-            ) : members.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
-                <p className="text-sm text-zinc-300">No members found.</p>
+            ) : activeInvites.length === 0 ? (
+              <div className="mt-3">
+                <EmptyState>No active invites.</EmptyState>
+
+                {isGm ? (
+                  <button
+                    type="button"
+                    onClick={() => setInviteModalOpen(true)}
+                    className="mt-2 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                  >
+                    Create invite
+                  </button>
+                ) : null}
               </div>
             ) : (
-              <div className="space-y-3">
-                {members.map((member) => {
-                  const isOwner = member.uid === campaign.ownerUid;
-                  const isSelf = user?.uid === member.uid;
-                  const canEditRole =
-                    isGm && !isOwner && !isSelf && member.role !== "gm";
-                  const canRemove = isGm && !isOwner && !isSelf;
+              <div className="mt-3 space-y-1.5">
+                {activeInvites.map((invite) => {
+                  const remainingUses =
+                    typeof invite.maxUses === "number"
+                      ? Math.max(0, invite.maxUses - invite.useCount)
+                      : null;
+
+                  const inviteUrl = `${window.location.origin}/invite/${invite.id}`;
 
                   return (
                     <div
-                      key={member.id}
-                      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
+                      key={invite.id}
+                      className="rounded-lg border border-white/[0.08] bg-black/15 p-2.5"
                     >
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div className="min-w-0 flex items-center gap-3">
-                          <Avatar
-                            name={
-                              member.displayName || member.email || member.uid
-                            }
-                            src={member.imageUrl || ""}
-                            size="lg"
-                          />
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-400">
+                          {formatRoleLabel(invite.role)}
+                        </span>
 
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-semibold text-white sm:text-lg">
-                                {member.displayName ||
-                                  member.email ||
-                                  member.uid}
-                              </h3>
+                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-500">
+                          {invite.useCount}
+                          {typeof invite.maxUses === "number"
+                            ? `/${invite.maxUses} used`
+                            : " used"}
+                        </span>
 
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
-                                  member.role,
-                                )}`}
-                              >
-                                {formatRoleLabel(member.role)}
-                              </span>
-
-                              {isOwner && (
-                                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                                  Owner
-                                </span>
-                              )}
-
-                              {isSelf && (
-                                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                                  You
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="mt-2 text-sm text-zinc-400">
-                              {member.email || member.uid}
-                            </p>
-
-                            <p className="mt-1 text-xs text-zinc-500">
-                              Joined {formatDateTime(member.joinedAt)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {isGm && (
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            {canEditRole && (
-                              <>
-                                {member.role === "player" ? (
-                                  <button
-                                    onClick={() =>
-                                      handleSetRole(member, "co-gm")
-                                    }
-                                    disabled={busyKey === `role-${member.id}`}
-                                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    Make co-GM
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() =>
-                                      handleSetRole(member, "player")
-                                    }
-                                    disabled={busyKey === `role-${member.id}`}
-                                    className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                                  >
-                                    Set as player
-                                  </button>
-                                )}
-                              </>
-                            )}
-
-                            {canRemove && (
-                              <button
-                                onClick={() => handleRemoveMember(member)}
-                                disabled={busyKey === `remove-${member.id}`}
-                                className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-200 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Remove
-                              </button>
-                            )}
-                          </div>
-                        )}
+                        {remainingUses !== null ? (
+                          <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-500">
+                            {remainingUses} left
+                          </span>
+                        ) : null}
                       </div>
+
+                      <p
+                        className="mt-2 truncate text-[9px] text-zinc-600"
+                        title={inviteUrl}
+                      >
+                        {inviteUrl}
+                      </p>
+
+                      <p className="mt-1 text-[9px] text-zinc-600">
+                        Created {formatDateTime(invite.createdAt)}
+                      </p>
+
+                      {isGm ? (
+                        <div className="mt-2 flex gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigator.clipboard.writeText(inviteUrl)
+                            }
+                            className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[9px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                          >
+                            Copy
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRevokeInvite(invite)}
+                            disabled={busyKey === `invite-${invite.id}`}
+                            className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2 py-1 text-[9px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
+                          >
+                            Revoke
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   );
                 })}
@@ -565,189 +580,73 @@ const CampaignMembersPage = () => {
             )}
           </section>
 
-          <aside className="space-y-6">
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-              <h2 className="text-xl font-semibold text-white">Your access</h2>
-              <p className="mt-1 text-sm text-zinc-400">
-                Your current role in this campaign.
-              </p>
-
-              <div className="mt-5 rounded-2xl border border-white/10 bg-zinc-900/70 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm text-zinc-400">Role</p>
-                    <p className="mt-1 text-base font-semibold text-white">
-                      {formatRoleLabel(myMembership.role)}
-                    </p>
-                  </div>
-
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${getRoleBadgeClass(
-                      myMembership.role,
-                    )}`}
-                  >
-                    {formatRoleLabel(myMembership.role)}
-                  </span>
-                </div>
-              </div>
-
-              <p className="mt-4 text-sm text-zinc-400">
-                {isGm
-                  ? "You can manage members and invite links."
-                  : "You can view the campaign roster, but only GMs can manage it."}
-              </p>
-            </section>
-
-            <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">
-                    Active invites
-                  </h2>
-                  <p className="mt-1 text-sm text-zinc-400">
-                    Invite links that can still be used.
-                  </p>
-                </div>
-
-                <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-zinc-300">
-                  {activeInvites.length}
-                </div>
-              </div>
-
-              {invitesLoading ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-5 text-center">
-                  <p className="text-sm text-zinc-400">Loading invites...</p>
-                </div>
-              ) : activeInvites.length === 0 ? (
-                <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-5 text-center">
-                  <p className="text-sm text-zinc-300">No active invites.</p>
-                  {isGm && (
-                    <button
-                      onClick={() => setInviteModalOpen(true)}
-                      className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-                    >
-                      Create invite
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="mt-5 space-y-3">
-                  {activeInvites.map((invite) => {
-                    const remainingUses =
-                      typeof invite.maxUses === "number"
-                        ? Math.max(0, invite.maxUses - invite.useCount)
-                        : null;
-
-                    return (
-                      <div
-                        key={invite.id}
-                        className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                      >
-                        <div className="flex flex-col gap-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                              Role: {invite.role}
-                            </span>
-
-                            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                              Used: {invite.useCount}
-                              {typeof invite.maxUses === "number"
-                                ? ` / ${invite.maxUses}`
-                                : ""}
-                            </span>
-
-                            {remainingUses !== null && (
-                              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                                Remaining: {remainingUses}
-                              </span>
-                            )}
-                          </div>
-
-                          <p className="break-all text-xs text-zinc-500">
-                            {window.location.origin}/invite/{invite.id}
-                          </p>
-
-                          <div className="text-xs text-zinc-500">
-                            Created {formatDateTime(invite.createdAt)}
-                          </div>
-
-                          {isGm && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() =>
-                                  navigator.clipboard.writeText(
-                                    `${window.location.origin}/invite/${invite.id}`,
-                                  )
-                                }
-                                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-                              >
-                                Copy
-                              </button>
-
-                              <button
-                                onClick={() => handleRevokeInvite(invite)}
-                                disabled={busyKey === `invite-${invite.id}`}
-                                className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-200 transition hover:bg-red-500/15 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                Revoke
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-
-            {revokedInvites.length > 0 && (
-              <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-                <h2 className="text-xl font-semibold text-white">
+          {revokedInvites.length > 0 ? (
+            <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-white">
                   Revoked invites
-                </h2>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Old invite links that are no longer valid.
-                </p>
+                </h3>
 
-                <div className="mt-5 space-y-3">
-                  {revokedInvites.slice(0, 5).map((invite) => (
-                    <div
-                      key={invite.id}
-                      className="rounded-2xl border border-white/10 bg-zinc-900/70 p-4"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-zinc-300">
-                          Role: {invite.role}
-                        </span>
+                <span className="text-[10px] text-zinc-500">
+                  {revokedInvites.length}
+                </span>
+              </div>
 
-                        <span className="rounded-full border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs text-red-200">
-                          Revoked
-                        </span>
-                      </div>
+              <div className="mt-3 space-y-1.5">
+                {revokedInvites.slice(0, 5).map((invite) => (
+                  <div
+                    key={invite.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.07] bg-black/10 px-2.5 py-2"
+                  >
+                    <span className="text-[10px] text-zinc-500">
+                      {formatRoleLabel(invite.role)}
+                    </span>
 
-                      <p className="mt-3 text-xs text-zinc-500">
-                        Created {formatDateTime(invite.createdAt)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-          </aside>
-        </div>
+                    <span className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-1.5 py-0.5 text-[9px] text-rose-300/70">
+                      Revoked
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </aside>
       </div>
 
-      {isGm && (
+      {isGm ? (
         <InvitePlayersModal
           campaignId={campaign.id}
           campaignName={campaign.name}
           isOpen={inviteModalOpen}
           onClose={() => setInviteModalOpen(false)}
         />
-      )}
-    </div>
+      ) : null}
+    </>
   );
 };
+
+const EmptyState = ({ children }: { children: string }) => (
+  <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/10 px-3 py-4 text-center">
+    <p className="text-[11px] text-zinc-500">{children}</p>
+  </div>
+);
+
+const PageMessage = ({
+  children,
+  error = false,
+}: {
+  children: string;
+  error?: boolean;
+}) => (
+  <div
+    className={`rounded-xl border p-6 text-center ${
+      error
+        ? "border-red-500/20 bg-red-500/[0.08] text-red-200"
+        : "border-white/10 bg-zinc-900/35 text-zinc-400"
+    }`}
+  >
+    <p className="text-sm">{children}</p>
+  </div>
+);
 
 export default CampaignMembersPage;

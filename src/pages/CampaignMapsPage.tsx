@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+
 import MapEditorModal from "../components/MapEditorModal";
 import CreateMapModal from "./CreateMapModal";
 import { useAuth } from "../context/AuthContext";
@@ -21,7 +22,6 @@ const CampaignMapsPage = () => {
   const { maps, loading } = useCampaignMaps(campaignId ?? null);
 
   const [editingMapId, setEditingMapId] = useState<string | null>(null);
-
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const editingMap = useMemo(
@@ -31,7 +31,6 @@ const CampaignMapsPage = () => {
 
   const openMap = (mapId: string) => {
     if (!campaignId) return;
-
     navigate(`/campaigns/${campaignId}/maps/${mapId}`);
   };
 
@@ -54,175 +53,131 @@ const CampaignMapsPage = () => {
 
   if (!campaignId) {
     return (
-      <div className="min-h-screen bg-zinc-950 px-4 py-6 text-zinc-100 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-6 text-red-300">
-            Missing campaign ID.
-          </div>
-        </div>
+      <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+        Missing campaign ID.
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto max-w-7xl py-6 sm:py-8">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <Link
-            to={`/campaigns/${campaignId}`}
-            className="inline-flex items-center text-sm text-zinc-400 transition hover:text-white"
-          >
-            ← Back to campaign
-          </Link>
-        </div>
+    <>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-white">Maps</h2>
 
-        <section className="mb-8 rounded-3xl border border-white/10 bg-gradient-to-br from-white/8 to-white/3 p-6 shadow-2xl sm:mb-10 sm:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
-                Campaign maps
-              </p>
-
-              <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-                Manage maps
-              </h1>
-
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base">
-                Open maps in viewer mode, edit areas and environment settings,
-                or create new maps for this campaign.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => setIsCreateModalOpen(true)}
-                className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
-              >
-                <i className="fa-solid fa-plus" /> Add map
-              </button>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold text-white sm:text-2xl">
-                Maps
-              </h2>
-
-              <p className="mt-1 text-sm text-zinc-400">
-                Select a map to open it, or edit its areas, notes, and
-                environment settings.
-              </p>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
-              <p className="text-sm text-zinc-400">Loading maps...</p>
-            </div>
-          ) : maps.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-zinc-900/50 p-6 text-center">
-              <p className="text-sm text-zinc-300">No maps yet.</p>
-
-              <p className="mt-2 text-sm text-zinc-500">
-                Create your first map to start adding areas.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {maps.map((map: CampaignMap) => (
-                <div
-                  key={map.id}
-                  className="group overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 text-left transition hover:border-white/20 hover:bg-zinc-800"
-                >
-                  <button
-                    type="button"
-                    onClick={() => openMap(map.id)}
-                    className="block w-full cursor-pointer overflow-hidden bg-black text-left"
-                    title={`Open ${map.title}`}
-                  >
-                    <div className="aspect-[16/10] overflow-hidden">
-                      <img
-                        src={map.imageUrl}
-                        alt={map.title}
-                        className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
-                        draggable={false}
-                      />
-                    </div>
-                  </button>
-
-                  <div className="space-y-3 p-4">
-                    <div>
-                      <div className="text-base font-semibold text-white">
-                        {map.title}
-                      </div>
-
-                      <div className="mt-1 text-sm text-white/55">
-                        {map.rooms?.length ?? 0} areas
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {map.rooms?.slice(0, 4).map((room) => (
-                        <span
-                          key={room.id}
-                          className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/75"
-                        >
-                          {room.id}. {room.name}
-                        </span>
-                      ))}
-
-                      {(map.rooms?.length ?? 0) > 4 && (
-                        <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white/60">
-                          +{(map.rooms?.length ?? 0) - 4} more
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => openMap(map.id)}
-                        className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
-                      >
-                        Open
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setEditingMapId(map.id)}
-                        className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+        <button
+          type="button"
+          onClick={() => setIsCreateModalOpen(true)}
+          className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+        >
+          <i className="fa-solid fa-plus mr-1.5 text-[9px]" />
+          Add map
+        </button>
       </div>
 
-      {editingMap && (
+      {loading ? (
+        <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
+          <p className="text-[11px] text-zinc-500">Loading maps...</p>
+        </div>
+      ) : maps.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-white/10 bg-zinc-900/25 p-6 text-center">
+          <p className="text-xs font-semibold text-zinc-200">No maps yet.</p>
+          <p className="mt-1 text-[11px] text-zinc-500">
+            Create your first map to start adding areas.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {maps.map((map: CampaignMap) => (
+            <article
+              key={map.id}
+              className="group overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/35 transition hover:border-white/15"
+            >
+              <button
+                type="button"
+                onClick={() => openMap(map.id)}
+                className="block w-full overflow-hidden bg-black text-left"
+                title={`Open ${map.title}`}
+              >
+                <div className="aspect-[16/9] overflow-hidden">
+                  <img
+                    src={map.imageUrl}
+                    alt={map.title}
+                    className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                    draggable={false}
+                  />
+                </div>
+              </button>
+
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-xs font-semibold text-white">
+                      {map.title}
+                    </h3>
+                    <p className="mt-0.5 text-[10px] text-zinc-500">
+                      {map.rooms?.length ?? 0} areas
+                    </p>
+                  </div>
+
+                  <div className="flex shrink-0 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openMap(map.id)}
+                      className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+                    >
+                      Open
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditingMapId(map.id)}
+                      className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-400 transition hover:bg-white/[0.08] hover:text-white"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+
+                {map.rooms?.length ? (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {map.rooms.slice(0, 4).map((room) => (
+                      <span
+                        key={room.id}
+                        className="rounded-md border border-white/[0.07] bg-black/20 px-1.5 py-0.5 text-[9px] text-zinc-500"
+                      >
+                        {room.id}. {room.name}
+                      </span>
+                    ))}
+
+                    {map.rooms.length > 4 ? (
+                      <span className="rounded-md border border-white/[0.07] bg-black/20 px-1.5 py-0.5 text-[9px] text-zinc-600">
+                        +{map.rooms.length - 4}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {editingMap ? (
         <MapEditorModal
           campaignId={campaignId}
           map={editingMap}
           onClose={() => setEditingMapId(null)}
         />
-      )}
+      ) : null}
 
-      {isCreateModalOpen && (
+      {isCreateModalOpen ? (
         <CreateMapModal
           onClose={() => setIsCreateModalOpen(false)}
           onCreate={handleCreateMap}
           defaultImageUrl={DEFAULT_IMAGE_URL}
         />
-      )}
-    </div>
+      ) : null}
+    </>
   );
 };
 

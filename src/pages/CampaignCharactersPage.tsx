@@ -556,220 +556,266 @@ const CampaignCharactersPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <Link
-              to={`/campaigns/${campaign.id}`}
-              className="inline-flex items-center text-xs text-zinc-400 transition hover:text-white"
-            >
-              ← Back to campaign
-            </Link>
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-white">Characters</h2>
 
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-white">
-              Characters
-            </h1>
+        {isGm ? (
+          <Link
+            to={`/characters/new?campaignId=${campaign.id}&campaignMode=unassigned`}
+            className="inline-flex rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+          >
+            Create campaign character
+          </Link>
+        ) : null}
+      </div>
 
-            <p className="mt-1 text-xs text-zinc-500">{campaign.name}</p>
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
+        <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-white">
+              Campaign characters
+            </h2>
+
+            <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
+              <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-emerald-300">
+                {activeCount} active
+              </span>
+
+              {claimableCount > 0 ? (
+                <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-0.5 text-amber-300">
+                  {claimableCount} claimable
+                </span>
+              ) : null}
+            </div>
           </div>
 
-          {isGm ? (
-            <Link
-              to={`/characters/new?campaignId=${campaign.id}&campaignMode=unassigned`}
-              className="inline-flex rounded-lg bg-white px-3 py-2 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200"
-            >
-              Create campaign character
-            </Link>
-          ) : null}
-        </div>
+          {campaignCharactersLoading ? (
+            <EmptyState>Loading campaign characters…</EmptyState>
+          ) : campaignCharacters.length === 0 ? (
+            <EmptyState>No campaign characters yet.</EmptyState>
+          ) : (
+            <div className="space-y-1.5">
+              {campaignCharacters.map((character) => {
+                const isOwnCharacter = character.ownerUid === user?.uid;
+                const isClaimable = character.ownerUid === null;
+                const isActive = character.campaignStatus === "active";
+                const isBusy = busyCharacterId === character.id;
 
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
-          <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-white">
-                Campaign characters
-              </h2>
+                const canOpen = isGm || isOwnCharacter;
+                const canRemove = isGm || isOwnCharacter;
 
-              <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
-                <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-emerald-300">
-                  {activeCount} active
-                </span>
+                return (
+                  <div
+                    key={character.id}
+                    className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5 transition hover:border-white/15 hover:bg-white/[0.025]"
+                  >
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar
+                          src={character.imageUrl}
+                          name={character.name}
+                          className="h-10 w-10 shrink-0 rounded-lg"
+                        />
 
-                {claimableCount > 0 ? (
-                  <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-0.5 text-amber-300">
-                    {claimableCount} claimable
-                  </span>
-                ) : null}
-              </div>
-            </div>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <h3 className="truncate text-xs font-semibold text-white">
+                              {character.name}
+                            </h3>
 
-            {campaignCharactersLoading ? (
-              <EmptyState>Loading campaign characters…</EmptyState>
-            ) : campaignCharacters.length === 0 ? (
-              <EmptyState>No campaign characters yet.</EmptyState>
-            ) : (
-              <div className="space-y-1.5">
-                {campaignCharacters.map((character) => {
-                  const isOwnCharacter = character.ownerUid === user?.uid;
-                  const isClaimable = character.ownerUid === null;
-                  const isActive = character.campaignStatus === "active";
-                  const isBusy = busyCharacterId === character.id;
+                            <StatusBadge active={isActive} />
 
-                  const canOpen = isGm || isOwnCharacter;
-                  const canRemove = isGm || isOwnCharacter;
-
-                  return (
-                    <div
-                      key={character.id}
-                      className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5 transition hover:border-white/15 hover:bg-white/[0.025]"
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <Avatar
-                            src={character.imageUrl}
-                            name={character.name}
-                            className="h-10 w-10 shrink-0 rounded-lg"
-                          />
-
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <h3 className="truncate text-xs font-semibold text-white">
-                                {character.name}
-                              </h3>
-
-                              <StatusBadge active={isActive} />
-
-                              {isClaimable ? (
-                                <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
-                                  Claimable
-                                </span>
-                              ) : isOwnCharacter ? (
-                                <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
-                                  Yours
-                                </span>
-                              ) : null}
-                            </div>
-
-                            <p className="mt-0.5 truncate text-[10px] text-zinc-500">
-                              {getCharacterSummary(character) || "Character"}
-                            </p>
-
-                            {!isClaimable && character.ownerUid ? (
-                              <p className="mt-0.5 truncate text-[9px] text-zinc-600">
-                                {character.ownerName ||
-                                  character.ownerEmail ||
-                                  "Assigned player"}
-                              </p>
+                            {isClaimable ? (
+                              <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
+                                Claimable
+                              </span>
+                            ) : isOwnCharacter ? (
+                              <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
+                                Yours
+                              </span>
                             ) : null}
                           </div>
-                        </div>
 
-                        <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
-                          {canOpen ? (
+                          <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                            {getCharacterSummary(character) || "Character"}
+                          </p>
+
+                          {!isClaimable && character.ownerUid ? (
+                            <p className="mt-0.5 truncate text-[9px] text-zinc-600">
+                              {character.ownerName ||
+                                character.ownerEmail ||
+                                "Assigned player"}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                        {canOpen ? (
+                          <Link
+                            to={`/characters/${character.id}`}
+                            state={{
+                              from: `${location.pathname}${location.search}`,
+                            }}
+                            className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+                          >
+                            Open
+                          </Link>
+                        ) : null}
+
+                        {isClaimable ? (
+                          <button
+                            type="button"
+                            onClick={() => handleClaimCharacter(character.id)}
+                            disabled={isBusy}
+                            className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {isBusy ? "Claiming…" : "Claim"}
+                          </button>
+                        ) : null}
+
+                        {isGm ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleSetCampaignStatus(
+                                  character.id,
+                                  isActive ? "inactive" : "active",
+                                )
+                              }
+                              disabled={isBusy}
+                              className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
+                            >
+                              {isActive ? "Set inactive" : "Set active"}
+                            </button>
+
+                            {!isClaimable ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleMakeCharacterClaimable(character.id)
+                                }
+                                disabled={isBusy}
+                                className="rounded-md border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.12] disabled:opacity-50"
+                              >
+                                Make claimable
+                              </button>
+                            ) : null}
+                          </>
+                        ) : null}
+
+                        {canRemove && !isClaimable ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRemoveFromCampaign(character.id)
+                            }
+                            disabled={isBusy}
+                            className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <aside>
+          <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-white">
+                Your characters
+              </h2>
+
+              <Link
+                to="/characters/new"
+                className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+              >
+                Create
+              </Link>
+            </div>
+
+            {myCharactersLoading ? (
+              <div className="mt-3">
+                <EmptyState>Loading your characters…</EmptyState>
+              </div>
+            ) : (
+              <div className="mt-3 space-y-4">
+                {myCampaignCharacters.length > 0 ? (
+                  <div>
+                    <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                      This campaign
+                    </h3>
+
+                    <div className="mt-2 space-y-1.5">
+                      {myCampaignCharacters.map((character) => (
+                        <div
+                          key={character.id}
+                          className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5"
+                        >
+                          <div className="flex min-w-0 items-center gap-3">
+                            <Avatar
+                              src={character.imageUrl}
+                              name={character.name}
+                              className="h-9 w-9 shrink-0 rounded-lg"
+                            />
+
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <p className="truncate text-xs font-semibold text-white">
+                                  {character.name}
+                                </p>
+
+                                <StatusBadge
+                                  active={character.campaignStatus === "active"}
+                                />
+                              </div>
+
+                              <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                                {getCharacterSummary(character) || "Character"}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-2">
                             <Link
                               to={`/characters/${character.id}`}
                               state={{
                                 from: `${location.pathname}${location.search}`,
                               }}
-                              className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+                              className="inline-flex rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                             >
                               Open
                             </Link>
-                          ) : null}
-
-                          {isClaimable ? (
-                            <button
-                              type="button"
-                              onClick={() => handleClaimCharacter(character.id)}
-                              disabled={isBusy}
-                              className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                              {isBusy ? "Claiming…" : "Claim"}
-                            </button>
-                          ) : null}
-
-                          {isGm ? (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleSetCampaignStatus(
-                                    character.id,
-                                    isActive ? "inactive" : "active",
-                                  )
-                                }
-                                disabled={isBusy}
-                                className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
-                              >
-                                {isActive ? "Set inactive" : "Set active"}
-                              </button>
-
-                              {!isClaimable ? (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleMakeCharacterClaimable(character.id)
-                                  }
-                                  disabled={isBusy}
-                                  className="rounded-md border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.12] disabled:opacity-50"
-                                >
-                                  Make claimable
-                                </button>
-                              ) : null}
-                            </>
-                          ) : null}
-
-                          {canRemove && !isClaimable ? (
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleRemoveFromCampaign(character.id)
-                              }
-                              disabled={isBusy}
-                              className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
-                            >
-                              Remove
-                            </button>
-                          ) : null}
+                          </div>
                         </div>
-                      </div>
+                      ))}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+                  </div>
+                ) : null}
 
-          <aside>
-            <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-base font-semibold text-white">
-                  Your characters
-                </h2>
+                <div>
+                  <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                    Available
+                  </h3>
 
-                <Link
-                  to="/characters/new"
-                  className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
-                >
-                  Create
-                </Link>
-              </div>
+                  {myAvailableCharacters.length === 0 ? (
+                    <div className="mt-2">
+                      <EmptyState>No available characters.</EmptyState>
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-1.5">
+                      {myAvailableCharacters.map((character) => {
+                        const isBusy = busyCharacterId === character.id;
 
-              {myCharactersLoading ? (
-                <div className="mt-3">
-                  <EmptyState>Loading your characters…</EmptyState>
-                </div>
-              ) : (
-                <div className="mt-3 space-y-4">
-                  {myCampaignCharacters.length > 0 ? (
-                    <div>
-                      <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                        This campaign
-                      </h3>
-
-                      <div className="mt-2 space-y-1.5">
-                        {myCampaignCharacters.map((character) => (
+                        return (
                           <div
                             key={character.id}
                             className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5"
@@ -782,17 +828,9 @@ const CampaignCharactersPage = () => {
                               />
 
                               <div className="min-w-0 flex-1">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <p className="truncate text-xs font-semibold text-white">
-                                    {character.name}
-                                  </p>
-
-                                  <StatusBadge
-                                    active={
-                                      character.campaignStatus === "active"
-                                    }
-                                  />
-                                </div>
+                                <p className="truncate text-xs font-semibold text-white">
+                                  {character.name}
+                                </p>
 
                                 <p className="mt-0.5 truncate text-[10px] text-zinc-500">
                                   {getCharacterSummary(character) ||
@@ -801,94 +839,38 @@ const CampaignCharactersPage = () => {
                               </div>
                             </div>
 
-                            <div className="mt-2">
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleAssignToCampaign(character.id)
+                                }
+                                disabled={isBusy}
+                                className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isBusy ? "Attaching…" : "Attach"}
+                              </button>
+
                               <Link
                                 to={`/characters/${character.id}`}
                                 state={{
                                   from: `${location.pathname}${location.search}`,
                                 }}
-                                className="inline-flex rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                                className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                               >
                                 Open
                               </Link>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  ) : null}
-
-                  <div>
-                    <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                      Available
-                    </h3>
-
-                    {myAvailableCharacters.length === 0 ? (
-                      <div className="mt-2">
-                        <EmptyState>No available characters.</EmptyState>
-                      </div>
-                    ) : (
-                      <div className="mt-2 space-y-1.5">
-                        {myAvailableCharacters.map((character) => {
-                          const isBusy = busyCharacterId === character.id;
-
-                          return (
-                            <div
-                              key={character.id}
-                              className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5"
-                            >
-                              <div className="flex min-w-0 items-center gap-3">
-                                <Avatar
-                                  src={character.imageUrl}
-                                  name={character.name}
-                                  className="h-9 w-9 shrink-0 rounded-lg"
-                                />
-
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate text-xs font-semibold text-white">
-                                    {character.name}
-                                  </p>
-
-                                  <p className="mt-0.5 truncate text-[10px] text-zinc-500">
-                                    {getCharacterSummary(character) ||
-                                      "Character"}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleAssignToCampaign(character.id)
-                                  }
-                                  disabled={isBusy}
-                                  className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                  {isBusy ? "Attaching…" : "Attach"}
-                                </button>
-
-                                <Link
-                                  to={`/characters/${character.id}`}
-                                  state={{
-                                    from: `${location.pathname}${location.search}`,
-                                  }}
-                                  className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-                                >
-                                  Open
-                                </Link>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                  )}
                 </div>
-              )}
-            </section>
-          </aside>
-        </div>
+              </div>
+            )}
+          </section>
+        </aside>
       </div>
     </div>
   );

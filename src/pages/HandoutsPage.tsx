@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   collection,
   deleteDoc,
@@ -14,7 +14,7 @@ import {
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import CreateHandoutModal from "../components/CreateHandoutModal";
-import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
+import type { CampaignMemberDoc } from "../types/campaign";
 import type { CampaignHandoutDoc } from "../types/handouts";
 
 type HandoutWithId = CampaignHandoutDoc & {
@@ -56,11 +56,6 @@ export default function HandoutsPage() {
   const { user } = useAuth();
   const { campaignId } = useParams<{ campaignId: string }>();
 
-  const [campaign, setCampaign] = useState<
-    (CampaignDoc & { id: string }) | null
-  >(null);
-  const [loadingCampaign, setLoadingCampaign] = useState(true);
-
   const [membership, setMembership] = useState<CampaignMemberDoc | null>(null);
   const [members, setMembers] = useState<MemberWithUid[]>([]);
 
@@ -77,20 +72,15 @@ export default function HandoutsPage() {
 
   useEffect(() => {
     if (!user || !campaignId) {
-      setCampaign(null);
       setMembership(null);
-      setLoadingCampaign(false);
       return;
     }
 
     const safeCampaignId = campaignId;
     let cancelled = false;
 
-    const loadCampaign = async () => {
+    const loadMembership = async () => {
       try {
-        setLoadingCampaign(true);
-
-        const campaignRef = doc(db, "campaigns", safeCampaignId);
         const memberRef = doc(
           db,
           "campaigns",
@@ -99,41 +89,23 @@ export default function HandoutsPage() {
           user.uid,
         );
 
-        const [campaignSnap, memberSnap] = await Promise.all([
-          getDoc(campaignRef),
-          getDoc(memberRef),
-        ]);
+        const memberSnap = await getDoc(memberRef);
 
         if (cancelled) return;
 
-        if (!campaignSnap.exists()) {
-          setCampaign(null);
-        } else {
-          setCampaign({
-            id: campaignSnap.id,
-            ...(campaignSnap.data() as CampaignDoc),
-          });
-        }
-
-        if (memberSnap.exists()) {
-          setMembership(memberSnap.data() as CampaignMemberDoc);
-        } else {
-          setMembership(null);
-        }
+        setMembership(
+          memberSnap.exists() ? (memberSnap.data() as CampaignMemberDoc) : null,
+        );
       } catch (error) {
-        console.error("Failed to load campaign:", error);
+        console.error("Failed to load campaign membership:", error);
+
         if (!cancelled) {
-          setCampaign(null);
           setMembership(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingCampaign(false);
         }
       }
     };
 
-    loadCampaign();
+    void loadMembership();
 
     return () => {
       cancelled = true;
@@ -361,204 +333,175 @@ export default function HandoutsPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-zinc-950 text-white">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="mb-2 text-sm text-zinc-400">
-                <Link
-                  to={`/campaigns/${campaignId}`}
-                  className="hover:text-white"
-                >
-                  ← Back to campaign
-                </Link>
-              </div>
+      <div>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-white">Handouts</h2>
 
-              <h1 className="text-3xl font-bold">
-                {loadingCampaign
-                  ? "Handouts"
-                  : `${campaign?.name ?? "Campaign"} Handouts`}
-              </h1>
+          {isGm ? (
+            <button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+            >
+              Create handout
+            </button>
+          ) : null}
+        </div>
 
-              {isGm ? (
-                <p className="mt-1 text-sm text-zinc-400">
-                  Create and manage shared player handouts.
-                </p>
-              ) : (
-                <p className="mt-1 text-sm text-zinc-400">
-                  See player handouts shared with you.
-                </p>
-              )}
+        <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className="rounded-xl border border-white/10 bg-zinc-900/35">
+            <div className="border-b border-white/10 px-4 py-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+                Handouts
+              </h2>
             </div>
 
-            {isGm ? (
-              <button
-                type="button"
-                onClick={() => setCreateOpen(true)}
-                className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200"
-              >
-                Create handout
-              </button>
-            ) : null}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-            <aside className="rounded-2xl border border-white/10 bg-zinc-900">
-              <div className="border-b border-white/10 px-4 py-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
-                  Handouts
-                </h2>
-              </div>
-
-              <div className="overflow-y-auto p-2">
-                {loadingHandouts ? (
-                  <div className="px-3 py-4 text-sm text-zinc-400">
-                    Loading handouts...
-                  </div>
-                ) : visibleHandouts.length === 0 ? (
-                  <div className="px-3 py-4 text-sm text-zinc-400">
-                    {isGm
-                      ? "No handouts yet."
-                      : "No handouts have been revealed to you yet."}
-                  </div>
-                ) : (
-                  visibleHandouts.map((handout) => {
-                    const selected = handout.id === selectedHandoutId;
-
-                    return (
-                      <button
-                        key={handout.id}
-                        type="button"
-                        onClick={() => setSelectedHandoutId(handout.id)}
-                        className={`mb-2 w-full rounded-xl border text-left transition ${
-                          selected
-                            ? "border-gray-300/30 bg-gray-500/20"
-                            : "border-transparent hover:border-white/10 hover:bg-white/5"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 px-3 py-1">
-                          <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
-                            {handout.imageUrl ? (
-                              <img
-                                src={handout.imageUrl}
-                                alt={handout.title}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="h-14 w-14 rounded-lg bg-zinc-700"></div>
-                            )}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-semibold text-white">
-                              {handout.title}
-                            </div>
-                            <div className="mt-1 line-clamp-1 text-xs text-zinc-400">
-                              {handout.content}
-                            </div>
-                            {isGm ? (
-                              <div className="mt-1 text-[11px] text-zinc-500">
-                                {getVisibilityLabel(handout)}
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </aside>
-
-            <main className="rounded-2xl border border-white/10 bg-zinc-900">
-              {!selectedHandout ? (
-                <div className="flex min-h-[400px] items-center justify-center p-8 text-center text-zinc-400">
-                  <div>
-                    <p className="text-lg font-medium text-zinc-200">
-                      No handout selected
-                    </p>
-                    <p className="mt-2 text-sm">
-                      {isGm
-                        ? "Create a handout to get started."
-                        : "No visible handouts yet."}
-                    </p>
-                  </div>
+            <div className="overflow-y-auto p-2">
+              {loadingHandouts ? (
+                <div className="px-3 py-4 text-sm text-zinc-400">
+                  Loading handouts...
+                </div>
+              ) : visibleHandouts.length === 0 ? (
+                <div className="px-3 py-4 text-sm text-zinc-400">
+                  {isGm
+                    ? "No handouts yet."
+                    : "No handouts have been revealed to you yet."}
                 </div>
               ) : (
-                <div className="p-6">
-                  <div className="mb-4 border-b border-white/10 pb-4">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <h2 className="text-2xl font-bold">
-                          {selectedHandout.title}
-                        </h2>
-                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-400">
-                          <span>
-                            Created by: {selectedHandout.createdByName}
-                          </span>
-                          <span>
-                            Created: {formatDate(selectedHandout.createdAt)}
-                          </span>
-                          <span>
-                            Updated: {formatDate(selectedHandout.updatedAt)}
-                          </span>
+                visibleHandouts.map((handout) => {
+                  const selected = handout.id === selectedHandoutId;
+
+                  return (
+                    <button
+                      key={handout.id}
+                      type="button"
+                      onClick={() => setSelectedHandoutId(handout.id)}
+                      className={`mb-2 w-full rounded-xl border text-left transition ${
+                        selected
+                          ? "border-gray-300/30 bg-gray-500/20"
+                          : "border-transparent hover:border-white/10 hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 px-2.5 py-2">
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+                          {handout.imageUrl ? (
+                            <img
+                              src={handout.imageUrl}
+                              alt={handout.title}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-lg bg-zinc-800"></div>
+                          )}
                         </div>
 
-                        {isGm ? (
-                          <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
-                            {getVisibilityLabel(selectedHandout)}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-white">
+                            {handout.title}
                           </div>
-                        ) : null}
+                          <div className="mt-1 line-clamp-1 text-xs text-zinc-400">
+                            {handout.content}
+                          </div>
+                          {isGm ? (
+                            <div className="mt-1 text-[11px] text-zinc-500">
+                              {getVisibilityLabel(handout)}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </aside>
+
+          <main className="rounded-xl border border-white/10 bg-zinc-900/35">
+            {!selectedHandout ? (
+              <div className="flex min-h-[400px] items-center justify-center p-8 text-center text-zinc-400">
+                <div>
+                  <p className="text-lg font-medium text-zinc-200">
+                    No handout selected
+                  </p>
+                  <p className="mt-2 text-sm">
+                    {isGm
+                      ? "Create a handout to get started."
+                      : "No visible handouts yet."}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="p-6">
+                <div className="mb-4 border-b border-white/10 pb-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h2 className="text-2xl font-bold">
+                        {selectedHandout.title}
+                      </h2>
+                      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-400">
+                        <span>Created by: {selectedHandout.createdByName}</span>
+                        <span>
+                          Created: {formatDate(selectedHandout.createdAt)}
+                        </span>
+                        <span>
+                          Updated: {formatDate(selectedHandout.updatedAt)}
+                        </span>
                       </div>
 
                       {isGm ? (
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setEditOpen(true)}
-                            className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-white/5"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleDeleteHandout}
-                            disabled={deleting}
-                            className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
-                          >
-                            {deleting ? "Deleting..." : "Delete"}
-                          </button>
+                        <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
+                          {getVisibilityLabel(selectedHandout)}
                         </div>
                       ) : null}
                     </div>
-                  </div>
 
-                  <div className="mb-4 whitespace-pre-wrap break-words text-sm leading-7 text-zinc-200">
-                    {selectedHandout.content}
+                    {isGm ? (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditOpen(true)}
+                          className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-white/5"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleDeleteHandout}
+                          disabled={deleting}
+                          className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+                        >
+                          {deleting ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
-
-                  {selectedHandout.imageUrl ? (
-                    <div className="mb-6">
-                      <button
-                        type="button"
-                        onClick={() => setLightboxOpen(true)}
-                        className="group block overflow-hidden rounded-2xl border border-white/10 bg-zinc-800"
-                      >
-                        <img
-                          src={selectedHandout.imageUrl}
-                          alt={selectedHandout.title}
-                          className="max-h-[340px] w-full object-contain transition group-hover:scale-[1.01]"
-                        />
-                        <div className="border-t border-white/10 px-4 py-2 text-left text-xs text-zinc-400">
-                          Click image to enlarge
-                        </div>
-                      </button>
-                    </div>
-                  ) : null}
                 </div>
-              )}
-            </main>
-          </div>
+
+                <div className="mb-4 whitespace-pre-wrap break-words text-sm leading-7 text-zinc-200">
+                  {selectedHandout.content}
+                </div>
+
+                {selectedHandout.imageUrl ? (
+                  <div className="mb-6">
+                    <button
+                      type="button"
+                      onClick={() => setLightboxOpen(true)}
+                      className="group block overflow-hidden rounded-2xl border border-white/10 bg-zinc-800"
+                    >
+                      <img
+                        src={selectedHandout.imageUrl}
+                        alt={selectedHandout.title}
+                        className="max-h-[340px] w-full object-contain transition group-hover:scale-[1.01]"
+                      />
+                      <div className="border-t border-white/10 px-4 py-2 text-left text-xs text-zinc-400">
+                        Click image to enlarge
+                      </div>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+          </main>
         </div>
 
         <CreateHandoutModal
