@@ -35,6 +35,16 @@ import type {
   CustomTrait,
 } from "../types/customCharacter";
 
+import {
+  featureActionActivationOptions,
+  featureActivationOptions,
+} from "../types/featureActions";
+
+import type {
+  FeatureActionActivation,
+  FeatureActivation,
+} from "../types/featureActions";
+
 type CustomCharacterCreatorProps = {
   onBackToModeSelect?: () => void;
 
@@ -183,18 +193,6 @@ const CustomCharacterCreator = ({
   const [customLevel, setCustomLevel] = useState(initialCharacter?.level ?? 1);
 
   const [alignment, setAlignment] = useState(initialCharacter?.alignment ?? "");
-
-  const [age, setAge] = useState(initialCharacter?.age ?? "");
-
-  const [height, setHeight] = useState(initialCharacter?.height ?? "");
-
-  const [weight, setWeight] = useState(initialCharacter?.weight ?? "");
-
-  const [eyes, setEyes] = useState(initialCharacter?.eyes ?? "");
-
-  const [skin, setSkin] = useState(initialCharacter?.skin ?? "");
-
-  const [hair, setHair] = useState(initialCharacter?.hair ?? "");
 
   const [characterAppearance, setCharacterAppearance] = useState(
     initialCharacter?.characterAppearance ?? "",
@@ -372,6 +370,10 @@ const CustomCharacterCreator = ({
         source: "",
 
         description: "",
+
+        activation: "passive",
+
+        actions: [],
       },
     ]);
   };
@@ -395,6 +397,85 @@ const CustomCharacterCreator = ({
 
   const removeCustomTrait = (id: string) => {
     setCustomTraits((current) => current.filter((trait) => trait.id !== id));
+  };
+
+  const addCustomTraitAction = (traitId: string) => {
+    setCustomTraits((current) =>
+      current.map((trait) =>
+        trait.id === traitId
+          ? {
+              ...trait,
+
+              actions: [
+                ...(trait.actions ?? []),
+
+                {
+                  id: makeId(),
+
+                  name: "",
+
+                  activation: "bonus-action",
+
+                  description: "",
+                },
+              ],
+            }
+          : trait,
+      ),
+    );
+  };
+
+  const updateCustomTraitAction = (
+    traitId: string,
+
+    actionId: string,
+
+    updates: {
+      name?: string;
+
+      activation?: FeatureActionActivation;
+
+      description?: string;
+    },
+  ) => {
+    setCustomTraits((current) =>
+      current.map((trait) =>
+        trait.id === traitId
+          ? {
+              ...trait,
+
+              actions: (trait.actions ?? []).map((action) =>
+                action.id === actionId
+                  ? {
+                      ...action,
+                      ...updates,
+                    }
+                  : action,
+              ),
+            }
+          : trait,
+      ),
+    );
+  };
+
+  const removeCustomTraitAction = (
+    traitId: string,
+
+    actionId: string,
+  ) => {
+    setCustomTraits((current) =>
+      current.map((trait) =>
+        trait.id === traitId
+          ? {
+              ...trait,
+
+              actions: (trait.actions ?? []).filter(
+                (action) => action.id !== actionId,
+              ),
+            }
+          : trait,
+      ),
+    );
   };
 
   const addCatalogItem = (itemId: string) => {
@@ -580,18 +661,6 @@ const CustomCharacterCreator = ({
 
     alignment: alignment.trim(),
 
-    age: age.trim(),
-
-    height: height.trim(),
-
-    weight: weight.trim(),
-
-    eyes: eyes.trim(),
-
-    skin: skin.trim(),
-
-    hair: hair.trim(),
-
     abilityScores,
 
     customStats: {
@@ -628,6 +697,20 @@ const CustomCharacterCreator = ({
       source: trait.source?.trim() ?? "",
 
       description: trait.description?.trim() ?? "",
+
+      activation: trait.activation ?? "passive",
+
+      actions: (trait.actions ?? [])
+        .filter((action) => action.name.trim())
+        .map((action) => ({
+          id: action.id,
+
+          name: action.name.trim(),
+
+          activation: action.activation,
+
+          description: action.description?.trim() ?? "",
+        })),
     })),
 
     customSpellcasting,
@@ -1404,6 +1487,126 @@ const CustomCharacterCreator = ({
                           />
                         </div>
 
+                        <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                          <div>
+                            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                              Primary Activation
+                            </label>
+
+                            <select
+                              value={trait.activation ?? "passive"}
+                              onChange={(event) =>
+                                updateCustomTrait(trait.id, {
+                                  activation: event.target
+                                    .value as FeatureActivation,
+                                })
+                              }
+                              className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none transition focus:border-zinc-400"
+                            >
+                              {featureActivationOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => addCustomTraitAction(trait.id)}
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                          >
+                            + Secondary Action
+                          </button>
+                        </div>
+
+                        {(trait.actions ?? []).length > 0 ? (
+                          <div className="mt-3 space-y-2 rounded-xl border border-white/[0.07] bg-black/20 p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                              Secondary Actions
+                            </p>
+
+                            {(trait.actions ?? []).map((action) => (
+                              <div
+                                key={action.id}
+                                className="rounded-lg border border-white/[0.07] bg-zinc-950/60 p-3"
+                              >
+                                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_auto]">
+                                  <input
+                                    value={action.name}
+                                    onChange={(event) =>
+                                      updateCustomTraitAction(
+                                        trait.id,
+                                        action.id,
+                                        {
+                                          name: event.target.value,
+                                        },
+                                      )
+                                    }
+                                    placeholder="Action name"
+                                    className="rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none"
+                                  />
+
+                                  <select
+                                    value={action.activation}
+                                    onChange={(event) =>
+                                      updateCustomTraitAction(
+                                        trait.id,
+                                        action.id,
+                                        {
+                                          activation: event.target
+                                            .value as FeatureActionActivation,
+                                        },
+                                      )
+                                    }
+                                    className="rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white outline-none"
+                                  >
+                                    {featureActionActivationOptions.map(
+                                      (option) => (
+                                        <option
+                                          key={option.value}
+                                          value={option.value}
+                                        >
+                                          {option.label}
+                                        </option>
+                                      ),
+                                    )}
+                                  </select>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removeCustomTraitAction(
+                                        trait.id,
+                                        action.id,
+                                      )
+                                    }
+                                    className="rounded-lg px-2 text-xs text-zinc-600 transition hover:text-red-300"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+
+                                <textarea
+                                  value={action.description ?? ""}
+                                  onChange={(event) =>
+                                    updateCustomTraitAction(
+                                      trait.id,
+                                      action.id,
+                                      {
+                                        description: event.target.value,
+                                      },
+                                    )
+                                  }
+                                  rows={2}
+                                  placeholder="What does this action do?"
+                                  className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        ) : null}
+
                         <div className="mt-3">
                           <Textarea
                             label="Description"
@@ -1437,36 +1640,6 @@ const CustomCharacterCreator = ({
 
               <Card title="Character Details">
                 <div className="space-y-5">
-                  <div>
-                    <h3 className="mb-4 text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
-                      Physical Characteristics
-                    </h3>
-
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      <TextInput label="Age" value={age} onChange={setAge} />
-
-                      <TextInput
-                        label="Height"
-                        value={height}
-                        onChange={setHeight}
-                      />
-
-                      <TextInput
-                        label="Weight"
-                        value={weight}
-                        onChange={setWeight}
-                      />
-
-                      <TextInput label="Eyes" value={eyes} onChange={setEyes} />
-
-                      <TextInput label="Skin" value={skin} onChange={setSkin} />
-
-                      <TextInput label="Hair" value={hair} onChange={setHair} />
-                    </div>
-                  </div>
-
-                  <div className="border-t border-white/10" />
-
                   <Textarea
                     label="Character Appearance"
                     value={characterAppearance}

@@ -40,6 +40,7 @@ export const lightDomain: CharacterSubclass = {
         id: "warding-flare",
         name: "Warding Flare",
         level: 3,
+        activation: "reaction",
         description:
           "When a creature that you can see within 30 feet of yourself makes an attack roll, you can take a Reaction to impose Disadvantage on the attack roll by causing light to flare before it hits or misses.",
         notes: [

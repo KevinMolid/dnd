@@ -59,6 +59,7 @@ export const circleOfTheStars: CharacterSubclass = {
         id: "cosmic-omen",
         name: "Cosmic Omen",
         level: 6,
+        activation: "reaction",
         description:
           "Your Star Map reveals omens that let you bend fate through weal or woe.",
         notes: [

@@ -173,6 +173,7 @@ export const oathOfGlory: CharacterSubclass = {
         id: "glorious-defense",
         name: "Glorious Defense",
         level: 15,
+        activation: "reaction",
         description:
           "You can turn defense into a sudden strike, protecting yourself or an ally and punishing the attacker.",
         notes: [

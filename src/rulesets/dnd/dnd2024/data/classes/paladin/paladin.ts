@@ -121,6 +121,7 @@ export const paladin: CharacterClass = {
         id: "lay-on-hands",
         name: "Lay On Hands",
         level: 1,
+        activation: "bonus-action",
         description:
           "Your blessed touch can heal wounds. You have a pool of healing power that replenishes when you finish a Long Rest.",
         notes: [
@@ -296,6 +297,7 @@ export const paladin: CharacterClass = {
         id: "abjure-foes",
         name: "Abjure Foes",
         level: 9,
+        activation: "action",
         description:
           "As a Magic action, you can expend one use of your Channel Divinity to overwhelm foes with awe.",
         notes: [

@@ -15,6 +15,11 @@ import type {
   CharacterSheetData,
 } from "../../rulesets/dnd/dnd2024/types";
 
+import type {
+  FeatureAction,
+  FeatureActivation,
+} from "../../types/featureActions";
+
 export type CharacterBuildMode =
   | "guided-dnd-2024"
   | "custom";
@@ -40,6 +45,8 @@ export type CustomCharacterTrait = {
   name: string;
   source?: string;
   description?: string;
+  activation?: FeatureActivation;
+  actions?: FeatureAction[];
 };
 
 export type CustomCharacterStats = {

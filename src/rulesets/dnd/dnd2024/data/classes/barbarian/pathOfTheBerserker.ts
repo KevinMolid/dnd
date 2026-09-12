@@ -42,6 +42,7 @@ export const pathOfTheBerserker: CharacterSubclass = {
         id: "retaliation",
         name: "Retaliation",
         level: 10,
+        activation: "reaction",
         description:
           "You can immediately strike back when enemies harm you.",
         notes: [

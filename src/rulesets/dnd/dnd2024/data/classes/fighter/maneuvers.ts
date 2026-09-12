@@ -171,6 +171,7 @@ export type ManeuverId =
   parry: {
     id: "maneuver-parry",
     name: "Parry",
+    activation: "reaction",
     description: "Reduce damage taken.",
     effects: [
       {
@@ -207,6 +208,7 @@ export type ManeuverId =
   rally: {
     id: "maneuver-rally",
     name: "Rally",
+    activation: "bonus-action",
     description: "Grant temporary HP.",
     effects: [
       {
@@ -221,6 +223,7 @@ export type ManeuverId =
   riposte: {
     id: "maneuver-riposte",
     name: "Riposte",
+    activation: "reaction",
     description: "Counterattack with reaction.",
     effects: [
       {

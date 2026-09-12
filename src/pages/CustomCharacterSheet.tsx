@@ -18,6 +18,8 @@ import PlayerNotesPanel from "../features/character-sheet/components/PlayerNotes
 
 import CustomFeatureTooltip from "../features/character-sheet/components/CustomFeatureTooltip";
 
+import { collectFeatureActions } from "../features/character-sheet/utils/featureActionHelpers";
+
 import type {
   CharacterSheetTab,
   DeathSaves,
@@ -481,51 +483,31 @@ const CustomCharacterSheet = ({
        FEATURES / PLAY ACTIONS
     ========================================================= */
 
+  /*
+   * Custom features use the same schema as guided features:
+   * a primary activation plus optional secondary actions.
+   *
+   * Existing traits without metadata remain passive.
+   */
   const features = (character.customTraits ?? []).map((trait) => ({
     id: trait.id,
 
     name: trait.name,
 
     description: trait.description,
+
+    activation: trait.activation ?? "passive",
+
+    actions: trait.actions ?? [],
   }));
 
-  const featureActions = features
-    .filter((feature) => {
-      const text = feature.description?.toLowerCase() ?? "";
+  const collectedFeatureActions = collectFeatureActions(features);
 
-      return text.includes("as an action") || text.includes("take an action");
-    })
-    .map((feature) => ({
-      id: `action-${feature.id}`,
+  const featureActions = collectedFeatureActions.actions;
 
-      name: feature.name,
+  const featureBonusActions = collectedFeatureActions.bonusActions;
 
-      description: feature.description,
-    }));
-
-  const featureBonusActions = features
-    .filter((feature) =>
-      feature.description?.toLowerCase().includes("bonus action"),
-    )
-    .map((feature) => ({
-      id: `bonus-${feature.id}`,
-
-      name: feature.name,
-
-      description: feature.description,
-    }));
-
-  const featureReactions = features
-    .filter((feature) =>
-      feature.description?.toLowerCase().includes("reaction"),
-    )
-    .map((feature) => ({
-      id: `reaction-${feature.id}`,
-
-      name: feature.name,
-
-      description: feature.description,
-    }));
+  const featureReactions = collectedFeatureActions.reactions;
 
   /* =========================================================
        FEATURE GROUPS

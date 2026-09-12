@@ -4,6 +4,11 @@ import type {
   Money,
 } from "../rulesets/dnd/dnd2024/types";
 
+import type {
+  FeatureAction,
+  FeatureActivation,
+} from "./featureActions";
+
 export type CustomProficiencyLevel =
   | "none"
   | "proficient"
@@ -34,6 +39,10 @@ export type CustomTrait = {
   name: string;
   source?: string;
   description?: string;
+
+  activation?: FeatureActivation;
+
+  actions?: FeatureAction[];
 };
 
 export type CustomProficiencies = {

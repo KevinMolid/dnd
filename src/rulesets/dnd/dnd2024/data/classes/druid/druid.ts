@@ -246,6 +246,7 @@ export const druid: CharacterClass = {
         id: "wild-companion",
         name: "Wild Companion",
         level: 2,
+        activation: "action",
         description:
           "You can summon a nature spirit that assumes an animal form to aid you.",
         notes: [

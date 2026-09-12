@@ -100,6 +100,7 @@ export const rogue: CharacterClass = {
         id: "cunning-action",
         name: "Cunning Action",
         level: 2,
+        activation: "bonus-action",
         description:
           "On your turn, you can take one of the following actions as a Bonus Action: Dash, Disengage, or Hide.",
       },

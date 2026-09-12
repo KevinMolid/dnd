@@ -31,6 +31,8 @@ import TraitGroupSection from "../features/character-sheet/components/TraitGroup
 
 import CharacterProfilePanel from "../features/character-sheet/components/CharacterProfilePanel";
 
+import { collectFeatureActions } from "../features/character-sheet/utils/featureActionHelpers";
+
 import PlayerNotesPanel from "../features/character-sheet/components/PlayerNotesPanel";
 
 import { abilityFullLabels } from "../features/character-sheet/utils/characterSheetConstants";
@@ -293,61 +295,42 @@ const CharacterSheet = () => {
     return true;
   });
 
+  /*
+   * Play-panel actions are now entirely metadata-driven.
+   *
+   * A trait may have:
+   * - one primary activation via trait.activation
+   * - zero or more secondary playable actions via trait.actions
+   *
+   * Rules prose is never parsed to decide where something belongs.
+   */
   const features = derived.traitGroups.flatMap((group) =>
-    group.traits.map((trait: any) => ({
+    group.traits.map((trait) => ({
       id: trait.id ?? `${group.key}-${trait.name}`,
 
       name: trait.name ?? "Feature",
 
       description: trait.description,
+
+      activation: trait.activation,
+
+      actions: trait.actions ?? [],
     })),
   );
+
+  const collectedFeatureActions = collectFeatureActions(features);
 
   const specialAttackNames = new Set(
     specialAttacks.map((attack) => attack.name.toLowerCase()),
   );
 
-  const rawCharacterActions = features
-    .filter((feature) => {
-      const text = feature.description?.toLowerCase() ?? "";
-
-      return text.includes("as an action") || text.includes("take an action");
-    })
-    .map((feature) => ({
-      id: `action-${feature.id}`,
-
-      name: feature.name,
-
-      description: feature.description,
-    }));
-
-  const characterActions = rawCharacterActions.filter(
+  const characterActions = collectedFeatureActions.actions.filter(
     (action) => !specialAttackNames.has(action.name.toLowerCase()),
   );
 
-  const characterBonusActions = features
-    .filter((feature) =>
-      feature.description?.toLowerCase().includes("bonus action"),
-    )
-    .map((feature) => ({
-      id: `bonus-${feature.id}`,
+  const characterBonusActions = collectedFeatureActions.bonusActions;
 
-      name: feature.name,
-
-      description: feature.description,
-    }));
-
-  const characterReactions = features
-    .filter((feature) =>
-      feature.description?.toLowerCase().includes("reaction"),
-    )
-    .map((feature) => ({
-      id: `reaction-${feature.id}`,
-
-      name: feature.name,
-
-      description: feature.description,
-    }));
+  const characterReactions = collectedFeatureActions.reactions;
 
   const activatedFeatureNames = new Set(
     [...characterActions, ...characterBonusActions, ...characterReactions].map(

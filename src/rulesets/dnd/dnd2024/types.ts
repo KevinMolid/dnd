@@ -1,5 +1,10 @@
 import { ManeuverId } from "./data/classes/fighter/maneuvers";
 
+import type {
+  FeatureAction,
+  FeatureActivation,
+} from "../../../types/featureActions";
+
 export type Ability =
   | "str"
   | "dex"
@@ -251,7 +256,8 @@ export type Trait = {
   description?: string;
   minLevel?: number;
   level?: number;
-  activation?: ActionType;
+  activation?: FeatureActivation;
+  actions?: FeatureAction[];
   usage?: Usage;
   effects?: TraitEffect[];
   choices?: TraitChoice[];

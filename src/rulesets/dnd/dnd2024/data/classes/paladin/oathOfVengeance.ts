@@ -156,6 +156,7 @@ export const oathOfVengeance: CharacterSubclass = {
         id: "soul-of-vengeance",
         name: "Soul of Vengeance",
         level: 15,
+        activation: "reaction",
         description:
           "Immediately after a creature under the effect of your Vow of Enmity hits or misses with an attack roll, you can take a Reaction to make a melee attack against that creature if it's within range.",
         notes: [],
