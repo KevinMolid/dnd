@@ -20,9 +20,18 @@ import type {
   MapMonster,
 } from "../../maps/types";
 
+import type { MonsterDefinition } from "../../../data/monsterCatalog";
+
 import { useWorkspace } from "../WorkspaceContext";
 
 import type { WorkspaceModuleRenderProps } from "../workspaceTypes";
+
+import useCampaignPageData from "../../campaigns/hooks/useCampaignPageData";
+
+import {
+  getActiveCampaignCharacters,
+  mapCharacterToEncounterPlayer,
+} from "../../../utils/encounterPlayers";
 
 type EnvironmentRollResult = {
   roomId: number;
@@ -153,9 +162,21 @@ export default function MapWorkspaceModule({
 
   const { maps, loading } = useCampaignMaps(campaignId);
 
+  const { campaignCharacters } = useCampaignPageData(campaignId);
+
+  const activeCharacters = useMemo(
+    () => getActiveCampaignCharacters(campaignCharacters),
+    [campaignCharacters],
+  );
+
   const { allMonsters } = useMonsterLibrary(campaignId);
 
-  const { loadEncounterTemplate } = useEncounter();
+  const {
+    loadEncounterTemplate,
+    createNewEncounter,
+    addMonsterToEncounter,
+    addPlayerToEncounter,
+  } = useEncounter();
 
   const { activeLocation, selectEntity, setActiveLocation } = useWorkspace();
 
@@ -306,6 +327,36 @@ export default function MapWorkspaceModule({
     }
 
     return monstersByName.get(normalizeMonsterName(mapMonster.name)) ?? null;
+  };
+
+  const getResolvedRoomPopulation = (room: CampaignMapRoom) => {
+    return (room.monsters ?? [])
+      .map((mapMonster) => {
+        const monster = getLinkedMonster(mapMonster);
+
+        if (!monster) {
+          return null;
+        }
+
+        return {
+          mapMonster,
+
+          monster: monster as MonsterDefinition,
+
+          quantity: Math.max(1, mapMonster.count ?? 1),
+        };
+      })
+      .filter(
+        (
+          value,
+        ): value is {
+          mapMonster: MapMonster;
+
+          monster: MonsterDefinition;
+
+          quantity: number;
+        } => value !== null,
+      );
   };
 
   useEffect(() => {
@@ -711,11 +762,77 @@ export default function MapWorkspaceModule({
   };
 
   const startRoomEncounter = () => {
-    if (!selectedRoom?.encounterTemplate) {
+    if (!selectedRoom) {
       return;
     }
 
-    loadEncounterTemplate(selectedRoom.encounterTemplate);
+    /*
+     * Explicit encounter templates remain the advanced
+     * override. If one exists, preserve the old behavior.
+     */
+    if (selectedRoom.encounterTemplate) {
+      loadEncounterTemplate(selectedRoom.encounterTemplate);
+
+      activeCharacters.forEach((character) => {
+        addPlayerToEncounter(mapCharacterToEncounterPlayer(character));
+      });
+
+      if (selectedMap) {
+        setActiveLocation({
+          mapId: selectedMap.id,
+
+          mapTitle: selectedMap.title,
+
+          roomId: selectedRoom.id,
+
+          roomName: selectedRoom.name,
+        });
+      }
+
+      setEncounterStartedMessage(
+        `Planned encounter loaded with ${
+          activeCharacters.length
+        } active player${activeCharacters.length === 1 ? "" : "s"}.`,
+      );
+
+      return;
+    }
+
+    /*
+     * Otherwise the area's listed monster population IS
+     * the encounter.
+     *
+     * Count is taken literally here:
+     * Guard ×6 means six Guards.
+     */
+    const population = getResolvedRoomPopulation(selectedRoom);
+
+    if (population.length === 0) {
+      setEncounterStartedMessage(
+        "No linked monsters are available for this area.",
+      );
+
+      return;
+    }
+
+    createNewEncounter();
+
+    /*
+     * Only active campaign characters are added.
+     */
+    activeCharacters.forEach((character) => {
+      addPlayerToEncounter(mapCharacterToEncounterPlayer(character));
+    });
+
+    let totalMonsters = 0;
+
+    population.forEach(({ monster, quantity }) => {
+      for (let index = 0; index < quantity; index += 1) {
+        addMonsterToEncounter(monster);
+
+        totalMonsters += 1;
+      }
+    });
 
     if (selectedMap) {
       setActiveLocation({
@@ -729,8 +846,20 @@ export default function MapWorkspaceModule({
       });
     }
 
-    setEncounterStartedMessage(`Encounter loaded from ${selectedRoom.name}.`);
+    setEncounterStartedMessage(
+      `${activeCharacters.length} player${
+        activeCharacters.length === 1 ? "" : "s"
+      } and ${totalMonsters} monster${
+        totalMonsters === 1 ? "" : "s"
+      } loaded from ${selectedRoom.name}.`,
+    );
   };
+
+  /*
+   * IMPORTANT:
+   * Everything below this point is the actual component render.
+   * It must stay OUTSIDE startRoomEncounter().
+   */
 
   if (loading) {
     return (
@@ -770,6 +899,18 @@ export default function MapWorkspaceModule({
   const mapDescription = selectedMap.generalDescription ?? [];
 
   const roomSummary = selectedRoom ? getRoomSummary(selectedRoom) : "";
+
+  const selectedRoomPopulation = selectedRoom
+    ? getResolvedRoomPopulation(selectedRoom)
+    : [];
+
+  const selectedRoomMonsterCount = selectedRoomPopulation.reduce(
+    (total, entry) => total + entry.quantity,
+    0,
+  );
+
+  const canStartRoomEncounter =
+    Boolean(selectedRoom?.encounterTemplate) || selectedRoomMonsterCount > 0;
 
   const isCurrentWorkspaceLocation =
     selectedRoom !== null &&
@@ -1531,7 +1672,7 @@ export default function MapWorkspaceModule({
                   </section>
                 ) : null}
 
-                {selectedRoom.encounterTemplate ? (
+                {canStartRoomEncounter ? (
                   <section className="rounded-xl border border-rose-500/15 bg-rose-500/[0.045] p-3">
                     <div className="flex items-start gap-3">
                       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-300">
@@ -1544,8 +1685,15 @@ export default function MapWorkspaceModule({
                         </div>
 
                         <div className="mt-0.5 text-[11px] leading-4 text-zinc-400">
-                          Load this encounter directly into the workspace
-                          tracker.
+                          {selectedRoom.encounterTemplate
+                            ? `Load the planned encounter and ${activeCharacters.length} active player${
+                                activeCharacters.length === 1 ? "" : "s"
+                              }.`
+                            : `Load all ${selectedRoomMonsterCount} listed monster${
+                                selectedRoomMonsterCount === 1 ? "" : "s"
+                              } and ${activeCharacters.length} active player${
+                                activeCharacters.length === 1 ? "" : "s"
+                              } into the encounter tracker.`}
                         </div>
                       </div>
                     </div>
@@ -1636,7 +1784,6 @@ export default function MapWorkspaceModule({
                           const environmentName = activeEffect
                             ? getEnvironmentLevelName(
                                 activeEffect,
-
                                 getRoomEnvironmentLevel(room, activeEffect),
                               )
                             : null;

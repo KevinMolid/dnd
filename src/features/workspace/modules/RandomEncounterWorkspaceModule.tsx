@@ -1,1248 +1,748 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
-import { useAuth } from "../../../context/AuthContext";
+import type { MonsterDefinition } from "../../../data/monsterCatalog";
 
 import { useEncounter } from "../../../context/EncounterContext";
 
 import useMonsterLibrary from "../../../hooks/useMonsterLibrary";
 
-import {
-  createCampaignRandomTable,
-  deleteCampaignRandomTable,
-  updateCampaignRandomTable,
-} from "../../randomTables/randomTableService";
+import useCampaignPageData from "../../campaigns/hooks/useCampaignPageData";
 
-import { rollWeightedEncounterEntry } from "../../randomTables/randomTableEngine";
+import { useCampaignMaps } from "../../maps/useCampaignMaps";
 
-import useCampaignRandomTables from "../../randomTables/useCampaignRandomTables";
-
-import type {
-  CampaignRandomTable,
-  RandomEncounterEntry,
-  RandomEncounterEntryType,
-  RandomEncounterMonster,
-  RolledRandomEncounter,
-} from "../../randomTables/types";
+import type { MapMonster } from "../../maps/types";
 
 import { useWorkspace } from "../WorkspaceContext";
 
 import type { WorkspaceModuleRenderProps } from "../workspaceTypes";
 
-const makeId = () => {
-  if (
-    typeof crypto !== "undefined" &&
-    typeof crypto.randomUUID === "function"
-  ) {
-    return crypto.randomUUID();
+import {
+  getActiveCampaignCharacters,
+  mapCharacterToEncounterPlayer,
+} from "../../../utils/encounterPlayers";
+
+type Difficulty = "low" | "standard" | "hard";
+
+type WorkspaceMonsterDefinition = MonsterDefinition & {
+  source?: "default" | "campaign";
+};
+
+type LocalPopulationEntry = {
+  key: string;
+  monster: WorkspaceMonsterDefinition;
+  mapMonster: MapMonster;
+  maxQuantity: number;
+};
+
+type RandomEncounterEntry = {
+  key: string;
+  monster: WorkspaceMonsterDefinition;
+  mapMonster: MapMonster;
+  quantity: number;
+  maxQuantity: number;
+};
+
+type EncounterCandidate = {
+  index: number;
+  weight: number;
+  xp: number;
+};
+
+const normalizeMonsterName = (value: string) => {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+};
+
+const STANDARD_XP_BY_LEVEL: Record<number, number> = {
+  1: 50,
+  2: 100,
+  3: 150,
+  4: 250,
+  5: 500,
+  6: 600,
+  7: 750,
+  8: 900,
+  9: 1100,
+  10: 1200,
+  11: 1300,
+  12: 1500,
+  13: 1600,
+  14: 1800,
+  15: 2000,
+  16: 2100,
+  17: 2400,
+  18: 2800,
+  19: 3200,
+  20: 3600,
+};
+
+const DIFFICULTY_MULTIPLIER: Record<Difficulty, number> = {
+  low: 0.65,
+  standard: 1,
+  hard: 1.5,
+};
+
+const getCharacterBudget = (level: number) => {
+  const safeLevel = Math.max(1, Math.min(20, Math.floor(level)));
+
+  return STANDARD_XP_BY_LEVEL[safeLevel] ?? 50;
+};
+
+const getWeightedRandomIndex = (weights: number[]) => {
+  const total = weights.reduce((sum, weight) => sum + Math.max(0, weight), 0);
+
+  if (total <= 0) {
+    return -1;
   }
 
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-};
+  let roll = Math.random() * total;
 
-const normalizeText = (value?: string) =>
-  (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
+  for (let index = 0; index < weights.length; index += 1) {
+    roll -= Math.max(0, weights[index] ?? 0);
 
-const tableMatchesLocation = (
-  table: CampaignRandomTable,
-
-  location?: string,
-) => {
-  if (!location || !table.locationNames?.length) {
-    return false;
+    if (roll <= 0) {
+      return index;
+    }
   }
 
-  const normalizedLocation = normalizeText(location);
-
-  return table.locationNames.some((tableLocation) => {
-    const normalizedTableLocation = normalizeText(tableLocation);
-
-    return (
-      normalizedTableLocation === normalizedLocation ||
-      normalizedTableLocation.includes(normalizedLocation) ||
-      normalizedLocation.includes(normalizedTableLocation)
-    );
-  });
-};
-
-const getDefaultEntry = (): RandomEncounterEntry => ({
-  id: makeId(),
-
-  name: "New Encounter",
-
-  weight: 1,
-
-  type: "combat",
-
-  description: "",
-
-  monsters: [],
-});
-
-const getDefaultMonsterRow = (): RandomEncounterMonster => ({
-  id: makeId(),
-
-  monsterKey: "",
-
-  quantityExpression: "1",
-});
-
-type TableDraft = {
-  name: string;
-
-  description: string;
-
-  locationText: string;
-
-  entries: RandomEncounterEntry[];
-};
-
-const emptyDraft = (): TableDraft => ({
-  name: "New Encounter Table",
-
-  description: "",
-
-  locationText: "",
-
-  entries: [getDefaultEntry()],
-});
-
-const tableToDraft = (table: CampaignRandomTable): TableDraft => ({
-  name: table.name,
-
-  description: table.description ?? "",
-
-  locationText: (table.locationNames ?? []).join(", "),
-
-  entries: table.entries.map((entry) => ({
-    ...entry,
-
-    monsters: (entry.monsters ?? []).map((monster) => ({
-      ...monster,
-    })),
-  })),
-});
-
-const getEntryTypeLabel = (type: RandomEncounterEntryType) => {
-  return type === "combat" ? "Combat" : "Event";
+  return weights.length - 1;
 };
 
 export default function RandomEncounterWorkspaceModule({
-  module,
-
   campaignId,
-
-  updateModule,
 }: WorkspaceModuleRenderProps) {
-  const { user } = useAuth();
+  const { maps, loading: mapsLoading } = useCampaignMaps(campaignId);
 
-  const {
-    tables,
+  const { allMonsters, loading: monstersLoading } =
+    useMonsterLibrary(campaignId);
 
-    loading,
+  const { campaignCharacters, campaignCharactersLoading } =
+    useCampaignPageData(campaignId);
 
-    error,
-  } = useCampaignRandomTables(campaignId);
+  const { activeLocation, selectEntity } = useWorkspace();
 
-  const {
-    allMonsters,
+  const { createNewEncounter, addMonsterToEncounter, addPlayerToEncounter } =
+    useEncounter();
 
-    loading: monstersLoading,
-  } = useMonsterLibrary(campaignId);
+  const [difficulty, setDifficulty] = useState<Difficulty>("standard");
 
-  const {
-    encounter,
+  const [generatedEncounter, setGeneratedEncounter] = useState<
+    RandomEncounterEntry[]
+  >([]);
 
-    clearEncounter,
+  const [message, setMessage] = useState<string | null>(null);
 
-    addMonsterToEncounter,
-  } = useEncounter();
+  const activeCharacters = useMemo(
+    () => getActiveCampaignCharacters(campaignCharacters),
+    [campaignCharacters],
+  );
 
-  const { activeLocation } = useWorkspace();
+  const partyBudget = useMemo(() => {
+    const standard = activeCharacters.reduce(
+      (total, character) => total + getCharacterBudget(character.level ?? 1),
+      0,
+    );
 
-  const [rolledEncounter, setRolledEncounter] =
-    useState<RolledRandomEncounter | null>(null);
+    return Math.max(
+      25,
+      Math.round(standard * DIFFICULTY_MULTIPLIER[difficulty]),
+    );
+  }, [activeCharacters, difficulty]);
 
-  const [editorOpen, setEditorOpen] = useState(false);
+  const monstersByName = useMemo(() => {
+    const result = new Map<string, (typeof allMonsters)[number]>();
 
-  const [editingTableId, setEditingTableId] = useState<string | null>(null);
-
-  const [draft, setDraft] = useState<TableDraft>(emptyDraft());
-
-  const [saving, setSaving] = useState(false);
-
-  const [editorError, setEditorError] = useState<string | null>(null);
-
-  const orderedTables = useMemo(() => {
-    return [...tables].sort((a, b) => {
-      const aMatches = tableMatchesLocation(a, activeLocation?.roomName);
-
-      const bMatches = tableMatchesLocation(b, activeLocation?.roomName);
-
-      if (aMatches !== bMatches) {
-        return aMatches ? -1 : 1;
+    const sorted = [...allMonsters].sort((a, b) => {
+      if (a.source === "campaign" && b.source !== "campaign") {
+        return -1;
       }
 
-      return a.name.localeCompare(b.name, undefined, {
-        sensitivity: "base",
-      });
-    });
-  }, [tables, activeLocation]);
-
-  const selectedTable = useMemo(() => {
-    const configuredId = module.config?.randomEncounterTableId;
-
-    if (configuredId) {
-      const found = tables.find((table) => table.id === configuredId);
-
-      if (found) {
-        return found;
+      if (b.source === "campaign" && a.source !== "campaign") {
+        return 1;
       }
-    }
 
-    return orderedTables[0] ?? null;
-  }, [module.config?.randomEncounterTableId, tables, orderedTables]);
-
-  /*
-   * Keep a valid table persisted in the module.
-   */
-  useEffect(() => {
-    if (loading || !selectedTable) {
-      return;
-    }
-
-    if (module.config?.randomEncounterTableId === selectedTable.id) {
-      return;
-    }
-
-    updateModule(module.id, {
-      config: {
-        ...module.config,
-
-        randomEncounterTableId: selectedTable.id,
-      },
-    });
-  }, [loading, selectedTable, module.id, module.config, updateModule]);
-
-  /*
-   * If changing tables, previous result is no
-   * longer relevant.
-   */
-  const selectTable = (tableId: string) => {
-    updateModule(module.id, {
-      config: {
-        ...module.config,
-
-        randomEncounterTableId: tableId,
-      },
+      return 0;
     });
 
-    setRolledEncounter(null);
-  };
+    sorted.forEach((monster) => {
+      const key = normalizeMonsterName(monster.name);
 
-  const rollEncounter = () => {
-    if (!selectedTable) {
-      return;
+      if (!result.has(key)) {
+        result.set(key, monster);
+      }
+    });
+
+    return result;
+  }, [allMonsters]);
+
+  const activeMap = useMemo(() => {
+    if (!activeLocation) {
+      return null;
     }
 
-    const result = rollWeightedEncounterEntry(selectedTable.entries);
+    return maps.find((map) => map.id === activeLocation.mapId) ?? null;
+  }, [maps, activeLocation]);
 
-    setRolledEncounter(result);
-  };
+  const activeRoom = useMemo(() => {
+    if (!activeMap || !activeLocation) {
+      return null;
+    }
 
-  const getMonsterByKey = (monsterKey: string) => {
     return (
-      allMonsters.find(
-        (monster) => `${monster.source}:${monster.id}` === monsterKey,
-      ) ?? null
+      activeMap.rooms.find((room) => room.id === activeLocation.roomId) ?? null
     );
-  };
+  }, [activeMap, activeLocation]);
 
-  const startEncounter = () => {
-    if (!rolledEncounter || rolledEncounter.entryType !== "combat") {
-      return;
-    }
-
-    const hasCreatures = rolledEncounter.monsters.some(
-      (monster) =>
-        monster.quantity > 0 && Boolean(getMonsterByKey(monster.monsterKey)),
-    );
-
-    if (!hasCreatures) {
-      return;
-    }
-
-    if (encounter.length > 0) {
-      const confirmed = window.confirm(
-        "Replace the current encounter with this random encounter?",
+  const resolveMapMonster = (mapMonster: MapMonster) => {
+    if (mapMonster.monsterKey) {
+      const exact = allMonsters.find(
+        (monster) =>
+          `${monster.source}:${monster.id}` === mapMonster.monsterKey,
       );
 
-      if (!confirmed) {
-        return;
+      if (exact) {
+        return exact;
       }
     }
 
-    /*
-     * React processes these state updates in order.
-     *
-     * First clear the old encounter, then append
-     * each generated monster.
-     */
-    clearEncounter();
+    return monstersByName.get(normalizeMonsterName(mapMonster.name)) ?? null;
+  };
 
-    rolledEncounter.monsters.forEach((rolledMonster) => {
-      const monster = getMonsterByKey(rolledMonster.monsterKey);
+  const localPopulation = useMemo<LocalPopulationEntry[]>(() => {
+    if (!activeRoom?.monsters?.length) {
+      return [];
+    }
+
+    const entries: LocalPopulationEntry[] = [];
+
+    activeRoom.monsters.forEach((mapMonster) => {
+      const monster = resolveMapMonster(mapMonster);
 
       if (!monster) {
         return;
       }
 
-      for (let i = 0; i < rolledMonster.quantity; i += 1) {
-        addMonsterToEncounter(monster);
+      entries.push({
+        key: `${monster.source}:${monster.id}`,
+        monster: monster as WorkspaceMonsterDefinition,
+        mapMonster,
+        maxQuantity: Math.max(1, Number(mapMonster.count ?? 1)),
+      });
+    });
+
+    return entries;
+  }, [activeRoom, allMonsters, monstersByName]);
+
+  const generatedXp = useMemo(
+    () =>
+      generatedEncounter.reduce(
+        (total, entry) => total + entry.monster.xp * entry.quantity,
+        0,
+      ),
+    [generatedEncounter],
+  );
+
+  const generateEncounter = () => {
+    setMessage(null);
+
+    if (localPopulation.length === 0) {
+      setGeneratedEncounter([]);
+      setMessage("No linked monsters are available in this area.");
+      return;
+    }
+
+    const quantities: number[] = Array.from(
+      { length: localPopulation.length },
+      () => 0,
+    );
+
+    let currentXp = 0;
+
+    const minimumTarget = partyBudget * 0.75;
+    const maximumTarget = partyBudget * 1.15;
+
+    let iterations = 0;
+
+    while (iterations < 100) {
+      iterations += 1;
+
+      if (
+        currentXp >= minimumTarget &&
+        (currentXp >= partyBudget || Math.random() < 0.35)
+      ) {
+        break;
       }
+
+      const candidates: EncounterCandidate[] = [];
+
+      localPopulation.forEach((entry, index) => {
+        const currentQuantity = quantities[index] ?? 0;
+
+        const remaining = entry.maxQuantity - currentQuantity;
+
+        if (remaining <= 0) {
+          return;
+        }
+
+        const xp = Math.max(0, Number(entry.monster.xp ?? 0));
+
+        if (currentXp > 0 && currentXp + xp > maximumTarget) {
+          return;
+        }
+
+        candidates.push({
+          index,
+          weight: remaining,
+          xp,
+        });
+      });
+
+      if (candidates.length === 0) {
+        break;
+      }
+
+      const randomIndex = getWeightedRandomIndex(
+        candidates.map((candidate) => candidate.weight),
+      );
+
+      if (randomIndex < 0) {
+        break;
+      }
+
+      const selected = candidates[randomIndex];
+
+      if (!selected) {
+        break;
+      }
+
+      quantities[selected.index] = (quantities[selected.index] ?? 0) + 1;
+
+      currentXp += selected.xp;
+    }
+
+    /*
+     * Avoid `every(quantity => quantity === 0)` here.
+     * TypeScript can narrow the array to literal 0[] inside
+     * that block, which makes assigning 1 invalid.
+     */
+    const hasGeneratedMonster = quantities.some((quantity) => quantity > 0);
+
+    if (!hasGeneratedMonster) {
+      let cheapestIndex = -1;
+      let cheapestXp = Number.POSITIVE_INFINITY;
+
+      localPopulation.forEach((entry, index) => {
+        const xp = Math.max(0, Number(entry.monster.xp ?? 0));
+
+        if (xp < cheapestXp) {
+          cheapestXp = xp;
+          cheapestIndex = index;
+        }
+      });
+
+      if (cheapestIndex >= 0) {
+        quantities[cheapestIndex] = 1;
+      }
+    }
+
+    const next: RandomEncounterEntry[] = [];
+
+    localPopulation.forEach((entry, index) => {
+      const quantity = quantities[index] ?? 0;
+
+      if (quantity <= 0) {
+        return;
+      }
+
+      next.push({
+        key: entry.key,
+        monster: entry.monster,
+        mapMonster: entry.mapMonster,
+        quantity,
+        maxQuantity: entry.maxQuantity,
+      });
+    });
+
+    setGeneratedEncounter(next);
+  };
+
+  const adjustQuantity = (key: string, delta: number) => {
+    setGeneratedEncounter((current) =>
+      current
+        .map((entry): RandomEncounterEntry => {
+          if (entry.key !== key) {
+            return entry;
+          }
+
+          const nextQuantity = Math.max(
+            0,
+            Math.min(entry.maxQuantity, entry.quantity + delta),
+          );
+
+          return {
+            ...entry,
+            quantity: nextQuantity,
+          };
+        })
+        .filter((entry) => entry.quantity > 0),
+    );
+  };
+
+  const addFromPopulation = (key: string) => {
+    const source = localPopulation.find((entry) => entry.key === key);
+
+    if (!source) {
+      return;
+    }
+
+    setGeneratedEncounter((current) => {
+      const existing = current.find((entry) => entry.key === key);
+
+      if (existing) {
+        return current.map((entry): RandomEncounterEntry => {
+          if (entry.key !== key) {
+            return entry;
+          }
+
+          return {
+            ...entry,
+            quantity: Math.min(entry.maxQuantity, entry.quantity + 1),
+          };
+        });
+      }
+
+      const newEntry: RandomEncounterEntry = {
+        key: source.key,
+        monster: source.monster,
+        mapMonster: source.mapMonster,
+        quantity: 1,
+        maxQuantity: source.maxQuantity,
+      };
+
+      return [...current, newEntry];
     });
   };
 
-  const openNewTable = () => {
-    setEditingTableId(null);
-
-    setDraft(emptyDraft());
-
-    setEditorError(null);
-
-    setEditorOpen(true);
+  const inspectMonster = (entry: RandomEncounterEntry) => {
+    selectEntity({
+      type: "monster",
+      monsterKey: entry.key,
+      encounterStatus: "manual",
+    });
   };
 
-  const openEditTable = () => {
-    if (!selectedTable) {
+  const startEncounter = () => {
+    if (generatedEncounter.length === 0) {
       return;
     }
 
-    setEditingTableId(selectedTable.id);
+    createNewEncounter();
 
-    setDraft(tableToDraft(selectedTable));
+    /*
+     * Only characters marked active for
+     * this campaign join the encounter.
+     */
+    activeCharacters.forEach((character) => {
+      addPlayerToEncounter(mapCharacterToEncounterPlayer(character));
+    });
 
-    setEditorError(null);
-
-    setEditorOpen(true);
-  };
-
-  const updateEntry = (
-    entryId: string,
-
-    changes: Partial<RandomEncounterEntry>,
-  ) => {
-    setDraft((current) => ({
-      ...current,
-
-      entries: current.entries.map((entry) =>
-        entry.id === entryId
-          ? {
-              ...entry,
-
-              ...changes,
-            }
-          : entry,
-      ),
-    }));
-  };
-
-  const addEntry = () => {
-    setDraft((current) => ({
-      ...current,
-
-      entries: [...current.entries, getDefaultEntry()],
-    }));
-  };
-
-  const removeEntry = (entryId: string) => {
-    setDraft((current) => ({
-      ...current,
-
-      entries: current.entries.filter((entry) => entry.id !== entryId),
-    }));
-  };
-
-  const addMonsterRow = (entryId: string) => {
-    setDraft((current) => ({
-      ...current,
-
-      entries: current.entries.map((entry) =>
-        entry.id === entryId
-          ? {
-              ...entry,
-
-              monsters: [...(entry.monsters ?? []), getDefaultMonsterRow()],
-            }
-          : entry,
-      ),
-    }));
-  };
-
-  const updateMonsterRow = (
-    entryId: string,
-
-    monsterRowId: string,
-
-    changes: Partial<RandomEncounterMonster>,
-  ) => {
-    setDraft((current) => ({
-      ...current,
-
-      entries: current.entries.map((entry) => {
-        if (entry.id !== entryId) {
-          return entry;
-        }
-
-        return {
-          ...entry,
-
-          monsters: (entry.monsters ?? []).map((monster) =>
-            monster.id === monsterRowId
-              ? {
-                  ...monster,
-
-                  ...changes,
-                }
-              : monster,
-          ),
-        };
-      }),
-    }));
-  };
-
-  const removeMonsterRow = (
-    entryId: string,
-
-    monsterRowId: string,
-  ) => {
-    setDraft((current) => ({
-      ...current,
-
-      entries: current.entries.map((entry) => {
-        if (entry.id !== entryId) {
-          return entry;
-        }
-
-        return {
-          ...entry,
-
-          monsters: (entry.monsters ?? []).filter(
-            (monster) => monster.id !== monsterRowId,
-          ),
-        };
-      }),
-    }));
-  };
-
-  const saveTable = async () => {
-    if (!user) {
-      setEditorError("You must be logged in.");
-
-      return;
-    }
-
-    const name = draft.name.trim();
-
-    if (!name) {
-      setEditorError("The table needs a name.");
-
-      return;
-    }
-
-    if (draft.entries.length === 0) {
-      setEditorError("Add at least one encounter result.");
-
-      return;
-    }
-
-    for (const entry of draft.entries) {
-      if (!entry.name.trim()) {
-        setEditorError("Every result needs a name.");
-
-        return;
+    generatedEncounter.forEach((entry) => {
+      for (let index = 0; index < entry.quantity; index += 1) {
+        addMonsterToEncounter(entry.monster);
       }
+    });
 
-      if (
-        entry.type === "combat" &&
-        (entry.monsters ?? []).some((monster) => !monster.monsterKey)
-      ) {
-        setEditorError(`Choose a monster for every row in "${entry.name}".`);
-
-        return;
-      }
-    }
-
-    const locationNames = draft.locationText
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
-
-    const entries = draft.entries.map((entry) => ({
-      ...entry,
-
-      name: entry.name.trim(),
-
-      description: entry.description?.trim() || "",
-
-      weight: Math.max(1, Math.floor(entry.weight || 1)),
-
-      monsters:
-        entry.type === "combat"
-          ? (entry.monsters ?? []).map((monster) => ({
-              ...monster,
-
-              quantityExpression: monster.quantityExpression.trim() || "1",
-
-              displayName: monster.displayName?.trim() || undefined,
-            }))
-          : [],
-    }));
-
-    try {
-      setSaving(true);
-
-      setEditorError(null);
-
-      if (editingTableId) {
-        await updateCampaignRandomTable(
-          campaignId,
-
-          editingTableId,
-
-          user.uid,
-
-          {
-            name,
-
-            description: draft.description.trim(),
-
-            locationNames,
-
-            entries,
-          },
-        );
-      } else {
-        const id = await createCampaignRandomTable({
-          campaignId,
-
-          userId: user.uid,
-
-          data: {
-            name,
-
-            description: draft.description.trim(),
-
-            kind: "encounter",
-
-            locationNames,
-
-            entries,
-          },
-        });
-
-        updateModule(module.id, {
-          config: {
-            ...module.config,
-
-            randomEncounterTableId: id,
-          },
-        });
-      }
-
-      setRolledEncounter(null);
-
-      setEditorOpen(false);
-    } catch (saveError) {
-      console.error(saveError);
-
-      setEditorError("Failed to save the encounter table.");
-    } finally {
-      setSaving(false);
-    }
+    setMessage(
+      `Encounter loaded from ${activeRoom?.name ?? "current area"} with ${
+        activeCharacters.length
+      } active player${activeCharacters.length === 1 ? "" : "s"}.`,
+    );
   };
 
-  const deleteTable = async () => {
-    if (!selectedTable) {
-      return;
-    }
-
-    const confirmed = window.confirm(`Delete "${selectedTable.name}"?`);
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await deleteCampaignRandomTable(
-        campaignId,
-
-        selectedTable.id,
-      );
-
-      updateModule(module.id, {
-        config: {
-          ...module.config,
-
-          randomEncounterTableId: undefined,
-        },
-      });
-
-      setRolledEncounter(null);
-    } catch (deleteError) {
-      console.error(deleteError);
-    }
-  };
+  const loading = mapsLoading || monstersLoading || campaignCharactersLoading;
 
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center text-xs text-zinc-500">
-        Loading encounter tables...
+        Loading encounter data...
       </div>
     );
   }
 
-  if (error) {
+  if (!activeLocation || !activeRoom) {
     return (
-      <div className="flex h-full items-center justify-center p-4 text-center text-xs text-rose-300">
-        {error}
+      <div className="flex h-full items-center justify-center p-4 text-center">
+        <div>
+          <i className="fa-solid fa-location-dot text-2xl text-zinc-700" />
+
+          <div className="mt-2 text-xs font-semibold text-zinc-300">
+            No active area
+          </div>
+
+          <div className="mt-1 max-w-xs text-[10px] leading-4 text-zinc-500">
+            Select an area in the Map module first.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (localPopulation.length === 0) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="shrink-0 border-b border-white/10 px-3 py-2">
+          <div className="text-[10px] font-semibold text-emerald-300">
+            <i className="fa-solid fa-location-dot mr-1" />
+
+            {activeRoom.name}
+          </div>
+        </div>
+
+        <div className="flex min-h-0 flex-1 items-center justify-center p-4 text-center">
+          <div>
+            <i className="fa-solid fa-dice-d20 text-2xl text-zinc-700" />
+
+            <div className="mt-2 text-xs font-semibold text-zinc-300">
+              No encounter population
+            </div>
+
+            <div className="mt-1 max-w-xs text-[10px] leading-4 text-zinc-500">
+              Add monsters to this map area to generate encounters from it.
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-col bg-zinc-950/20">
-      {/* Toolbar */}
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="shrink-0 border-b border-white/10 p-2">
+        <div className="flex items-center gap-1.5">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[10px] font-semibold text-emerald-300">
+              <i className="fa-solid fa-location-dot mr-1" />
 
-      <div className="workspace-no-drag shrink-0 border-b border-white/10 bg-black/20 p-2">
-        <div className="flex items-center gap-2">
-          {tables.length > 0 ? (
-            <div className="relative min-w-0 flex-1">
-              <select
-                value={selectedTable?.id ?? ""}
-                onChange={(event) => selectTable(event.target.value)}
-                className="h-8 w-full appearance-none truncate rounded-lg border border-white/10 bg-white/5 px-3 pr-8 text-xs font-semibold text-zinc-200 outline-none hover:bg-white/10"
-              >
-                {orderedTables.map((table) => (
-                  <option
-                    key={table.id}
-                    value={table.id}
-                    className="bg-zinc-900"
-                  >
-                    {tableMatchesLocation(table, activeLocation?.roomName)
-                      ? "📍 "
-                      : ""}
-
-                    {table.name}
-                  </option>
-                ))}
-              </select>
-
-              <i className="fa-solid fa-chevron-down pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[8px] text-zinc-600" />
+              {activeRoom.name}
             </div>
-          ) : (
-            <div className="min-w-0 flex-1 truncate text-xs text-zinc-500">
-              No encounter tables
+
+            <div className="mt-0.5 text-[9px] text-zinc-500">
+              {activeCharacters.length} active player
+              {activeCharacters.length === 1 ? "" : "s"} · Target {partyBudget}{" "}
+              XP
             </div>
-          )}
+          </div>
+
+          <select
+            value={difficulty}
+            onChange={(event) => {
+              setDifficulty(event.target.value as Difficulty);
+              setGeneratedEncounter([]);
+              setMessage(null);
+            }}
+            title="Encounter strength"
+            className="workspace-no-drag h-7 rounded-md border border-white/10 bg-zinc-900 px-2 text-[9px] font-semibold text-zinc-300 outline-none"
+          >
+            <option value="low">Low</option>
+            <option value="standard">Standard</option>
+            <option value="hard">Hard</option>
+          </select>
 
           <button
             type="button"
-            onClick={openNewTable}
-            title="Create encounter table"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white"
+            onClick={generateEncounter}
+            title="Generate random encounter"
+            className="workspace-no-drag flex h-7 items-center gap-1.5 rounded-md bg-violet-600 px-2.5 text-[9px] font-semibold text-white transition hover:bg-violet-500"
           >
-            <i className="fa-solid fa-plus text-[10px]" />
-          </button>
-
-          <button
-            type="button"
-            onClick={openEditTable}
-            disabled={!selectedTable}
-            title="Edit table"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-500 transition hover:bg-white/10 hover:text-white disabled:opacity-25"
-          >
-            <i className="fa-solid fa-pen text-[9px]" />
+            <i className="fa-solid fa-dice-d20" />
+            Roll
           </button>
         </div>
-
-        {activeLocation ? (
-          <div className="mt-2 flex items-center gap-1.5 truncate text-[9px] text-emerald-300/70">
-            <i className="fa-solid fa-location-dot" />
-
-            <span className="truncate">{activeLocation.roomName}</span>
-
-            {selectedTable &&
-            tableMatchesLocation(selectedTable, activeLocation.roomName) ? (
-              <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[8px] font-semibold uppercase text-emerald-300">
-                Matching table
-              </span>
-            ) : null}
-          </div>
-        ) : null}
       </div>
 
-      {/* Empty */}
+      <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
+        {generatedEncounter.length > 0 ? (
+          <>
+            <div className="border-b border-white/5 px-2.5 py-1.5">
+              <div className="flex items-center justify-between text-[9px]">
+                <span className="font-semibold text-zinc-300">Encounter</span>
 
-      {!selectedTable ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center p-5 text-center">
-          <div>
-            <i className="fa-solid fa-dice-d20 text-3xl text-violet-400/25" />
-
-            <p className="mt-3 text-sm font-semibold text-zinc-300">
-              No random encounters
-            </p>
-
-            <p className="mt-1 max-w-xs text-xs leading-5 text-zinc-600">
-              Create your first campaign-specific encounter table.
-            </p>
-
-            <button
-              type="button"
-              onClick={openNewTable}
-              className="mt-4 rounded-lg bg-violet-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-violet-500"
-            >
-              <i className="fa-solid fa-plus mr-1.5" />
-              Create Table
-            </button>
-          </div>
-        </div>
-      ) : (
-        <>
-          {/* Table info */}
-
-          <div className="shrink-0 border-b border-white/10 p-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-300">
-                <i className="fa-solid fa-dice-d20" />
+                <span
+                  className={`font-semibold ${
+                    generatedXp > partyBudget * 1.2
+                      ? "text-rose-300"
+                      : generatedXp > partyBudget
+                        ? "text-amber-300"
+                        : "text-emerald-300"
+                  }`}
+                >
+                  {generatedXp} / {partyBudget} XP
+                </span>
               </div>
-
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold text-white">
-                  {selectedTable.name}
-                </div>
-
-                <div className="mt-0.5 text-[9px] text-zinc-600">
-                  {selectedTable.entries.length} possible result
-                  {selectedTable.entries.length === 1 ? "" : "s"}
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={deleteTable}
-                title="Delete table"
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-zinc-700 transition hover:bg-rose-500/10 hover:text-rose-300"
-              >
-                <i className="fa-solid fa-trash text-[9px]" />
-              </button>
             </div>
 
-            {selectedTable.description ? (
-              <p className="mt-2 text-[10px] leading-4 text-zinc-500">
-                {selectedTable.description}
-              </p>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={rollEncounter}
-              disabled={selectedTable.entries.length === 0}
-              className="mt-3 w-full rounded-lg bg-violet-600 px-3 py-2.5 text-xs font-bold text-white transition hover:bg-violet-500 disabled:opacity-30"
-            >
-              <i className="fa-solid fa-dice-d20 mr-2" />
-
-              {rolledEncounter ? "Reroll Encounter" : "Roll Encounter"}
-            </button>
-          </div>
-
-          {/* Result */}
-
-          <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
-            {!rolledEncounter ? (
-              <div className="flex min-h-full items-center justify-center p-5 text-center">
-                <div>
-                  <i className="fa-solid fa-dice text-2xl text-zinc-800" />
-
-                  <p className="mt-2 text-xs text-zinc-600">
-                    Roll the table when you need an encounter.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-3">
-                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                  <div className="flex items-start gap-2">
-                    <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                        rolledEncounter.entryType === "combat"
-                          ? "bg-rose-500/10 text-rose-300"
-                          : "bg-sky-500/10 text-sky-300"
-                      }`}
-                    >
-                      <i
-                        className={`fa-solid ${
-                          rolledEncounter.entryType === "combat"
-                            ? "fa-swords"
-                            : "fa-eye"
-                        }`}
-                      />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[8px] font-bold uppercase tracking-[0.14em] text-zinc-600">
-                        {getEntryTypeLabel(rolledEncounter.entryType)}
-                        {" · "}
-                        Roll {rolledEncounter.weightedRoll}/
-                        {rolledEncounter.totalWeight}
-                      </div>
-
-                      <h3 className="mt-0.5 text-sm font-bold text-white">
-                        {rolledEncounter.entryName}
-                      </h3>
-                    </div>
+            {generatedEncounter.map((entry) => (
+              <div
+                key={entry.key}
+                className="flex items-center gap-2 border-b border-white/5 px-2 py-2"
+              >
+                <button
+                  type="button"
+                  onClick={() => inspectMonster(entry)}
+                  className="workspace-no-drag min-w-0 flex-1 text-left"
+                >
+                  <div className="truncate text-[11px] font-semibold text-zinc-200 hover:text-white">
+                    {entry.monster.name}
                   </div>
 
-                  {rolledEncounter.description ? (
-                    <div className="mt-3 whitespace-pre-wrap text-xs leading-5 text-zinc-300">
-                      {rolledEncounter.description}
+                  <div className="mt-0.5 truncate text-[8px] text-zinc-500">
+                    CR {entry.monster.challengeRating} · {entry.monster.xp} XP
+                    each · max {entry.maxQuantity}
+                  </div>
+
+                  {entry.mapMonster.notes ? (
+                    <div className="mt-0.5 truncate text-[8px] text-zinc-600">
+                      {entry.mapMonster.notes}
                     </div>
                   ) : null}
+                </button>
 
-                  {rolledEncounter.entryType === "combat" &&
-                  rolledEncounter.monsters.length > 0 ? (
-                    <div className="mt-3 space-y-1.5 border-t border-white/10 pt-3">
-                      {rolledEncounter.monsters.map((rolledMonster, index) => {
-                        const monster = getMonsterByKey(
-                          rolledMonster.monsterKey,
-                        );
-
-                        return (
-                          <div
-                            key={`${rolledMonster.monsterKey}-${index}`}
-                            className="flex items-center gap-2 rounded-lg border border-white/5 bg-white/[0.025] p-2"
-                          >
-                            <div className="h-8 w-10 shrink-0 overflow-hidden rounded-md bg-black/30">
-                              {monster?.img ? (
-                                <img
-                                  src={monster.img}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-zinc-700">
-                                  <i className="fa-solid fa-dragon text-[9px]" />
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-xs font-semibold text-amber-200">
-                                {rolledMonster.quantity}×{" "}
-                                {rolledMonster.displayName ||
-                                  monster?.name ||
-                                  "Unknown Monster"}
-                              </div>
-
-                              <div className="mt-0.5 text-[9px] text-zinc-600">
-                                Rolled {rolledMonster.quantityExpression}
-                                {rolledMonster.rolls.length > 0
-                                  ? ` → [${rolledMonster.rolls.join(", ")}]`
-                                  : ""}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-
-                {rolledEncounter.entryType === "combat" ? (
+                <div className="workspace-no-drag flex shrink-0 items-center gap-1">
                   <button
                     type="button"
-                    onClick={startEncounter}
-                    disabled={
-                      monstersLoading || rolledEncounter.monsters.length === 0
-                    }
-                    className="mt-3 w-full rounded-lg bg-rose-600 px-3 py-2.5 text-xs font-bold text-white transition hover:bg-rose-500 disabled:opacity-30"
+                    onClick={() => adjustQuantity(entry.key, -1)}
+                    aria-label={`Decrease ${entry.monster.name} quantity`}
+                    className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-black/20 text-[10px] text-zinc-400 transition hover:bg-white/5 hover:text-white"
                   >
-                    <i className="fa-solid fa-play mr-2" />
-                    Start Encounter
+                    −
                   </button>
-                ) : (
-                  <div className="mt-3 rounded-lg border border-sky-500/10 bg-sky-500/[0.04] px-3 py-2 text-center text-[10px] text-sky-300">
-                    No combat to start — this is an event result.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </>
-      )}
 
-      {/* Editor */}
-
-      {editorOpen ? (
-        <div className="workspace-no-drag absolute inset-0 z-50 flex flex-col bg-zinc-950">
-          {/* Editor header */}
-
-          <div className="flex h-11 shrink-0 items-center gap-2 border-b border-white/10 bg-zinc-900 px-3">
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-white">
-                {editingTableId
-                  ? "Edit Encounter Table"
-                  : "New Encounter Table"}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setEditorOpen(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:bg-white/10 hover:text-white"
-            >
-              <i className="fa-solid fa-xmark" />
-            </button>
-          </div>
-
-          {/* Editor content */}
-
-          <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-zinc-600">
-                  Table Name
-                </label>
-
-                <input
-                  value={draft.name}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-
-                      name: event.target.value,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-violet-500/40"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-zinc-600">
-                  Description
-                </label>
-
-                <textarea
-                  value={draft.description}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-
-                      description: event.target.value,
-                    }))
-                  }
-                  rows={2}
-                  className="w-full resize-none rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-violet-500/40"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[9px] font-bold uppercase tracking-wide text-zinc-600">
-                  Locations
-                </label>
-
-                <input
-                  value={draft.locationText}
-                  onChange={(event) =>
-                    setDraft((current) => ({
-                      ...current,
-
-                      locationText: event.target.value,
-                    }))
-                  }
-                  placeholder="Forest, Black Tower, Village"
-                  className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-white outline-none focus:border-violet-500/40"
-                />
-
-                <p className="mt-1 text-[9px] text-zinc-700">
-                  Separate multiple locations with commas.
-                </p>
-              </div>
-
-              {/* Entries */}
-
-              <div className="border-t border-white/10 pt-3">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="text-[9px] font-bold uppercase tracking-[0.14em] text-zinc-600">
-                    Results
+                  <div className="flex h-6 min-w-7 items-center justify-center rounded border border-white/10 bg-black/20 px-1.5 text-[10px] font-bold text-white">
+                    {entry.quantity}
                   </div>
 
                   <button
                     type="button"
-                    onClick={addEntry}
-                    className="rounded-md border border-violet-500/20 bg-violet-500/10 px-2 py-1 text-[9px] font-semibold text-violet-300 hover:bg-violet-500/15"
+                    disabled={entry.quantity >= entry.maxQuantity}
+                    onClick={() => adjustQuantity(entry.key, 1)}
+                    aria-label={`Increase ${entry.monster.name} quantity`}
+                    className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-black/20 text-[10px] text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-25"
                   >
-                    <i className="fa-solid fa-plus mr-1" />
-                    Result
+                    +
                   </button>
                 </div>
-
-                <div className="space-y-3">
-                  {draft.entries.map((entry, entryIndex) => (
-                    <section
-                      key={entry.id}
-                      className="rounded-xl border border-white/10 bg-white/[0.025] p-3"
-                    >
-                      <div className="mb-2 flex items-center gap-2">
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-violet-500/10 text-[9px] font-bold text-violet-300">
-                          {entryIndex + 1}
-                        </span>
-
-                        <input
-                          value={entry.name}
-                          onChange={(event) =>
-                            updateEntry(
-                              entry.id,
-
-                              {
-                                name: event.target.value,
-                              },
-                            )
-                          }
-                          className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-xs font-semibold text-white outline-none"
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => removeEntry(entry.id)}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-700 hover:bg-rose-500/10 hover:text-rose-300"
-                        >
-                          <i className="fa-solid fa-trash text-[9px]" />
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-[1fr_90px] gap-2">
-                        <div>
-                          <label className="mb-1 block text-[8px] uppercase text-zinc-700">
-                            Type
-                          </label>
-
-                          <select
-                            value={entry.type}
-                            onChange={(event) =>
-                              updateEntry(
-                                entry.id,
-
-                                {
-                                  type: event.target
-                                    .value as RandomEncounterEntryType,
-                                },
-                              )
-                            }
-                            className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[10px] text-zinc-300 outline-none"
-                          >
-                            <option value="combat" className="bg-zinc-900">
-                              Combat
-                            </option>
-
-                            <option value="event" className="bg-zinc-900">
-                              Event
-                            </option>
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="mb-1 block text-[8px] uppercase text-zinc-700">
-                            Weight
-                          </label>
-
-                          <input
-                            type="number"
-                            min={1}
-                            value={entry.weight}
-                            onChange={(event) =>
-                              updateEntry(
-                                entry.id,
-
-                                {
-                                  weight: Math.max(
-                                    1,
-
-                                    Number(event.target.value) || 1,
-                                  ),
-                                },
-                              )
-                            }
-                            className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[10px] text-white outline-none"
-                          />
-                        </div>
-                      </div>
-
-                      <textarea
-                        value={entry.description ?? ""}
-                        onChange={(event) =>
-                          updateEntry(
-                            entry.id,
-
-                            {
-                              description: event.target.value,
-                            },
-                          )
-                        }
-                        placeholder="Description, read-aloud text or DM notes..."
-                        rows={2}
-                        className="mt-2 w-full resize-none rounded-md border border-white/10 bg-black/30 px-2 py-1.5 text-[10px] text-zinc-300 outline-none placeholder:text-zinc-700"
-                      />
-
-                      {entry.type === "combat" ? (
-                        <div className="mt-3 border-t border-white/5 pt-2">
-                          <div className="mb-2 flex items-center justify-between">
-                            <div className="text-[8px] font-bold uppercase tracking-wide text-zinc-700">
-                              Monsters
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => addMonsterRow(entry.id)}
-                              className="text-[9px] font-semibold text-amber-300 hover:text-amber-200"
-                            >
-                              + Monster
-                            </button>
-                          </div>
-
-                          {(entry.monsters ?? []).length === 0 ? (
-                            <div className="rounded-lg border border-dashed border-white/10 p-3 text-center text-[9px] text-zinc-700">
-                              No monsters yet.
-                            </div>
-                          ) : (
-                            <div className="space-y-2">
-                              {(entry.monsters ?? []).map((monsterRow) => (
-                                <div
-                                  key={monsterRow.id}
-                                  className="flex items-end gap-1.5 rounded-lg border border-white/5 bg-black/20 p-2"
-                                >
-                                  <div className="min-w-0 flex-1">
-                                    <label className="mb-1 block text-[8px] text-zinc-700">
-                                      Monster
-                                    </label>
-
-                                    <select
-                                      value={monsterRow.monsterKey}
-                                      onChange={(event) =>
-                                        updateMonsterRow(
-                                          entry.id,
-
-                                          monsterRow.id,
-
-                                          {
-                                            monsterKey: event.target.value,
-                                          },
-                                        )
-                                      }
-                                      className="h-8 w-full rounded-md border border-white/10 bg-zinc-900 px-2 text-[10px] text-zinc-300 outline-none"
-                                    >
-                                      <option value="">Choose...</option>
-
-                                      {allMonsters.map((monster) => {
-                                        const key = `${monster.source}:${monster.id}`;
-
-                                        return (
-                                          <option
-                                            key={key}
-                                            value={key}
-                                            className="bg-zinc-900"
-                                          >
-                                            {monster.source === "campaign"
-                                              ? "★ "
-                                              : ""}
-
-                                            {monster.name}
-                                          </option>
-                                        );
-                                      })}
-                                    </select>
-                                  </div>
-
-                                  <div className="w-20 shrink-0">
-                                    <label className="mb-1 block text-[8px] text-zinc-700">
-                                      Quantity
-                                    </label>
-
-                                    <input
-                                      value={monsterRow.quantityExpression}
-                                      onChange={(event) =>
-                                        updateMonsterRow(
-                                          entry.id,
-
-                                          monsterRow.id,
-
-                                          {
-                                            quantityExpression:
-                                              event.target.value,
-                                          },
-                                        )
-                                      }
-                                      placeholder="1d4"
-                                      className="h-8 w-full rounded-md border border-white/10 bg-black/30 px-2 text-[10px] text-white outline-none"
-                                    />
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      removeMonsterRow(
-                                        entry.id,
-
-                                        monsterRow.id,
-                                      )
-                                    }
-                                    title="Remove monster"
-                                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-700 hover:bg-rose-500/10 hover:text-rose-300"
-                                  >
-                                    <i className="fa-solid fa-xmark text-[9px]" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                    </section>
-                  ))}
-                </div>
               </div>
-            </div>
-          </div>
+            ))}
 
-          {/* Editor footer */}
+            {localPopulation.some(
+              (population) =>
+                !generatedEncounter.some(
+                  (entry) => entry.key === population.key,
+                ),
+            ) ? (
+              <div className="border-b border-white/5 p-2">
+                <div className="mb-1 text-[8px] font-bold uppercase tracking-wide text-zinc-600">
+                  Add from area
+                </div>
 
-          <div className="shrink-0 border-t border-white/10 bg-zinc-900 p-3">
-            {editorError ? (
-              <div className="mb-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-[10px] text-rose-300">
-                {editorError}
+                <div className="flex flex-wrap gap-1">
+                  {localPopulation
+                    .filter(
+                      (population) =>
+                        !generatedEncounter.some(
+                          (entry) => entry.key === population.key,
+                        ),
+                    )
+                    .map((population) => (
+                      <button
+                        key={population.key}
+                        type="button"
+                        onClick={() => addFromPopulation(population.key)}
+                        className="workspace-no-drag rounded border border-white/10 bg-white/[0.025] px-1.5 py-1 text-[8px] font-medium text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
+                      >
+                        + {population.monster.name}
+                      </button>
+                    ))}
+                </div>
               </div>
             ) : null}
 
-            <div className="flex gap-2">
+            <div className="p-2">
               <button
                 type="button"
-                onClick={() => setEditorOpen(false)}
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-400 hover:bg-white/10"
+                onClick={startEncounter}
+                className="workspace-no-drag w-full rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-emerald-500"
               >
-                Cancel
+                <i className="fa-solid fa-play mr-1.5" />
+                Start Encounter
               </button>
 
-              <button
-                type="button"
-                onClick={saveTable}
-                disabled={saving}
-                className="flex-1 rounded-lg bg-violet-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-violet-500 disabled:opacity-40"
-              >
-                {saving ? "Saving..." : "Save Table"}
-              </button>
+              {message ? (
+                <div className="mt-1.5 text-center text-[8px] text-emerald-300">
+                  {message}
+                </div>
+              ) : null}
             </div>
+          </>
+        ) : (
+          <div className="p-2">
+            <div className="mb-2 text-[8px] font-bold uppercase tracking-wide text-zinc-600">
+              Area population
+            </div>
+
+            <div className="space-y-1">
+              {localPopulation.map((entry) => (
+                <button
+                  key={entry.key}
+                  type="button"
+                  onClick={() =>
+                    selectEntity({
+                      type: "monster",
+                      monsterKey: entry.key,
+                      encounterStatus: "manual",
+                    })
+                  }
+                  className="workspace-no-drag flex w-full items-center justify-between rounded-md border border-white/5 bg-white/[0.02] px-2 py-1.5 text-left transition hover:bg-white/[0.05]"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate text-[10px] font-semibold text-zinc-300">
+                      {entry.monster.name}
+                    </div>
+
+                    <div className="mt-0.5 text-[8px] text-zinc-600">
+                      CR {entry.monster.challengeRating} · {entry.monster.xp} XP
+                    </div>
+
+                    {entry.mapMonster.notes ? (
+                      <div className="mt-0.5 truncate text-[8px] text-zinc-600">
+                        {entry.mapMonster.notes}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <span className="shrink-0 text-[9px] font-bold text-zinc-400">
+                    ×{entry.maxQuantity}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={generateEncounter}
+              className="workspace-no-drag mt-2 w-full rounded-md bg-violet-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-violet-500"
+            >
+              <i className="fa-solid fa-dice-d20 mr-1.5" />
+              Generate Encounter
+            </button>
+
+            {message ? (
+              <div className="mt-2 text-center text-[9px] text-rose-300">
+                {message}
+              </div>
+            ) : null}
           </div>
-        </div>
-      ) : null}
+        )}
+      </div>
     </div>
   );
 }
