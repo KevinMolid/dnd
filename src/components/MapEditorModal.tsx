@@ -8,6 +8,7 @@ import type {
   CampaignMapRoom,
   EnvironmentEffect,
   EnvironmentLevel,
+  MapMonster,
 } from "../features/maps/types";
 
 type Props = {
@@ -52,7 +53,7 @@ const parseExits = (value: string) =>
     .map((part) => Number(part.trim()))
     .filter((num) => Number.isFinite(num));
 
-const parseMonsters = (value: string) =>
+const parseMonsters = (value: string): MapMonster[] =>
   value
     .split("\n")
     .map((line) => line.trim())
@@ -85,6 +86,15 @@ const parseMonsters = (value: string) =>
       return monster;
     });
 
+const monstersToText = (monsters?: MapMonster[]) =>
+  (monsters ?? [])
+    .map((monster) =>
+      [monster.name, monster.count ?? 1, monster.notes ?? ""]
+        .filter((part) => part !== "")
+        .join(" | "),
+    )
+    .join("\n");
+
 const getDefaultPinPosition = (markers: MapPoint[]): MapPoint => {
   if (markers.length === 0) {
     return {
@@ -109,13 +119,7 @@ const roomToEditable = (room: CampaignMapRoom): EditableRoom => ({
   developmentsText: toMultilineText(room.developments),
   captivesText: toMultilineText(room.captives),
   treasureText: toMultilineText(room.treasure),
-  monstersText: (room.monsters ?? [])
-    .map((monster) =>
-      [monster.name, monster.count ?? 1, monster.notes ?? ""]
-        .filter((part) => part !== "")
-        .join(" | "),
-    )
-    .join("\n"),
+  monstersText: monstersToText(room.monsters),
   notesText: toMultilineText(room.notes),
   exitsText: (room.exits ?? []).join(", "),
   experience: room.experience ?? "",
@@ -242,6 +246,10 @@ const MapEditorModal = ({
     map.readAloud ?? "",
   );
 
+  const [overviewMonstersText, setOverviewMonstersText] = useState(
+    monstersToText(map.monsters),
+  );
+
   const [environmentEffects, setEnvironmentEffects] = useState<
     EnvironmentEffect[]
   >(map.environmentEffects ?? []);
@@ -269,6 +277,7 @@ const MapEditorModal = ({
     setImageUrl(map.imageUrl);
     setOverviewDescriptionText(toMultilineText(map.generalDescription));
     setOverviewReadAloud(map.readAloud ?? "");
+    setOverviewMonstersText(monstersToText(map.monsters));
 
     setEnvironmentEffects(map.environmentEffects ?? []);
     setExpandedEffectIds(new Set());
@@ -777,6 +786,8 @@ const MapEditorModal = ({
         generalDescription: parseStringLines(overviewDescriptionText),
 
         readAloud: overviewReadAloud.trim(),
+
+        monsters: parseMonsters(overviewMonstersText),
       });
 
       onClose();
@@ -1443,10 +1454,29 @@ const MapEditorModal = ({
                   />
                 </div>
 
+                <div>
+                  <label className={labelClass}>
+                    Monsters (format: Name | Count | Notes)
+                  </label>
+
+                  <textarea
+                    value={overviewMonstersText}
+                    onChange={(e) => setOverviewMonstersText(e.target.value)}
+                    className={textAreaClass}
+                    placeholder="Scout | 1 | 30–60 ft ahead\nGuard | 6 | 2 mounted"
+                  />
+
+                  <p className="mt-2 text-xs leading-5 text-white/45">
+                    These monsters belong to the whole map. Use this for battle
+                    maps and other maps that do not need separate areas.
+                  </p>
+                </div>
+
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white/60">
-                  Select an area from the left sidebar or click one of its
-                  numbered pins on the map to edit that area. Select Overview
-                  again to return here.
+                  You can use the map overview as a playable encounter location
+                  without creating any areas. Add areas only when different
+                  parts of the map need their own content or monster
+                  populations.
                 </div>
               </div>
             ) : (

@@ -228,6 +228,19 @@ export default function MapWorkspaceModule({
     setRoomStates(selectedMap.rooms ?? []);
   }, [selectedMap]);
 
+  useEffect(() => {
+    if (!selectedMap || (selectedMap.rooms?.length ?? 0) > 0) {
+      return;
+    }
+
+    setActiveLocation({
+      mapId: selectedMap.id,
+      mapTitle: selectedMap.title,
+      roomId: -1,
+      roomName: selectedMap.title,
+    });
+  }, [selectedMap, setActiveLocation]);
+
   const selectedRoomId = module.config?.selectedRoomId ?? null;
 
   const selectedRoom = useMemo(() => {
@@ -329,8 +342,8 @@ export default function MapWorkspaceModule({
     return monstersByName.get(normalizeMonsterName(mapMonster.name)) ?? null;
   };
 
-  const getResolvedRoomPopulation = (room: CampaignMapRoom) => {
-    return (room.monsters ?? [])
+  const getResolvedPopulation = (mapMonsters?: MapMonster[]) => {
+    return (mapMonsters ?? [])
       .map((mapMonster) => {
         const monster = getLinkedMonster(mapMonster);
 
@@ -366,12 +379,8 @@ export default function MapWorkspaceModule({
 
     let changed = false;
 
-    const upgradedRooms = selectedMap.rooms.map((room) => {
-      if (!room.monsters?.length) {
-        return room;
-      }
-
-      const upgradedMonsters = room.monsters.map((mapMonster) => {
+    const upgradeMonsters = (entries?: MapMonster[]) =>
+      (entries ?? []).map((mapMonster) => {
         if (mapMonster.monsterKey) {
           return mapMonster;
         }
@@ -388,17 +397,16 @@ export default function MapWorkspaceModule({
 
         return {
           ...mapMonster,
-
           monsterKey: `${linkedMonster.source}:${linkedMonster.id}`,
         };
       });
 
-      return {
-        ...room,
+    const upgradedOverviewMonsters = upgradeMonsters(selectedMap.monsters);
 
-        monsters: upgradedMonsters,
-      };
-    });
+    const upgradedRooms = selectedMap.rooms.map((room) => ({
+      ...room,
+      monsters: upgradeMonsters(room.monsters),
+    }));
 
     if (!changed) {
       return;
@@ -406,6 +414,7 @@ export default function MapWorkspaceModule({
 
     updateCampaignMap(campaignId, selectedMap.id, {
       rooms: upgradedRooms,
+      monsters: upgradedOverviewMonsters,
     }).catch((error) => {
       console.error("Failed to upgrade map monster references:", error);
     });
@@ -485,6 +494,15 @@ export default function MapWorkspaceModule({
       },
     });
 
+    if (nextMap && (nextMap.rooms?.length ?? 0) === 0) {
+      setActiveLocation({
+        mapId: nextMap.id,
+        mapTitle: nextMap.title,
+        roomId: -1,
+        roomName: nextMap.title,
+      });
+    }
+
     setHoveredRoomId(null);
     setDetailsExpanded(false);
     setEnvironmentOpen(false);
@@ -530,20 +548,25 @@ export default function MapWorkspaceModule({
   };
 
   const showOverview = () => {
+    if (!selectedMap) {
+      return;
+    }
+
     if (selectedRoomId !== null) {
       updateModule(module.id, {
         config: {
           ...module.config,
-
           selectedRoomId: null,
         },
       });
     }
 
-    /*
-     * Keep the details panel in its current state.
-     * If it is open, it now switches to map overview information.
-     */
+    setActiveLocation({
+      mapId: selectedMap.id,
+      mapTitle: selectedMap.title,
+      roomId: -1,
+      roomName: selectedMap.title,
+    });
 
     setEncounterStartedMessage(null);
   };
@@ -762,32 +785,23 @@ export default function MapWorkspaceModule({
   };
 
   const startRoomEncounter = () => {
-    if (!selectedRoom) {
+    if (!selectedMap) {
       return;
     }
 
-    /*
-     * Explicit encounter templates remain the advanced
-     * override. If one exists, preserve the old behavior.
-     */
-    if (selectedRoom.encounterTemplate) {
+    if (selectedRoom?.encounterTemplate) {
       loadEncounterTemplate(selectedRoom.encounterTemplate);
 
       activeCharacters.forEach((character) => {
         addPlayerToEncounter(mapCharacterToEncounterPlayer(character));
       });
 
-      if (selectedMap) {
-        setActiveLocation({
-          mapId: selectedMap.id,
-
-          mapTitle: selectedMap.title,
-
-          roomId: selectedRoom.id,
-
-          roomName: selectedRoom.name,
-        });
-      }
+      setActiveLocation({
+        mapId: selectedMap.id,
+        mapTitle: selectedMap.title,
+        roomId: selectedRoom.id,
+        roomName: selectedRoom.name,
+      });
 
       setEncounterStartedMessage(
         `Planned encounter loaded with ${
@@ -798,18 +812,17 @@ export default function MapWorkspaceModule({
       return;
     }
 
-    /*
-     * Otherwise the area's listed monster population IS
-     * the encounter.
-     *
-     * Count is taken literally here:
-     * Guard ×6 means six Guards.
-     */
-    const population = getResolvedRoomPopulation(selectedRoom);
+    const sourceMonsters = selectedRoom
+      ? (selectedRoom.monsters ?? [])
+      : (selectedMap.monsters ?? []);
+
+    const population = getResolvedPopulation(sourceMonsters);
 
     if (population.length === 0) {
       setEncounterStartedMessage(
-        "No linked monsters are available for this area.",
+        selectedRoom
+          ? "No linked monsters are available for this area."
+          : "No linked monsters are available for this map.",
       );
 
       return;
@@ -817,9 +830,6 @@ export default function MapWorkspaceModule({
 
     createNewEncounter();
 
-    /*
-     * Only active campaign characters are added.
-     */
     activeCharacters.forEach((character) => {
       addPlayerToEncounter(mapCharacterToEncounterPlayer(character));
     });
@@ -829,37 +839,36 @@ export default function MapWorkspaceModule({
     population.forEach(({ monster, quantity }) => {
       for (let index = 0; index < quantity; index += 1) {
         addMonsterToEncounter(monster);
-
         totalMonsters += 1;
       }
     });
 
-    if (selectedMap) {
+    if (selectedRoom) {
       setActiveLocation({
         mapId: selectedMap.id,
-
         mapTitle: selectedMap.title,
-
         roomId: selectedRoom.id,
-
         roomName: selectedRoom.name,
       });
+    } else {
+      setActiveLocation({
+        mapId: selectedMap.id,
+        mapTitle: selectedMap.title,
+        roomId: -1,
+        roomName: selectedMap.title,
+      });
     }
+
+    const locationName = selectedRoom?.name ?? selectedMap.title;
 
     setEncounterStartedMessage(
       `${activeCharacters.length} player${
         activeCharacters.length === 1 ? "" : "s"
       } and ${totalMonsters} monster${
         totalMonsters === 1 ? "" : "s"
-      } loaded from ${selectedRoom.name}.`,
+      } loaded from ${locationName}.`,
     );
   };
-
-  /*
-   * IMPORTANT:
-   * Everything below this point is the actual component render.
-   * It must stay OUTSIDE startRoomEncounter().
-   */
 
   if (loading) {
     return (
@@ -900,22 +909,23 @@ export default function MapWorkspaceModule({
 
   const roomSummary = selectedRoom ? getRoomSummary(selectedRoom) : "";
 
-  const selectedRoomPopulation = selectedRoom
-    ? getResolvedRoomPopulation(selectedRoom)
-    : [];
+  const currentPopulation = getResolvedPopulation(
+    selectedRoom ? selectedRoom.monsters : selectedMap.monsters,
+  );
 
-  const selectedRoomMonsterCount = selectedRoomPopulation.reduce(
+  const currentMonsterCount = currentPopulation.reduce(
     (total, entry) => total + entry.quantity,
     0,
   );
 
   const canStartRoomEncounter =
-    Boolean(selectedRoom?.encounterTemplate) || selectedRoomMonsterCount > 0;
+    Boolean(selectedRoom?.encounterTemplate) || currentMonsterCount > 0;
 
   const isCurrentWorkspaceLocation =
-    selectedRoom !== null &&
     activeLocation?.mapId === selectedMap.id &&
-    activeLocation?.roomId === selectedRoom.id;
+    (selectedRoom
+      ? activeLocation.roomId === selectedRoom.id
+      : activeLocation.roomId === -1);
 
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-zinc-950/20">
@@ -952,44 +962,51 @@ export default function MapWorkspaceModule({
           <i className="fa-solid fa-chevron-down pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500" />
         </div>
 
-        <div className="h-5 w-px shrink-0 bg-white/10" />
+        {roomStates.length > 0 ? (
+          <>
+            <div className="h-5 w-px shrink-0 bg-white/10" />
 
-        {/* Area selector */}
+            {/* Area selector */}
 
-        <div className="relative min-w-0 flex-1">
-          <select
-            value={selectedRoomId ?? ""}
-            onChange={(event) => {
-              const value = event.target.value;
+            <div className="relative min-w-0 flex-1">
+              <select
+                value={selectedRoomId ?? ""}
+                onChange={(event) => {
+                  const value = event.target.value;
 
-              if (value === "") {
-                showOverview();
+                  if (value === "") {
+                    showOverview();
+                    return;
+                  }
 
-                return;
-              }
-
-              selectRoom(Number(value));
-            }}
-            title="Select area"
-            aria-label="Select map area"
-            className="workspace-no-drag h-8 w-full min-w-0 appearance-none truncate rounded-md border border-white/10 bg-white/5 py-0.5 pl-2.5 pr-7 text-xs font-semibold text-zinc-200 outline-none transition hover:bg-white/10 hover:text-white focus:border-emerald-500/40"
-          >
-            <option value="" className="bg-zinc-900">
-              Overview
-            </option>
-
-            {roomStates
-              .slice()
-              .sort((a, b) => a.id - b.id)
-              .map((room) => (
-                <option key={room.id} value={room.id} className="bg-zinc-900">
-                  {room.id}. {room.name}
+                  selectRoom(Number(value));
+                }}
+                title="Select area"
+                aria-label="Select map area"
+                className="workspace-no-drag h-8 w-full min-w-0 appearance-none truncate rounded-md border border-white/10 bg-white/5 py-0.5 pl-2.5 pr-7 text-xs font-semibold text-zinc-200 outline-none transition hover:bg-white/10 hover:text-white focus:border-emerald-500/40"
+              >
+                <option value="" className="bg-zinc-900">
+                  Overview
                 </option>
-              ))}
-          </select>
 
-          <i className="fa-solid fa-chevron-down pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500" />
-        </div>
+                {roomStates
+                  .slice()
+                  .sort((a, b) => a.id - b.id)
+                  .map((room) => (
+                    <option
+                      key={room.id}
+                      value={room.id}
+                      className="bg-zinc-900"
+                    >
+                      {room.id}. {room.name}
+                    </option>
+                  ))}
+              </select>
+
+              <i className="fa-solid fa-chevron-down pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-zinc-500" />
+            </div>
+          </>
+        ) : null}
 
         {/* Environment */}
 
@@ -1686,13 +1703,9 @@ export default function MapWorkspaceModule({
 
                         <div className="mt-0.5 text-[11px] leading-4 text-zinc-400">
                           {selectedRoom.encounterTemplate
-                            ? `Load the planned encounter and ${activeCharacters.length} active player${
-                                activeCharacters.length === 1 ? "" : "s"
-                              }.`
-                            : `Load all ${selectedRoomMonsterCount} listed monster${
-                                selectedRoomMonsterCount === 1 ? "" : "s"
-                              } and ${activeCharacters.length} active player${
-                                activeCharacters.length === 1 ? "" : "s"
+                            ? "Load the planned encounter for this area."
+                            : `Load all ${currentMonsterCount} listed monster${
+                                currentMonsterCount === 1 ? "" : "s"
                               } into the encounter tracker.`}
                         </div>
                       </div>
@@ -1745,9 +1758,17 @@ export default function MapWorkspaceModule({
                     Map Overview
                   </div>
 
-                  <h3 className="mt-0.5 text-base font-bold text-white">
-                    {selectedMap.title}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="mt-0.5 text-base font-bold text-white">
+                      {selectedMap.title}
+                    </h3>
+
+                    {isCurrentWorkspaceLocation ? (
+                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-300">
+                        Active location
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
 
                 {selectedMap.readAloud ? (
@@ -1770,6 +1791,120 @@ export default function MapWorkspaceModule({
                   </p>
                 )}
 
+                {selectedMap.monsters?.length ? (
+                  <section>
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Monsters
+                      </div>
+                      <div className="text-[10px] text-zinc-500">
+                        Click to inspect
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      {selectedMap.monsters.map((monster, index) => {
+                        const linkedMonster = getLinkedMonster(monster);
+
+                        if (!linkedMonster) {
+                          return (
+                            <div
+                              key={`${monster.name}-${index}`}
+                              className="rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2"
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="min-w-0 flex-1 text-xs font-semibold text-zinc-300">
+                                  {monster.count ? `${monster.count}× ` : ""}
+                                  {monster.name}
+                                </div>
+                                <i className="fa-solid fa-link-slash shrink-0 text-[10px] text-zinc-600" />
+                              </div>
+
+                              {monster.notes ? (
+                                <div className="mt-1 text-[11px] leading-4 text-zinc-400">
+                                  {monster.notes}
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <button
+                            key={`${monster.name}-${index}`}
+                            type="button"
+                            onClick={() => inspectMonster(monster)}
+                            title={`Inspect ${linkedMonster.name}`}
+                            className="group flex w-full items-start gap-2 rounded-lg border border-amber-500/10 bg-amber-500/[0.035] px-2.5 py-2 text-left transition hover:border-amber-500/25 hover:bg-amber-500/[0.08]"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black/30">
+                              {linkedMonster.img ? (
+                                <img
+                                  src={linkedMonster.img}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <i className="fa-solid fa-dragon text-xs text-amber-300/50" />
+                              )}
+                            </div>
+
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-xs font-semibold text-amber-200">
+                                {monster.count ? `${monster.count}× ` : ""}
+                                {monster.name}
+                              </div>
+                              <div className="mt-0.5 text-[10px] text-zinc-500">
+                                CR {linkedMonster.challengeRating} · AC{" "}
+                                {linkedMonster.armorClass} · HP{" "}
+                                {linkedMonster.hp}
+                              </div>
+
+                              {monster.notes ? (
+                                <div className="mt-1 text-[11px] leading-4 text-zinc-400">
+                                  {monster.notes}
+                                </div>
+                              ) : null}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                ) : null}
+
+                {canStartRoomEncounter ? (
+                  <section className="rounded-xl border border-rose-500/15 bg-rose-500/[0.045] p-3">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-300">
+                        <i className="fa-solid fa-swords text-xs" />
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-semibold text-white">
+                          Map Encounter
+                        </div>
+                        <div className="mt-0.5 text-[11px] leading-4 text-zinc-400">
+                          Load all {currentMonsterCount} listed monster
+                          {currentMonsterCount === 1 ? "" : "s"} and{" "}
+                          {activeCharacters.length} active player
+                          {activeCharacters.length === 1 ? "" : "s"} into the
+                          encounter tracker.
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={startRoomEncounter}
+                      className="mt-3 w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-500"
+                    >
+                      <i className="fa-solid fa-play mr-1.5" />
+                      Start Encounter
+                    </button>
+                  </section>
+                ) : null}
+
                 {roomStates.length ? (
                   <section>
                     <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
@@ -1784,6 +1919,7 @@ export default function MapWorkspaceModule({
                           const environmentName = activeEffect
                             ? getEnvironmentLevelName(
                                 activeEffect,
+
                                 getRoomEnvironmentLevel(room, activeEffect),
                               )
                             : null;
