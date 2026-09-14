@@ -352,11 +352,19 @@ const CampaignCharactersPage = () => {
     [myCharacters],
   );
 
-  const activeCount = useMemo(
+  const activeCampaignCharacters = useMemo(
     () =>
       campaignCharacters.filter(
         (character) => character.campaignStatus === "active",
-      ).length,
+      ),
+    [campaignCharacters],
+  );
+
+  const inactiveCampaignCharacters = useMemo(
+    () =>
+      campaignCharacters.filter(
+        (character) => character.campaignStatus === "inactive",
+      ),
     [campaignCharacters],
   );
 
@@ -555,6 +563,136 @@ const CampaignCharactersPage = () => {
     );
   }
 
+  const renderCampaignCharacter = (
+    character: CampaignCharacter,
+    isActive: boolean,
+  ) => {
+    const isOwnCharacter = character.ownerUid === user?.uid;
+    const isClaimable = character.ownerUid === null;
+    const isBusy = busyCharacterId === character.id;
+
+    const canOpen = isGm || isOwnCharacter;
+    const canRemove = isGm || isOwnCharacter;
+
+    return (
+      <div
+        key={character.id}
+        className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5 transition hover:border-white/15 hover:bg-white/[0.025]"
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
+            <Avatar
+              src={character.imageUrl}
+              name={character.name}
+              className="h-10 w-10 shrink-0 rounded-lg"
+            />
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <h3 className="truncate text-xs font-semibold text-white">
+                  {character.name}
+                </h3>
+
+                <StatusBadge active={isActive} />
+
+                {isClaimable ? (
+                  <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
+                    Claimable
+                  </span>
+                ) : isOwnCharacter ? (
+                  <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
+                    Yours
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                {getCharacterSummary(character) || "Character"}
+              </p>
+
+              {!isClaimable && character.ownerUid ? (
+                <p className="mt-0.5 truncate text-[9px] text-zinc-600">
+                  {character.ownerName ||
+                    character.ownerEmail ||
+                    "Assigned player"}
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+            {canOpen ? (
+              <Link
+                to={`/characters/${character.id}`}
+                state={{
+                  from: `${location.pathname}${location.search}`,
+                }}
+                className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+              >
+                Open
+              </Link>
+            ) : null}
+
+            {isClaimable ? (
+              <button
+                type="button"
+                onClick={() => handleClaimCharacter(character.id)}
+                disabled={isBusy}
+                className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isBusy ? "Claiming…" : "Claim"}
+              </button>
+            ) : null}
+
+            {isGm ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleSetCampaignStatus(
+                      character.id,
+                      isActive ? "inactive" : "active",
+                    )
+                  }
+                  disabled={isBusy}
+                  className={`rounded-md border px-2.5 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+                    isActive
+                      ? "border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08] hover:text-white"
+                      : "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300 hover:bg-emerald-500/[0.12]"
+                  }`}
+                >
+                  {isActive ? "Set inactive" : "Set active"}
+                </button>
+
+                {!isClaimable ? (
+                  <button
+                    type="button"
+                    onClick={() => handleMakeCharacterClaimable(character.id)}
+                    disabled={isBusy}
+                    className="rounded-md border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.12] disabled:opacity-50"
+                  >
+                    Make claimable
+                  </button>
+                ) : null}
+              </>
+            ) : null}
+
+            {canRemove && !isClaimable ? (
+              <button
+                type="button"
+                onClick={() => handleRemoveFromCampaign(character.id)}
+                disabled={isBusy}
+                className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
+              >
+                Remove
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -572,157 +710,63 @@ const CampaignCharactersPage = () => {
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
         <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-white">
-              Campaign characters
-            </h2>
-
-            <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
-              <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-emerald-300">
-                {activeCount} active
-              </span>
-
-              {claimableCount > 0 ? (
-                <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-0.5 text-amber-300">
-                  {claimableCount} claimable
-                </span>
-              ) : null}
-            </div>
-          </div>
-
           {campaignCharactersLoading ? (
             <EmptyState>Loading campaign characters…</EmptyState>
           ) : campaignCharacters.length === 0 ? (
             <EmptyState>No campaign characters yet.</EmptyState>
           ) : (
-            <div className="space-y-1.5">
-              {campaignCharacters.map((character) => {
-                const isOwnCharacter = character.ownerUid === user?.uid;
-                const isClaimable = character.ownerUid === null;
-                const isActive = character.campaignStatus === "active";
-                const isBusy = busyCharacterId === character.id;
+            <div className="space-y-5">
+              <div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-white">
+                    Active characters
+                  </h2>
 
-                const canOpen = isGm || isOwnCharacter;
-                const canRemove = isGm || isOwnCharacter;
+                  <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
+                    <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-emerald-300">
+                      {activeCampaignCharacters.length} active
+                    </span>
 
-                return (
-                  <div
-                    key={character.id}
-                    className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5 transition hover:border-white/15 hover:bg-white/[0.025]"
-                  >
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Avatar
-                          src={character.imageUrl}
-                          name={character.name}
-                          className="h-10 w-10 shrink-0 rounded-lg"
-                        />
-
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <h3 className="truncate text-xs font-semibold text-white">
-                              {character.name}
-                            </h3>
-
-                            <StatusBadge active={isActive} />
-
-                            {isClaimable ? (
-                              <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
-                                Claimable
-                              </span>
-                            ) : isOwnCharacter ? (
-                              <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
-                                Yours
-                              </span>
-                            ) : null}
-                          </div>
-
-                          <p className="mt-0.5 truncate text-[10px] text-zinc-500">
-                            {getCharacterSummary(character) || "Character"}
-                          </p>
-
-                          {!isClaimable && character.ownerUid ? (
-                            <p className="mt-0.5 truncate text-[9px] text-zinc-600">
-                              {character.ownerName ||
-                                character.ownerEmail ||
-                                "Assigned player"}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
-                        {canOpen ? (
-                          <Link
-                            to={`/characters/${character.id}`}
-                            state={{
-                              from: `${location.pathname}${location.search}`,
-                            }}
-                            className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
-                          >
-                            Open
-                          </Link>
-                        ) : null}
-
-                        {isClaimable ? (
-                          <button
-                            type="button"
-                            onClick={() => handleClaimCharacter(character.id)}
-                            disabled={isBusy}
-                            className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isBusy ? "Claiming…" : "Claim"}
-                          </button>
-                        ) : null}
-
-                        {isGm ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleSetCampaignStatus(
-                                  character.id,
-                                  isActive ? "inactive" : "active",
-                                )
-                              }
-                              disabled={isBusy}
-                              className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
-                            >
-                              {isActive ? "Set inactive" : "Set active"}
-                            </button>
-
-                            {!isClaimable ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleMakeCharacterClaimable(character.id)
-                                }
-                                disabled={isBusy}
-                                className="rounded-md border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.12] disabled:opacity-50"
-                              >
-                                Make claimable
-                              </button>
-                            ) : null}
-                          </>
-                        ) : null}
-
-                        {canRemove && !isClaimable ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleRemoveFromCampaign(character.id)
-                            }
-                            disabled={isBusy}
-                            className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
-                          >
-                            Remove
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
+                    {claimableCount > 0 ? (
+                      <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-0.5 text-amber-300">
+                        {claimableCount} claimable
+                      </span>
+                    ) : null}
                   </div>
-                );
-              })}
+                </div>
+
+                {activeCampaignCharacters.length === 0 ? (
+                  <EmptyState>No active characters.</EmptyState>
+                ) : (
+                  <div className="space-y-1.5">
+                    {activeCampaignCharacters.map((character) =>
+                      renderCampaignCharacter(character, true),
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-white/[0.08] pt-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="text-base font-semibold text-white">
+                    Inactive characters
+                  </h2>
+
+                  <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] text-zinc-400">
+                    {inactiveCampaignCharacters.length} inactive
+                  </span>
+                </div>
+
+                {inactiveCampaignCharacters.length === 0 ? (
+                  <EmptyState>No inactive characters.</EmptyState>
+                ) : (
+                  <div className="space-y-1.5">
+                    {inactiveCampaignCharacters.map((character) =>
+                      renderCampaignCharacter(character, false),
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </section>

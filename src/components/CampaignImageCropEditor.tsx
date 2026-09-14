@@ -210,9 +210,9 @@ const CampaignImageCropEditor = ({
           </div>
 
           <p className="mt-3 text-xs leading-5 text-zinc-500">
-            The marked point is the image focus. rphub will keep that part of
-            the image visible when the same picture is shown at different aspect
-            ratios.
+            The marked point is the image focus. Lorebound will keep that part
+            of the image visible when the same picture is shown at different
+            aspect ratios.
           </p>
         </div>
       )}
