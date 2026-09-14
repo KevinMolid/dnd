@@ -1100,6 +1100,12 @@ export type Item = {
 export type EquipmentSlotId =
   | "head"
   | "neck"
+  | "armor"
+  | "clothing"
+  /**
+   * Legacy slot kept only so existing saved characters using "body"
+   * still deserialize safely. New items should use "armor" or "clothing".
+   */
   | "body"
   | "cloak"
   | "hands"

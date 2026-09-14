@@ -1151,7 +1151,7 @@ const rawItems: Item[] = [
         gp: 5,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "light",
@@ -1169,7 +1169,7 @@ const rawItems: Item[] = [
         gp: 10,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "light",
@@ -1187,7 +1187,7 @@ const rawItems: Item[] = [
         gp: 45,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "light",
@@ -1205,7 +1205,7 @@ const rawItems: Item[] = [
         gp: 10,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "medium",
@@ -1223,7 +1223,7 @@ const rawItems: Item[] = [
         gp: 50,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "medium",
@@ -1241,7 +1241,7 @@ const rawItems: Item[] = [
         gp: 50,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "medium",
@@ -1259,7 +1259,7 @@ const rawItems: Item[] = [
         gp: 400,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "medium",
@@ -1277,7 +1277,7 @@ const rawItems: Item[] = [
         gp: 750,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "medium",
@@ -1295,7 +1295,7 @@ const rawItems: Item[] = [
         gp: 30,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "heavy",
@@ -1313,7 +1313,7 @@ const rawItems: Item[] = [
         gp: 75,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "heavy",
@@ -1332,7 +1332,7 @@ const rawItems: Item[] = [
         gp: 200,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "heavy",
@@ -1351,7 +1351,7 @@ const rawItems: Item[] = [
         gp: 1500,
       },
       equippable: {
-        slots: ["body"],
+        slots: ["armor"],
       },
       armor: {
         armorCategory: "heavy",
@@ -2800,6 +2800,9 @@ const rawItems: Item[] = [
       id: "fine-clothes",
       name: "Fine Clothes",
       category: "clothing",
+      equippable: {
+        slots: ["clothing"],
+      },
       weight: 6,
       cost: {
         gp: 15,
@@ -2810,6 +2813,9 @@ const rawItems: Item[] = [
       id: "travelers-clothes",
       name: "Traveler's Clothes",
       category: "clothing",
+      equippable: {
+        slots: ["clothing"],
+      },
       weight: 4,
       cost: {
         gp: 2,
@@ -2830,6 +2836,9 @@ const rawItems: Item[] = [
       id: "costume",
       name: "Costume",
       category: "clothing",
+      equippable: {
+        slots: ["clothing"],
+      },
       weight: 4,
       cost: {
         gp: 5,
@@ -3664,6 +3673,9 @@ const rawItems: Item[] = [
       id: "robe",
       name: "Robe",
       category: "clothing",
+      equippable: {
+        slots: ["clothing"],
+      },
       weight: 4,
       cost: {
         gp: 1,
