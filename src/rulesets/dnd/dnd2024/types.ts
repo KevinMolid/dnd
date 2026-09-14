@@ -374,10 +374,15 @@ export type OtherToolId =
   | "disguise-kit"
   | "forgery-kit"
   | "herbalism-kit"
-  | "navigator-tools"
+  | "navigator-tools" // legacy alias
+  | "navigators-tools"
   | "poisoners-kit"
   | "thieves-tools"
-  | "gaming-set"
+  | "gaming-set" // generic/legacy gaming-set proficiency
+  | "dice-set"
+  | "dragonchess-set"
+  | "playing-card-set"
+  | "three-dragon-ante-set"
   | "vehicles-land"
   | "vehicles-water";
 
@@ -928,6 +933,13 @@ export type WeaponKind =
   | "martial-melee"
   | "martial-ranged";
 
+export type AmmunitionType =
+  | "arrow"
+  | "crossbow-bolt"
+  | "firearm-bullet"
+  | "sling-bullet"
+  | "blowgun-needle";
+
 export type WeaponData = {
   weaponKind: WeaponKind;
   damage: {
@@ -941,6 +953,10 @@ export type WeaponData = {
   properties: WeaponProperty[];
   range?: WeaponRange;
   mastery?: string;
+  ammunitionType?: AmmunitionType;
+
+  /** Lance: Two-Handed applies only while the wielder is not mounted. */
+  mountedOneHanded?: boolean;
 };
 
 export type EquippedWeaponAttack = {
@@ -968,6 +984,72 @@ export type ArmorData = {
 
 export type ShieldData = {
   acBonus: number;
+};
+
+
+export type ToolUtilizeAction = {
+  description: string;
+  dc: number;
+};
+
+export type ToolData = {
+  ability: AbilityKey;
+  utilize: ToolUtilizeAction[];
+  craft?: string[];
+};
+
+export type ItemCheck = {
+  ability: AbilityKey;
+  skill?: SkillId;
+  dc: number;
+};
+
+export type ItemSave = {
+  ability: AbilityKey;
+  dc?: number;
+  dcFormula?: "8+dex+proficiency";
+};
+
+export type ItemAction = {
+  name: string;
+  activation:
+    | "action"
+    | "bonus-action"
+    | "reaction"
+    | "attack-replacement"
+    | "utilize";
+  description: string;
+  range?: number;
+  check?: ItemCheck;
+  save?: ItemSave;
+};
+
+export type ContainerData = {
+  capacityWeight?: number;
+  capacityVolume?: string;
+  capacityItems?: {
+    itemId: string;
+    quantity: number;
+  }[];
+};
+
+export type LightData = {
+  brightRadius?: number;
+  dimRadius?: number;
+  cone?: boolean;
+  durationMinutes?: number;
+  fuelItemId?: string;
+};
+
+export type AmmunitionData = {
+  bundleSize: number;
+  storageItemId?: string;
+};
+
+export type SpellcastingFocusData = {
+  tradition: "arcane" | "druidic" | "divine";
+  usage?: "held" | "worn-or-held" | "borne-on-fabric-or-shield";
+  weaponEquivalentId?: string;
 };
 
 export type EquippableSlotProfile = "default" | "ranged-weapon";
@@ -1002,6 +1084,12 @@ export type Item = {
   weapon?: WeaponData;
   armor?: ArmorData;
   shield?: ShieldData;
+  tool?: ToolData;
+  actions?: ItemAction[];
+  container?: ContainerData;
+  light?: LightData;
+  ammunition?: AmmunitionData;
+  spellcastingFocus?: SpellcastingFocusData;
 
   attackBonus?: number;
   damageBonus?: number;
@@ -1069,6 +1157,12 @@ export type CampaignItemOverride = Partial<
     | "weapon"
     | "armor"
     | "shield"
+    | "tool"
+    | "actions"
+    | "container"
+    | "light"
+    | "ammunition"
+    | "spellcastingFocus"
     | "attackBonus"
     | "damageBonus"
     | "acBonus"
