@@ -3,6 +3,8 @@ import type { EquipmentSlotId } from "../types";
 export const equipmentSlotOrder: EquipmentSlotId[] = [
   "head",
   "neck",
+  "armor",
+  "clothing",
   "body",
   "cloak",
   "hands",
@@ -19,6 +21,8 @@ export const equipmentSlotOrder: EquipmentSlotId[] = [
 export const equipmentSlotLabels: Record<EquipmentSlotId, string> = {
   head: "Head",
   neck: "Neck",
+  armor: "Armor",
+  clothing: "Clothing",
   body: "Body",
   cloak: "Cloak",
   hands: "Hands",
