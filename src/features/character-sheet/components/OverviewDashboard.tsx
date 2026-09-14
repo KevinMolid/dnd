@@ -152,12 +152,12 @@ const getAttackRole = (attack: OverviewAttack): AttackRole => {
     return "standard";
   }
 
-  if (attack.isOffHand) {
-    return "off-hand";
-  }
-
   if (attack.isTwoHanded) {
     return "two-handed";
+  }
+
+  if (attack.isOffHand) {
+    return "off-hand";
   }
 
   if (!attack.isThrown && getAttackType(attack) === "melee") {

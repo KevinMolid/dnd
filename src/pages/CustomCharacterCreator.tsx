@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -54,6 +54,8 @@ type CustomCharacterCreatorProps = {
 
   initialCharacter?: CustomCharacter;
 };
+
+type EditorTab = "mechanics" | "details";
 
 const abilityLabels: Record<AbilityKey, string> = {
   str: "Strength",
@@ -115,6 +117,17 @@ const getModifier = (score: number) => Math.floor((score - 10) / 2);
 const formatModifier = (value: number) =>
   value >= 0 ? `+${value}` : `${value}`;
 
+const formatItemCategory = (value?: string) => {
+  if (!value) {
+    return "Item";
+  }
+
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+};
+
 const splitTextList = (value: string) =>
   value
     .split(/[\n,]/)
@@ -122,6 +135,86 @@ const splitTextList = (value: string) =>
     .filter(Boolean);
 
 const joinTextList = (values?: string[]) => (values ?? []).join("\n");
+
+const normalizeProficiency = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+const armorProficiencyPresets = [
+  { id: "light-armor", label: "Light Armor" },
+  { id: "medium-armor", label: "Medium Armor" },
+  { id: "heavy-armor", label: "Heavy Armor" },
+  { id: "shields", label: "Shields" },
+] as const;
+
+const weaponProficiencyPresets = [
+  { id: "simple-weapons", label: "Simple Weapons" },
+  { id: "martial-weapons", label: "Martial Weapons" },
+  { id: "unarmed-strikes", label: "Unarmed Strikes" },
+  {
+    id: "martial-finesse-or-light",
+    label: "Martial Weapons with Finesse or Light",
+  },
+] as const;
+
+type ArmorProficiencyPresetId = (typeof armorProficiencyPresets)[number]["id"];
+
+type WeaponProficiencyPresetId =
+  (typeof weaponProficiencyPresets)[number]["id"];
+
+const getSelectedPresetIds = <TId extends string>(
+  values: string[] | undefined,
+  presets: readonly { id: TId; label: string }[],
+): TId[] => {
+  const normalizedValues = new Set(
+    (values ?? []).map((value) => normalizeProficiency(value)),
+  );
+
+  return presets
+    .filter(
+      (preset) =>
+        normalizedValues.has(normalizeProficiency(preset.id)) ||
+        normalizedValues.has(normalizeProficiency(preset.label)),
+    )
+    .map((preset) => preset.id);
+};
+
+const getCustomProficiencyValues = <TId extends string>(
+  values: string[] | undefined,
+  presets: readonly { id: TId; label: string }[],
+) => {
+  const presetAliases = new Set(
+    presets.flatMap((preset) => [
+      normalizeProficiency(preset.id),
+      normalizeProficiency(preset.label),
+    ]),
+  );
+
+  return (values ?? []).filter(
+    (value) => !presetAliases.has(normalizeProficiency(value)),
+  );
+};
+
+const mergePresetAndCustomProficiencies = (
+  presetIds: string[],
+  customText: string,
+) => {
+  const seen = new Set<string>();
+
+  return [...presetIds, ...splitTextList(customText)].filter((value) => {
+    const key = normalizeProficiency(value);
+
+    if (!key || seen.has(key)) {
+      return false;
+    }
+
+    seen.add(key);
+    return true;
+  });
+};
 
 const createEquipmentInstanceId = (
   baseId: string,
@@ -152,6 +245,9 @@ const CustomCharacterCreator = ({
   const [searchParams] = useSearchParams();
 
   const isEditing = mode === "edit";
+
+  const [activeEditorTab, setActiveEditorTab] =
+    useState<EditorTab>("mechanics");
 
   const campaignIdFromQuery = searchParams.get("campaignId");
 
@@ -231,6 +327,19 @@ const CustomCharacterCreator = ({
     ...(initialCharacter?.abilityScores ?? {}),
   });
 
+  const [abilityScoreInputs, setAbilityScoreInputs] = useState<
+    Record<AbilityKey, string>
+  >(() => {
+    const initialScores = {
+      ...defaultAbilityScores,
+      ...(initialCharacter?.abilityScores ?? {}),
+    };
+
+    return Object.fromEntries(
+      abilityKeys.map((key) => [key, String(initialScores[key])]),
+    ) as Record<AbilityKey, string>;
+  });
+
   const [customArmorClass, setCustomArmorClass] = useState(
     initialStats.armorClass ?? 10,
   );
@@ -255,12 +364,37 @@ const CustomCharacterCreator = ({
     ...(initialProficiencies?.skills ?? {}),
   }));
 
-  const [armorProficienciesText, setArmorProficienciesText] = useState(
-    joinTextList(initialProficiencies?.armor),
+  const [armorProficiencyPresetIds, setArmorProficiencyPresetIds] = useState<
+    ArmorProficiencyPresetId[]
+  >(() =>
+    getSelectedPresetIds(initialProficiencies?.armor, armorProficiencyPresets),
   );
 
-  const [weaponProficienciesText, setWeaponProficienciesText] = useState(
-    joinTextList(initialProficiencies?.weapons),
+  const [weaponProficiencyPresetIds, setWeaponProficiencyPresetIds] = useState<
+    WeaponProficiencyPresetId[]
+  >(() =>
+    getSelectedPresetIds(
+      initialProficiencies?.weapons,
+      weaponProficiencyPresets,
+    ),
+  );
+
+  const [armorProficienciesText, setArmorProficienciesText] = useState(() =>
+    joinTextList(
+      getCustomProficiencyValues(
+        initialProficiencies?.armor,
+        armorProficiencyPresets,
+      ),
+    ),
+  );
+
+  const [weaponProficienciesText, setWeaponProficienciesText] = useState(() =>
+    joinTextList(
+      getCustomProficiencyValues(
+        initialProficiencies?.weapons,
+        weaponProficiencyPresets,
+      ),
+    ),
   );
 
   const [toolProficienciesText, setToolProficienciesText] = useState(
@@ -274,6 +408,8 @@ const CustomCharacterCreator = ({
   const [customTraits, setCustomTraits] = useState<CustomTrait[]>(
     initialCharacter?.customTraits ?? [],
   );
+
+  const [openTraitIds, setOpenTraitIds] = useState<string[]>([]);
 
   const [equipment, setEquipment] = useState<CharacterEquipmentEntry[]>(
     initialCharacter?.equipment ?? [],
@@ -310,6 +446,12 @@ const CustomCharacterCreator = ({
 
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (error === "Character name is required." && name.trim()) {
+      setError("");
+    }
+  }, [error, name]);
+
   const visibleTraits = useMemo(
     () =>
       customTraits.filter(
@@ -339,12 +481,35 @@ const CustomCharacterCreator = ({
   const passivePerception = 10 + perceptionBonus;
 
   const handleAbilityChange = (key: AbilityKey, value: string) => {
+    setAbilityScoreInputs((current) => ({
+      ...current,
+      [key]: value,
+    }));
+
+    if (value.trim() === "") {
+      return;
+    }
+
     const parsed = Number(value);
+
+    if (Number.isNaN(parsed)) {
+      return;
+    }
 
     setAbilityScores((current) => ({
       ...current,
+      [key]: parsed,
+    }));
+  };
 
-      [key]: Number.isNaN(parsed) ? 0 : parsed,
+  const handleAbilityBlur = (key: AbilityKey) => {
+    if (abilityScoreInputs[key].trim() !== "") {
+      return;
+    }
+
+    setAbilityScoreInputs((current) => ({
+      ...current,
+      [key]: String(abilityScores[key]),
     }));
   };
 
@@ -353,6 +518,26 @@ const CustomCharacterCreator = ({
       current.includes(ability)
         ? current.filter((entry) => entry !== ability)
         : [...current, ability],
+    );
+  };
+
+  const toggleArmorProficiencyPreset = (
+    proficiency: ArmorProficiencyPresetId,
+  ) => {
+    setArmorProficiencyPresetIds((current) =>
+      current.includes(proficiency)
+        ? current.filter((entry) => entry !== proficiency)
+        : [...current, proficiency],
+    );
+  };
+
+  const toggleWeaponProficiencyPreset = (
+    proficiency: WeaponProficiencyPresetId,
+  ) => {
+    setWeaponProficiencyPresetIds((current) =>
+      current.includes(proficiency)
+        ? current.filter((entry) => entry !== proficiency)
+        : [...current, proficiency],
     );
   };
 
@@ -373,24 +558,42 @@ const CustomCharacterCreator = ({
     return bonus;
   };
 
+  const toggleSkillProficiency = (
+    skillId: (typeof customSkillDefinitions)[number]["id"],
+    nextLevel: Exclude<CustomProficiencyLevel, "none">,
+  ) => {
+    setSkillProficiencies((current) => ({
+      ...current,
+      [skillId]: current[skillId] === nextLevel ? "none" : nextLevel,
+    }));
+  };
+
   const addCustomTrait = () => {
+    const id = makeId();
+
     setCustomTraits((current) => [
       ...current,
-
       {
-        id: makeId(),
-
+        id,
         name: "",
-
         source: "",
-
         description: "",
-
         activation: "passive",
-
         actions: [],
       },
     ]);
+
+    setOpenTraitIds((current) => [...current, id]);
+  };
+
+  const openTrait = (id: string) => {
+    setOpenTraitIds((current) =>
+      current.includes(id) ? current : [...current, id],
+    );
+  };
+
+  const closeTrait = (id: string) => {
+    setOpenTraitIds((current) => current.filter((entry) => entry !== id));
   };
 
   const updateCustomTrait = (
@@ -412,6 +615,7 @@ const CustomCharacterCreator = ({
 
   const removeCustomTrait = (id: string) => {
     setCustomTraits((current) => current.filter((trait) => trait.id !== id));
+    setOpenTraitIds((current) => current.filter((entry) => entry !== id));
   };
 
   const addCustomTraitAction = (traitId: string) => {
@@ -503,77 +707,37 @@ const CustomCharacterCreator = ({
     const safeQuantity = Math.max(1, Math.floor(quantity) || 1);
 
     setEquipment((current) => {
-      /*
-       * Stackable items are stored as one inventory entry.
-       * This makes quantities such as 20 arrows practical.
-       */
-      if (item.stackable) {
-        const existing = current.find(
-          (entry) =>
-            (entry.source === "base" || entry.source === undefined) &&
-            entry.itemId === itemId &&
-            !entry.equipped,
+      const existing = current.find(
+        (entry) =>
+          (entry.source === "base" || entry.source === undefined) &&
+          entry.itemId === itemId &&
+          !entry.equipped &&
+          (entry.equippedSlots?.length ?? 0) === 0,
+      );
+
+      if (existing) {
+        return current.map((entry) =>
+          entry.instanceId === existing.instanceId
+            ? {
+                ...entry,
+                quantity: entry.quantity + safeQuantity,
+              }
+            : entry,
         );
-
-        if (existing) {
-          return current.map((entry) =>
-            entry === existing
-              ? {
-                  ...entry,
-
-                  quantity: entry.quantity + safeQuantity,
-                }
-              : entry,
-          );
-        }
-
-        return [
-          ...current,
-
-          {
-            instanceId: createEquipmentInstanceId(itemId, current),
-
-            source: "base",
-
-            itemId,
-
-            name: item.name,
-
-            quantity: safeQuantity,
-
-            equipped: false,
-
-            equippedSlots: [],
-          },
-        ];
       }
 
-      /*
-       * Preserve the existing behavior for non-stackable equipment:
-       * multiple copies get distinct instance IDs so they can later be
-       * equipped and managed independently.
-       */
-      const next = [...current];
-
-      for (let index = 0; index < safeQuantity; index += 1) {
-        next.push({
-          instanceId: createEquipmentInstanceId(itemId, next),
-
+      return [
+        ...current,
+        {
+          instanceId: createEquipmentInstanceId(itemId, current),
           source: "base",
-
           itemId,
-
           name: item.name,
-
-          quantity: 1,
-
+          quantity: safeQuantity,
           equipped: false,
-
           equippedSlots: [],
-        });
-      }
-
-      return next;
+        },
+      ];
     });
   };
 
@@ -771,9 +935,15 @@ const CustomCharacterCreator = ({
 
       skills: skillProficiencies,
 
-      armor: splitTextList(armorProficienciesText),
+      armor: mergePresetAndCustomProficiencies(
+        armorProficiencyPresetIds,
+        armorProficienciesText,
+      ),
 
-      weapons: splitTextList(weaponProficienciesText),
+      weapons: mergePresetAndCustomProficiencies(
+        weaponProficiencyPresetIds,
+        weaponProficienciesText,
+      ),
 
       tools: splitTextList(toolProficienciesText),
 
@@ -926,929 +1096,1167 @@ const CustomCharacterCreator = ({
   return (
     <>
       <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-5 lg:px-6">
           <button
             type="button"
             onClick={handleCancel}
-            className="mb-4 text-sm text-zinc-400 hover:text-white"
+            className="mb-2 text-xs text-zinc-400 hover:text-white"
           >
             ← {isEditing ? "Back to character" : "Change character type"}
           </button>
 
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.28em] text-zinc-500">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
             {isEditing ? "Character Editor" : "Quick Character Creator"}
           </p>
 
-          <h1 className="text-3xl font-bold text-white">
+          <h1 className="text-xl font-bold text-white">
             {isEditing ? "Edit Character" : "Create Character"}
           </h1>
 
-          <p className="mt-2 text-zinc-400">
+          <p className="mt-1 text-xs text-zinc-500">
             {isEditing
               ? "Update the manually entered character sheet."
               : "Enter an existing character sheet directly."}
           </p>
 
+          <div className="mt-4 flex items-center gap-1 border-b border-white/10">
+            <button
+              type="button"
+              onClick={() => setActiveEditorTab("mechanics")}
+              className={`relative px-3 py-2 text-xs font-semibold transition ${
+                activeEditorTab === "mechanics"
+                  ? "text-white"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              Mechanics
+              {activeEditorTab === "mechanics" ? (
+                <span className="absolute inset-x-2 -bottom-px h-px bg-white" />
+              ) : null}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveEditorTab("details")}
+              className={`relative px-3 py-2 text-xs font-semibold transition ${
+                activeEditorTab === "details"
+                  ? "text-white"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              Character Details
+              {activeEditorTab === "details" ? (
+                <span className="absolute inset-x-2 -bottom-px h-px bg-white" />
+              ) : null}
+            </button>
+          </div>
+
           <form
             onSubmit={handleSubmit}
-            className="mt-8 grid gap-6 lg:grid-cols-3"
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                event.target instanceof HTMLInputElement
+              ) {
+                event.preventDefault();
+              }
+            }}
+            className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_280px]"
           >
-            <div className="space-y-6 lg:col-span-2">
-              {/* CHARACTER */}
+            <div className="min-w-0">
+              {activeEditorTab === "mechanics" ? (
+                <div className="space-y-3">
+                  {/* CHARACTER */}
 
-              <Card title="Character">
-                <div className="mb-6 flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowPortraitPicker((current) => !current)}
-                    className="group h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 transition hover:border-white/20"
-                    title="Change portrait"
-                  >
-                    {imageUrl.trim() ? (
-                      <img
-                        src={imageUrl.trim()}
-                        alt="Character portrait"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 text-2xl font-semibold text-zinc-400">
-                        {name.trim().charAt(0).toUpperCase() || "?"}
-                      </div>
-                    )}
-                  </button>
-
-                  <div className="flex-1">
-                    <TextInput
-                      label="Character Name"
-                      value={name}
-                      onChange={setName}
-                    />
-                  </div>
-                </div>
-
-                {showPortraitPicker ? (
-                  <div className="mb-6 border-t border-white/10 pt-5">
-                    <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
-                      {defaultCharacterPortraits.map((portrait) => (
-                        <button
-                          key={portrait.id}
-                          type="button"
-                          onClick={() => {
-                            setImageUrl(portrait.url);
-
-                            setShowImageUrlInput(false);
-                          }}
-                          className="overflow-hidden rounded-xl border border-white/10 transition hover:border-white/30"
-                        >
+                  <Card title="Character">
+                    <div className="mb-3 flex gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowPortraitPicker((current) => !current)
+                        }
+                        className="group h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-zinc-900 transition hover:border-white/20"
+                        title="Change portrait"
+                      >
+                        {imageUrl.trim() ? (
                           <img
-                            src={portrait.url}
-                            alt={portrait.label}
-                            className="aspect-square w-full object-cover"
+                            src={imageUrl.trim()}
+                            alt="Character portrait"
+                            className="h-full w-full object-cover"
                           />
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap gap-3">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setShowImageUrlInput((current) => !current)
-                        }
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/10"
-                      >
-                        Use image URL
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setImageUrl(getRandomDefaultPortraitUrl())
-                        }
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/10"
-                      >
-                        Random portrait
-                      </button>
-
-                      {imageUrl.trim() ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setImageUrl("");
-
-                            setShowImageUrlInput(false);
-                          }}
-                          className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300 hover:bg-red-500/15"
-                        >
-                          Remove portrait
-                        </button>
-                      ) : null}
-                    </div>
-
-                    {showImageUrlInput ? (
-                      <input
-                        type="url"
-                        value={imageUrl}
-                        onChange={(event) => setImageUrl(event.target.value)}
-                        placeholder="https://..."
-                        className="mt-4 w-full rounded-xl border border-white/10 bg-zinc-950 p-3 outline-none"
-                      />
-                    ) : null}
-                  </div>
-                ) : null}
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <TextInput
-                    label="Class"
-                    value={customClassName}
-                    onChange={setCustomClassName}
-                  />
-
-                  <NumberInput
-                    label="Level"
-                    value={customLevel}
-                    min={1}
-                    onChange={setCustomLevel}
-                  />
-
-                  <TextInput
-                    label="Species / Race"
-                    value={customSpeciesName}
-                    onChange={setCustomSpeciesName}
-                  />
-
-                  <TextInput
-                    label="Background"
-                    value={customBackgroundName}
-                    onChange={setCustomBackgroundName}
-                  />
-
-                  <TextInput
-                    label="Alignment"
-                    value={alignment}
-                    onChange={setAlignment}
-                  />
-                </div>
-              </Card>
-
-              {/* ABILITIES */}
-
-              <Card title="Ability Scores">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
-                  {abilityKeys.map((key) => (
-                    <div
-                      key={key}
-                      className="rounded-xl border border-white/10 bg-zinc-900 p-3 text-center"
-                    >
-                      <label className="text-xs font-bold text-zinc-500">
-                        {abilityShortLabels[key]}
-                      </label>
-
-                      <input
-                        type="number"
-                        value={abilityScores[key]}
-                        onChange={(event) =>
-                          handleAbilityChange(
-                            key,
-
-                            event.target.value,
-                          )
-                        }
-                        className="mt-2 w-full rounded-lg bg-zinc-950 p-2 text-center text-xl font-bold"
-                      />
-
-                      <p className="mt-1 text-xs text-zinc-400">
-                        {formatModifier(getModifier(abilityScores[key]))}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </Card>
-
-              {/* COMBAT */}
-
-              <Card title="Combat">
-                <div className="grid gap-4 sm:grid-cols-5">
-                  <NumberInput
-                    label="AC"
-                    value={customArmorClass}
-                    onChange={setCustomArmorClass}
-                  />
-
-                  <NumberInput
-                    label="Max HP"
-                    value={customMaxHp}
-                    min={0}
-                    onChange={setCustomMaxHp}
-                  />
-
-                  <label className="block">
-                    <span className="text-sm text-zinc-300">Hit Die</span>
-
-                    <select
-                      value={customHitDie}
-                      onChange={(event) => setCustomHitDie(event.target.value)}
-                      className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-white outline-none focus:border-white/25"
-                    >
-                      <option value="d4">d4</option>
-                      <option value="d6">d6</option>
-                      <option value="d8">d8</option>
-                      <option value="d10">d10</option>
-                      <option value="d12">d12</option>
-                    </select>
-                  </label>
-
-                  <NumberInput
-                    label="Speed"
-                    value={customSpeed}
-                    min={0}
-                    onChange={setCustomSpeed}
-                  />
-
-                  <NumberInput
-                    label="Prof. Bonus"
-                    value={customProficiencyBonus}
-                    onChange={setCustomProficiencyBonus}
-                  />
-                </div>
-
-                <p className="mt-3 text-xs leading-5 text-zinc-500">
-                  New characters start at full HP with one Hit Die per level.
-                  When editing, current HP and spent Hit Dice are preserved.
-                </p>
-              </Card>
-
-              {/* SAVES */}
-
-              <Card title="Saving Throws">
-                <div className="grid gap-2 sm:grid-cols-3">
-                  {abilityKeys.map((ability) => {
-                    const proficient =
-                      savingThrowProficiencies.includes(ability);
-
-                    const bonus =
-                      getModifier(abilityScores[ability]) +
-                      (proficient ? customProficiencyBonus : 0);
-
-                    return (
-                      <label
-                        key={ability}
-                        className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3"
-                      >
-                        <span>
-                          <input
-                            type="checkbox"
-                            checked={proficient}
-                            onChange={() => toggleSavingThrow(ability)}
-                            className="mr-3"
-                          />
-
-                          {abilityLabels[ability]}
-                        </span>
-
-                        <strong>{formatModifier(bonus)}</strong>
-                      </label>
-                    );
-                  })}
-                </div>
-              </Card>
-
-              {/* SKILLS */}
-
-              <Card title="Skills">
-                <div className="space-y-2">
-                  {customSkillDefinitions.map((skill) => (
-                    <div
-                      key={skill.id}
-                      className="grid items-center gap-3 rounded-xl border border-white/10 bg-zinc-900 p-3 sm:grid-cols-[1fr_70px_160px]"
-                    >
-                      <div>
-                        <p className="text-sm text-white">{skill.name}</p>
-
-                        <p className="text-xs text-zinc-500">
-                          {abilityShortLabels[skill.ability]}
-                        </p>
-                      </div>
-
-                      <strong>
-                        {formatModifier(
-                          getSkillBonus(
-                            skill.ability,
-
-                            skillProficiencies[skill.id],
-                          ),
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 text-2xl font-semibold text-zinc-400">
+                            {name.trim().charAt(0).toUpperCase() || "?"}
+                          </div>
                         )}
-                      </strong>
+                      </button>
 
-                      <select
-                        value={skillProficiencies[skill.id]}
-                        onChange={(event) =>
-                          setSkillProficiencies((current) => ({
-                            ...current,
-
-                            [skill.id]: event.target
-                              .value as CustomProficiencyLevel,
-                          }))
-                        }
-                        className="rounded-lg border border-white/10 bg-zinc-950 p-2 text-sm"
-                      >
-                        <option value="none">None</option>
-
-                        <option value="proficient">Proficient</option>
-
-                        <option value="expertise">Expertise</option>
-                      </select>
+                      <div className="flex-1">
+                        <TextInput
+                          label="Character Name"
+                          value={name}
+                          onChange={setName}
+                          maxLength={60}
+                        />
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </Card>
 
-              {/* PROFICIENCIES */}
+                    {showPortraitPicker ? (
+                      <div className="mb-3 border-t border-white/10 pt-5">
+                        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-6">
+                          {defaultCharacterPortraits.map((portrait) => (
+                            <button
+                              key={portrait.id}
+                              type="button"
+                              onClick={() => {
+                                setImageUrl(portrait.url);
 
-              <Card title="Other Proficiencies & Languages">
-                <p className="mb-4 text-sm text-zinc-500">
-                  Separate entries with commas or new lines.
-                </p>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Textarea
-                    label="Armor Proficiencies"
-                    value={armorProficienciesText}
-                    onChange={setArmorProficienciesText}
-                  />
-
-                  <Textarea
-                    label="Weapon Proficiencies"
-                    value={weaponProficienciesText}
-                    onChange={setWeaponProficienciesText}
-                  />
-
-                  <Textarea
-                    label="Tool Proficiencies"
-                    value={toolProficienciesText}
-                    onChange={setToolProficienciesText}
-                  />
-
-                  <Textarea
-                    label="Languages"
-                    value={languagesText}
-                    onChange={setLanguagesText}
-                  />
-                </div>
-              </Card>
-
-              {/* EQUIPMENT */}
-
-              <Card title="Equipment">
-                <div className="mb-4 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => setItemPickerOpen(true)}
-                    className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
-                  >
-                    + Add Item
-                  </button>
-                </div>
-
-                {equipment.length === 0 ? (
-                  <p className="text-sm text-zinc-500">No equipment added.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {equipment.map((entry) => (
-                      <div
-                        key={entry.instanceId}
-                        className="grid gap-3 rounded-xl border border-white/10 bg-zinc-900 p-3 sm:grid-cols-[1fr_100px_auto]"
-                      >
-                        <div>
-                          <p className="font-medium text-white">{entry.name}</p>
-
-                          <p className="text-xs text-zinc-500">
-                            {entry.itemId ?? entry.campaignItemId}
-                          </p>
+                                setShowImageUrlInput(false);
+                              }}
+                              className="overflow-hidden rounded-lg border border-white/10 transition hover:border-white/30"
+                            >
+                              <img
+                                src={portrait.url}
+                                alt={portrait.label}
+                                className="aspect-square w-full object-cover"
+                              />
+                            </button>
+                          ))}
                         </div>
 
-                        <input
-                          type="number"
-                          min={1}
-                          value={entry.quantity}
-                          onChange={(event) =>
-                            updateEquipmentQuantity(
-                              entry.instanceId,
+                        <div className="mt-3 flex flex-wrap gap-2.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setShowImageUrlInput((current) => !current)
+                            }
+                            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/10"
+                          >
+                            Use image URL
+                          </button>
 
-                              Number(event.target.value),
-                            )
-                          }
-                          className="rounded-lg border border-white/10 bg-zinc-950 p-2"
-                        />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setImageUrl(getRandomDefaultPortraitUrl())
+                            }
+                            className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-300 hover:bg-white/10"
+                          >
+                            Random portrait
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => removeEquipment(entry.instanceId)}
-                          className="text-red-300"
-                        >
-                          Remove
-                        </button>
+                          {imageUrl.trim() ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setImageUrl("");
+
+                                setShowImageUrlInput(false);
+                              }}
+                              className="rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300 hover:bg-red-500/15"
+                            >
+                              Remove portrait
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {showImageUrlInput ? (
+                          <input
+                            type="url"
+                            value={imageUrl}
+                            onChange={(event) =>
+                              setImageUrl(event.target.value)
+                            }
+                            placeholder="https://..."
+                            className="mt-3 w-full rounded-lg border border-white/10 bg-zinc-950 p-2.5 outline-none"
+                          />
+                        ) : null}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
+                    ) : null}
 
-              {/* SPELLS */}
+                    <div className="grid gap-2.5 sm:grid-cols-2">
+                      <TextInput
+                        label="Class"
+                        value={customClassName}
+                        onChange={setCustomClassName}
+                        maxLength={50}
+                      />
 
-              <Card title="Spellcasting">
-                <label className="mb-5 flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    checked={customSpellcasting.enabled}
-                    onChange={(event) =>
-                      setCustomSpellcasting((current) => ({
-                        ...current,
+                      <NumberInput
+                        label="Level"
+                        value={customLevel}
+                        min={1}
+                        onChange={setCustomLevel}
+                      />
 
-                        enabled: event.target.checked,
-                      }))
-                    }
-                  />
+                      <TextInput
+                        label="Species / Race"
+                        value={customSpeciesName}
+                        onChange={setCustomSpeciesName}
+                        maxLength={50}
+                      />
 
-                  <span className="font-medium text-white">
-                    This character uses spells
-                  </span>
-                </label>
+                      <TextInput
+                        label="Background"
+                        value={customBackgroundName}
+                        onChange={setCustomBackgroundName}
+                        maxLength={50}
+                      />
 
-                {customSpellcasting.enabled ? (
-                  <div className="space-y-6">
-                    <div className="grid gap-4 sm:grid-cols-3">
+                      <TextInput
+                        label="Alignment"
+                        value={alignment}
+                        onChange={setAlignment}
+                        maxLength={30}
+                      />
+                    </div>
+                  </Card>
+
+                  {/* ABILITIES */}
+
+                  <Card title="Ability Scores">
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-6">
+                      {abilityKeys.map((key) => (
+                        <div
+                          key={key}
+                          className="rounded-lg border border-white/10 bg-zinc-900 p-2.5 text-center"
+                        >
+                          <label className="text-xs font-bold text-zinc-500">
+                            {abilityShortLabels[key]}
+                          </label>
+
+                          <input
+                            type="number"
+                            value={abilityScoreInputs[key]}
+                            onChange={(event) =>
+                              handleAbilityChange(key, event.target.value)
+                            }
+                            onBlur={() => handleAbilityBlur(key)}
+                            className="mt-2 w-full rounded-lg bg-zinc-950 p-2 text-center text-xl font-bold"
+                          />
+
+                          <p className="mt-1 text-xs text-zinc-400">
+                            {formatModifier(getModifier(abilityScores[key]))}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+
+                  {/* COMBAT */}
+
+                  <Card title="Combat">
+                    <div className="grid gap-2.5 sm:grid-cols-5">
+                      <NumberInput
+                        label="AC"
+                        value={customArmorClass}
+                        onChange={setCustomArmorClass}
+                      />
+
+                      <NumberInput
+                        label="Max HP"
+                        value={customMaxHp}
+                        min={0}
+                        onChange={setCustomMaxHp}
+                      />
+
                       <label className="block">
-                        <span className="text-sm text-zinc-300">
-                          Spellcasting Ability
-                        </span>
+                        <span className="text-sm text-zinc-300">Hit Die</span>
 
                         <select
-                          value={customSpellcasting.ability ?? ""}
+                          value={customHitDie}
                           onChange={(event) =>
-                            setCustomSpellcasting((current) => ({
-                              ...current,
-
-                              ability: event.target.value
-                                ? (event.target.value as AbilityKey)
-                                : null,
-                            }))
+                            setCustomHitDie(event.target.value)
                           }
-                          className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3"
+                          className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-900 p-2.5 text-white outline-none focus:border-white/25"
                         >
-                          <option value="">None</option>
-
-                          {abilityKeys.map((ability) => (
-                            <option key={ability} value={ability}>
-                              {abilityLabels[ability]}
-                            </option>
-                          ))}
+                          <option value="d4">d4</option>
+                          <option value="d6">d6</option>
+                          <option value="d8">d8</option>
+                          <option value="d10">d10</option>
+                          <option value="d12">d12</option>
                         </select>
                       </label>
 
                       <NumberInput
-                        label="Spell Save DC"
-                        value={customSpellcasting.spellSaveDc}
-                        onChange={(value) =>
-                          setCustomSpellcasting((current) => ({
-                            ...current,
-
-                            spellSaveDc: value,
-                          }))
-                        }
+                        label="Speed"
+                        value={customSpeed}
+                        min={0}
+                        onChange={setCustomSpeed}
                       />
 
                       <NumberInput
-                        label="Spell Attack Bonus"
-                        value={customSpellcasting.spellAttackBonus}
-                        onChange={(value) =>
-                          setCustomSpellcasting((current) => ({
-                            ...current,
-
-                            spellAttackBonus: value,
-                          }))
-                        }
+                        label="Prof. Bonus"
+                        value={customProficiencyBonus}
+                        onChange={setCustomProficiencyBonus}
                       />
                     </div>
 
-                    <div>
-                      <h3 className="mb-3 font-semibold text-white">
-                        Spell Slots
-                      </h3>
+                    <p className="mt-3 text-xs leading-5 text-zinc-500">
+                      New characters start at full HP with one Hit Die per
+                      level. When editing, current HP and spent Hit Dice are
+                      preserved.
+                    </p>
+                  </Card>
 
-                      <div className="grid grid-cols-3 gap-2 sm:grid-cols-9">
-                        {Array.from(
-                          {
-                            length: 9,
-                          },
+                  {/* SAVES */}
 
-                          (_, index) => index + 1,
-                        ).map((level) => (
-                          <NumberInput
-                            key={level}
-                            label={`${level}`}
-                            value={
-                              customSpellcasting.spellSlots[String(level)]
-                                ?.max ?? 0
-                            }
-                            min={0}
-                            onChange={(value) =>
-                              updateSpellSlot(
-                                level,
+                  <Card title="Saving Throws">
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {abilityKeys.map((ability) => {
+                        const proficient =
+                          savingThrowProficiencies.includes(ability);
 
-                                value,
-                              )
-                            }
-                          />
-                        ))}
-                      </div>
+                        const bonus =
+                          getModifier(abilityScores[ability]) +
+                          (proficient ? customProficiencyBonus : 0);
+
+                        return (
+                          <label
+                            key={ability}
+                            className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900 p-2.5"
+                          >
+                            <span>
+                              <input
+                                type="checkbox"
+                                checked={proficient}
+                                onChange={() => toggleSavingThrow(ability)}
+                                className="mr-3"
+                              />
+
+                              {abilityLabels[ability]}
+                            </span>
+
+                            <strong>{formatModifier(bonus)}</strong>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </Card>
+
+                  {/* SKILLS */}
+
+                  <Card title="Skills">
+                    <div className="grid gap-1.5 md:grid-cols-2">
+                      {customSkillDefinitions.map((skill) => {
+                        const proficiency = skillProficiencies[skill.id];
+
+                        return (
+                          <div
+                            key={skill.id}
+                            className="flex min-h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-zinc-900/70 px-2.5 py-1.5"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-xs font-medium text-zinc-100">
+                                {skill.name}
+                              </div>
+                              <div className="text-[9px] uppercase tracking-wide text-zinc-600">
+                                {abilityShortLabels[skill.ability]}
+                              </div>
+                            </div>
+
+                            <strong className="w-8 shrink-0 text-right text-xs text-white">
+                              {formatModifier(
+                                getSkillBonus(skill.ability, proficiency),
+                              )}
+                            </strong>
+
+                            <div className="flex shrink-0 items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleSkillProficiency(skill.id, "proficient")
+                                }
+                                title="Proficient"
+                                aria-label={`${skill.name}: Proficient`}
+                                className={`flex h-5 w-5 items-center justify-center rounded-full border transition ${
+                                  proficiency === "proficient"
+                                    ? "border-emerald-400 bg-emerald-400"
+                                    : "border-zinc-600 bg-transparent hover:border-emerald-400/70"
+                                }`}
+                              >
+                                {proficiency === "proficient" ? (
+                                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-950" />
+                                ) : null}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleSkillProficiency(skill.id, "expertise")
+                                }
+                                title="Expertise"
+                                aria-label={`${skill.name}: Expertise`}
+                                className={`flex h-5 w-5 items-center justify-center rounded-full border transition ${
+                                  proficiency === "expertise"
+                                    ? "border-emerald-400 bg-emerald-400/15"
+                                    : "border-zinc-600 bg-transparent hover:border-emerald-400/70"
+                                }`}
+                              >
+                                <span
+                                  className={`h-2 w-2 rounded-full ${
+                                    proficiency === "expertise"
+                                      ? "bg-emerald-400"
+                                      : "bg-transparent"
+                                  }`}
+                                />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
 
-                    <div>
-                      <div className="mb-4 flex items-center justify-between">
-                        <h3 className="font-semibold text-white">Spells</h3>
+                    <div className="mt-2 flex items-center gap-4 text-[9px] text-zinc-500">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                        Proficiency
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="flex h-3 w-3 items-center justify-center rounded-full border border-emerald-400">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                        </span>
+                        Expertise
+                      </span>
+                    </div>
+                  </Card>
 
-                        <button
-                          type="button"
-                          onClick={() => setSpellPickerOpen(true)}
-                          className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
-                        >
-                          + Add Spell
-                        </button>
+                  {/* PROFICIENCIES */}
+
+                  <Card title="Other Proficiencies & Languages">
+                    <p className="mb-3 text-sm text-zinc-500">
+                      Choose common proficiencies below, and use the text fields
+                      for any additional or homebrew proficiencies. Separate
+                      custom entries with commas or new lines.
+                    </p>
+
+                    <div className="grid gap-2.5 sm:grid-cols-2">
+                      <div className="rounded-lg border border-white/10 bg-zinc-900/45 p-2.5">
+                        <p className="text-sm font-medium text-zinc-200">
+                          Armor Proficiencies
+                        </p>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {armorProficiencyPresets.map((preset) => {
+                            const selected = armorProficiencyPresetIds.includes(
+                              preset.id,
+                            );
+
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() =>
+                                  toggleArmorProficiencyPreset(preset.id)
+                                }
+                                className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                                  selected
+                                    ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
+                                    : "border-white/10 bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-white"
+                                }`}
+                              >
+                                {selected ? "✓ " : ""}
+                                {preset.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-3">
+                          <Textarea
+                            label="Additional armor proficiencies"
+                            value={armorProficienciesText}
+                            onChange={setArmorProficienciesText}
+                            rows={3}
+                          />
+                        </div>
                       </div>
 
-                      {customSpellcasting.spells.length === 0 ? (
-                        <p className="text-sm text-zinc-500">
-                          No spells added.
+                      <div className="rounded-lg border border-white/10 bg-zinc-900/45 p-2.5">
+                        <p className="text-sm font-medium text-zinc-200">
+                          Weapon Proficiencies
                         </p>
-                      ) : (
-                        <div className="space-y-2">
-                          {[...customSpellcasting.spells]
-                            .sort(
-                              (a, b) =>
-                                a.level - b.level ||
-                                a.name.localeCompare(b.name),
-                            )
-                            .map((spell) => (
-                              <div
-                                key={spell.spellId}
-                                className="flex items-center justify-between rounded-xl border border-white/10 bg-zinc-900 p-3"
-                              >
-                                <div>
-                                  <p className="font-medium text-white">
-                                    {spell.name}
-                                  </p>
 
-                                  <p className="text-xs text-zinc-500">
-                                    {spell.level === 0
-                                      ? "Cantrip"
-                                      : `Level ${spell.level}`}
-                                  </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {weaponProficiencyPresets.map((preset) => {
+                            const selected =
+                              weaponProficiencyPresetIds.includes(preset.id);
+
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() =>
+                                  toggleWeaponProficiencyPreset(preset.id)
+                                }
+                                className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                                  selected
+                                    ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
+                                    : "border-white/10 bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-white"
+                                }`}
+                              >
+                                {selected ? "✓ " : ""}
+                                {preset.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-3">
+                          <Textarea
+                            label="Additional weapon proficiencies"
+                            value={weaponProficienciesText}
+                            onChange={setWeaponProficienciesText}
+                            rows={3}
+                          />
+                        </div>
+                      </div>
+
+                      <Textarea
+                        label="Tool Proficiencies"
+                        value={toolProficienciesText}
+                        onChange={setToolProficienciesText}
+                      />
+
+                      <Textarea
+                        label="Languages"
+                        value={languagesText}
+                        onChange={setLanguagesText}
+                      />
+                    </div>
+                  </Card>
+
+                  {/* EQUIPMENT */}
+
+                  <Card title="Equipment">
+                    <div className="mb-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setItemPickerOpen(true)}
+                        className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
+                      >
+                        + Add Item
+                      </button>
+                    </div>
+
+                    {equipment.length === 0 ? (
+                      <p className="text-sm text-zinc-500">
+                        No equipment added.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {equipment.map((entry) => (
+                          <div
+                            key={entry.instanceId}
+                            className="grid gap-2.5 rounded-lg border border-white/10 bg-zinc-900 p-2.5 sm:grid-cols-[1fr_100px_auto]"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-white">
+                                {entry.name}
+                              </p>
+
+                              <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+                                {formatItemCategory(
+                                  itemsById[
+                                    entry.itemId ?? entry.baseItemId ?? ""
+                                  ]?.category,
+                                )}
+                              </p>
+                            </div>
+
+                            <input
+                              type="number"
+                              min={1}
+                              value={entry.quantity}
+                              onChange={(event) =>
+                                updateEquipmentQuantity(
+                                  entry.instanceId,
+
+                                  Number(event.target.value),
+                                )
+                              }
+                              className="rounded-lg border border-white/10 bg-zinc-950 p-2"
+                            />
+
+                            <button
+                              type="button"
+                              onClick={() => removeEquipment(entry.instanceId)}
+                              className="rounded-lg border border-rose-500/20 bg-rose-500/[0.06] px-4 py-2 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/[0.12] hover:text-rose-200"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+
+                  {/* SPELLS */}
+
+                  <Card title="Spellcasting">
+                    <label className="mb-3 flex items-center gap-2.5">
+                      <input
+                        type="checkbox"
+                        checked={customSpellcasting.enabled}
+                        onChange={(event) =>
+                          setCustomSpellcasting((current) => ({
+                            ...current,
+
+                            enabled: event.target.checked,
+                          }))
+                        }
+                      />
+
+                      <span className="font-medium text-white">
+                        This character uses spells
+                      </span>
+                    </label>
+
+                    {customSpellcasting.enabled ? (
+                      <div className="space-y-3">
+                        <div className="grid gap-2.5 sm:grid-cols-3">
+                          <label className="block">
+                            <span className="text-sm text-zinc-300">
+                              Spellcasting Ability
+                            </span>
+
+                            <select
+                              value={customSpellcasting.ability ?? ""}
+                              onChange={(event) =>
+                                setCustomSpellcasting((current) => ({
+                                  ...current,
+
+                                  ability: event.target.value
+                                    ? (event.target.value as AbilityKey)
+                                    : null,
+                                }))
+                              }
+                              className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-900 p-2.5"
+                            >
+                              <option value="">None</option>
+
+                              {abilityKeys.map((ability) => (
+                                <option key={ability} value={ability}>
+                                  {abilityLabels[ability]}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <NumberInput
+                            label="Spell Save DC"
+                            value={customSpellcasting.spellSaveDc}
+                            onChange={(value) =>
+                              setCustomSpellcasting((current) => ({
+                                ...current,
+
+                                spellSaveDc: value,
+                              }))
+                            }
+                          />
+
+                          <NumberInput
+                            label="Spell Attack Bonus"
+                            value={customSpellcasting.spellAttackBonus}
+                            onChange={(value) =>
+                              setCustomSpellcasting((current) => ({
+                                ...current,
+
+                                spellAttackBonus: value,
+                              }))
+                            }
+                          />
+                        </div>
+
+                        <div>
+                          <h3 className="mb-3 font-semibold text-white">
+                            Spell Slots
+                          </h3>
+
+                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-9">
+                            {Array.from(
+                              {
+                                length: 9,
+                              },
+
+                              (_, index) => index + 1,
+                            ).map((level) => (
+                              <NumberInput
+                                key={level}
+                                label={`${level}`}
+                                value={
+                                  customSpellcasting.spellSlots[String(level)]
+                                    ?.max ?? 0
+                                }
+                                min={0}
+                                onChange={(value) =>
+                                  updateSpellSlot(
+                                    level,
+
+                                    value,
+                                  )
+                                }
+                              />
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="mb-3 flex items-center justify-between">
+                            <h3 className="font-semibold text-white">Spells</h3>
+
+                            <button
+                              type="button"
+                              onClick={() => setSpellPickerOpen(true)}
+                              className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
+                            >
+                              + Add Spell
+                            </button>
+                          </div>
+
+                          {customSpellcasting.spells.length === 0 ? (
+                            <p className="text-sm text-zinc-500">
+                              No spells added.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {[...customSpellcasting.spells]
+                                .sort(
+                                  (a, b) =>
+                                    a.level - b.level ||
+                                    a.name.localeCompare(b.name),
+                                )
+                                .map((spell) => (
+                                  <div
+                                    key={spell.spellId}
+                                    className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900 p-2.5"
+                                  >
+                                    <div>
+                                      <p className="font-medium text-white">
+                                        {spell.name}
+                                      </p>
+
+                                      <p className="text-xs text-zinc-500">
+                                        {spell.level === 0
+                                          ? "Cantrip"
+                                          : `Level ${spell.level}`}
+                                      </p>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSpell(spell.spellId)}
+                                      className="rounded-lg border border-rose-500/20 bg-rose-500/[0.06] px-4 py-2 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/[0.12] hover:text-rose-200"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ) : null}
+                  </Card>
+
+                  {/* MONEY */}
+
+                  <Card title="Currency">
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
+                      {(["cp", "sp", "ep", "gp", "pp"] as const).map(
+                        (currency) => (
+                          <NumberInput
+                            key={currency}
+                            label={currency.toUpperCase()}
+                            value={money[currency] ?? 0}
+                            min={0}
+                            onChange={(value) =>
+                              setMoney((current) => ({
+                                ...current,
+
+                                [currency]: Math.max(
+                                  0,
+
+                                  value,
+                                ),
+                              }))
+                            }
+                          />
+                        ),
+                      )}
+                    </div>
+                  </Card>
+
+                  {/* FEATURES */}
+
+                  <Card title="Features & Traits">
+                    <div className="mb-3 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={addCustomTrait}
+                        className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
+                      >
+                        + Add Trait
+                      </button>
+                    </div>
+
+                    {customTraits.length === 0 ? (
+                      <p className="text-xs text-zinc-500">
+                        No features or traits added.
+                      </p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {customTraits.map((trait) => {
+                          const open = openTraitIds.includes(trait.id);
+
+                          if (!open) {
+                            return (
+                              <div
+                                key={trait.id}
+                                className="flex min-h-11 items-center gap-3 rounded-lg border border-white/[0.08] bg-zinc-900/70 px-3 py-2"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-xs font-semibold text-zinc-100">
+                                    {trait.name.trim() || "Unnamed Trait"}
+                                  </div>
+                                  <div className="mt-0.5 truncate text-[9px] text-zinc-500">
+                                    {trait.source?.trim() || "Custom"}
+                                    {trait.activation &&
+                                    trait.activation !== "passive"
+                                      ? ` · ${trait.activation}`
+                                      : ""}
+                                  </div>
                                 </div>
 
                                 <button
                                   type="button"
-                                  onClick={() => removeSpell(spell.spellId)}
-                                  className="text-sm text-red-300"
+                                  onClick={() => openTrait(trait.id)}
+                                  className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                                 >
-                                  Remove
+                                  Edit
                                 </button>
                               </div>
-                            ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : null}
-              </Card>
+                            );
+                          }
 
-              {/* MONEY */}
-
-              <Card title="Currency">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                  {(["cp", "sp", "ep", "gp", "pp"] as const).map((currency) => (
-                    <NumberInput
-                      key={currency}
-                      label={currency.toUpperCase()}
-                      value={money[currency] ?? 0}
-                      min={0}
-                      onChange={(value) =>
-                        setMoney((current) => ({
-                          ...current,
-
-                          [currency]: Math.max(
-                            0,
-
-                            value,
-                          ),
-                        }))
-                      }
-                    />
-                  ))}
-                </div>
-              </Card>
-
-              {/* FEATURES */}
-
-              <Card title="Features & Traits">
-                <button
-                  type="button"
-                  onClick={addCustomTrait}
-                  className="mb-4 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950"
-                >
-                  + Add Trait
-                </button>
-
-                {customTraits.length === 0 ? (
-                  <p className="text-sm text-zinc-500">
-                    No features or traits added.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {customTraits.map((trait) => (
-                      <div
-                        key={trait.id}
-                        className="rounded-xl border border-white/10 bg-zinc-900 p-4"
-                      >
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <TextInput
-                            label="Name"
-                            value={trait.name}
-                            onChange={(value) =>
-                              updateCustomTrait(
-                                trait.id,
-
-                                {
-                                  name: value,
-                                },
-                              )
-                            }
-                          />
-
-                          <TextInput
-                            label="Source"
-                            value={trait.source ?? ""}
-                            onChange={(value) =>
-                              updateCustomTrait(
-                                trait.id,
-
-                                {
-                                  source: value,
-                                },
-                              )
-                            }
-                          />
-                        </div>
-
-                        <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                          <div>
-                            <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                              Primary Activation
-                            </label>
-
-                            <select
-                              value={trait.activation ?? "passive"}
-                              onChange={(event) =>
-                                updateCustomTrait(trait.id, {
-                                  activation: event.target
-                                    .value as FeatureActivation,
-                                })
-                              }
-                              className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none transition focus:border-zinc-400"
+                          return (
+                            <div
+                              key={trait.id}
+                              className="rounded-lg border border-white/10 bg-zinc-900 p-2.5"
                             >
-                              {featureActivationOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
+                              <div className="mb-2 flex items-center justify-between gap-3">
+                                <div className="min-w-0">
+                                  <div className="truncate text-xs font-semibold text-white">
+                                    {trait.name.trim() || "New Trait"}
+                                  </div>
+                                  <div className="text-[9px] text-zinc-500">
+                                    Editing trait
+                                  </div>
+                                </div>
 
-                          <button
-                            type="button"
-                            onClick={() => addCustomTraitAction(trait.id)}
-                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-zinc-300 transition hover:bg-white/10 hover:text-white"
-                          >
-                            + Secondary Action
-                          </button>
-                        </div>
-
-                        {(trait.actions ?? []).length > 0 ? (
-                          <div className="mt-3 space-y-2 rounded-xl border border-white/[0.07] bg-black/20 p-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                              Secondary Actions
-                            </p>
-
-                            {(trait.actions ?? []).map((action) => (
-                              <div
-                                key={action.id}
-                                className="rounded-lg border border-white/[0.07] bg-zinc-950/60 p-3"
-                              >
-                                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_auto]">
-                                  <input
-                                    value={action.name}
-                                    onChange={(event) =>
-                                      updateCustomTraitAction(
-                                        trait.id,
-                                        action.id,
-                                        {
-                                          name: event.target.value,
-                                        },
-                                      )
-                                    }
-                                    placeholder="Action name"
-                                    className="rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none"
-                                  />
-
-                                  <select
-                                    value={action.activation}
-                                    onChange={(event) =>
-                                      updateCustomTraitAction(
-                                        trait.id,
-                                        action.id,
-                                        {
-                                          activation: event.target
-                                            .value as FeatureActionActivation,
-                                        },
-                                      )
-                                    }
-                                    className="rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white outline-none"
-                                  >
-                                    {featureActionActivationOptions.map(
-                                      (option) => (
-                                        <option
-                                          key={option.value}
-                                          value={option.value}
-                                        >
-                                          {option.label}
-                                        </option>
-                                      ),
-                                    )}
-                                  </select>
-
+                                <div className="flex items-center gap-1.5">
                                   <button
                                     type="button"
-                                    onClick={() =>
-                                      removeCustomTraitAction(
-                                        trait.id,
-                                        action.id,
-                                      )
-                                    }
-                                    className="rounded-lg px-2 text-xs text-zinc-600 transition hover:text-red-300"
+                                    onClick={() => closeTrait(trait.id)}
+                                    className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950"
+                                  >
+                                    Done
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeCustomTrait(trait.id)}
+                                    className="rounded-lg border border-rose-500/20 bg-rose-500/[0.06] px-4 py-2 text-sm font-semibold text-rose-300 transition hover:bg-rose-500/[0.12] hover:text-rose-200"
                                   >
                                     Remove
                                   </button>
                                 </div>
+                              </div>
 
-                                <textarea
-                                  value={action.description ?? ""}
-                                  onChange={(event) =>
-                                    updateCustomTraitAction(
-                                      trait.id,
-                                      action.id,
-                                      {
-                                        description: event.target.value,
-                                      },
-                                    )
+                              <div className="grid gap-2.5 sm:grid-cols-2">
+                                <TextInput
+                                  label="Name"
+                                  value={trait.name}
+                                  onChange={(value) =>
+                                    updateCustomTrait(trait.id, { name: value })
                                   }
-                                  rows={2}
-                                  placeholder="What does this action do?"
-                                  className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white placeholder:text-zinc-600 outline-none"
+                                  maxLength={80}
+                                />
+
+                                <TextInput
+                                  label="Source"
+                                  value={trait.source ?? ""}
+                                  onChange={(value) =>
+                                    updateCustomTrait(trait.id, {
+                                      source: value,
+                                    })
+                                  }
+                                  maxLength={60}
                                 />
                               </div>
-                            ))}
-                          </div>
-                        ) : null}
 
-                        <div className="mt-3">
-                          <Textarea
-                            label="Description"
-                            value={trait.description ?? ""}
-                            onChange={(value) =>
-                              updateCustomTrait(
-                                trait.id,
+                              <div className="mt-2.5 grid gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                                <div>
+                                  <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                                    Primary Activation
+                                  </label>
 
-                                {
-                                  description: value,
-                                },
-                              )
-                            }
+                                  <select
+                                    value={trait.activation ?? "passive"}
+                                    onChange={(event) =>
+                                      updateCustomTrait(trait.id, {
+                                        activation: event.target
+                                          .value as FeatureActivation,
+                                      })
+                                    }
+                                    className="w-full rounded-lg border border-white/10 bg-zinc-950 px-2.5 py-2 text-xs text-white outline-none transition focus:border-zinc-400"
+                                  >
+                                    {featureActivationOptions.map((option) => (
+                                      <option
+                                        key={option.value}
+                                        value={option.value}
+                                      >
+                                        {option.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => addCustomTraitAction(trait.id)}
+                                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/10 hover:text-white"
+                                >
+                                  + Secondary Action
+                                </button>
+                              </div>
+
+                              {(trait.actions ?? []).length > 0 ? (
+                                <div className="mt-2.5 space-y-1.5 rounded-lg border border-white/[0.07] bg-black/20 p-2.5">
+                                  <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                                    Secondary Actions
+                                  </p>
+
+                                  {(trait.actions ?? []).map((action) => (
+                                    <div
+                                      key={action.id}
+                                      className="rounded-lg border border-white/[0.07] bg-zinc-950/60 p-2.5"
+                                    >
+                                      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_140px_auto]">
+                                        <input
+                                          value={action.name}
+                                          onChange={(event) =>
+                                            updateCustomTraitAction(
+                                              trait.id,
+                                              action.id,
+                                              { name: event.target.value },
+                                            )
+                                          }
+                                          placeholder="Action name"
+                                          className="rounded-lg border border-white/10 bg-zinc-950 px-2.5 py-2 text-xs text-white placeholder:text-zinc-600 outline-none"
+                                        />
+
+                                        <select
+                                          value={action.activation}
+                                          onChange={(event) =>
+                                            updateCustomTraitAction(
+                                              trait.id,
+                                              action.id,
+                                              {
+                                                activation: event.target
+                                                  .value as FeatureActionActivation,
+                                              },
+                                            )
+                                          }
+                                          className="rounded-lg border border-white/10 bg-zinc-950 px-2.5 py-2 text-xs text-white outline-none"
+                                        >
+                                          {featureActionActivationOptions.map(
+                                            (option) => (
+                                              <option
+                                                key={option.value}
+                                                value={option.value}
+                                              >
+                                                {option.label}
+                                              </option>
+                                            ),
+                                          )}
+                                        </select>
+
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            removeCustomTraitAction(
+                                              trait.id,
+                                              action.id,
+                                            )
+                                          }
+                                          className="rounded-lg px-2 text-[10px] text-zinc-600 transition hover:text-red-300"
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+
+                                      <textarea
+                                        value={action.description ?? ""}
+                                        onChange={(event) =>
+                                          updateCustomTraitAction(
+                                            trait.id,
+                                            action.id,
+                                            { description: event.target.value },
+                                          )
+                                        }
+                                        rows={2}
+                                        placeholder="What does this action do?"
+                                        className="workspace-scrollbar mt-2 w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-zinc-950 px-2.5 py-2 text-xs text-white placeholder:text-zinc-600 outline-none"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : null}
+
+                              <div className="mt-2.5">
+                                <Textarea
+                                  label="Description"
+                                  value={trait.description ?? ""}
+                                  onChange={(value) =>
+                                    updateCustomTrait(trait.id, {
+                                      description: value,
+                                    })
+                                  }
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </Card>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* DETAILS */}
+
+                  <Card title="Character Details">
+                    <div className="space-y-3">
+                      <div>
+                        <p className="mb-3 text-sm font-medium text-zinc-300">
+                          Physical Details
+                        </p>
+
+                        <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                          <TextInput
+                            label="Age"
+                            value={age}
+                            onChange={setAge}
+                            maxLength={30}
+                          />
+
+                          <TextInput
+                            label="Height"
+                            value={height}
+                            onChange={setHeight}
+                            maxLength={30}
+                          />
+
+                          <TextInput
+                            label="Weight"
+                            value={weight}
+                            onChange={setWeight}
+                            maxLength={30}
+                          />
+
+                          <TextInput
+                            label="Eyes"
+                            value={eyes}
+                            onChange={setEyes}
+                            maxLength={50}
+                          />
+
+                          <TextInput
+                            label="Skin"
+                            value={skin}
+                            onChange={setSkin}
+                            maxLength={50}
+                          />
+
+                          <TextInput
+                            label="Hair"
+                            value={hair}
+                            onChange={setHair}
+                            maxLength={50}
                           />
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => removeCustomTrait(trait.id)}
-                          className="mt-3 text-sm text-red-300"
-                        >
-                          Remove trait
-                        </button>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
 
-              {/* DETAILS */}
-
-              <Card title="Character Details">
-                <div className="space-y-6">
-                  <div>
-                    <p className="mb-3 text-sm font-medium text-zinc-300">
-                      Physical Details
-                    </p>
-
-                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                      <TextInput label="Age" value={age} onChange={setAge} />
-
-                      <TextInput
-                        label="Height"
-                        value={height}
-                        onChange={setHeight}
+                      <Textarea
+                        label="Character Appearance"
+                        value={characterAppearance}
+                        onChange={setCharacterAppearance}
+                        rows={4}
                       />
 
-                      <TextInput
-                        label="Weight"
-                        value={weight}
-                        onChange={setWeight}
+                      <Textarea
+                        label="Allies & Organizations"
+                        value={alliesAndOrganizations}
+                        onChange={setAlliesAndOrganizations}
+                        rows={4}
                       />
 
-                      <TextInput label="Eyes" value={eyes} onChange={setEyes} />
+                      <Textarea
+                        label="Character Backstory"
+                        value={characterBackstory}
+                        onChange={setCharacterBackstory}
+                        rows={7}
+                      />
 
-                      <TextInput label="Skin" value={skin} onChange={setSkin} />
+                      <div className="grid gap-2.5 sm:grid-cols-2">
+                        <Textarea
+                          label="Personality Traits"
+                          value={personalityTraits}
+                          onChange={setPersonalityTraits}
+                          rows={4}
+                        />
 
-                      <TextInput label="Hair" value={hair} onChange={setHair} />
+                        <Textarea
+                          label="Ideals"
+                          value={ideals}
+                          onChange={setIdeals}
+                          rows={4}
+                        />
+
+                        <Textarea
+                          label="Bonds"
+                          value={bonds}
+                          onChange={setBonds}
+                          rows={4}
+                        />
+
+                        <Textarea
+                          label="Flaws"
+                          value={flaws}
+                          onChange={setFlaws}
+                          rows={4}
+                        />
+                      </div>
                     </div>
-                  </div>
-
-                  <Textarea
-                    label="Character Appearance"
-                    value={characterAppearance}
-                    onChange={setCharacterAppearance}
-                    rows={6}
-                  />
-
-                  <Textarea
-                    label="Allies & Organizations"
-                    value={alliesAndOrganizations}
-                    onChange={setAlliesAndOrganizations}
-                    rows={6}
-                  />
-
-                  <Textarea
-                    label="Character Backstory"
-                    value={characterBackstory}
-                    onChange={setCharacterBackstory}
-                    rows={10}
-                  />
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Textarea
-                      label="Personality Traits"
-                      value={personalityTraits}
-                      onChange={setPersonalityTraits}
-                      rows={5}
-                    />
-
-                    <Textarea
-                      label="Ideals"
-                      value={ideals}
-                      onChange={setIdeals}
-                      rows={5}
-                    />
-
-                    <Textarea
-                      label="Bonds"
-                      value={bonds}
-                      onChange={setBonds}
-                      rows={5}
-                    />
-
-                    <Textarea
-                      label="Flaws"
-                      value={flaws}
-                      onChange={setFlaws}
-                      rows={5}
-                    />
-                  </div>
+                  </Card>
                 </div>
-              </Card>
+              )}
             </div>
 
             {/* SIDEBAR */}
 
-            <aside className="h-fit rounded-3xl border border-white/10 bg-white/5 p-5 lg:sticky lg:top-6">
-              <h2 className="text-xl font-semibold text-white">Summary</h2>
+            <aside className="h-fit rounded-xl border border-white/10 bg-zinc-900/35 p-3 lg:sticky lg:top-4">
+              <h2 className="text-sm font-semibold text-white">Summary</h2>
 
-              <p className="mt-5 text-xl font-bold">
+              <p className="mt-3 text-sm font-bold">
                 {name || "Unnamed Character"}
               </p>
 
-              <p className="text-sm text-zinc-400">
+              <p className="mt-0.5 text-[11px] text-zinc-500">
                 Level {customLevel} {customSpeciesName} {customClassName}
               </p>
 
-              <div className="mt-5 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2">
                 <MiniStat
                   label="HP"
                   value={`${getSavedCurrentHp()}/${customMaxHp}`}
@@ -1868,7 +2276,7 @@ const CustomCharacterCreator = ({
               </div>
 
               {error ? (
-                <div className="mt-5 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+                <div className="mt-3 rounded-lg border border-red-500/20 bg-red-500/10 p-2.5 text-sm text-red-300">
                   {error}
                 </div>
               ) : null}
@@ -1876,7 +2284,7 @@ const CustomCharacterCreator = ({
               <button
                 type="submit"
                 disabled={submitting}
-                className="mt-6 w-full rounded-xl bg-white p-3 font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-50"
+                className="mt-3 w-full rounded-lg bg-white p-2.5 font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-50"
               >
                 {submitting
                   ? isEditing
@@ -1891,7 +2299,7 @@ const CustomCharacterCreator = ({
                 type="button"
                 onClick={handleCancel}
                 disabled={submitting}
-                className="mt-3 w-full rounded-xl border border-white/10 bg-white/5 p-3 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
+                className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 p-2.5 text-sm font-medium text-white transition hover:bg-white/10 disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1926,8 +2334,8 @@ const Card = ({
 
   children: React.ReactNode;
 }) => (
-  <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl sm:p-6">
-    <h2 className="mb-5 text-xl font-semibold text-white">{title}</h2>
+  <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+    <h2 className="mb-3 text-sm font-semibold text-white">{title}</h2>
 
     {children}
   </section>
@@ -1937,20 +2345,24 @@ const TextInput = ({
   label,
   value,
   onChange,
+  maxLength,
 }: {
   label: string;
 
   value: string;
 
   onChange: (value: string) => void;
+
+  maxLength?: number;
 }) => (
   <label className="block">
     <span className="text-sm text-zinc-300">{label}</span>
 
     <input
       value={value}
+      maxLength={maxLength}
       onChange={(event) => onChange(event.target.value)}
-      className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-white outline-none focus:border-white/25"
+      className="mt-1.5 w-full rounded-lg border border-white/10 bg-zinc-950/70 px-2.5 py-2 text-sm text-white outline-none transition focus:border-white/25"
     />
   </label>
 );
@@ -1968,19 +2380,45 @@ const NumberInput = ({
   onChange: (value: number) => void;
 
   min?: number;
-}) => (
-  <label className="block">
-    <span className="text-sm text-zinc-300">{label}</span>
+}) => {
+  const [inputValue, setInputValue] = useState(String(value));
 
-    <input
-      type="number"
-      min={min}
-      value={value}
-      onChange={(event) => onChange(Number(event.target.value))}
-      className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-white outline-none focus:border-white/25"
-    />
-  </label>
-);
+  useEffect(() => {
+    setInputValue(String(value));
+  }, [value]);
+
+  return (
+    <label className="block">
+      <span className="text-sm text-zinc-300">{label}</span>
+
+      <input
+        type="number"
+        min={min}
+        value={inputValue}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setInputValue(nextValue);
+
+          if (nextValue === "" || nextValue === "-") {
+            return;
+          }
+
+          const parsed = Number(nextValue);
+
+          if (!Number.isNaN(parsed)) {
+            onChange(parsed);
+          }
+        }}
+        onBlur={() => {
+          if (inputValue === "" || inputValue === "-") {
+            setInputValue(String(value));
+          }
+        }}
+        className="mt-1.5 w-full rounded-lg border border-white/10 bg-zinc-950/70 px-2.5 py-2 text-sm text-white outline-none transition focus:border-white/25"
+      />
+    </label>
+  );
+};
 
 const Textarea = ({
   label,
@@ -2003,7 +2441,7 @@ const Textarea = ({
       rows={rows}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="mt-2 w-full rounded-xl border border-white/10 bg-zinc-900 p-3 text-white outline-none focus:border-white/25"
+      className="workspace-scrollbar mt-1.5 w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-zinc-950/70 px-2.5 py-2 text-sm text-white outline-none transition focus:border-white/25"
     />
   </label>
 );
@@ -2016,10 +2454,10 @@ const MiniStat = ({
 
   value: string | number;
 }) => (
-  <div className="rounded-xl border border-white/10 bg-zinc-900 p-3">
-    <p className="text-xs text-zinc-500">{label}</p>
+  <div className="rounded-lg border border-white/10 bg-black/20 p-2.5">
+    <p className="text-[10px] text-zinc-500">{label}</p>
 
-    <p className="mt-1 font-semibold text-white">{value}</p>
+    <p className="mt-0.5 text-sm font-semibold text-white">{value}</p>
   </div>
 );
 

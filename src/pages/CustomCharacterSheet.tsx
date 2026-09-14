@@ -120,6 +120,20 @@ const normalize = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const proficiencyDisplayLabels: Record<string, string> = {
+  "light-armor": "Light Armor",
+  "medium-armor": "Medium Armor",
+  "heavy-armor": "Heavy Armor",
+  shields: "Shields",
+  "simple-weapons": "Simple Weapons",
+  "martial-weapons": "Martial Weapons",
+  "unarmed-strikes": "Unarmed Strikes",
+  "martial-finesse-or-light": "Martial Weapons with Finesse or Light",
+};
+
+const formatCustomProficiency = (value: string) =>
+  proficiencyDisplayLabels[normalize(value)] ?? value;
+
 const getWeaponProperties = (item: any) => {
   const raw = item?.weapon?.properties ?? [];
 
@@ -138,14 +152,12 @@ const getWeaponAttackAbility = ({
 
   const weapon = item?.weapon as any;
 
-  const weaponType = normalize(
-    String(weapon?.type ?? weapon?.weaponType ?? ""),
-  );
+  const weaponKind = normalize(String(weapon?.weaponKind ?? ""));
 
   const hasRangedProperty =
+    weaponKind.endsWith("-ranged") ||
     properties.includes("ammunition") ||
-    properties.includes("ranged") ||
-    weaponType.includes("ranged");
+    properties.includes("ranged");
 
   if (hasRangedProperty) {
     return "dex";
@@ -172,56 +184,73 @@ const isCustomWeaponProficient = ({
     return false;
   }
 
-  const normalizedProficiencies = proficiencies.map(normalize);
+  const normalizedProficiencies = new Set(proficiencies.map(normalize));
 
   if (
-    normalizedProficiencies.some(
-      (proficiency) =>
-        proficiency === "all-weapons" ||
-        proficiency === "weapons" ||
-        proficiency === "all",
-    )
+    normalizedProficiencies.has("all-weapons") ||
+    normalizedProficiencies.has("weapons") ||
+    normalizedProficiencies.has("all")
   ) {
     return true;
   }
 
-  const exactCandidates = [item?.id, item?.baseItemId, item?.name]
+  /*
+   * Exact weapon proficiencies remain supported for custom/homebrew entries.
+   * This lets free text such as "Greataxe" or "Longbow" still work.
+   */
+  const exactCandidates = [
+    item?.id,
+    item?.baseItemId,
+    item?.name,
+    item?.weapon?.id,
+    item?.weapon?.name,
+  ]
     .filter(Boolean)
     .map((value) => normalize(String(value)));
 
   if (
-    exactCandidates.some((candidate) =>
-      normalizedProficiencies.includes(candidate),
-    )
+    exactCandidates.some((candidate) => normalizedProficiencies.has(candidate))
   ) {
     return true;
   }
 
   const weapon = item?.weapon as any;
+  const weaponKind = normalize(String(weapon?.weaponKind ?? ""));
+  const properties = getWeaponProperties(item).map(normalize);
 
-  const weaponCategory = normalize(
-    String(
-      weapon?.category ??
-        weapon?.weaponCategory ??
-        weapon?.classification ??
-        "",
-    ),
-  );
-
+  /*
+   * The item catalog already gives every weapon a canonical WeaponKind:
+   * simple-melee, simple-ranged, martial-melee, or martial-ranged.
+   * Use that directly instead of guessing from unrelated item fields.
+   *
+   * Both canonical preset IDs ("martial-weapons") and legacy/free-text
+   * labels ("Martial Weapons") normalize to the same value, so existing
+   * custom characters continue to work without a migration.
+   */
   if (
-    weaponCategory.includes("simple") &&
-    normalizedProficiencies.some((proficiency) =>
-      proficiency.includes("simple"),
-    )
+    weaponKind.startsWith("simple-") &&
+    (normalizedProficiencies.has("simple-weapons") ||
+      normalizedProficiencies.has("simple-weapon"))
   ) {
     return true;
   }
 
   if (
-    weaponCategory.includes("martial") &&
-    normalizedProficiencies.some((proficiency) =>
-      proficiency.includes("martial"),
-    )
+    weaponKind.startsWith("martial-") &&
+    (normalizedProficiencies.has("martial-weapons") ||
+      normalizedProficiencies.has("martial-weapon"))
+  ) {
+    return true;
+  }
+
+  /*
+   * Support the existing rules-engine proficiency for martial weapons
+   * that have either the Finesse or Light property.
+   */
+  if (
+    weaponKind.startsWith("martial-") &&
+    normalizedProficiencies.has("martial-finesse-or-light") &&
+    (properties.includes("finesse") || properties.includes("light"))
   ) {
     return true;
   }
@@ -433,15 +462,30 @@ const CustomCharacterSheet = ({
         abilityScores,
       });
 
+      const abilityModifier = getModifier(abilityScores[ability]);
+
       const proficient = isCustomWeaponProficient({
         item,
 
         proficiencies: customProficiencies?.weapons ?? [],
       });
 
-      const attackBonus =
-        getModifier(abilityScores[ability]) +
-        (proficient ? proficiencyBonus : 0);
+      /*
+       * Attack rolls add the weapon's ability modifier and,
+       * when proficient, the character's Proficiency Bonus.
+       */
+      const attackBonus = abilityModifier + (proficient ? proficiencyBonus : 0);
+
+      /*
+       * Weapon damage adds the relevant ability modifier,
+       * but never the Proficiency Bonus.
+       */
+      const damageText =
+        abilityModifier === 0
+          ? `${damage.dice.count}d${damage.dice.die} ${damage.damageType}`
+          : `${damage.dice.count}d${damage.dice.die}${
+              abilityModifier > 0 ? "+" : ""
+            }${abilityModifier} ${damage.damageType}`;
 
       const properties = getWeaponProperties(item);
 
@@ -451,13 +495,18 @@ const CustomCharacterSheet = ({
 
       const wieldMode = entry.wieldMode;
 
-      const isOffHand =
-        wieldMode === "off-hand" || equippedSlots.includes("off-hand");
-
+      /*
+       * A two-handed weapon occupies both equipment slots, but
+       * that must not cause it to be treated as an off-hand attack.
+       */
       const isTwoHanded =
         wieldMode === "two-handed" ||
         (equippedSlots.includes("main-hand") &&
           equippedSlots.includes("off-hand"));
+
+      const isOffHand =
+        !isTwoHanded &&
+        (wieldMode === "off-hand" || equippedSlots.includes("off-hand"));
 
       const isThrown = normalizedProperties.includes("thrown");
 
@@ -468,7 +517,7 @@ const CustomCharacterSheet = ({
 
         attackBonus,
 
-        damage: `${damage.dice.count}d${damage.dice.die} ${damage.damageType}`,
+        damage: damageText,
 
         properties,
 
@@ -773,8 +822,12 @@ const CustomCharacterSheet = ({
             progressPercent: xpProgress.progressPercent,
           }}
           languages={customProficiencies?.languages ?? []}
-          armorProficiencies={customProficiencies?.armor ?? []}
-          weaponProficiencies={customProficiencies?.weapons ?? []}
+          armorProficiencies={(customProficiencies?.armor ?? []).map(
+            formatCustomProficiency,
+          )}
+          weaponProficiencies={(customProficiencies?.weapons ?? []).map(
+            formatCustomProficiency,
+          )}
           toolProficiencies={customProficiencies?.tools ?? []}
         />
 
