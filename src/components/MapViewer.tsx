@@ -1293,10 +1293,22 @@ const MapViewer = ({
 
                                 <div className="mt-1 text-sm text-white/55">
                                   {room.monsters?.length
-                                    ? `${room.monsters.length} monster entr${
-                                        room.monsters.length === 1 ? "y" : "ies"
-                                      }`
-                                    : "No monsters listed"}
+                                    ? (() => {
+                                        const creatureCount =
+                                          room.monsters.reduce(
+                                            (total, creature) =>
+                                              total +
+                                              Math.max(1, creature.count ?? 1),
+                                            0,
+                                          );
+
+                                        return `${creatureCount} ${
+                                          creatureCount === 1
+                                            ? "creature"
+                                            : "creatures"
+                                        }`;
+                                      })()
+                                    : "No creatures listed"}
                                 </div>
                               </div>
 
@@ -1377,7 +1389,7 @@ const MapViewer = ({
                     selectedRoom.monsters.length > 0 && (
                       <section className="space-y-2">
                         <div className="text-sm font-semibold text-white/90">
-                          Monsters
+                          Creatures
                         </div>
 
                         <div className="space-y-2">
