@@ -39,20 +39,13 @@ export type CustomTrait = {
   name: string;
   source?: string;
   description?: string;
-
   activation?: FeatureActivation;
-
   actions?: FeatureAction[];
 };
 
 export type CustomProficiencies = {
   savingThrows: AbilityKey[];
-
-  skills: Record<
-    CustomSkillId,
-    CustomProficiencyLevel
-  >;
-
+  skills: Record<CustomSkillId, CustomProficiencyLevel>;
   armor: string[];
   weapons: string[];
   tools: string[];
@@ -75,87 +68,76 @@ export type CustomSpellcasting = {
   ability: AbilityKey | null;
   spellSaveDc: number;
   spellAttackBonus: number;
-
-  spellSlots: Record<
-    string,
-    CustomSpellSlot
-  >;
-
+  spellSlots: Record<string, CustomSpellSlot>;
   spells: CustomSpellEntry[];
+};
+
+export type CustomArmorClassMode = "automatic" | "manual";
+
+export type CustomCharacterStats = {
+  /**
+   * Cached/display AC. Automatic AC is recalculated from the live character
+   * whenever the sheet is rendered; this value keeps older consumers working.
+   */
+  armorClass?: number;
+
+  armorClassMode?: CustomArmorClassMode;
+  manualArmorClass?: number;
+
+  /**
+   * Flat modifier applied after the normal armor/unarmored calculation.
+   * Use this for custom features or effects not represented by equipped items.
+   */
+  armorClassBonus?: number;
+
+  currentHp?: number;
+  maxHp?: number;
+  speed?: number;
+  proficiencyBonus?: number;
+  hitDie?: string;
+  hitDiceRemaining?: number;
 };
 
 export type CustomCharacter = {
   id?: string;
-
-  ownerId?: string;
-  campaignId?: string;
-
+  campaignId?: string | null;
   name: string;
   imageUrl?: string;
-
   buildMode: "custom";
-
   level?: number;
-
   className?: string;
   speciesName?: string;
   backgroundName?: string;
   alignment?: string;
-
   age?: string;
   height?: string;
   weight?: string;
   eyes?: string;
   skin?: string;
   hair?: string;
-
-  abilityScores?: Record<
-    AbilityKey,
-    number
-  >;
-
-  customStats?: {
-    armorClass?: number;
-    currentHp?: number;
-    maxHp?: number;
-    speed?: number;
-    proficiencyBonus?: number;
-    hitDie?: string;
-    hitDiceRemaining?: number;
-  };
-
+  abilityScores?: Record<AbilityKey, number>;
+  customStats?: CustomCharacterStats;
   customProficiencies?: CustomProficiencies;
   customTraits?: CustomTrait[];
   customSpellcasting?: CustomSpellcasting;
-
   characterAppearance?: string;
   alliesAndOrganizations?: string;
   characterBackstory?: string;
-
   personalityTraits?: string;
   ideals?: string;
   bonds?: string;
   flaws?: string;
-
   playerNotes?: string;
-
-  /**
-   * Legacy/general field.
-   */
   notes?: string;
-
   equipment?: CharacterEquipmentEntry[];
   money?: Money;
-
   heroicInspiration?: boolean;
-
   deathSaves?: {
     successes: number;
     failures: number;
   };
-
-  defenses?: string[];
   conditions?: string[];
+  defenses?: string[];
   xp?: number;
 };
 
@@ -185,10 +167,7 @@ export const customSkillDefinitions: Array<{
 ];
 
 export const createEmptyCustomSkills =
-  (): Record<
-    CustomSkillId,
-    CustomProficiencyLevel
-  > => ({
+  (): Record<CustomSkillId, CustomProficiencyLevel> => ({
     acrobatics: "none",
     "animal-handling": "none",
     arcana: "none",
@@ -210,16 +189,9 @@ export const createEmptyCustomSkills =
   });
 
 export const createEmptySpellSlots = () => {
-  const result: Record<
-    string,
-    CustomSpellSlot
-  > = {};
+  const result: Record<string, CustomSpellSlot> = {};
 
-  for (
-    let level = 1;
-    level <= 9;
-    level += 1
-  ) {
+  for (let level = 1; level <= 9; level += 1) {
     result[String(level)] = {
       max: 0,
       remaining: 0,

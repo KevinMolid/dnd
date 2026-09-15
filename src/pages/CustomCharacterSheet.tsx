@@ -29,6 +29,8 @@ import type { ShortRestResult } from "../features/character-sheet/types";
 
 import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
+import { calculateArmorClass } from "../rulesets/dnd/dnd2024/armorClass";
+
 import type { AbilityKey, Money } from "../rulesets/dnd/dnd2024/types";
 
 import { spells } from "../rulesets/dnd/dnd2024/data/spells";
@@ -332,7 +334,33 @@ const CustomCharacterSheet = ({
 
   const xpProgress = getXpProgressWithinLevel(xp);
 
-  const armorClass = stats.armorClass ?? 10;
+  const armorClassResult = useMemo(
+    () =>
+      calculateArmorClass({
+        abilityScores,
+        className: character.className,
+        equipment: character.equipment ?? [],
+        resolveItem: (entry) =>
+          resolveItemFromEquipmentEntry(entry, campaignItemsById),
+        mode:
+          stats.armorClassMode ??
+          (typeof stats.armorClass === "number" ? "manual" : "automatic"),
+        manualArmorClass: stats.manualArmorClass ?? stats.armorClass ?? 10,
+        extraModifier: stats.armorClassBonus ?? 0,
+      }),
+    [
+      abilityScores,
+      character.className,
+      character.equipment,
+      campaignItemsById,
+      stats.armorClassMode,
+      stats.manualArmorClass,
+      stats.armorClass,
+      stats.armorClassBonus,
+    ],
+  );
+
+  const armorClass = armorClassResult.value;
 
   const currentHp = stats.currentHp ?? 0;
 
@@ -830,6 +858,36 @@ const CustomCharacterSheet = ({
           )}
           toolProficiencies={customProficiencies?.tools ?? []}
         />
+
+        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-sky-500/10 bg-sky-500/[0.035] px-3 py-2">
+          <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-sky-300/70">
+            AC {armorClass}
+          </span>
+
+          <span className="text-[9px] font-medium text-zinc-400">
+            {armorClassResult.mode === "manual"
+              ? "Manual override"
+              : armorClassResult.formulaLabel}
+          </span>
+
+          <span className="hidden h-3 w-px bg-white/[0.08] sm:block" />
+
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            {armorClassResult.breakdown.map((line) => (
+              <span
+                key={line.id}
+                title={line.detail}
+                className="text-[8px] text-zinc-500"
+              >
+                {line.label}{" "}
+                <span className="font-semibold text-zinc-300">
+                  {line.value >= 0 ? "+" : ""}
+                  {line.value}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
 
         <CharacterSheetWorkspace
           activeTab={activeTab}

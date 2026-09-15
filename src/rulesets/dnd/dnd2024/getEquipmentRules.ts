@@ -1,5 +1,9 @@
 import { itemsById } from "./data/items";
-import type { EquipmentSlotId, WieldMode } from "./types";
+import type {
+  CharacterEquipmentEntry,
+  EquipmentSlotId,
+  WieldMode,
+} from "./types";
 
 const getHandSlotsForItem = (
   itemId: string,
@@ -43,17 +47,9 @@ export const getOccupiedSlotsForEquip = (
   const handSlots = getHandSlotsForItem(itemId);
 
   if (allowedModes.length > 0) {
-    if (mode === "two-handed") {
-      return handSlots.twoHanded;
-    }
-
-    if (mode === "main-hand") {
-      return [handSlots.main];
-    }
-
-    if (mode === "off-hand") {
-      return [handSlots.off];
-    }
+    if (mode === "two-handed") return handSlots.twoHanded;
+    if (mode === "main-hand") return [handSlots.main];
+    if (mode === "off-hand") return [handSlots.off];
   }
 
   return equippable.slots;
@@ -89,4 +85,33 @@ export const getEquipActionsForItem = (
   }
 
   return [{ label: "Equip" }];
+};
+
+/**
+ * Migrates old saved "body" slots without making "body" visible as a new slot.
+ * Armor becomes "armor"; clothing becomes "clothing".
+ */
+export const normalizeLegacyBodySlot = (
+  entry: CharacterEquipmentEntry,
+): CharacterEquipmentEntry => {
+  if (!entry.equippedSlots?.includes("body")) {
+    return entry;
+  }
+
+  const itemId =
+    entry.source === "campaign"
+      ? entry.baseItemId
+      : entry.itemId;
+
+  const item = itemId ? itemsById[itemId] : undefined;
+
+  const replacement: EquipmentSlotId =
+    item?.category === "clothing" ? "clothing" : "armor";
+
+  return {
+    ...entry,
+    equippedSlots: entry.equippedSlots.map((slot) =>
+      slot === "body" ? replacement : slot,
+    ),
+  };
 };

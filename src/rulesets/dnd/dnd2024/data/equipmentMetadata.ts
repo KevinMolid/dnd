@@ -5,7 +5,6 @@ export const equipmentSlotOrder: EquipmentSlotId[] = [
   "neck",
   "armor",
   "clothing",
-  "body",
   "cloak",
   "hands",
   "waist",
@@ -23,7 +22,10 @@ export const equipmentSlotLabels: Record<EquipmentSlotId, string> = {
   neck: "Neck",
   armor: "Armor",
   clothing: "Clothing",
+
+  // Legacy only. Do not expose this as a new equipment slot.
   body: "Body",
+
   cloak: "Cloak",
   hands: "Hands",
   waist: "Waist",
