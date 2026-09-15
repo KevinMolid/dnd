@@ -1,23 +1,55 @@
 import type { EncounterTemplate } from "../../context/EncounterContext";
 
-export type MapPoint = {
-  x: number;
-  y: number;
-};
-
+export type MapPoint = { x: number; y: number };
 export type MapMarker = MapPoint;
 
+export type EncounterDisposition =
+  | "friendly"
+  | "neutral"
+  | "wary"
+  | "hostile";
+
+export type RandomEncounterType =
+  | "creature"
+  | "phenomenon"
+  | "event"
+  | "clue";
+
 export type MapMonster = {
+  monsterKey?: string;
   name: string;
   count?: number;
+  disposition?: EncounterDisposition;
   notes?: string;
-  monsterKey?: string;
 };
 
-export type EnvironmentLevel = {
-  value: number;
+export type MapTreasure = {
+  itemKey?: string;
   name: string;
+  count?: number;
 };
+
+export type MapEncounterEntry = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
+export type EncounterCategoryWeights = {
+  creature: number;
+  phenomenon: number;
+  event: number;
+  clue: number;
+};
+
+export const DEFAULT_ENCOUNTER_WEIGHTS: EncounterCategoryWeights = {
+  creature: 45,
+  phenomenon: 25,
+  event: 15,
+  clue: 15,
+};
+
+export type EnvironmentLevel = { value: number; name: string };
 
 export type EnvironmentRollRange = {
   min: number;
@@ -43,8 +75,12 @@ export type CampaignMapRoom = {
   description?: string[];
   developments?: string[];
   captives?: string[];
-  treasure?: string[];
+  treasure?: MapTreasure[];
   monsters?: MapMonster[];
+  clues?: MapEncounterEntry[];
+  phenomena?: MapEncounterEntry[];
+  events?: MapEncounterEntry[];
+  encounterWeights?: Partial<EncounterCategoryWeights>;
   notes?: string[];
   exits?: number[];
   encounterTemplate?: EncounterTemplate | null;
@@ -63,15 +99,12 @@ export type CampaignMapDoc = {
   environmentEffects?: EnvironmentEffect[];
   generalDescription?: string[];
   readAloud?: string;
-
-  /*
-   * Optional monster population for the map overview itself.
-   * This allows simple battle maps to function as a complete
-   * encounter location without creating a dummy area.
-   */
   monsters?: MapMonster[];
+  treasure?: MapTreasure[];
+  clues?: MapEncounterEntry[];
+  phenomena?: MapEncounterEntry[];
+  events?: MapEncounterEntry[];
+  encounterWeights?: Partial<EncounterCategoryWeights>;
 };
 
-export type CampaignMap = CampaignMapDoc & {
-  id: string;
-};
+export type CampaignMap = CampaignMapDoc & { id: string };

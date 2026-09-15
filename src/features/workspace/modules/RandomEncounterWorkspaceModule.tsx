@@ -1,74 +1,44 @@
 import { useMemo, useState } from "react";
-
 import type { MonsterDefinition } from "../../../data/monsterCatalog";
-
 import { useEncounter } from "../../../context/EncounterContext";
-
 import useMonsterLibrary from "../../../hooks/useMonsterLibrary";
-
 import useCampaignPageData from "../../campaigns/hooks/useCampaignPageData";
-
 import { useCampaignMaps } from "../../maps/useCampaignMaps";
-
-import type { MapMonster } from "../../maps/types";
-
+import {
+  DEFAULT_ENCOUNTER_WEIGHTS,
+  type EncounterCategoryWeights,
+  type EncounterDisposition,
+  type MapEncounterEntry,
+  type MapMonster,
+  type RandomEncounterType,
+} from "../../maps/types";
 import { useWorkspace } from "../WorkspaceContext";
-
 import type { WorkspaceModuleRenderProps } from "../workspaceTypes";
-
 import {
   getActiveCampaignCharacters,
   mapCharacterToEncounterPlayer,
 } from "../../../utils/encounterPlayers";
 
 type Difficulty = "low" | "standard" | "hard";
-
 type WorkspaceMonsterDefinition = MonsterDefinition & {
   source?: "default" | "campaign";
 };
-
 type LocalPopulationEntry = {
   key: string;
-
   monster: WorkspaceMonsterDefinition;
-
   mapMonster: MapMonster;
-
   maxQuantity: number;
 };
+type RandomEncounterEntry = LocalPopulationEntry & { quantity: number };
+type EncounterCandidate = { index: number; weight: number; xp: number };
 
-type RandomEncounterEntry = {
-  key: string;
+type GeneratedResult =
+  | { type: "creature"; creatures: RandomEncounterEntry[] }
+  | {
+      type: Exclude<RandomEncounterType, "creature">;
+      entry: MapEncounterEntry;
+    };
 
-  monster: WorkspaceMonsterDefinition;
-
-  mapMonster: MapMonster;
-
-  quantity: number;
-
-  maxQuantity: number;
-};
-
-type EncounterCandidate = {
-  index: number;
-
-  weight: number;
-
-  xp: number;
-};
-
-const normalizeMonsterName = (value: string) => {
-  return value.trim().toLowerCase().replace(/\s+/g, " ");
-};
-
-/*
- * Practical encounter budget.
- *
- * Standard is intentionally close to a normal encounter.
- * Low and Hard simply scale that target.
- *
- * The generator is a DM aid, not a replacement for DM judgement.
- */
 const STANDARD_XP_BY_LEVEL: Record<number, number> = {
   1: 50,
   2: 100,
@@ -91,134 +61,116 @@ const STANDARD_XP_BY_LEVEL: Record<number, number> = {
   19: 3200,
   20: 3600,
 };
-
 const DIFFICULTY_MULTIPLIER: Record<Difficulty, number> = {
   low: 0.65,
   standard: 1,
   hard: 1.5,
 };
-
-const getCharacterBudget = (level: number) => {
-  const safeLevel = Math.max(1, Math.min(20, Math.floor(level)));
-
-  return STANDARD_XP_BY_LEVEL[safeLevel] ?? 50;
-};
-
+const normalizeMonsterName = (value: string) =>
+  value.trim().toLowerCase().replace(/\s+/g, " ");
+const getCharacterBudget = (level: number) =>
+  STANDARD_XP_BY_LEVEL[Math.max(1, Math.min(20, Math.floor(level)))] ?? 50;
 const getWeightedRandomIndex = (weights: number[]) => {
   const total = weights.reduce((sum, weight) => sum + Math.max(0, weight), 0);
-
-  if (total <= 0) {
-    return -1;
-  }
-
+  if (total <= 0) return -1;
   let roll = Math.random() * total;
-
-  for (let index = 0; index < weights.length; index += 1) {
-    roll -= Math.max(0, weights[index] ?? 0);
-
-    if (roll <= 0) {
-      return index;
-    }
+  for (let i = 0; i < weights.length; i += 1) {
+    roll -= Math.max(0, weights[i] ?? 0);
+    if (roll <= 0) return i;
   }
-
   return weights.length - 1;
+};
+const randomEntry = <T,>(entries: T[]) =>
+  entries.length ? entries[Math.floor(Math.random() * entries.length)] : null;
+
+const DISPOSITION_META: Record<
+  EncounterDisposition,
+  { label: string; className: string }
+> = {
+  friendly: { label: "Friendly", className: "text-emerald-300" },
+  neutral: { label: "Neutral", className: "text-sky-300" },
+  wary: { label: "Wary", className: "text-amber-300" },
+  hostile: { label: "Hostile", className: "text-rose-300" },
+};
+
+const TYPE_META: Record<
+  RandomEncounterType,
+  { label: string; icon: string; className: string }
+> = {
+  creature: {
+    label: "Creature Encounter",
+    icon: "fa-dragon",
+    className: "text-rose-300",
+  },
+  phenomenon: {
+    label: "Phenomenon",
+    icon: "fa-cloud",
+    className: "text-violet-300",
+  },
+  event: {
+    label: "Event",
+    icon: "fa-bolt",
+    className: "text-amber-300",
+  },
+  clue: {
+    label: "Clue",
+    icon: "fa-magnifying-glass",
+    className: "text-cyan-300",
+  },
 };
 
 export default function RandomEncounterWorkspaceModule({
   campaignId,
 }: WorkspaceModuleRenderProps) {
   const { maps, loading: mapsLoading } = useCampaignMaps(campaignId);
-
   const { allMonsters, loading: monstersLoading } =
     useMonsterLibrary(campaignId);
-
   const { campaignCharacters, campaignCharactersLoading } =
     useCampaignPageData(campaignId);
-
   const { activeLocation, selectEntity } = useWorkspace();
-
   const { createNewEncounter, addMonsterToEncounter, addPlayerToEncounter } =
     useEncounter();
 
   const [difficulty, setDifficulty] = useState<Difficulty>("standard");
-
-  const [generatedEncounter, setGeneratedEncounter] = useState<
-    RandomEncounterEntry[]
-  >([]);
-
+  const [generated, setGenerated] = useState<GeneratedResult | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  /*
-   * Same canonical active/inactive state used by
-   * Campaign Characters and Party Control.
-   */
   const activeCharacters = useMemo(
     () => getActiveCampaignCharacters(campaignCharacters),
     [campaignCharacters],
   );
-
-  /*
-   * Approximate target encounter XP based on the
-   * currently active party.
-   */
   const partyBudget = useMemo(() => {
     const standard = activeCharacters.reduce(
       (total, character) => total + getCharacterBudget(character.level ?? 1),
       0,
     );
-
     return Math.max(
       25,
       Math.round(standard * DIFFICULTY_MULTIPLIER[difficulty]),
     );
   }, [activeCharacters, difficulty]);
 
-  /*
-   * Build a name lookup as fallback for older map data
-   * that does not yet contain monsterKey.
-   *
-   * Campaign monsters take priority over default monsters
-   * when the visible name is identical.
-   */
   const monstersByName = useMemo(() => {
     const result = new Map<string, (typeof allMonsters)[number]>();
-
     const sorted = [...allMonsters].sort((a, b) => {
-      if (a.source === "campaign" && b.source !== "campaign") {
-        return -1;
-      }
-
-      if (b.source === "campaign" && a.source !== "campaign") {
-        return 1;
-      }
-
+      if (a.source === "campaign" && b.source !== "campaign") return -1;
+      if (b.source === "campaign" && a.source !== "campaign") return 1;
       return 0;
     });
-
     sorted.forEach((monster) => {
       const key = normalizeMonsterName(monster.name);
-
-      if (!result.has(key)) {
-        result.set(key, monster);
-      }
+      if (!result.has(key)) result.set(key, monster);
     });
-
     return result;
   }, [allMonsters]);
 
   const activeMap = useMemo(() => {
-    if (!activeLocation) {
-      return null;
-    }
-
+    if (!activeLocation) return null;
     return maps.find((map) => map.id === activeLocation.mapId) ?? null;
   }, [maps, activeLocation]);
 
   const activeRoom = useMemo(() => {
-    if (!activeMap || !activeLocation) {
-      return null;
-    }
-
+    if (!activeMap || !activeLocation) return null;
     return (
       activeMap.rooms.find((room) => room.id === activeLocation.roomId) ?? null
     );
@@ -226,53 +178,24 @@ export default function RandomEncounterWorkspaceModule({
 
   const activeLocationName =
     activeRoom?.name ?? activeMap?.title ?? "Current map";
+  const source = activeRoom ?? activeMap;
 
-  /*
-   * Resolve a map population entry against the monster
-   * library.
-   */
   const resolveMapMonster = (mapMonster: MapMonster) => {
     if (mapMonster.monsterKey) {
       const exact = allMonsters.find(
         (monster) =>
           `${monster.source}:${monster.id}` === mapMonster.monsterKey,
       );
-
-      if (exact) {
-        return exact;
-      }
+      if (exact) return exact;
     }
-
     return monstersByName.get(normalizeMonsterName(mapMonster.name)) ?? null;
   };
 
-  /*
-   * A selected room overrides the map overview.
-   * If the active location is the map overview (roomId -1),
-   * use the map-level monster population instead.
-   */
-  const activePopulationSource = useMemo<MapMonster[]>(() => {
-    if (!activeMap) {
-      return [];
-    }
-
-    if (activeRoom) {
-      return activeRoom.monsters ?? [];
-    }
-
-    return activeMap.monsters ?? [];
-  }, [activeMap, activeRoom]);
-
   const localPopulation = useMemo<LocalPopulationEntry[]>(() => {
     const entries: LocalPopulationEntry[] = [];
-
-    activePopulationSource.forEach((mapMonster) => {
+    (source?.monsters ?? []).forEach((mapMonster) => {
       const monster = resolveMapMonster(mapMonster);
-
-      if (!monster) {
-        return;
-      }
-
+      if (!monster) return;
       entries.push({
         key: `${monster.source}:${monster.id}`,
         monster: monster as WorkspaceMonsterDefinition,
@@ -280,507 +203,406 @@ export default function RandomEncounterWorkspaceModule({
         maxQuantity: Math.max(1, Number(mapMonster.count ?? 1)),
       });
     });
-
     return entries;
-  }, [activePopulationSource, allMonsters, monstersByName]);
+  }, [source, allMonsters, monstersByName]);
 
+  const clues = source?.clues ?? [];
+  const phenomena = source?.phenomena ?? [];
+  const events = source?.events ?? [];
+  const weights: EncounterCategoryWeights = {
+    ...DEFAULT_ENCOUNTER_WEIGHTS,
+    ...(source?.encounterWeights ?? {}),
+  };
+
+  const availableTypes = useMemo(() => {
+    const candidates: { type: RandomEncounterType; weight: number }[] = [];
+    if (localPopulation.length)
+      candidates.push({ type: "creature", weight: weights.creature });
+    if (phenomena.length)
+      candidates.push({ type: "phenomenon", weight: weights.phenomenon });
+    if (events.length)
+      candidates.push({ type: "event", weight: weights.event });
+    if (clues.length) candidates.push({ type: "clue", weight: weights.clue });
+    return candidates.filter((candidate) => candidate.weight > 0);
+  }, [
+    localPopulation,
+    phenomena,
+    events,
+    clues,
+    weights.creature,
+    weights.phenomenon,
+    weights.event,
+    weights.clue,
+  ]);
+
+  const generatedCreatures =
+    generated?.type === "creature" ? generated.creatures : [];
   const generatedXp = useMemo(
     () =>
-      generatedEncounter.reduce(
-        (total, entry) => total + entry.monster.xp * entry.quantity,
+      generatedCreatures.reduce(
+        (total, entry) =>
+          total + Number(entry.monster.xp ?? 0) * entry.quantity,
         0,
       ),
-    [generatedEncounter],
+    [generatedCreatures],
   );
 
-  const generateEncounter = () => {
-    setMessage(null);
-
-    if (localPopulation.length === 0) {
-      setGeneratedEncounter([]);
-
-      setMessage("No linked monsters are available in this area.");
-
-      return;
-    }
-
-    /*
-     * Explicit number[] prevents literal 0 inference.
-     */
-    let quantities: Array<number> = localPopulation.map((): number => 0);
-
-    /*
-     * This variable was missing in the previous version.
-     */
+  const generateCreatures = (): RandomEncounterEntry[] => {
+    let quantities: number[] = localPopulation.map(() => 0);
     let currentXp = 0;
-
-    /*
-     * We don't need to hit the budget exactly.
-     *
-     * Once we're in a useful range, there is a chance the
-     * encounter generation stops so results have some variety.
-     */
     const minimumTarget = partyBudget * 0.75;
-
     const maximumTarget = partyBudget * 1.15;
-
     let iterations = 0;
 
     while (iterations < 100) {
       iterations += 1;
-
       if (
         currentXp >= minimumTarget &&
         (currentXp >= partyBudget || Math.random() < 0.35)
-      ) {
+      )
         break;
-      }
 
       const candidates: EncounterCandidate[] = [];
-
       localPopulation.forEach((entry, index) => {
-        const currentQuantity = quantities[index] ?? 0;
-
-        const remaining = entry.maxQuantity - currentQuantity;
-
-        if (remaining <= 0) {
-          return;
-        }
-
+        const remaining = entry.maxQuantity - (quantities[index] ?? 0);
+        if (remaining <= 0) return;
         const xp = Math.max(0, Number(entry.monster.xp ?? 0));
-
-        /*
-         * If the encounter already contains something,
-         * don't normally add a creature that would push it
-         * far beyond the target.
-         *
-         * A single creature stronger than the party is still
-         * allowed later as the fallback case.
-         */
-        if (currentXp > 0 && currentXp + xp > maximumTarget) {
-          return;
-        }
-
-        candidates.push({
-          index,
-
-          weight: remaining,
-
-          xp,
-        });
+        if (currentXp > 0 && currentXp + xp > maximumTarget) return;
+        candidates.push({ index, weight: remaining, xp });
       });
+      if (!candidates.length) break;
 
-      if (candidates.length === 0) {
-        break;
-      }
-
-      const randomIndex = getWeightedRandomIndex(
+      const selectedIndex = getWeightedRandomIndex(
         candidates.map((candidate) => candidate.weight),
       );
-
-      if (randomIndex < 0) {
-        break;
-      }
-
-      const selected = candidates[randomIndex];
-
-      if (!selected) {
-        break;
-      }
-
+      const selected = candidates[selectedIndex];
+      if (!selected) break;
       quantities[selected.index] = (quantities[selected.index] ?? 0) + 1;
-
       currentXp += selected.xp;
     }
 
-    /*
-     * If nothing could fit inside the normal budget,
-     * still return one legal monster.
-     *
-     * We choose the cheapest creature available.
-     */
-    const hasGeneratedMonster = quantities.some((quantity) => quantity > 0);
-
-    if (!hasGeneratedMonster) {
+    if (!quantities.some((quantity) => quantity > 0)) {
       let cheapestIndex = -1;
       let cheapestXp = Number.POSITIVE_INFINITY;
-
       localPopulation.forEach((entry, index) => {
         const xp = Math.max(0, Number(entry.monster.xp ?? 0));
-
         if (xp < cheapestXp) {
           cheapestXp = xp;
           cheapestIndex = index;
         }
       });
-
-      if (cheapestIndex >= 0) {
-        quantities[cheapestIndex] = 1;
-      }
+      if (cheapestIndex >= 0) quantities[cheapestIndex] = 1;
     }
 
-    const next: RandomEncounterEntry[] = [];
-
-    localPopulation.forEach((entry, index) => {
+    return localPopulation.flatMap((entry, index) => {
       const quantity = quantities[index] ?? 0;
-
-      if (quantity <= 0) {
-        return;
-      }
-
-      next.push({
-        key: entry.key,
-
-        monster: entry.monster,
-
-        mapMonster: entry.mapMonster,
-
-        quantity,
-
-        maxQuantity: entry.maxQuantity,
-      });
+      return quantity > 0 ? [{ ...entry, quantity }] : [];
     });
+  };
 
-    setGeneratedEncounter(next);
+  const clearEncounter = () => {
+    setGenerated(null);
+    setMessage(null);
+  };
+
+  const generateEncounter = () => {
+    setMessage(null);
+    if (!availableTypes.length) {
+      setGenerated(null);
+      setMessage("No random encounter content is available in this location.");
+      return;
+    }
+    const typeIndex = getWeightedRandomIndex(
+      availableTypes.map((candidate) => candidate.weight),
+    );
+    const selectedType = availableTypes[typeIndex]?.type;
+    if (!selectedType) return;
+
+    if (selectedType === "creature") {
+      setGenerated({ type: "creature", creatures: generateCreatures() });
+      return;
+    }
+
+    const pool =
+      selectedType === "phenomenon"
+        ? phenomena
+        : selectedType === "event"
+          ? events
+          : clues;
+    const entry = randomEntry(pool);
+    if (entry) setGenerated({ type: selectedType, entry });
   };
 
   const adjustQuantity = (key: string, delta: number) => {
-    setGeneratedEncounter((current) =>
-      current
-        .map((entry): RandomEncounterEntry => {
-          if (entry.key !== key) {
-            return entry;
-          }
-
-          const nextQuantity = Math.max(
-            0,
-            Math.min(entry.maxQuantity, entry.quantity + delta),
-          );
-
-          return {
-            ...entry,
-
-            quantity: nextQuantity,
-          };
-        })
-        .filter((entry) => entry.quantity > 0),
-    );
-  };
-
-  const addFromPopulation = (key: string) => {
-    const source = localPopulation.find((entry) => entry.key === key);
-
-    if (!source) {
-      return;
-    }
-
-    setGeneratedEncounter((current) => {
-      const existing = current.find((entry) => entry.key === key);
-
-      if (existing) {
-        return current.map((entry): RandomEncounterEntry => {
-          if (entry.key !== key) {
-            return entry;
-          }
-
-          return {
-            ...entry,
-
-            quantity: Math.min(entry.maxQuantity, entry.quantity + 1),
-          };
-        });
-      }
-
-      const newEntry: RandomEncounterEntry = {
-        key: source.key,
-
-        monster: source.monster,
-
-        mapMonster: source.mapMonster,
-
-        quantity: 1,
-
-        maxQuantity: source.maxQuantity,
+    setGenerated((current) => {
+      if (!current || current.type !== "creature") return current;
+      return {
+        ...current,
+        creatures: current.creatures
+          .map((entry) =>
+            entry.key === key
+              ? {
+                  ...entry,
+                  quantity: Math.max(
+                    0,
+                    Math.min(entry.maxQuantity, entry.quantity + delta),
+                  ),
+                }
+              : entry,
+          )
+          .filter((entry) => entry.quantity > 0),
       };
-
-      return [...current, newEntry];
     });
   };
 
-  const inspectMonster = (entry: RandomEncounterEntry) => {
+  const inspectMonster = (entry: RandomEncounterEntry) =>
     selectEntity({
       type: "monster",
-
       monsterKey: entry.key,
-
       encounterStatus: "manual",
     });
-  };
 
   const startEncounter = () => {
-    if (generatedEncounter.length === 0) {
+    if (
+      !generated ||
+      generated.type !== "creature" ||
+      !generated.creatures.length
+    )
       return;
-    }
-
     createNewEncounter();
-
-    activeCharacters.forEach((character) => {
-      addPlayerToEncounter(mapCharacterToEncounterPlayer(character));
-    });
-
-    generatedEncounter.forEach((entry) => {
-      for (let index = 0; index < entry.quantity; index += 1) {
+    activeCharacters.forEach((character) =>
+      addPlayerToEncounter(mapCharacterToEncounterPlayer(character)),
+    );
+    generated.creatures.forEach((entry) => {
+      for (let i = 0; i < entry.quantity; i += 1)
         addMonsterToEncounter(entry.monster);
-      }
     });
-
-    const locationName = activeRoom?.name ?? activeMap?.title ?? "current map";
-
     setMessage(
-      `Encounter loaded from ${locationName} with ${
+      `Encounter loaded from ${activeLocationName} with ${
         activeCharacters.length
       } active player${activeCharacters.length === 1 ? "" : "s"}.`,
     );
   };
 
   const loading = mapsLoading || monstersLoading || campaignCharactersLoading;
-
-  if (loading) {
+  if (loading)
     return (
       <div className="flex h-full items-center justify-center text-xs text-zinc-500">
         Loading encounter data...
       </div>
     );
-  }
 
-  if (!activeLocation || !activeMap) {
+  if (!activeLocation || !activeMap)
     return (
       <div className="flex h-full items-center justify-center p-4 text-center">
         <div>
           <i className="fa-solid fa-location-dot text-2xl text-zinc-700" />
-
           <div className="mt-2 text-xs font-semibold text-zinc-300">
             No active map location
           </div>
-
           <div className="mt-1 max-w-xs text-[10px] leading-4 text-zinc-500">
             Select a map overview or area in the Map module first.
           </div>
         </div>
       </div>
     );
-  }
-
-  if (localPopulation.length === 0) {
-    return (
-      <div className="flex h-full min-h-0 flex-col">
-        <div className="shrink-0 border-b border-white/10 px-3 py-2">
-          <div className="text-[10px] font-semibold text-emerald-300">
-            <i className="fa-solid fa-location-dot mr-1" />
-
-            {activeLocationName}
-          </div>
-        </div>
-
-        <div className="flex min-h-0 flex-1 items-center justify-center p-4 text-center">
-          <div>
-            <i className="fa-solid fa-dice-d20 text-2xl text-zinc-700" />
-
-            <div className="mt-2 text-xs font-semibold text-zinc-300">
-              No encounter population
-            </div>
-
-            <div className="mt-1 max-w-xs text-[10px] leading-4 text-zinc-500">
-              Add monsters to this map or area to generate encounters from it.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {/* =====================================================
-          CONTROLS
-      ===================================================== */}
-
       <div className="shrink-0 border-b border-white/10 p-2">
         <div className="flex items-center gap-1.5">
           <div className="min-w-0 flex-1">
             <div className="truncate text-[10px] font-semibold text-emerald-300">
               <i className="fa-solid fa-location-dot mr-1" />
-
               {activeLocationName}
             </div>
-
             <div className="mt-0.5 text-[9px] text-zinc-500">
-              {activeCharacters.length} active player
-              {activeCharacters.length === 1 ? "" : "s"} · Target {partyBudget}{" "}
-              XP
+              {availableTypes.length} encounter type
+              {availableTypes.length === 1 ? "" : "s"} available
             </div>
           </div>
-
           <select
             value={difficulty}
             onChange={(event) => {
               setDifficulty(event.target.value as Difficulty);
-
-              setGeneratedEncounter([]);
-
+              setGenerated(null);
               setMessage(null);
             }}
-            title="Encounter strength"
+            title="Creature encounter strength"
             className="workspace-no-drag h-7 rounded-md border border-white/10 bg-zinc-900 px-2 text-[9px] font-semibold text-zinc-300 outline-none"
           >
             <option value="low">Low</option>
-
             <option value="standard">Standard</option>
-
             <option value="hard">Hard</option>
           </select>
+
+          {generated ? (
+            <button
+              type="button"
+              onClick={clearEncounter}
+              title="Clear encounter"
+              className="workspace-no-drag flex h-7 items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 text-[9px] font-semibold text-zinc-300 transition hover:bg-white/10 hover:text-white"
+            >
+              <i className="fa-solid fa-xmark" />
+              Clear
+            </button>
+          ) : null}
 
           <button
             type="button"
             onClick={generateEncounter}
-            title="Generate random encounter"
             className="workspace-no-drag flex h-7 items-center gap-1.5 rounded-md bg-violet-600 px-2.5 text-[9px] font-semibold text-white transition hover:bg-violet-500"
           >
-            <i className="fa-solid fa-dice-d20" />
-            Roll
+            <i className="fa-solid fa-dice-d20" /> Roll
           </button>
         </div>
       </div>
 
-      {/* =====================================================
-          CONTENT
-      ===================================================== */}
-
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
-        {generatedEncounter.length > 0 ? (
+        {!generated ? (
+          <div className="p-2">
+            <div className="mb-2 text-[8px] font-bold uppercase tracking-wide text-zinc-600">
+              Encounter pool
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(
+                [
+                  "creature",
+                  "phenomenon",
+                  "event",
+                  "clue",
+                ] as RandomEncounterType[]
+              ).map((type) => {
+                const count =
+                  type === "creature"
+                    ? localPopulation.length
+                    : type === "phenomenon"
+                      ? phenomena.length
+                      : type === "event"
+                        ? events.length
+                        : clues.length;
+                const meta = TYPE_META[type];
+                return (
+                  <div
+                    key={type}
+                    className={`rounded-md border border-white/5 bg-white/[0.02] p-2 ${
+                      count ? "" : "opacity-35"
+                    }`}
+                  >
+                    <div
+                      className={`text-[9px] font-semibold ${meta.className}`}
+                    >
+                      <i className={`fa-solid ${meta.icon} mr-1`} />
+                      {meta.label}
+                    </div>
+                    <div className="mt-0.5 text-[8px] text-zinc-500">
+                      {count} available · weight {weights[type]}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              disabled={!availableTypes.length}
+              onClick={generateEncounter}
+              className="workspace-no-drag mt-2 w-full rounded-md bg-violet-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-violet-500 disabled:opacity-30"
+            >
+              <i className="fa-solid fa-dice-d20 mr-1.5" />
+              Generate Encounter
+            </button>
+            {message ? (
+              <div className="mt-2 text-center text-[9px] text-rose-300">
+                {message}
+              </div>
+            ) : null}
+          </div>
+        ) : generated.type === "creature" ? (
           <>
-            {/* Encounter summary */}
-
-            <div className="border-b border-white/5 px-2.5 py-1.5">
-              <div className="flex items-center justify-between text-[9px]">
-                <span className="font-semibold text-zinc-300">Encounter</span>
-
-                <span
-                  className={`font-semibold ${
-                    generatedXp > partyBudget * 1.2
-                      ? "text-rose-300"
-                      : generatedXp > partyBudget
-                        ? "text-amber-300"
-                        : "text-emerald-300"
-                  }`}
+            <div className="border-b border-white/5 px-2.5 py-2">
+              <div className="flex items-center justify-between gap-2">
+                <div
+                  className={`text-[10px] font-bold ${TYPE_META.creature.className}`}
                 >
+                  <i className={`fa-solid ${TYPE_META.creature.icon} mr-1.5`} />
+                  {TYPE_META.creature.label}
+                </div>
+                <div className="text-[9px] font-semibold text-zinc-400">
                   {generatedXp} / {partyBudget} XP
-                </span>
+                </div>
               </div>
             </div>
 
-            {/* Generated monsters */}
-
-            {generatedEncounter.map((entry) => (
-              <div
-                key={entry.key}
-                className="flex items-center gap-2 border-b border-white/5 px-2 py-2"
-              >
-                <button
-                  type="button"
-                  onClick={() => inspectMonster(entry)}
-                  className="workspace-no-drag min-w-0 flex-1 text-left"
+            {generated.creatures.map((entry) => {
+              const disposition = entry.mapMonster.disposition ?? "hostile";
+              const dispositionMeta = DISPOSITION_META[disposition];
+              return (
+                <div
+                  key={entry.key}
+                  className="flex items-start gap-2 border-b border-white/5 px-2 py-2"
                 >
-                  <div className="truncate text-[11px] font-semibold text-zinc-200 hover:text-white">
-                    {entry.monster.name}
-                  </div>
-
-                  <div className="mt-0.5 truncate text-[8px] text-zinc-500">
-                    CR {entry.monster.challengeRating} · {entry.monster.xp} XP
-                    each · max {entry.maxQuantity}
-                  </div>
-
-                  {entry.mapMonster.notes ? (
-                    <div className="mt-0.5 truncate text-[8px] text-zinc-600">
-                      {entry.mapMonster.notes}
+                  <button
+                    type="button"
+                    onClick={() => inspectMonster(entry)}
+                    className="workspace-no-drag min-w-0 flex-1 text-left"
+                  >
+                    <div className="truncate text-[11px] font-semibold text-zinc-200 hover:text-white">
+                      {entry.monster.name}
                     </div>
-                  ) : null}
-                </button>
-
-                <div className="workspace-no-drag flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => adjustQuantity(entry.key, -1)}
-                    aria-label={`Decrease ${entry.monster.name} quantity`}
-                    className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-black/20 text-[10px] text-zinc-400 transition hover:bg-white/5 hover:text-white"
-                  >
-                    −
+                    <div className="mt-0.5 text-[8px] text-zinc-500">
+                      CR {entry.monster.challengeRating} · {entry.monster.xp} XP
+                      {" · "}
+                      <span className={dispositionMeta.className}>
+                        {dispositionMeta.label}
+                      </span>
+                    </div>
+                    {entry.mapMonster.notes ? (
+                      <div className="mt-1 text-[9px] leading-4 text-zinc-400">
+                        {entry.mapMonster.notes}
+                      </div>
+                    ) : null}
                   </button>
-
-                  <div className="flex h-6 min-w-7 items-center justify-center rounded border border-white/10 bg-black/20 px-1.5 text-[10px] font-bold text-white">
-                    {entry.quantity}
+                  <div className="workspace-no-drag flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => adjustQuantity(entry.key, -1)}
+                      className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-black/20 text-[10px] text-zinc-400"
+                    >
+                      −
+                    </button>
+                    <div className="flex h-6 min-w-7 items-center justify-center rounded border border-white/10 bg-black/20 px-1.5 text-[10px] font-bold text-white">
+                      {entry.quantity}
+                    </div>
+                    <button
+                      type="button"
+                      disabled={entry.quantity >= entry.maxQuantity}
+                      onClick={() => adjustQuantity(entry.key, 1)}
+                      className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-black/20 text-[10px] text-emerald-300 disabled:opacity-25"
+                    >
+                      +
+                    </button>
                   </div>
-
-                  <button
-                    type="button"
-                    disabled={entry.quantity >= entry.maxQuantity}
-                    onClick={() => adjustQuantity(entry.key, 1)}
-                    aria-label={`Increase ${entry.monster.name} quantity`}
-                    className="flex h-6 w-6 items-center justify-center rounded border border-white/10 bg-black/20 text-[10px] text-emerald-300 transition hover:bg-emerald-500/10 disabled:cursor-not-allowed disabled:opacity-25"
-                  >
-                    +
-                  </button>
                 </div>
-              </div>
-            ))}
-
-            {/* Monsters available in area but not currently selected */}
-
-            {localPopulation.some(
-              (population) =>
-                !generatedEncounter.some(
-                  (entry) => entry.key === population.key,
-                ),
-            ) ? (
-              <div className="border-b border-white/5 p-2">
-                <div className="mb-1 text-[8px] font-bold uppercase tracking-wide text-zinc-600">
-                  Add from area
-                </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {localPopulation
-                    .filter(
-                      (population) =>
-                        !generatedEncounter.some(
-                          (entry) => entry.key === population.key,
-                        ),
-                    )
-                    .map((population) => (
-                      <button
-                        key={population.key}
-                        type="button"
-                        onClick={() => addFromPopulation(population.key)}
-                        className="workspace-no-drag rounded border border-white/10 bg-white/[0.025] px-1.5 py-1 text-[8px] font-medium text-zinc-400 transition hover:bg-white/[0.06] hover:text-white"
-                      >
-                        + {population.monster.name}
-                      </button>
-                    ))}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Start encounter */}
+              );
+            })}
 
             <div className="p-2">
-              <button
-                type="button"
-                onClick={startEncounter}
-                className="workspace-no-drag w-full rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-emerald-500"
-              >
-                <i className="fa-solid fa-play mr-1.5" />
-                Start Encounter
-              </button>
-
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  onClick={generateEncounter}
+                  className="workspace-no-drag rounded-md border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-semibold text-zinc-200 hover:bg-white/10"
+                >
+                  <i className="fa-solid fa-rotate mr-1.5" /> Reroll
+                </button>
+                <button
+                  type="button"
+                  onClick={startEncounter}
+                  className="workspace-no-drag rounded-md bg-emerald-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-emerald-500"
+                >
+                  <i className="fa-solid fa-play mr-1.5" /> Start Encounter
+                </button>
+              </div>
               {message ? (
                 <div className="mt-1.5 text-center text-[8px] text-emerald-300">
                   {message}
@@ -789,70 +611,33 @@ export default function RandomEncounterWorkspaceModule({
             </div>
           </>
         ) : (
-          <>
-            {/* Area population */}
-
-            <div className="p-2">
-              <div className="mb-2 text-[8px] font-bold uppercase tracking-wide text-zinc-600">
-                Area population
+          <div className="p-2">
+            <div
+              className={`text-[10px] font-bold ${TYPE_META[generated.type].className}`}
+            >
+              <i
+                className={`fa-solid ${TYPE_META[generated.type].icon} mr-1.5`}
+              />
+              {TYPE_META[generated.type].label}
+            </div>
+            <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-xs font-bold text-white">
+                {generated.entry.name}
               </div>
-
-              <div className="space-y-1">
-                {localPopulation.map((entry) => (
-                  <button
-                    key={entry.key}
-                    type="button"
-                    onClick={() =>
-                      selectEntity({
-                        type: "monster",
-
-                        monsterKey: entry.key,
-
-                        encounterStatus: "manual",
-                      })
-                    }
-                    className="workspace-no-drag flex w-full items-center justify-between rounded-md border border-white/5 bg-white/[0.02] px-2 py-1.5 text-left transition hover:bg-white/[0.05]"
-                  >
-                    <div className="min-w-0">
-                      <div className="truncate text-[10px] font-semibold text-zinc-300">
-                        {entry.monster.name}
-                      </div>
-
-                      <div className="mt-0.5 text-[8px] text-zinc-600">
-                        CR {entry.monster.challengeRating} · {entry.monster.xp}{" "}
-                        XP
-                      </div>
-
-                      {entry.mapMonster.notes ? (
-                        <div className="mt-0.5 truncate text-[8px] text-zinc-600">
-                          {entry.mapMonster.notes}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <span className="shrink-0 text-[9px] font-bold text-zinc-400">
-                      ×{entry.maxQuantity}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <button
-                type="button"
-                onClick={generateEncounter}
-                className="workspace-no-drag mt-2 w-full rounded-md bg-violet-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-violet-500"
-              >
-                <i className="fa-solid fa-dice-d20 mr-1.5" />
-                Generate Encounter
-              </button>
-
-              {message ? (
-                <div className="mt-2 text-center text-[9px] text-rose-300">
-                  {message}
+              {generated.entry.description ? (
+                <div className="mt-1.5 whitespace-pre-wrap text-[10px] leading-4 text-zinc-300">
+                  {generated.entry.description}
                 </div>
               ) : null}
             </div>
-          </>
+            <button
+              type="button"
+              onClick={generateEncounter}
+              className="workspace-no-drag mt-2 w-full rounded-md bg-violet-600 px-3 py-2 text-[10px] font-semibold text-white hover:bg-violet-500"
+            >
+              <i className="fa-solid fa-dice-d20 mr-1.5" /> Reroll
+            </button>
+          </div>
         )}
       </div>
     </div>

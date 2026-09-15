@@ -66,7 +66,7 @@ const getRoomSummary = (room: CampaignMapRoom) => {
     );
 
     parts.push(
-      `${monsterCount} ${monsterCount === 1 ? "monster" : "monsters"}`,
+      `${monsterCount} ${monsterCount === 1 ? "creature" : "creatures"}`,
     );
   }
 
@@ -864,7 +864,7 @@ export default function MapWorkspaceModule({
     setEncounterStartedMessage(
       `${activeCharacters.length} player${
         activeCharacters.length === 1 ? "" : "s"
-      } and ${totalMonsters} monster${
+      } and ${totalMonsters} creature${
         totalMonsters === 1 ? "" : "s"
       } loaded from ${locationName}.`,
     );
@@ -1538,7 +1538,7 @@ export default function MapWorkspaceModule({
                   <section>
                     <div className="mb-1.5 flex items-center justify-between gap-2">
                       <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                        Monsters
+                        Creatures
                       </div>
 
                       <div className="text-[10px] text-zinc-500">
@@ -1608,6 +1608,12 @@ export default function MapWorkspaceModule({
                                 {linkedMonster.hp}
                               </div>
 
+                              {monster.disposition ? (
+                                <div className="mt-0.5 text-[10px] font-medium capitalize text-zinc-400">
+                                  {monster.disposition}
+                                </div>
+                              ) : null}
+
                               {monster.notes ? (
                                 <div className="mt-1 text-[11px] leading-4 text-zinc-400">
                                   {monster.notes}
@@ -1649,10 +1655,18 @@ export default function MapWorkspaceModule({
 
                     <ul className="space-y-1 text-xs leading-5 text-zinc-300">
                       {selectedRoom.treasure.map((treasure, index) => (
-                        <li key={`${treasure}-${index}`} className="flex gap-2">
+                        <li
+                          key={treasure.itemKey ?? `${treasure.name}-${index}`}
+                          className="flex gap-2"
+                        >
                           <span className="text-amber-400">•</span>
 
-                          <span>{treasure}</span>
+                          <span>
+                            {(treasure.count ?? 1) > 1
+                              ? `${treasure.count}× `
+                              : ""}
+                            {treasure.name}
+                          </span>
                         </li>
                       ))}
                     </ul>
@@ -1704,7 +1718,7 @@ export default function MapWorkspaceModule({
                         <div className="mt-0.5 text-[11px] leading-4 text-zinc-400">
                           {selectedRoom.encounterTemplate
                             ? "Load the planned encounter for this area."
-                            : `Load all ${currentMonsterCount} listed monster${
+                            : `Load all ${currentMonsterCount} listed creature${
                                 currentMonsterCount === 1 ? "" : "s"
                               } into the encounter tracker.`}
                         </div>
@@ -1795,7 +1809,7 @@ export default function MapWorkspaceModule({
                   <section>
                     <div className="mb-1.5 flex items-center justify-between gap-2">
                       <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                        Monsters
+                        Creatures
                       </div>
                       <div className="text-[10px] text-zinc-500">
                         Click to inspect
@@ -1860,6 +1874,12 @@ export default function MapWorkspaceModule({
                                 {linkedMonster.hp}
                               </div>
 
+                              {monster.disposition ? (
+                                <div className="mt-0.5 text-[10px] font-medium capitalize text-zinc-400">
+                                  {monster.disposition}
+                                </div>
+                              ) : null}
+
                               {monster.notes ? (
                                 <div className="mt-1 text-[11px] leading-4 text-zinc-400">
                                   {monster.notes}
@@ -1885,7 +1905,7 @@ export default function MapWorkspaceModule({
                           Map Encounter
                         </div>
                         <div className="mt-0.5 text-[11px] leading-4 text-zinc-400">
-                          Load all {currentMonsterCount} listed monster
+                          Load all {currentMonsterCount} listed creature
                           {currentMonsterCount === 1 ? "" : "s"} and{" "}
                           {activeCharacters.length} active player
                           {activeCharacters.length === 1 ? "" : "s"} into the

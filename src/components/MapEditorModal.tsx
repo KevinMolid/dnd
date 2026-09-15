@@ -1,14 +1,26 @@
 import { useEffect, useMemo, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../firebase";
+import useMonsterLibrary from "../hooks/useMonsterLibrary";
+import { allItems, itemsById } from "../rulesets/dnd/dnd2024/data/items";
+import type { CampaignItem } from "../rulesets/dnd/dnd2024/types";
 import {
   deleteCampaignMap,
   updateCampaignMap,
 } from "../features/maps/mapService";
+
+import { DEFAULT_ENCOUNTER_WEIGHTS } from "../features/maps/types";
+
 import type {
   CampaignMap,
   CampaignMapRoom,
+  EncounterCategoryWeights,
+  EncounterDisposition,
   EnvironmentEffect,
   EnvironmentLevel,
+  MapEncounterEntry,
   MapMonster,
+  MapTreasure,
 } from "../features/maps/types";
 
 type Props = {
@@ -32,8 +44,12 @@ type EditableRoom = {
   descriptionText: string;
   developmentsText: string;
   captivesText: string;
-  treasureText: string;
-  monstersText: string;
+  treasure: MapTreasure[];
+  monsters: MapMonster[];
+  clues: MapEncounterEntry[];
+  phenomena: MapEncounterEntry[];
+  events: MapEncounterEntry[];
+  encounterWeights: EncounterCategoryWeights;
   notesText: string;
   exitsText: string;
   experience: string;
@@ -53,47 +69,430 @@ const parseExits = (value: string) =>
     .map((part) => Number(part.trim()))
     .filter((num) => Number.isFinite(num));
 
-const parseMonsters = (value: string): MapMonster[] =>
-  value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const match = line.match(/^(.+?)\s*\|\s*(\d+)(?:\s*\|\s*(.+))?$/);
+type PickerOption = { key: string; name: string; source: string };
 
-      if (!match) {
-        return {
-          name: line,
+const normalizeLegacyTreasure = (
+  treasure?: MapTreasure[] | string[],
+): MapTreasure[] =>
+  (treasure ?? []).map((entry) =>
+    typeof entry === "string"
+      ? { name: entry, count: 1 }
+      : { ...entry, count: Math.max(1, entry.count ?? 1) },
+  );
+
+const QuantityInput = ({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) => (
+  <input
+    type="number"
+    min={1}
+    value={value}
+    onChange={(event) =>
+      onChange(Math.max(1, Math.floor(Number(event.target.value) || 1)))
+    }
+    className="w-16 rounded-lg border border-white/10 bg-black/25 px-2 py-1.5 text-center text-sm text-white outline-none focus:border-emerald-500/40"
+  />
+);
+
+const EntityPicker = ({
+  label,
+  options,
+  onPick,
+}: {
+  label: string;
+  options: PickerOption[];
+  onPick: (option: PickerOption) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return options
+      .filter(
+        (option) =>
+          !q || `${option.name} ${option.source}`.toLowerCase().includes(q),
+      )
+      .slice(0, 80);
+  }, [options, search]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500"
+      >
+        + {label}
+      </button>
+      {open ? (
+        <div className="absolute right-0 top-full z-50 mt-2 w-[340px] max-w-[70vw] rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
+          <input
+            autoFocus
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={`Search ${label.toLowerCase()}...`}
+            className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40"
+          />
+          <div className="workspace-scrollbar mt-2 max-h-72 overflow-y-auto">
+            {filtered.map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                onClick={() => {
+                  onPick(option);
+                  setSearch("");
+                  setOpen(false);
+                }}
+                className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left hover:bg-white/[0.06]"
+              >
+                <span className="truncate text-sm font-medium text-white">
+                  {option.name}
+                </span>
+                <span className="shrink-0 text-xs text-zinc-500">
+                  {option.source}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const TreasureEditor = ({
+  value,
+  onChange,
+  itemOptions,
+  title,
+}: {
+  value: MapTreasure[];
+  onChange: (value: MapTreasure[]) => void;
+  itemOptions: PickerOption[];
+  title: string;
+}) => {
+  const add = (option: PickerOption) => {
+    const existing = value.find((entry) => entry.itemKey === option.key);
+    if (existing)
+      onChange(
+        value.map((entry) =>
+          entry.itemKey === option.key
+            ? { ...entry, count: (entry.count ?? 1) + 1 }
+            : entry,
+        ),
+      );
+    else
+      onChange([
+        ...value,
+        { itemKey: option.key, name: option.name, count: 1 },
+      ]);
+  };
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <label className="text-sm font-medium text-white/85">{title}</label>
+        <EntityPicker label="Add item" options={itemOptions} onPick={add} />
+      </div>
+      <div className="space-y-2">
+        {value.map((entry, index) => (
+          <div
+            key={entry.itemKey ?? `legacy-${index}`}
+            className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-zinc-900/60 p-2.5"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-white">
+                {entry.name}
+              </p>
+              <p className="text-xs text-zinc-500">
+                {entry.itemKey?.startsWith("campaign:")
+                  ? "Campaign item"
+                  : entry.itemKey
+                    ? "Official item"
+                    : "Legacy entry"}
+              </p>
+            </div>
+            <QuantityInput
+              value={entry.count ?? 1}
+              onChange={(count) =>
+                onChange(
+                  value.map((v, i) => (i === index ? { ...v, count } : v)),
+                )
+              }
+            />
+            <button
+              type="button"
+              onClick={() => onChange(value.filter((_, i) => i !== index))}
+              className="h-8 w-8 rounded-lg text-zinc-500 hover:bg-red-500/10 hover:text-red-300"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CreatureEditor = ({
+  value,
+  onChange,
+  monsterOptions,
+  title,
+}: {
+  value: MapMonster[];
+  onChange: (value: MapMonster[]) => void;
+  monsterOptions: PickerOption[];
+  title: string;
+}) => {
+  const add = (option: PickerOption) => {
+    const existing = value.find((entry) => entry.monsterKey === option.key);
+    if (existing)
+      onChange(
+        value.map((entry) =>
+          entry.monsterKey === option.key
+            ? { ...entry, count: (entry.count ?? 1) + 1 }
+            : entry,
+        ),
+      );
+    else
+      onChange([
+        ...value,
+        {
+          monsterKey: option.key,
+          name: option.name,
           count: 1,
-        };
-      }
+          disposition: "hostile",
+        },
+      ]);
+  };
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <label className="text-sm font-medium text-white/85">{title}</label>
+        <EntityPicker
+          label="Add creature"
+          options={monsterOptions}
+          onPick={add}
+        />
+      </div>
+      <div className="space-y-2">
+        {value.map((entry, index) => (
+          <div
+            key={entry.monsterKey ?? `legacy-${index}`}
+            className="rounded-xl border border-white/[0.08] bg-zinc-900/60 p-2.5"
+          >
+            <div className="flex items-center gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-white">
+                  {entry.name}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {entry.monsterKey?.startsWith("campaign:")
+                    ? "Campaign creature"
+                    : entry.monsterKey
+                      ? "Official creature"
+                      : "Legacy entry"}
+                </p>
+              </div>
+              <QuantityInput
+                value={entry.count ?? 1}
+                onChange={(count) =>
+                  onChange(
+                    value.map((v, i) => (i === index ? { ...v, count } : v)),
+                  )
+                }
+              />
+              <button
+                type="button"
+                onClick={() => onChange(value.filter((_, i) => i !== index))}
+                className="h-8 w-8 rounded-lg text-zinc-500 hover:bg-red-500/10 hover:text-red-300"
+              >
+                ×
+              </button>
+            </div>
+            <select
+              value={entry.disposition ?? "hostile"}
+              onChange={(e) =>
+                onChange(
+                  value.map((v, i) =>
+                    i === index
+                      ? {
+                          ...v,
+                          disposition: e.target.value as EncounterDisposition,
+                        }
+                      : v,
+                  ),
+                )
+              }
+              className="mt-2 w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40"
+            >
+              <option value="friendly">Friendly</option>
+              <option value="neutral">Neutral</option>
+              <option value="wary">Wary</option>
+              <option value="hostile">Hostile</option>
+            </select>
 
-      const monster: {
-        name: string;
-        count?: number;
-        notes?: string;
-      } = {
-        name: match[1].trim(),
-        count: Number(match[2]),
-      };
+            <textarea
+              value={entry.notes ?? ""}
+              onChange={(e) =>
+                onChange(
+                  value.map((v, i) =>
+                    i === index ? { ...v, notes: e.target.value } : v,
+                  ),
+                )
+              }
+              placeholder="Notes for this creature in this location..."
+              rows={2}
+              className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
-      const notes = match[3]?.trim();
+const createEncounterEntryId = () =>
+  `enc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      if (notes) {
-        monster.notes = notes;
-      }
+const normalizeWeights = (
+  value?: Partial<EncounterCategoryWeights>,
+): EncounterCategoryWeights => ({
+  ...DEFAULT_ENCOUNTER_WEIGHTS,
+  ...(value ?? {}),
+});
 
-      return monster;
-    });
+const EncounterEntryEditor = ({
+  title,
+  description,
+  value,
+  onChange,
+}: {
+  title: string;
+  description: string;
+  value: MapEncounterEntry[];
+  onChange: (value: MapEncounterEntry[]) => void;
+}) => {
+  const singular = title.endsWith("s") ? title.slice(0, -1) : title;
 
-const monstersToText = (monsters?: MapMonster[]) =>
-  (monsters ?? [])
-    .map((monster) =>
-      [monster.name, monster.count ?? 1, monster.notes ?? ""]
-        .filter((part) => part !== "")
-        .join(" | "),
-    )
-    .join("\n");
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <label className="text-sm font-medium text-white/85">{title}</label>
+          <p className="mt-0.5 text-xs text-white/40">{description}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() =>
+            onChange([
+              ...value,
+              { id: createEncounterEntryId(), name: "", description: "" },
+            ])
+          }
+          className="shrink-0 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+        >
+          + Add
+        </button>
+      </div>
+
+      <div className="space-y-2">
+        {value.map((entry, index) => (
+          <div
+            key={entry.id}
+            className="rounded-xl border border-white/[0.08] bg-zinc-900/60 p-2.5"
+          >
+            <div className="flex gap-2">
+              <input
+                value={entry.name}
+                onChange={(e) =>
+                  onChange(
+                    value.map((candidate, i) =>
+                      i === index
+                        ? { ...candidate, name: e.target.value }
+                        : candidate,
+                    ),
+                  )
+                }
+                placeholder={`${singular} name...`}
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm font-semibold text-white outline-none focus:border-emerald-500/40"
+              />
+              <button
+                type="button"
+                onClick={() => onChange(value.filter((_, i) => i !== index))}
+                className="h-9 w-9 rounded-lg text-zinc-500 hover:bg-red-500/10 hover:text-red-300"
+              >
+                ×
+              </button>
+            </div>
+            <textarea
+              value={entry.description ?? ""}
+              onChange={(e) =>
+                onChange(
+                  value.map((candidate, i) =>
+                    i === index
+                      ? { ...candidate, description: e.target.value }
+                      : candidate,
+                  ),
+                )
+              }
+              rows={2}
+              placeholder="What happens / what does the party notice?"
+              className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40"
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const EncounterWeightsEditor = ({
+  value,
+  onChange,
+}: {
+  value: EncounterCategoryWeights;
+  onChange: (value: EncounterCategoryWeights) => void;
+}) => (
+  <details className="rounded-xl border border-white/10 bg-white/[0.03]">
+    <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-white/75">
+      Encounter settings
+    </summary>
+    <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-3">
+      {(
+        [
+          ["creature", "Creature"],
+          ["phenomenon", "Phenomenon"],
+          ["event", "Event"],
+          ["clue", "Clue"],
+        ] as const
+      ).map(([key, label]) => (
+        <label key={key}>
+          <span className="mb-1 block text-xs text-white/50">{label}</span>
+          <input
+            type="number"
+            min={0}
+            value={value[key]}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                [key]: Math.max(0, Number(e.target.value) || 0),
+              })
+            }
+            className="w-full rounded-lg border border-white/10 bg-zinc-900 px-2.5 py-2 text-sm text-white outline-none"
+          />
+        </label>
+      ))}
+      <p className="col-span-2 text-xs leading-4 text-white/40">
+        Relative weights. Empty categories are ignored automatically.
+      </p>
+    </div>
+  </details>
+);
 
 const getDefaultPinPosition = (markers: MapPoint[]): MapPoint => {
   if (markers.length === 0) {
@@ -118,8 +517,12 @@ const roomToEditable = (room: CampaignMapRoom): EditableRoom => ({
   descriptionText: toMultilineText(room.description),
   developmentsText: toMultilineText(room.developments),
   captivesText: toMultilineText(room.captives),
-  treasureText: toMultilineText(room.treasure),
-  monstersText: monstersToText(room.monsters),
+  treasure: normalizeLegacyTreasure(room.treasure),
+  monsters: room.monsters ?? [],
+  clues: room.clues ?? [],
+  phenomena: room.phenomena ?? [],
+  events: room.events ?? [],
+  encounterWeights: normalizeWeights(room.encounterWeights),
   notesText: toMultilineText(room.notes),
   exitsText: (room.exits ?? []).join(", "),
   experience: room.experience ?? "",
@@ -136,8 +539,12 @@ const editableToRoom = (
     description: parseStringLines(editable.descriptionText),
     developments: parseStringLines(editable.developmentsText),
     captives: parseStringLines(editable.captivesText),
-    treasure: parseStringLines(editable.treasureText),
-    monsters: parseMonsters(editable.monstersText),
+    treasure: editable.treasure,
+    monsters: editable.monsters,
+    clues: editable.clues.filter((entry) => entry.name.trim()),
+    phenomena: editable.phenomena.filter((entry) => entry.name.trim()),
+    events: editable.events.filter((entry) => entry.name.trim()),
+    encounterWeights: editable.encounterWeights,
     notes: parseStringLines(editable.notesText),
     exits: parseExits(editable.exitsText),
     encounterTemplate: original?.encounterTemplate ?? null,
@@ -234,6 +641,71 @@ const MapEditorModal = ({
   onClose,
   initialSelectedRoomId = null,
 }: Props) => {
+  const { allMonsters } = useMonsterLibrary(campaignId);
+
+  const [campaignItemsById, setCampaignItemsById] = useState<
+    Record<string, CampaignItem>
+  >({});
+
+  useEffect(() => {
+    if (!campaignId) {
+      setCampaignItemsById({});
+      return;
+    }
+
+    return onSnapshot(
+      collection(db, "campaigns", campaignId, "items"),
+      (snapshot) => {
+        setCampaignItemsById(
+          Object.fromEntries(
+            snapshot.docs.map((docSnap) => [
+              docSnap.id,
+              {
+                id: docSnap.id,
+                ...(docSnap.data() as Omit<CampaignItem, "id">),
+              },
+            ]),
+          ) as Record<string, CampaignItem>,
+        );
+      },
+      (loadError) => console.error("Failed to load campaign items:", loadError),
+    );
+  }, [campaignId]);
+
+  const itemOptions = useMemo(() => {
+    const campaign = Object.values(campaignItemsById).flatMap((item) => {
+      const base = itemsById[item.baseItemId];
+      if (!base) return [];
+      return [
+        {
+          key: `campaign:${item.id}`,
+          name: item.name ?? item.overrides?.name ?? base.name,
+          source: "Campaign",
+        },
+      ];
+    });
+    const defaults = allItems.map((item) => ({
+      key: `default:${item.id}`,
+      name: item.name,
+      source: "Official",
+    }));
+    return [...campaign, ...defaults].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+  }, [campaignItemsById]);
+
+  const monsterOptions = useMemo(
+    () =>
+      allMonsters
+        .map((monster) => ({
+          key: `${monster.source}:${monster.id}`,
+          name: monster.name,
+          source: monster.source === "campaign" ? "Campaign" : "Official",
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [allMonsters],
+  );
+
   const [title, setTitle] = useState(map.title);
 
   const [imageUrl, setImageUrl] = useState(map.imageUrl);
@@ -246,9 +718,28 @@ const MapEditorModal = ({
     map.readAloud ?? "",
   );
 
-  const [overviewMonstersText, setOverviewMonstersText] = useState(
-    monstersToText(map.monsters),
+  const [overviewMonsters, setOverviewMonsters] = useState<MapMonster[]>(
+    map.monsters ?? [],
   );
+
+  const [overviewTreasure, setOverviewTreasure] = useState<MapTreasure[]>(
+    normalizeLegacyTreasure(map.treasure),
+  );
+
+  const [overviewClues, setOverviewClues] = useState<MapEncounterEntry[]>(
+    map.clues ?? [],
+  );
+
+  const [overviewPhenomena, setOverviewPhenomena] = useState<
+    MapEncounterEntry[]
+  >(map.phenomena ?? []);
+
+  const [overviewEvents, setOverviewEvents] = useState<MapEncounterEntry[]>(
+    map.events ?? [],
+  );
+
+  const [overviewEncounterWeights, setOverviewEncounterWeights] =
+    useState<EncounterCategoryWeights>(normalizeWeights(map.encounterWeights));
 
   const [environmentEffects, setEnvironmentEffects] = useState<
     EnvironmentEffect[]
@@ -277,7 +768,12 @@ const MapEditorModal = ({
     setImageUrl(map.imageUrl);
     setOverviewDescriptionText(toMultilineText(map.generalDescription));
     setOverviewReadAloud(map.readAloud ?? "");
-    setOverviewMonstersText(monstersToText(map.monsters));
+    setOverviewMonsters(map.monsters ?? []);
+    setOverviewTreasure(normalizeLegacyTreasure(map.treasure));
+    setOverviewClues(map.clues ?? []);
+    setOverviewPhenomena(map.phenomena ?? []);
+    setOverviewEvents(map.events ?? []);
+    setOverviewEncounterWeights(normalizeWeights(map.encounterWeights));
 
     setEnvironmentEffects(map.environmentEffects ?? []);
     setExpandedEffectIds(new Set());
@@ -568,8 +1064,12 @@ const MapEditorModal = ({
       descriptionText: "",
       developmentsText: "",
       captivesText: "",
-      treasureText: "",
-      monstersText: "",
+      treasure: [],
+      monsters: [],
+      clues: [],
+      phenomena: [],
+      events: [],
+      encounterWeights: { ...DEFAULT_ENCOUNTER_WEIGHTS },
       notesText: "",
       exitsText: "",
       experience: "",
@@ -787,7 +1287,14 @@ const MapEditorModal = ({
 
         readAloud: overviewReadAloud.trim(),
 
-        monsters: parseMonsters(overviewMonstersText),
+        monsters: overviewMonsters,
+
+        treasure: overviewTreasure,
+
+        clues: overviewClues.filter((entry) => entry.name.trim()),
+        phenomena: overviewPhenomena.filter((entry) => entry.name.trim()),
+        events: overviewEvents.filter((entry) => entry.name.trim()),
+        encounterWeights: overviewEncounterWeights,
       });
 
       onClose();
@@ -1454,28 +1961,50 @@ const MapEditorModal = ({
                   />
                 </div>
 
-                <div>
-                  <label className={labelClass}>
-                    Monsters (format: Name | Count | Notes)
-                  </label>
+                <TreasureEditor
+                  value={overviewTreasure}
+                  onChange={setOverviewTreasure}
+                  itemOptions={itemOptions}
+                  title="Treasure"
+                />
 
-                  <textarea
-                    value={overviewMonstersText}
-                    onChange={(e) => setOverviewMonstersText(e.target.value)}
-                    className={textAreaClass}
-                    placeholder="Scout | 1 | 30–60 ft ahead\nGuard | 6 | 2 mounted"
-                  />
+                <CreatureEditor
+                  value={overviewMonsters}
+                  onChange={setOverviewMonsters}
+                  monsterOptions={monsterOptions}
+                  title="Creatures"
+                />
 
-                  <p className="mt-2 text-xs leading-5 text-white/45">
-                    These monsters belong to the whole map. Use this for battle
-                    maps and other maps that do not need separate areas.
-                  </p>
-                </div>
+                <EncounterEntryEditor
+                  title="Phenomena"
+                  description="Atmospheric or supernatural occurrences."
+                  value={overviewPhenomena}
+                  onChange={setOverviewPhenomena}
+                />
+
+                <EncounterEntryEditor
+                  title="Events"
+                  description="Things that happen around or to the party."
+                  value={overviewEvents}
+                  onChange={setOverviewEvents}
+                />
+
+                <EncounterEntryEditor
+                  title="Clues"
+                  description="Discoveries that reveal information or point somewhere."
+                  value={overviewClues}
+                  onChange={setOverviewClues}
+                />
+
+                <EncounterWeightsEditor
+                  value={overviewEncounterWeights}
+                  onChange={setOverviewEncounterWeights}
+                />
 
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white/60">
                   You can use the map overview as a playable encounter location
                   without creating any areas. Add areas only when different
-                  parts of the map need their own content or monster
+                  parts of the map need their own content or creature
                   populations.
                 </div>
               </div>
@@ -1669,37 +2198,47 @@ const MapEditorModal = ({
                   />
                 </div>
 
-                <div>
-                  <label className={labelClass}>
-                    Treasure (one line per entry)
-                  </label>
+                <TreasureEditor
+                  value={selectedRoom.treasure}
+                  onChange={(treasure) => updateSelectedRoom({ treasure })}
+                  itemOptions={itemOptions}
+                  title="Treasure"
+                />
 
-                  <textarea
-                    value={selectedRoom.treasureText}
-                    onChange={(e) =>
-                      updateSelectedRoom({
-                        treasureText: e.target.value,
-                      })
-                    }
-                    className={textAreaClass}
-                  />
-                </div>
+                <CreatureEditor
+                  value={selectedRoom.monsters}
+                  onChange={(monsters) => updateSelectedRoom({ monsters })}
+                  monsterOptions={monsterOptions}
+                  title="Creatures"
+                />
 
-                <div>
-                  <label className={labelClass}>
-                    Monsters (format: Name | Count | Notes)
-                  </label>
+                <EncounterEntryEditor
+                  title="Phenomena"
+                  description="Atmospheric or supernatural occurrences."
+                  value={selectedRoom.phenomena}
+                  onChange={(phenomena) => updateSelectedRoom({ phenomena })}
+                />
 
-                  <textarea
-                    value={selectedRoom.monstersText}
-                    onChange={(e) =>
-                      updateSelectedRoom({
-                        monstersText: e.target.value,
-                      })
-                    }
-                    className={textAreaClass}
-                  />
-                </div>
+                <EncounterEntryEditor
+                  title="Events"
+                  description="Things that happen around or to the party."
+                  value={selectedRoom.events}
+                  onChange={(events) => updateSelectedRoom({ events })}
+                />
+
+                <EncounterEntryEditor
+                  title="Clues"
+                  description="Discoveries that reveal information or point somewhere."
+                  value={selectedRoom.clues}
+                  onChange={(clues) => updateSelectedRoom({ clues })}
+                />
+
+                <EncounterWeightsEditor
+                  value={selectedRoom.encounterWeights}
+                  onChange={(encounterWeights) =>
+                    updateSelectedRoom({ encounterWeights })
+                  }
+                />
 
                 <div>
                   <label className={labelClass}>
