@@ -23,6 +23,7 @@ import type {
   CampaignMap,
   CampaignMapRoom,
   EnvironmentEffect,
+  MapTreasure,
 } from "../features/maps/types";
 
 import MapCanvas, { type MapCanvasHandle } from "./maps/MapCanvas";
@@ -513,37 +514,38 @@ const MapViewer = ({
     }
 
     return selectedRoom.treasure.flatMap<LinkedTreasureEntry>(
-      (treasureText, index): LinkedTreasureEntry[] => {
-        const item = findLinkedItem(treasureText);
+      (treasure: MapTreasure, index): LinkedTreasureEntry[] => {
+        const quantity = Math.max(1, treasure.count ?? 1);
+        const displayText =
+          quantity > 1 ? `${quantity}× ${treasure.name}` : treasure.name;
+
+        const item = findLinkedItem(treasure.name);
 
         if (item) {
-          return [
-            {
-              key: `${selectedRoom.id}-${index}-item-${item.id}`,
-
-              text: treasureText,
-
-              type: "item",
-
-              item,
-            },
-          ];
+          return Array.from({ length: quantity }, (_, quantityIndex) => ({
+            key: `${selectedRoom.id}-${index}-${quantityIndex}-item-${item.id}`,
+            text: displayText,
+            type: "item" as const,
+            item,
+          }));
         }
 
-        const money = parseMoneyText(treasureText);
+        const money = parseMoneyText(treasure.name);
 
         if (money) {
+          const multipliedMoney: Partial<Money> = {
+            gp: (money.gp ?? 0) * quantity,
+            sp: (money.sp ?? 0) * quantity,
+            cp: (money.cp ?? 0) * quantity,
+          };
+
           return [
             {
-              key: `${selectedRoom.id}-${index}-money-${treasureText}`,
-
-              text: treasureText,
-
-              type: "money",
-
-              money,
-
-              moneyLabel: getMoneyLabel(money),
+              key: `${selectedRoom.id}-${index}-money-${treasure.name}`,
+              text: displayText,
+              type: "money" as const,
+              money: multipliedMoney,
+              moneyLabel: getMoneyLabel(multipliedMoney),
             },
           ];
         }
@@ -1419,18 +1421,30 @@ const MapViewer = ({
                         </div>
 
                         <ul className="list-disc space-y-1 pl-5 text-sm text-white/75">
-                          {selectedRoom.treasure.map((treasureText, index) => {
-                            const linkedItem = findLinkedItem(treasureText);
+                          {selectedRoom.treasure.map((treasure, index) => {
+                            const linkedItem = findLinkedItem(treasure.name);
+
+                            const quantity = Math.max(1, treasure.count ?? 1);
+
+                            const displayText =
+                              quantity > 1
+                                ? `${quantity}× ${treasure.name}`
+                                : treasure.name;
 
                             return (
-                              <li key={`${treasureText}-${index}`}>
+                              <li
+                                key={
+                                  treasure.itemKey ??
+                                  `${treasure.name}-${index}`
+                                }
+                              >
                                 {linkedItem ? (
                                   <TreasureLink
-                                    text={treasureText}
+                                    text={displayText}
                                     item={linkedItem}
                                   />
                                 ) : (
-                                  treasureText
+                                  displayText
                                 )}
                               </li>
                             );
