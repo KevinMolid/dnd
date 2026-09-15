@@ -3,12 +3,16 @@ import { Outlet, useNavigate, useParams } from "react-router-dom";
 import CampaignHeader from "../features/campaigns/components/CampaignHeader";
 import useCampaignPageData from "../features/campaigns/hooks/useCampaignPageData";
 
+import { usePageTitle } from "../hooks/usePageTitle";
+
 const CampaignLayout = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const navigate = useNavigate();
 
   const { pageState, campaign, membership, isGm, systemLabel } =
     useCampaignPageData(campaignId);
+
+  usePageTitle(campaign?.name);
 
   if (pageState === "loading") {
     return (

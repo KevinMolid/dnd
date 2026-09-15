@@ -26,6 +26,8 @@ import type { CampaignDoc } from "../types/campaign";
 import "react-grid-layout/css/styles.css";
 import "react-resizable/css/styles.css";
 
+import { usePageTitle } from "../hooks/usePageTitle";
+
 type SavedWorkspace = {
   modules: WorkspaceModule[];
 
@@ -231,6 +233,8 @@ export default function DMWorkspacePage() {
   const { width, containerRef, mounted } = useContainerWidth();
 
   const [campaignName, setCampaignName] = useState<string>("Campaign");
+
+  usePageTitle(campaignName, "Workspace");
 
   const [modules, setModules] = useState<WorkspaceModule[]>(DEFAULT_MODULES);
 

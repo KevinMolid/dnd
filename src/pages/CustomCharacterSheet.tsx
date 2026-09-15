@@ -47,6 +47,8 @@ import type {
   CustomTrait,
 } from "../types/customCharacter";
 
+import { usePageTitle } from "../hooks/usePageTitle";
+
 type CustomCharacterSheetProps = {
   characterId?: string;
 
@@ -293,6 +295,7 @@ const CustomCharacterSheet = ({
   handleShortRest,
   handleLongRest,
 }: CustomCharacterSheetProps) => {
+  usePageTitle(character?.name);
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
 
   const [openFeatureGroups, setOpenFeatureGroups] = useState<
