@@ -1,20 +1,43 @@
-type CharacterProfilePanelProps = {
-  age?: string | number | null;
-  height?: string | null;
-  weight?: string | null;
-  eyes?: string | null;
-  skin?: string | null;
-  hair?: string | null;
-  alignment?: string | null;
+import { useEffect, useMemo, useState } from "react";
 
-  appearance?: string | null;
-  connections?: string | null;
-  backstory?: string | null;
+import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { useParams } from "react-router-dom";
 
-  personalityTraits?: string | null;
-  ideals?: string | null;
-  bonds?: string | null;
-  flaws?: string | null;
+import { db } from "../../../firebase";
+
+export type CharacterProfileValues = {
+  age?: string;
+  height?: string;
+  weight?: string;
+  eyes?: string;
+  skin?: string;
+  hair?: string;
+  alignment?: string;
+  appearance?: string;
+  connections?: string;
+  backstory?: string;
+  personalityTraits?: string;
+  ideals?: string;
+  bonds?: string;
+  flaws?: string;
+};
+
+type CharacterProfilePanelProps = CharacterProfileValues & {
+  editable?: boolean;
+  onSave?: (values: CharacterProfileValues) => void | Promise<void>;
+};
+
+/*
+ * The character sheet hook currently loads a snapshot rather than subscribing
+ * to Firestore. Keep successful inline edits available while switching tabs
+ * during the same page session; a full refresh then reads the saved Firestore
+ * values normally.
+ */
+const savedProfileCache = new Map<string, CharacterProfileValues>();
+
+const emptyToUndefined = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
 };
 
 const CharacterProfilePanel = ({
@@ -32,124 +55,350 @@ const CharacterProfilePanel = ({
   ideals,
   bonds,
   flaws,
+  editable = true,
+  onSave,
 }: CharacterProfilePanelProps) => {
-  const hasPersonality =
-    Boolean(personalityTraits) ||
-    Boolean(ideals) ||
-    Boolean(bonds) ||
-    Boolean(flaws);
+  const { characterId } = useParams();
+
+  const propValues = useMemo<CharacterProfileValues>(
+    () => ({
+      age,
+      height,
+      weight,
+      eyes,
+      skin,
+      hair,
+      alignment,
+      appearance,
+      connections,
+      backstory,
+      personalityTraits,
+      ideals,
+      bonds,
+      flaws,
+    }),
+    [
+      age,
+      height,
+      weight,
+      eyes,
+      skin,
+      hair,
+      alignment,
+      appearance,
+      connections,
+      backstory,
+      personalityTraits,
+      ideals,
+      bonds,
+      flaws,
+    ],
+  );
+
+  const values = useMemo(
+    () =>
+      characterId
+        ? {
+            ...propValues,
+            ...(savedProfileCache.get(characterId) ?? {}),
+          }
+        : propValues,
+    [characterId, propValues],
+  );
+
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<CharacterProfileValues>(values);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!editing) {
+      setDraft(values);
+    }
+  }, [values, editing]);
+
+  const setField = (field: keyof CharacterProfileValues, value: string) => {
+    setDraft((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  };
+
+  const cancel = () => {
+    setDraft(values);
+    setError("");
+    setEditing(false);
+  };
+
+  const save = async () => {
+    const normalized = Object.fromEntries(
+      Object.entries(draft).map(([key, value]) => [
+        key,
+        typeof value === "string" ? emptyToUndefined(value) : value,
+      ]),
+    ) as CharacterProfileValues;
+
+    try {
+      setSaving(true);
+      setError("");
+
+      if (onSave) {
+        await onSave(normalized);
+      } else {
+        if (!characterId) {
+          throw new Error("Missing character ID.");
+        }
+
+        await updateDoc(doc(db, "characters", characterId), {
+          age: normalized.age ?? "",
+          height: normalized.height ?? "",
+          weight: normalized.weight ?? "",
+          eyes: normalized.eyes ?? "",
+          skin: normalized.skin ?? "",
+          hair: normalized.hair ?? "",
+          alignment: normalized.alignment ?? "",
+          characterAppearance: normalized.appearance ?? "",
+          alliesAndOrganizations: normalized.connections ?? "",
+          characterBackstory: normalized.backstory ?? "",
+          personalityTraits: normalized.personalityTraits ?? "",
+          ideals: normalized.ideals ?? "",
+          bonds: normalized.bonds ?? "",
+          flaws: normalized.flaws ?? "",
+          updatedAt: serverTimestamp(),
+        });
+      }
+
+      if (characterId) {
+        savedProfileCache.set(characterId, normalized);
+      }
+
+      setDraft(normalized);
+      setEditing(false);
+    } catch (err) {
+      console.error("Failed to save character profile:", err);
+      setError("Failed to save character details.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="divide-y divide-white/[0.07]">
-      <section className="px-4 py-4">
-        <SectionLabel>Character Details</SectionLabel>
+      <section className="px-4 py-3.5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 className="text-xs font-bold uppercase tracking-[0.11em] text-zinc-400">
+            Character Details
+          </h2>
 
-        <div className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-4">
-          <Detail label="Age" value={age} />
-          <Detail label="Height" value={height} />
-          <Detail label="Weight" value={weight} />
-          <Detail label="Alignment" value={alignment} />
+          {editable && (onSave || characterId) ? (
+            editing ? (
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={cancel}
+                  className="rounded-md px-2 py-1 text-xs font-semibold text-zinc-500 transition hover:bg-white/[0.05] hover:text-zinc-200 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
 
-          <Detail label="Eyes" value={eyes} />
-          <Detail label="Skin" value={skin} />
-          <Detail label="Hair" value={hair} />
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={save}
+                  className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/15 disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="rounded-md border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-xs font-semibold text-zinc-400 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-white"
+              >
+                Edit
+              </button>
+            )
+          ) : null}
+        </div>
+
+        <div className="grid gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+          <DetailField
+            label="Age"
+            value={draft.age}
+            editing={editing}
+            onChange={(value) => setField("age", value)}
+          />
+          <DetailField
+            label="Height"
+            value={draft.height}
+            editing={editing}
+            onChange={(value) => setField("height", value)}
+          />
+          <DetailField
+            label="Weight"
+            value={draft.weight}
+            editing={editing}
+            onChange={(value) => setField("weight", value)}
+          />
+          <DetailField
+            label="Alignment"
+            value={draft.alignment}
+            editing={editing}
+            onChange={(value) => setField("alignment", value)}
+          />
+          <DetailField
+            label="Eyes"
+            value={draft.eyes}
+            editing={editing}
+            onChange={(value) => setField("eyes", value)}
+          />
+          <DetailField
+            label="Skin"
+            value={draft.skin}
+            editing={editing}
+            onChange={(value) => setField("skin", value)}
+          />
+          <DetailField
+            label="Hair"
+            value={draft.hair}
+            editing={editing}
+            onChange={(value) => setField("hair", value)}
+          />
         </div>
       </section>
 
-      <ProfileTextSection
-        title="Appearance"
-        value={appearance}
-        emptyText="No appearance description."
+      <LongField
+        label="Appearance"
+        value={draft.appearance}
+        editing={editing}
+        onChange={(value) => setField("appearance", value)}
       />
 
-      <ProfileTextSection
-        title="Connections"
-        value={connections}
+      <LongField
+        label="Connections"
+        value={draft.connections}
+        editing={editing}
         emptyText="No connections recorded."
+        onChange={(value) => setField("connections", value)}
       />
 
-      <ProfileTextSection
-        title="Backstory"
-        value={backstory}
-        emptyText="No backstory recorded."
+      <LongField
+        label="Backstory"
+        value={draft.backstory}
+        editing={editing}
+        onChange={(value) => setField("backstory", value)}
       />
 
-      {hasPersonality ? (
-        <section className="px-4 py-4">
-          <SectionLabel>Personality</SectionLabel>
+      {editing || draft.personalityTraits ? (
+        <LongField
+          label="Personality Traits"
+          value={draft.personalityTraits}
+          editing={editing}
+          onChange={(value) => setField("personalityTraits", value)}
+        />
+      ) : null}
 
-          <div className="mt-4 grid gap-x-6 gap-y-5 md:grid-cols-2">
-            <PersonalityField label="Traits" value={personalityTraits} />
-            <PersonalityField label="Ideals" value={ideals} />
-            <PersonalityField label="Bonds" value={bonds} />
-            <PersonalityField label="Flaws" value={flaws} />
-          </div>
-        </section>
+      {editing || draft.ideals ? (
+        <LongField
+          label="Ideals"
+          value={draft.ideals}
+          editing={editing}
+          onChange={(value) => setField("ideals", value)}
+        />
+      ) : null}
+
+      {editing || draft.bonds ? (
+        <LongField
+          label="Bonds"
+          value={draft.bonds}
+          editing={editing}
+          onChange={(value) => setField("bonds", value)}
+        />
+      ) : null}
+
+      {editing || draft.flaws ? (
+        <LongField
+          label="Flaws"
+          value={draft.flaws}
+          editing={editing}
+          onChange={(value) => setField("flaws", value)}
+        />
+      ) : null}
+
+      {error ? (
+        <div className="px-4 py-2 text-sm text-red-300">{error}</div>
       ) : null}
     </div>
   );
 };
 
-const Detail = ({
+const DetailField = ({
   label,
   value,
+  editing,
+  onChange,
 }: {
   label: string;
-  value?: string | number | null;
+  value?: string;
+  editing: boolean;
+  onChange: (value: string) => void;
 }) => (
-  <div className="min-w-0">
-    <p className="text-[10px] font-semibold uppercase tracking-[0.09em] text-zinc-500">
+  <label className="min-w-0">
+    <span className="block text-xs font-semibold uppercase tracking-[0.1em] text-zinc-500">
       {label}
-    </p>
+    </span>
 
-    <p className="mt-1.5 truncate text-sm font-medium text-zinc-100">
-      {value === undefined || value === null || value === "" ? "—" : value}
-    </p>
-  </div>
+    {editing ? (
+      <input
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 w-full rounded-md border border-white/[0.09] bg-black/25 px-2.5 py-2 text-sm font-medium text-white outline-none transition focus:border-emerald-500/35"
+      />
+    ) : (
+      <p className="mt-1.5 truncate text-sm font-semibold text-zinc-100">
+        {value?.trim() || "—"}
+      </p>
+    )}
+  </label>
 );
 
-const ProfileTextSection = ({
-  title,
+const LongField = ({
+  label,
   value,
-  emptyText,
+  editing,
+  emptyText = "—",
+  onChange,
 }: {
-  title: string;
-  value?: string | null;
-  emptyText: string;
+  label: string;
+  value?: string;
+  editing: boolean;
+  emptyText?: string;
+  onChange: (value: string) => void;
 }) => (
-  <section className="px-4 py-4">
-    <SectionLabel>{title}</SectionLabel>
+  <section className="px-4 py-3.5">
+    <h3 className="text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
+      {label}
+    </h3>
 
-    {value ? (
-      <p className="mt-2.5 whitespace-pre-wrap text-xs leading-6 text-zinc-200">
-        {value}
-      </p>
+    {editing ? (
+      <textarea
+        value={value ?? ""}
+        onChange={(event) => onChange(event.target.value)}
+        rows={label === "Backstory" ? 5 : 3}
+        className="workspace-scrollbar mt-2 w-full resize-none rounded-lg border border-white/[0.09] bg-black/25 px-3 py-2.5 text-sm leading-6 text-white outline-none transition focus:border-emerald-500/35"
+      />
     ) : (
-      <p className="mt-2.5 text-[11px] text-zinc-500">{emptyText}</p>
+      <p
+        className={`mt-2 whitespace-pre-wrap text-sm leading-6 ${
+          value?.trim() ? "text-zinc-200" : "text-zinc-600"
+        }`}
+      >
+        {value?.trim() || emptyText}
+      </p>
     )}
   </section>
-);
-
-const PersonalityField = ({
-  label,
-  value,
-}: {
-  label: string;
-  value?: string | null;
-}) => (
-  <div>
-    <p className="text-[11px] font-semibold text-zinc-400">{label}</p>
-
-    <p className="mt-1.5 whitespace-pre-wrap text-xs leading-6 text-zinc-200">
-      {value || "—"}
-    </p>
-  </div>
-);
-
-const SectionLabel = ({ children }: { children: string }) => (
-  <h2 className="text-[10px] font-semibold uppercase tracking-[0.13em] text-zinc-400">
-    {children}
-  </h2>
 );
 
 export default CharacterProfilePanel;

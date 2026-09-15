@@ -1,4 +1,6 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+
+import { useParams } from "react-router-dom";
 
 import SpellTooltip from "../../../components/SpellTooltip";
 
@@ -82,7 +84,7 @@ export type OverviewAction = {
   value?: string;
 };
 
-type PlayTab = "attacks" | "spells" | "actions";
+export type PlayTab = "attacks" | "spells" | "actions";
 
 type OverviewDashboardProps = {
   attacks?: OverviewAttack[];
@@ -254,7 +256,49 @@ const OverviewDashboard = ({
 
   combatOptions = [],
 }: OverviewDashboardProps) => {
+  const { characterId } = useParams();
   const [activePlayTab, setActivePlayTab] = useState<PlayTab>("attacks");
+  const restoredForCharacterRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!characterId || restoredForCharacterRef.current === characterId) {
+      return;
+    }
+
+    restoredForCharacterRef.current = characterId;
+
+    try {
+      const stored = localStorage.getItem(
+        `lorebound:character-sheet:${characterId}:play-tab`,
+      );
+
+      if (stored === "attacks" || stored === "spells" || stored === "actions") {
+        /*
+         * Spells is still a valid tab for a character with no spells; the panel
+         * simply explains that the character has none. This also means a
+         * temporarily empty spell list doesn't destroy the player's preference.
+         */
+        setActivePlayTab(stored);
+      }
+    } catch {
+      // Persistence is optional.
+    }
+  }, [characterId]);
+
+  useEffect(() => {
+    if (!characterId || restoredForCharacterRef.current !== characterId) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(
+        `lorebound:character-sheet:${characterId}:play-tab`,
+        activePlayTab,
+      );
+    } catch {
+      // Persistence is optional.
+    }
+  }, [characterId, activePlayTab]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -564,7 +608,7 @@ const SpellsPanel = ({
               }
             >
               <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
                   Spell Slots
                 </span>
 
@@ -597,9 +641,7 @@ const SpellsPanel = ({
               {Number(level) === 0 ? "Cantrips" : `Level ${level}`}
             </span>
 
-            <span className="text-[11px] text-zinc-500">
-              {levelSpells.length}
-            </span>
+            <span className="text-sm text-zinc-500">{levelSpells.length}</span>
           </div>
 
           <div className="flex flex-wrap gap-1.5">
@@ -650,7 +692,7 @@ const SpellcastingStat = ({
   value: string | number;
 }) => (
   <div className="rounded-lg bg-black/20 px-2 py-2">
-    <span className="text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-500">
+    <span className="text-xs font-semibold uppercase tracking-[0.06em] text-zinc-500">
       {label}
     </span>
 
@@ -792,7 +834,7 @@ const ActionSection = ({
   actions: OverviewAction[];
 }) => (
   <section className="p-3">
-    <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
+    <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
       {title}
     </h3>
 
@@ -803,17 +845,17 @@ const ActionSection = ({
           className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2"
         >
           <div className="flex items-start justify-between gap-2">
-            <p className="text-xs font-semibold text-zinc-100">{action.name}</p>
+            <p className="text-sm font-semibold text-zinc-100">{action.name}</p>
 
             {action.value ? (
-              <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
+              <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-xs font-semibold text-emerald-300">
                 {action.value}
               </span>
             ) : null}
           </div>
 
           {action.description ? (
-            <p className="mt-1 text-[10px] leading-5 text-zinc-400">
+            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-zinc-400">
               {action.description}
             </p>
           ) : null}
@@ -864,7 +906,7 @@ const PanelSection = ({
   children: ReactNode;
 }) => (
   <section className="p-3">
-    <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-zinc-400">
+    <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
       {title}
     </h2>
 
@@ -873,13 +915,13 @@ const PanelSection = ({
 );
 
 const TinyLabel = ({ children }: { children: ReactNode }) => (
-  <span className="text-[9px] font-semibold uppercase tracking-[0.07em] text-zinc-500">
+  <span className="text-xs font-semibold uppercase tracking-[0.06em] text-zinc-500">
     {children}
   </span>
 );
 
 const EmptyText = ({ children }: { children: ReactNode }) => (
-  <p className="text-[11px] text-zinc-500">{children}</p>
+  <p className="text-sm text-zinc-500">{children}</p>
 );
 
 export default OverviewDashboard;

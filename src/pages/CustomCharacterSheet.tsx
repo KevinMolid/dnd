@@ -29,8 +29,6 @@ import type { ShortRestResult } from "../features/character-sheet/types";
 
 import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
-import { calculateArmorClass } from "../rulesets/dnd/dnd2024/armorClass";
-
 import type { AbilityKey, Money } from "../rulesets/dnd/dnd2024/types";
 
 import { spells } from "../rulesets/dnd/dnd2024/data/spells";
@@ -279,25 +277,6 @@ const getWeaponRange = (item: any) => {
   };
 };
 
-const getFeatureSummary = (trait: CustomTrait) => {
-  if (!trait.description) {
-    return "Details";
-  }
-
-  const cleaned = trait.description.replace(/\s+/g, " ").trim();
-
-  const firstSentenceEnd = cleaned.indexOf(".");
-
-  const firstSentence =
-    firstSentenceEnd >= 0 ? cleaned.slice(0, firstSentenceEnd + 1) : cleaned;
-
-  if (firstSentence.length <= 72) {
-    return firstSentence;
-  }
-
-  return `${firstSentence.slice(0, 69)}…`;
-};
-
 const CustomCharacterSheet = ({
   characterId,
   character,
@@ -334,33 +313,7 @@ const CustomCharacterSheet = ({
 
   const xpProgress = getXpProgressWithinLevel(xp);
 
-  const armorClassResult = useMemo(
-    () =>
-      calculateArmorClass({
-        abilityScores,
-        className: character.className,
-        equipment: character.equipment ?? [],
-        resolveItem: (entry) =>
-          resolveItemFromEquipmentEntry(entry, campaignItemsById),
-        mode:
-          stats.armorClassMode ??
-          (typeof stats.armorClass === "number" ? "manual" : "automatic"),
-        manualArmorClass: stats.manualArmorClass ?? stats.armorClass ?? 10,
-        extraModifier: stats.armorClassBonus ?? 0,
-      }),
-    [
-      abilityScores,
-      character.className,
-      character.equipment,
-      campaignItemsById,
-      stats.armorClassMode,
-      stats.manualArmorClass,
-      stats.armorClass,
-      stats.armorClassBonus,
-    ],
-  );
-
-  const armorClass = armorClassResult.value;
+  const armorClass = stats.armorClass ?? 10;
 
   const currentHp = stats.currentHp ?? 0;
 
@@ -677,27 +630,27 @@ const CustomCharacterSheet = ({
                 type="button"
                 onClick={() => toggleFeatureGroup(group.source)}
                 aria-expanded={open}
-                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition hover:bg-white/[0.035]"
+                className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition hover:bg-white/[0.035]"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <span
-                    className={`text-[9px] text-zinc-500 transition-transform ${
+                    className={`text-xs text-zinc-400 transition-transform ${
                       open ? "rotate-90" : ""
                     }`}
                   >
                     ▶
                   </span>
 
-                  <span className="truncate text-[10px] font-bold uppercase tracking-[0.11em] text-zinc-300">
+                  <span className="truncate text-sm font-bold uppercase tracking-[0.07em] text-zinc-200">
                     {group.source}
                   </span>
 
-                  <span className="shrink-0 text-[8px] uppercase tracking-[0.08em] text-zinc-600">
+                  <span className="shrink-0 text-xs uppercase tracking-[0.06em] text-zinc-500">
                     · Features
                   </span>
                 </div>
 
-                <span className="text-[8px] font-medium text-zinc-600">
+                <span className="text-xs font-medium text-zinc-500">
                   {group.traits.length}
                 </span>
               </button>
@@ -706,17 +659,20 @@ const CustomCharacterSheet = ({
                 <div className="border-t border-white/[0.06]">
                   {group.traits.map((trait) => (
                     <CustomFeatureTooltip key={trait.id} trait={trait}>
-                      <div className="group grid min-h-[44px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(120px,46%)] items-center gap-3 border-b border-white/[0.045] px-3 py-2 last:border-b-0 transition hover:bg-white/[0.04]">
-                        <span className="truncate text-xs font-semibold text-zinc-100 transition group-hover:text-white">
+                      <div className="group cursor-pointer border-b border-white/[0.045] px-3.5 py-3 last:border-b-0 transition hover:bg-white/[0.04]">
+                        <span className="block text-sm font-semibold text-zinc-100 transition group-hover:text-white">
                           {trait.name}
                         </span>
 
-                        <span
-                          title={getFeatureSummary(trait)}
-                          className="block truncate text-right text-[10px] font-medium text-zinc-400"
-                        >
-                          {getFeatureSummary(trait)}
-                        </span>
+                        {trait.description ? (
+                          <p className="mt-2 line-clamp-3 whitespace-pre-line text-sm leading-5 text-zinc-400 transition group-hover:text-zinc-300">
+                            {trait.description}
+                          </p>
+                        ) : (
+                          <p className="mt-1.5 text-sm text-zinc-500">
+                            View details
+                          </p>
+                        )}
                       </div>
                     </CustomFeatureTooltip>
                   ))}
@@ -727,7 +683,7 @@ const CustomCharacterSheet = ({
         })}
       </div>
     ) : (
-      <p className="p-3 text-xs text-zinc-600">No features added.</p>
+      <p className="p-3 text-sm text-zinc-500">No features added.</p>
     );
 
   /* =========================================================
@@ -858,36 +814,6 @@ const CustomCharacterSheet = ({
           )}
           toolProficiencies={customProficiencies?.tools ?? []}
         />
-
-        <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-sky-500/10 bg-sky-500/[0.035] px-3 py-2">
-          <span className="text-[8px] font-bold uppercase tracking-[0.1em] text-sky-300/70">
-            AC {armorClass}
-          </span>
-
-          <span className="text-[9px] font-medium text-zinc-400">
-            {armorClassResult.mode === "manual"
-              ? "Manual override"
-              : armorClassResult.formulaLabel}
-          </span>
-
-          <span className="hidden h-3 w-px bg-white/[0.08] sm:block" />
-
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            {armorClassResult.breakdown.map((line) => (
-              <span
-                key={line.id}
-                title={line.detail}
-                className="text-[8px] text-zinc-500"
-              >
-                {line.label}{" "}
-                <span className="font-semibold text-zinc-300">
-                  {line.value >= 0 ? "+" : ""}
-                  {line.value}
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
 
         <CharacterSheetWorkspace
           activeTab={activeTab}
