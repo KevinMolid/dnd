@@ -4,12 +4,9 @@ import {
   collection,
   doc,
   getDoc,
-  getDocs,
   onSnapshot,
-  query,
   runTransaction,
   serverTimestamp,
-  where,
   writeBatch,
 } from "firebase/firestore";
 
@@ -38,34 +35,6 @@ type PublicCharacterDoc = {
   className?: string;
   level?: number;
   imageUrl?: string;
-};
-
-type PrivateCharacterAccessDoc = {
-  ownerUid?: string | null;
-  createdByUid?: string | null;
-  campaignId?: string | null;
-  campaignStatus?: CampaignCharacterStatus;
-  claimMode?: CharacterClaimMode;
-  claimableByUid?: string | null;
-
-  buildMode?: string;
-  name?: string;
-  imageUrl?: string;
-  level?: number;
-
-  classId?: string;
-  speciesId?: string;
-  className?: string;
-  speciesName?: string;
-
-  currentHp?: number;
-  maxHp?: number;
-  conditions?: string[];
-  xp?: number;
-
-  derived?: {
-    maxHp?: number;
-  };
 };
 
 type CampaignMemberListItem = {
@@ -112,52 +81,6 @@ const getClaimMode = (
   return value === "open" || value === "assigned" ? value : "locked";
 };
 
-const getPrivateCharacterRace = (data: PrivateCharacterAccessDoc) => {
-  if (data.buildMode === "custom") {
-    return data.speciesName?.trim() || undefined;
-  }
-
-  if (data.speciesName?.trim()) {
-    return data.speciesName.trim();
-  }
-
-  return data.speciesId?.trim() || undefined;
-};
-
-const getPrivateCharacterClassName = (data: PrivateCharacterAccessDoc) => {
-  if (data.buildMode === "custom") {
-    return data.className?.trim() || undefined;
-  }
-
-  if (data.className?.trim()) {
-    return data.className.trim();
-  }
-
-  return data.classId?.trim() || undefined;
-};
-
-const getPrivateMaxHp = (data: PrivateCharacterAccessDoc) => {
-  if (typeof data.maxHp === "number") {
-    return Math.max(1, data.maxHp);
-  }
-
-  if (typeof data.derived?.maxHp === "number") {
-    return Math.max(1, data.derived.maxHp);
-  }
-
-  return 1;
-};
-
-const getPrivateCurrentHp = (data: PrivateCharacterAccessDoc) => {
-  const maxHp = getPrivateMaxHp(data);
-
-  if (typeof data.currentHp === "number") {
-    return Math.max(0, Math.min(maxHp, data.currentHp));
-  }
-
-  return maxHp;
-};
-
 const getCharacterSummary = (character: CampaignCharacter) =>
   [
     character.level ? `Level ${character.level}` : null,
@@ -189,7 +112,6 @@ const CampaignCharactersPage = () => {
   const [members, setMembers] = useState<CampaignMemberListItem[]>([]);
   const [busyCharacterId, setBusyCharacterId] = useState<string | null>(null);
   const [accessEditorId, setAccessEditorId] = useState<string | null>(null);
-  const [migrationComplete, setMigrationComplete] = useState(false);
 
   useEffect(() => {
     const loadAccess = async () => {
@@ -241,149 +163,6 @@ const CampaignCharactersPage = () => {
   }, [campaignId, user]);
 
   const isGm = myMembership?.role === "gm" || myMembership?.role === "co-gm";
-
-  /*
-   * One-time/backfill migration for campaigns that already had characters
-   * before the public /party collection was introduced.
-   *
-   * Only a GM/co-GM performs this. Existing private character documents remain
-   * untouched except for normal future access/status updates. Missing public
-   * party documents are created with conservative access:
-   *
-   *   owned character   -> owned (claimMode stored as locked)
-   *   unowned character -> locked
-   *
-   * This makes the migration safe: no legacy unowned character becomes
-   * claimable merely because the new access system was deployed.
-   */
-  useEffect(() => {
-    if (pageState !== "ready" || !campaignId || !isGm || migrationComplete) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const migrateLegacyCampaignCharacters = async () => {
-      try {
-        const privateCharactersQuery = query(
-          collection(db, "characters"),
-          where("campaignId", "==", campaignId),
-        );
-
-        const [privateSnapshot, publicSnapshot] = await Promise.all([
-          getDocs(privateCharactersQuery),
-          getDocs(collection(db, "campaigns", campaignId, "party")),
-        ]);
-
-        if (cancelled) {
-          return;
-        }
-
-        const existingPublicIds = new Set(
-          publicSnapshot.docs.map((partyDoc) => partyDoc.id),
-        );
-
-        const missingCharacters = privateSnapshot.docs.filter(
-          (characterDoc) => !existingPublicIds.has(characterDoc.id),
-        );
-
-        if (missingCharacters.length === 0) {
-          setMigrationComplete(true);
-          return;
-        }
-
-        /*
-         * Firestore batches are limited to 500 writes. Chunking keeps this
-         * migration safe even for unusually large campaigns.
-         */
-        const chunkSize = 400;
-
-        for (
-          let start = 0;
-          start < missingCharacters.length;
-          start += chunkSize
-        ) {
-          const batch = writeBatch(db);
-          const chunk = missingCharacters.slice(start, start + chunkSize);
-
-          for (const characterSnap of chunk) {
-            const data = characterSnap.data() as PrivateCharacterAccessDoc;
-            const ownerUid = data.ownerUid ?? null;
-            const maxHp = getPrivateMaxHp(data);
-            const currentHp = getPrivateCurrentHp(data);
-
-            const publicRef = doc(
-              db,
-              "campaigns",
-              campaignId,
-              "party",
-              characterSnap.id,
-            );
-
-            batch.set(
-              publicRef,
-              {
-                characterId: characterSnap.id,
-                ownerUid,
-                createdByUid: data.createdByUid ?? null,
-
-                campaignStatus: getCampaignStatus(data.campaignStatus),
-
-                // Conservative migration default.
-                claimMode: "locked",
-                claimableByUid: null,
-
-                name: data.name?.trim() || "Unnamed Character",
-                imageUrl: data.imageUrl?.trim() || null,
-                level: typeof data.level === "number" ? data.level : 1,
-
-                classId: data.classId ?? null,
-                speciesId: data.speciesId ?? null,
-                className: getPrivateCharacterClassName(data) ?? null,
-                speciesName: getPrivateCharacterRace(data) ?? null,
-                race: getPrivateCharacterRace(data) ?? null,
-
-                currentHp,
-                maxHp,
-                conditions: Array.isArray(data.conditions)
-                  ? data.conditions
-                  : [],
-                xp: typeof data.xp === "number" ? data.xp : 0,
-
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-              },
-              { merge: true },
-            );
-          }
-
-          await batch.commit();
-
-          if (cancelled) {
-            return;
-          }
-        }
-
-        setMigrationComplete(true);
-      } catch (error) {
-        console.error(
-          "Failed to migrate legacy campaign characters to public party roster:",
-          error,
-        );
-
-        /*
-         * Do not mark migration complete after a failure. This lets a later
-         * page load retry after rules/configuration have been corrected.
-         */
-      }
-    };
-
-    void migrateLegacyCampaignCharacters();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [campaignId, isGm, migrationComplete, pageState]);
 
   /*
    * The campaign roster is intentionally loaded from the public party
@@ -442,7 +221,7 @@ const CampaignCharactersPage = () => {
    * document itself only contains role/status information.
    */
   useEffect(() => {
-    if (pageState !== "ready" || !campaignId || !isGm) {
+    if (pageState !== "ready" || !campaignId) {
       setMembers([]);
       return;
     }
@@ -498,7 +277,7 @@ const CampaignCharactersPage = () => {
     );
 
     return () => unsub();
-  }, [campaignId, isGm, pageState]);
+  }, [campaignId, pageState]);
 
   const activeCampaignCharacters = useMemo(
     () =>
@@ -763,11 +542,13 @@ const CampaignCharactersPage = () => {
 
   const renderAccessBadge = (character: CampaignCharacter) => {
     if (character.ownerUid) {
+      const ownerName = getMemberName(character.ownerUid);
+
       return (
         <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
           {character.ownerUid === user?.uid
             ? "Yours"
-            : `Owned${getMemberName(character.ownerUid) ? `: ${getMemberName(character.ownerUid)}` : ""}`}
+            : `Owned: ${ownerName || "Assigned player"}`}
         </span>
       );
     }

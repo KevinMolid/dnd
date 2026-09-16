@@ -6,6 +6,7 @@ import {
   getDoc,
   onSnapshot,
   query,
+  updateDoc,
   where,
   type UpdateData,
   runTransaction,
@@ -1345,9 +1346,18 @@ export const useCampaignPageData = (
                             currentLevel;
 
                     const hpData =
-                      getCharacterHpForCampaign(
-                        data,
-                      );
+                      isGm
+                        ? getCharacterHpForCampaign(data)
+                        : {
+                            currentHp: Math.max(
+                              0,
+                              Number(data.currentHp ?? 0) || 0,
+                            ),
+                            maxHp: Math.max(
+                              1,
+                              Number(data.maxHp ?? 1) || 1,
+                            ),
+                          };
 
                     const money =
                       normalizeMoneyObject(
@@ -1545,6 +1555,38 @@ export const useCampaignPageData = (
                   },
                 ),
               );
+
+            /*
+             * GM reads the private source of truth, so use that opportunity
+             * to repair/synchronize the public HP snapshot. This fixes legacy
+             * party documents that were created with 1/1 fallback HP.
+             */
+            if (isGm) {
+              await Promise.all(
+                nextCharacters
+                  .filter((character) => character.campaignId)
+                  .map((character) =>
+                    updateDoc(
+                      doc(
+                        db,
+                        "campaigns",
+                        character.campaignId as string,
+                        "party",
+                        character.id,
+                      ),
+                      {
+                        currentHp: character.currentHp ?? 0,
+                        maxHp: Math.max(1, character.maxHp ?? 1),
+                      },
+                    ).catch((error) => {
+                      console.warn(
+                        `Could not sync public HP for ${character.name}:`,
+                        error,
+                      );
+                    }),
+                  ),
+              );
+            }
 
             nextCharacters.sort(
               (a, b) =>

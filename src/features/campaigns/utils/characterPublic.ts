@@ -1,6 +1,7 @@
 import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { classesById, speciesById } from "../../../rulesets/dnd/dnd2024/helpers";
+import { getCharacterHp } from "../../../rulesets/dnd/dnd2024/getCharacterHp";
 
 export type CharacterClaimMode = "locked" | "open" | "assigned";
 export type CampaignCharacterStatus = "inactive" | "active";
@@ -52,26 +53,46 @@ export const buildPublicCampaignCharacter = (
   const derivedStats = asRecord(derived.stats);
   const isCustom = raw.buildMode === "custom";
 
-  const maxHp = Math.max(
-    1,
-    Number(
-      isCustom
-        ? customStats.maxHp ?? raw.maxHp ?? 1
-        : raw.maxHp ?? derivedStats.maxHp ?? derived.maxHp ?? 1,
-    ) || 1,
-  );
+  let maxHp: number;
+  let currentHp: number;
 
-  const currentHp = Math.max(
-    0,
-    Math.min(
-      maxHp,
-      Number(
-        isCustom
-          ? customStats.currentHp ?? raw.currentHp ?? maxHp
-          : raw.currentHp ?? derivedStats.currentHp ?? derived.currentHp ?? maxHp,
-      ) || 0,
-    ),
-  );
+  if (isCustom) {
+    maxHp = Math.max(
+      1,
+      Number(customStats.maxHp ?? raw.maxHp ?? 1) || 1,
+    );
+
+    currentHp = Math.max(
+      0,
+      Math.min(
+        maxHp,
+        Number(customStats.currentHp ?? raw.currentHp ?? maxHp) || 0,
+      ),
+    );
+  } else {
+    try {
+      const hp = getCharacterHp(raw as never);
+      maxHp = Math.max(1, hp.maxHp);
+      currentHp = Math.max(0, Math.min(maxHp, hp.currentHp));
+    } catch {
+      maxHp = Math.max(
+        1,
+        Number(raw.maxHp ?? derivedStats.maxHp ?? derived.maxHp ?? 1) || 1,
+      );
+      currentHp = Math.max(
+        0,
+        Math.min(
+          maxHp,
+          Number(
+            raw.currentHp ??
+              derivedStats.currentHp ??
+              derived.currentHp ??
+              maxHp,
+          ) || 0,
+        ),
+      );
+    }
+  }
 
   const speciesName = isCustom
     ? raw.speciesName?.trim?.() || null

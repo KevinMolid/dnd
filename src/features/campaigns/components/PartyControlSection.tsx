@@ -129,6 +129,22 @@ const PartyControlSection = ({
                           {character.name}
                         </p>
 
+                        {character.ownerUid ? (
+                          <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
+                            {character.ownerUid === currentUserId
+                              ? "Yours"
+                              : `Owned: ${
+                                  character.ownerName ||
+                                  character.ownerEmail ||
+                                  "Assigned player"
+                                }`}
+                          </span>
+                        ) : (
+                          <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-medium text-zinc-500">
+                            Unassigned
+                          </span>
+                        )}
+
                         {character.levelUpAvailable &&
                           currentUserId === character.ownerUid && (
                             <button

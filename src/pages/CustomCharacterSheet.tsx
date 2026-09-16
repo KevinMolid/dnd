@@ -47,8 +47,6 @@ import type {
   CustomTrait,
 } from "../types/customCharacter";
 
-import { usePageTitle } from "../hooks/usePageTitle";
-
 type CustomCharacterSheetProps = {
   characterId?: string;
 
@@ -57,6 +55,8 @@ type CustomCharacterSheetProps = {
   backTo: string;
 
   backLabel: string;
+
+  ownerName: string;
 
   campaignItemsById: Record<string, any>;
 
@@ -279,10 +279,30 @@ const getWeaponRange = (item: any) => {
   };
 };
 
+const getFeatureSummary = (trait: CustomTrait) => {
+  if (!trait.description) {
+    return "Details";
+  }
+
+  const cleaned = trait.description.replace(/\s+/g, " ").trim();
+
+  const firstSentenceEnd = cleaned.indexOf(".");
+
+  const firstSentence =
+    firstSentenceEnd >= 0 ? cleaned.slice(0, firstSentenceEnd + 1) : cleaned;
+
+  if (firstSentence.length <= 72) {
+    return firstSentence;
+  }
+
+  return `${firstSentence.slice(0, 69)}…`;
+};
+
 const CustomCharacterSheet = ({
   characterId,
   character,
   backTo,
+  ownerName,
   campaignItemsById,
   handleSetPlayerNotes,
   handleEquipmentChange,
@@ -295,7 +315,6 @@ const CustomCharacterSheet = ({
   handleShortRest,
   handleLongRest,
 }: CustomCharacterSheetProps) => {
-  usePageTitle(character?.name);
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
 
   const [openFeatureGroups, setOpenFeatureGroups] = useState<
@@ -633,27 +652,27 @@ const CustomCharacterSheet = ({
                 type="button"
                 onClick={() => toggleFeatureGroup(group.source)}
                 aria-expanded={open}
-                className="flex w-full items-center justify-between gap-3 px-3.5 py-3 text-left transition hover:bg-white/[0.035]"
+                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition hover:bg-white/[0.035]"
               >
                 <div className="flex min-w-0 items-center gap-2">
                   <span
-                    className={`text-xs text-zinc-400 transition-transform ${
+                    className={`text-[9px] text-zinc-500 transition-transform ${
                       open ? "rotate-90" : ""
                     }`}
                   >
                     ▶
                   </span>
 
-                  <span className="truncate text-sm font-bold uppercase tracking-[0.07em] text-zinc-200">
+                  <span className="truncate text-[10px] font-bold uppercase tracking-[0.11em] text-zinc-300">
                     {group.source}
                   </span>
 
-                  <span className="shrink-0 text-xs uppercase tracking-[0.06em] text-zinc-500">
+                  <span className="shrink-0 text-[8px] uppercase tracking-[0.08em] text-zinc-600">
                     · Features
                   </span>
                 </div>
 
-                <span className="text-xs font-medium text-zinc-500">
+                <span className="text-[8px] font-medium text-zinc-600">
                   {group.traits.length}
                 </span>
               </button>
@@ -662,20 +681,17 @@ const CustomCharacterSheet = ({
                 <div className="border-t border-white/[0.06]">
                   {group.traits.map((trait) => (
                     <CustomFeatureTooltip key={trait.id} trait={trait}>
-                      <div className="group cursor-pointer border-b border-white/[0.045] px-3.5 py-3 last:border-b-0 transition hover:bg-white/[0.04]">
-                        <span className="block text-sm font-semibold text-zinc-100 transition group-hover:text-white">
+                      <div className="group grid min-h-[44px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(120px,46%)] items-center gap-3 border-b border-white/[0.045] px-3 py-2 last:border-b-0 transition hover:bg-white/[0.04]">
+                        <span className="truncate text-xs font-semibold text-zinc-100 transition group-hover:text-white">
                           {trait.name}
                         </span>
 
-                        {trait.description ? (
-                          <p className="mt-2 line-clamp-3 whitespace-pre-line text-sm leading-5 text-zinc-400 transition group-hover:text-zinc-300">
-                            {trait.description}
-                          </p>
-                        ) : (
-                          <p className="mt-1.5 text-sm text-zinc-500">
-                            View details
-                          </p>
-                        )}
+                        <span
+                          title={getFeatureSummary(trait)}
+                          className="block truncate text-right text-[10px] font-medium text-zinc-400"
+                        >
+                          {getFeatureSummary(trait)}
+                        </span>
                       </div>
                     </CustomFeatureTooltip>
                   ))}
@@ -686,7 +702,7 @@ const CustomCharacterSheet = ({
         })}
       </div>
     ) : (
-      <p className="p-3 text-sm text-zinc-500">No features added.</p>
+      <p className="p-3 text-xs text-zinc-600">No features added.</p>
     );
 
   /* =========================================================
@@ -757,6 +773,10 @@ const CustomCharacterSheet = ({
             onLongRest: handleLongRest,
           }}
         />
+
+        <p className="mt-1 text-[10px] text-zinc-500">
+          Owner: <span className="text-zinc-300">{ownerName}</span>
+        </p>
 
         <CharacterQuickStats
           currentHp={currentHp}
