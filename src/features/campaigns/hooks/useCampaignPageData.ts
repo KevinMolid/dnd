@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   collection,
@@ -6,7 +6,6 @@ import {
   getDoc,
   onSnapshot,
   query,
-  updateDoc,
   where,
   type UpdateData,
   runTransaction,
@@ -206,6 +205,17 @@ export type CharacterDoc = {
 
   conditions?: string[];
 
+  heroicInspiration?: boolean;
+
+  deathSaves?: {
+    successes: number;
+    failures: number;
+  };
+
+  deathSaveSuccesses?: number;
+
+  deathSaveFailures?: number;
+
   moneyCp?: number;
 
   money?: LegacyCharacterMoney;
@@ -306,6 +316,17 @@ export type CampaignCharacter = {
   maxHp?: number;
 
   conditions?: string[];
+
+  heroicInspiration?: boolean;
+
+  deathSaves?: {
+    successes: number;
+    failures: number;
+  };
+
+  deathSaveSuccesses?: number;
+
+  deathSaveFailures?: number;
 
   /*
    * Old copper representation retained because
@@ -1515,6 +1536,18 @@ export const useCampaignPageData = (
                         data.conditions ??
                         [],
 
+                      heroicInspiration:
+                        data.heroicInspiration ?? false,
+
+                      deathSaves:
+                        data.deathSaves,
+
+                      deathSaveSuccesses:
+                        data.deathSaveSuccesses,
+
+                      deathSaveFailures:
+                        data.deathSaveFailures,
+
                       moneyCp,
 
                       money,
@@ -1555,38 +1588,6 @@ export const useCampaignPageData = (
                   },
                 ),
               );
-
-            /*
-             * GM reads the private source of truth, so use that opportunity
-             * to repair/synchronize the public HP snapshot. This fixes legacy
-             * party documents that were created with 1/1 fallback HP.
-             */
-            if (isGm) {
-              await Promise.all(
-                nextCharacters
-                  .filter((character) => character.campaignId)
-                  .map((character) =>
-                    updateDoc(
-                      doc(
-                        db,
-                        "campaigns",
-                        character.campaignId as string,
-                        "party",
-                        character.id,
-                      ),
-                      {
-                        currentHp: character.currentHp ?? 0,
-                        maxHp: Math.max(1, character.maxHp ?? 1),
-                      },
-                    ).catch((error) => {
-                      console.warn(
-                        `Could not sync public HP for ${character.name}:`,
-                        error,
-                      );
-                    }),
-                  ),
-              );
-            }
 
             nextCharacters.sort(
               (a, b) =>
@@ -1861,6 +1862,49 @@ export const useCampaignPageData = (
     isGm,
   ]);
 
+  const queuedCharacterUpdatesRef = useRef<
+    Map<string, Record<string, unknown>>
+  >(new Map());
+
+  const queuedCharacterTimersRef = useRef<
+    Map<string, ReturnType<typeof setTimeout>>
+  >(new Map());
+
+  useEffect(() => {
+    return () => {
+      queuedCharacterTimersRef.current.forEach((timer) => clearTimeout(timer));
+      queuedCharacterTimersRef.current.clear();
+      queuedCharacterUpdatesRef.current.clear();
+    };
+  }, []);
+
+  const applyOptimisticCharacterUpdate = useCallback(
+    (id: string, updates: Record<string, unknown>) => {
+      setCampaignCharacters((current) =>
+        current.map((character) => {
+          if (character.id !== id) {
+            return character;
+          }
+
+          const next = {
+            ...character,
+            ...updates,
+          } as CampaignCharacter;
+
+          if (updates.customStats && typeof updates.customStats === "object") {
+            next.customStats = {
+              ...(character.customStats ?? {}),
+              ...(updates.customStats as CustomCharacterStats),
+            };
+          }
+
+          return next;
+        }),
+      );
+    },
+    [],
+  );
+
   const systemLabel =
     useMemo(() => {
       if (!campaign) {
@@ -1874,46 +1918,98 @@ export const useCampaignPageData = (
       );
     }, [campaign]);
 
-  const updateCharacter =
-    useCallback(
-      async (
-        id: string,
-        updates: Record<string, unknown>,
-      ) => {
-        try {
-          const character = campaignCharacters.find((entry) => entry.id === id);
-          const batch = writeBatch(db);
+  const commitCharacterUpdate = useCallback(
+    async (id: string, updates: Record<string, unknown>) => {
+      const character = campaignCharacters.find((entry) => entry.id === id);
+      const batch = writeBatch(db);
 
+      batch.update(doc(db, "characters", id), {
+        ...(updates as UpdateData<CharacterDoc>),
+        updatedAt: serverTimestamp(),
+      });
+
+      if (character?.campaignId) {
+        const publicUpdates = pickPublicCharacterUpdates(updates);
+
+        if (Object.keys(publicUpdates).length > 0) {
           batch.update(
-            doc(db, "characters", id),
+            doc(db, "campaigns", character.campaignId, "party", id),
             {
-              ...(updates as UpdateData<CharacterDoc>),
+              ...publicUpdates,
               updatedAt: serverTimestamp(),
             },
           );
-
-          if (character?.campaignId) {
-            const publicUpdates = pickPublicCharacterUpdates(updates);
-
-            if (Object.keys(publicUpdates).length > 0) {
-              batch.update(
-                doc(db, "campaigns", character.campaignId, "party", id),
-                {
-                  ...publicUpdates,
-                  updatedAt: serverTimestamp(),
-                },
-              );
-            }
-          }
-
-          await batch.commit();
-        } catch (error) {
-          console.error("Failed to update character:", error);
-          throw error;
         }
-      },
-      [campaignCharacters],
-    );
+      }
+
+      await batch.commit();
+    },
+    [campaignCharacters],
+  );
+
+  const updateCharacter = useCallback(
+    async (id: string, updates: Record<string, unknown>) => {
+      applyOptimisticCharacterUpdate(id, updates);
+
+      try {
+        await commitCharacterUpdate(id, updates);
+      } catch (error) {
+        console.error("Failed to update character:", error);
+        throw error;
+      }
+    },
+    [applyOptimisticCharacterUpdate, commitCharacterUpdate],
+  );
+
+  /*
+   * High-frequency workspace controls (HP etc.) use this path.
+   * The UI updates immediately while rapid changes to the same character are
+   * collapsed into one Firestore batch after a short idle period.
+   */
+  const queueCharacterUpdate = useCallback(
+    (id: string, updates: Record<string, unknown>, delayMs = 250) => {
+      applyOptimisticCharacterUpdate(id, updates);
+
+      const previous = queuedCharacterUpdatesRef.current.get(id) ?? {};
+      const merged: Record<string, unknown> = { ...previous, ...updates };
+
+      if (
+        previous.customStats &&
+        updates.customStats &&
+        typeof previous.customStats === "object" &&
+        typeof updates.customStats === "object"
+      ) {
+        merged.customStats = {
+          ...(previous.customStats as Record<string, unknown>),
+          ...(updates.customStats as Record<string, unknown>),
+        };
+      }
+
+      queuedCharacterUpdatesRef.current.set(id, merged);
+
+      const existingTimer = queuedCharacterTimersRef.current.get(id);
+      if (existingTimer) {
+        clearTimeout(existingTimer);
+      }
+
+      const timer = setTimeout(() => {
+        const pending = queuedCharacterUpdatesRef.current.get(id);
+        queuedCharacterUpdatesRef.current.delete(id);
+        queuedCharacterTimersRef.current.delete(id);
+
+        if (!pending) {
+          return;
+        }
+
+        void commitCharacterUpdate(id, pending).catch((error) => {
+          console.error("Failed to persist queued character update:", error);
+        });
+      }, delayMs);
+
+      queuedCharacterTimersRef.current.set(id, timer);
+    },
+    [applyOptimisticCharacterUpdate, commitCharacterUpdate],
+  );
 
   const updateCharacterXp =
     useCallback(
@@ -2715,6 +2811,8 @@ export const useCampaignPageData = (
     usersById,
 
     updateCharacter,
+
+    queueCharacterUpdate,
 
     updateCharacterXp,
 

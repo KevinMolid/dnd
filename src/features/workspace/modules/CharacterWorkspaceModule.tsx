@@ -305,7 +305,7 @@ export default function CharacterWorkspaceModule({
 
     campaignCharactersLoading,
 
-    updateCharacter,
+    queueCharacterUpdate,
 
     toggleCondition,
   } = useCampaignPageData(campaignId);
@@ -776,22 +776,20 @@ export default function CharacterWorkspaceModule({
     Math.min(100, (hp.currentHp / Math.max(1, hp.maxHp)) * 100),
   );
 
-  const setHp = async (nextHp: number) => {
+  const setHp = (nextHp: number) => {
     const safeHp = Math.max(0, Math.min(hp.maxHp, Math.floor(nextHp)));
 
     if (isCustomCharacter(displayedCharacter)) {
-      await updateCharacter(displayedCharacter.id, {
+      queueCharacterUpdate(displayedCharacter.id, {
         customStats: {
           ...(displayedCharacter.customStats ?? {}),
-
           currentHp: safeHp,
         },
-      } as any);
-
+      });
       return;
     }
 
-    await updateCharacter(displayedCharacter.id, {
+    queueCharacterUpdate(displayedCharacter.id, {
       currentHp: safeHp,
     });
   };

@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import Avatar from "../../../components/Avatar";
+
+import { getCharacterArmorClassFromEquipment } from "../../../rulesets/dnd/dnd2024/getCharacterArmorClassFromEquipment";
 
 import {
   ALL_CONDITIONS,
@@ -8,8 +10,6 @@ import {
 } from "../../campaigns/hooks/useCampaignPageData";
 
 import useCampaignPageData from "../../campaigns/hooks/useCampaignPageData";
-
-import { useCharacterSheetData } from "../../character-sheet/hooks/useCharacterSheetData";
 
 import { useWorkspace } from "../WorkspaceContext";
 
@@ -89,7 +89,14 @@ const getFallbackArmorClass = (character: PartyCharacter) => {
     return character.customStats?.armorClass ?? character.armorClass ?? 10;
   }
 
-  return character.armorClass ?? 10;
+  try {
+    return getCharacterArmorClassFromEquipment({
+      dexterityScore: character.abilityScores?.dex ?? 10,
+      equipment: character.equipment ?? [],
+    });
+  } catch {
+    return character.armorClass ?? 10;
+  }
 };
 
 type CompactStatProps = {
@@ -190,6 +197,10 @@ type PartyCharacterRowProps = {
     character: PartyCharacter,
     condition: string,
   ) => Promise<void>;
+
+  onSetInspiration: (character: PartyCharacter, value: boolean) => void;
+
+  onSetDeathSaves: (character: PartyCharacter, value: DeathSaves) => void;
 };
 
 function PartyCharacterRow({
@@ -197,65 +208,54 @@ function PartyCharacterRow({
   onInspect,
   onSetHp,
   onToggleCondition,
+  onSetInspiration,
+  onSetDeathSaves,
 }: PartyCharacterRowProps) {
-  /*
-   * Character sheet data is used for:
-   *
-   * - calculated AC
-   * - passive senses
-   * - Heroic Inspiration updates
-   * - Death Save updates
-   *
-   * This keeps Party Control synchronized with the
-   * real character sheet.
-   */
-  const {
-    character: sheetCharacter,
-
-    derived,
-
-    handleSetHeroicInspiration,
-
-    handleSetDeathSaves,
-  } = useCharacterSheetData(character.id);
-
   const [conditionsOpen, setConditionsOpen] = useState(false);
 
-  const liveCharacter = (sheetCharacter ?? character) as PartyCharacter;
+  const liveCharacter = character;
 
   /*
    * Campaign snapshot remains the visible HP source,
    * because this is already updated in realtime.
    */
-  const currentHp = Math.max(
+  const externalCurrentHp = Math.max(
     0,
     character.currentHp ?? liveCharacter.currentHp ?? 0,
   );
 
   const maxHp = Math.max(1, character.maxHp ?? liveCharacter.maxHp ?? 1);
 
-  const armorClass =
-    derived?.armorClass ?? getFallbackArmorClass(liveCharacter);
+  /*
+   * Keep HP local while an update is being persisted. This makes repeated
+   * +/- clicks immediate instead of waiting for the Firestore snapshot.
+   */
+  const [currentHp, setCurrentHp] = useState(externalCurrentHp);
+  const pendingHpRef = useRef<number | null>(null);
 
-  const passiveSenses = useMemo<PassiveSenses>(() => {
-    if (derived) {
-      const insight = derived.skillRows.find((skill) => skill.id === "insight");
-
-      const investigation = derived.skillRows.find(
-        (skill) => skill.id === "investigation",
-      );
-
-      return {
-        perception: derived.passivePerception,
-
-        insight: insight ? 10 + insight.total : null,
-
-        investigation: investigation ? 10 + investigation.total : null,
-      };
+  useEffect(() => {
+    if (pendingHpRef.current !== null) {
+      if (externalCurrentHp === pendingHpRef.current) {
+        pendingHpRef.current = null;
+      } else {
+        return;
+      }
     }
 
-    return getFallbackPassiveSenses(liveCharacter);
-  }, [derived, liveCharacter]);
+    setCurrentHp(externalCurrentHp);
+  }, [externalCurrentHp]);
+
+  const armorClass = getFallbackArmorClass(liveCharacter);
+
+  /*
+   * Party Control deliberately avoids loading a full character sheet for
+   * every row. These lightweight fallbacks keep the module instant even with
+   * a large party.
+   */
+  const passiveSenses = useMemo<PassiveSenses>(
+    () => getFallbackPassiveSenses(liveCharacter),
+    [liveCharacter],
+  );
 
   const conditions = character.conditions ?? liveCharacter.conditions ?? [];
 
@@ -283,10 +283,9 @@ function PartyCharacterRow({
 
   const hpPercentage = Math.max(0, Math.min(100, (currentHp / maxHp) * 100));
 
-  const setDeathSaves = async (next: Partial<DeathSaves>) => {
-    await handleSetDeathSaves({
+  const setDeathSaves = (next: Partial<DeathSaves>) => {
+    onSetDeathSaves(character, {
       successes: next.successes ?? deathSaves.successes,
-
       failures: next.failures ?? deathSaves.failures,
     });
   };
@@ -297,21 +296,22 @@ function PartyCharacterRow({
    * We only do this when crossing specifically from
    * 0 HP to a positive HP value.
    */
-  const setHp = async (nextHp: number) => {
+  const setHp = (nextHp: number) => {
     const safeHp = Math.max(0, Math.min(maxHp, Math.floor(nextHp)));
+    const previousHp = currentHp;
 
-    await onSetHp(character, safeHp);
+    pendingHpRef.current = safeHp;
+    setCurrentHp(safeHp);
 
-    if (currentHp === 0 && safeHp > 0) {
-      await handleSetDeathSaves({
-        successes: 0,
-        failures: 0,
-      });
+    void onSetHp(character, safeHp);
+
+    if (previousHp === 0 && safeHp > 0) {
+      onSetDeathSaves(character, { successes: 0, failures: 0 });
     }
   };
 
-  const toggleInspiration = async () => {
-    await handleSetHeroicInspiration(!heroicInspiration);
+  const toggleInspiration = () => {
+    onSetInspiration(character, !heroicInspiration);
   };
 
   return (
@@ -493,10 +493,21 @@ function PartyCharacterRow({
               </button>
 
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 value={currentHp}
                 aria-label={`${liveCharacter.name} current hit points`}
-                onChange={(event) => setHp(Number(event.target.value))}
+                onChange={(event) => {
+                  const value = event.target.value.replace(/[^0-9]/g, "");
+
+                  if (value === "") {
+                    return;
+                  }
+
+                  setHp(Number(value));
+                }}
+                onFocus={(event) => event.currentTarget.select()}
                 className="h-[22px] w-8 rounded border border-white/10 bg-black/30 text-center text-[9px] font-semibold text-white outline-none focus:border-emerald-500/30"
               />
 
@@ -623,6 +634,8 @@ export default function PartyControlWorkspaceModule({
 
     updateCharacter,
 
+    queueCharacterUpdate,
+
     toggleCondition,
   } = useCampaignPageData(campaignId);
 
@@ -689,46 +702,39 @@ export default function PartyControlWorkspaceModule({
   /*
    * Custom and guided characters persist HP differently.
    */
-  const setCharacterHp = async (
-    character: PartyCharacter,
-
-    nextHp: number,
-  ) => {
+  const setCharacterHp = async (character: PartyCharacter, nextHp: number) => {
     const maxHp = Math.max(
       1,
-
       character.maxHp ?? character.customStats?.maxHp ?? 1,
     );
 
     const safeHp = Math.max(0, Math.min(maxHp, Math.floor(nextHp)));
 
-    try {
-      if (character.buildMode === "custom") {
-        await updateCharacter(
-          character.id,
-
-          {
-            customStats: {
-              ...(character.customStats ?? {}),
-
-              currentHp: safeHp,
-            },
-          },
-        );
-
-        return;
-      }
-
-      await updateCharacter(
-        character.id,
-
-        {
+    if (character.buildMode === "custom") {
+      queueCharacterUpdate(character.id, {
+        customStats: {
+          ...(character.customStats ?? {}),
           currentHp: safeHp,
         },
-      );
-    } catch (error) {
-      console.error("Failed to update character HP:", error);
+      });
+      return;
     }
+
+    queueCharacterUpdate(character.id, { currentHp: safeHp });
+  };
+
+  const setCharacterInspiration = (
+    character: PartyCharacter,
+    value: boolean,
+  ) => {
+    queueCharacterUpdate(character.id, { heroicInspiration: value });
+  };
+
+  const setCharacterDeathSaves = (
+    character: PartyCharacter,
+    value: DeathSaves,
+  ) => {
+    queueCharacterUpdate(character.id, { deathSaves: value });
   };
 
   const inspectCharacter = (characterId: string) => {
@@ -831,6 +837,8 @@ export default function PartyControlWorkspaceModule({
               onInspect={() => inspectCharacter(character.id)}
               onSetHp={setCharacterHp}
               onToggleCondition={toggleCondition}
+              onSetInspiration={setCharacterInspiration}
+              onSetDeathSaves={setCharacterDeathSaves}
             />
           ))
         )}
