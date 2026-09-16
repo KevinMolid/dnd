@@ -4,75 +4,87 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   runTransaction,
-  updateDoc,
+  serverTimestamp,
   where,
+  writeBatch,
 } from "firebase/firestore";
 
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
-
-import { classesById, speciesById } from "../rulesets/dnd/dnd2024/helpers";
 
 import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
 
 import Avatar from "../components/Avatar";
 
 type PageState = "loading" | "ready" | "not-found" | "forbidden" | "error";
-
 type CampaignCharacterStatus = "inactive" | "active";
+type CharacterClaimMode = "locked" | "open" | "assigned";
 
-type CharacterDoc = {
+type PublicCharacterDoc = {
+  characterId?: string;
+  ownerUid?: string | null;
+  createdByUid?: string | null;
+  campaignStatus?: CampaignCharacterStatus;
+  claimMode?: CharacterClaimMode;
+  claimableByUid?: string | null;
+
+  name?: string;
+  race?: string;
+  speciesName?: string;
+  className?: string;
+  level?: number;
+  imageUrl?: string;
+};
+
+type PrivateCharacterAccessDoc = {
   ownerUid?: string | null;
   createdByUid?: string | null;
   campaignId?: string | null;
   campaignStatus?: CampaignCharacterStatus;
+  claimMode?: CharacterClaimMode;
+  claimableByUid?: string | null;
+
   buildMode?: string;
   name?: string;
+  imageUrl?: string;
   level?: number;
 
   classId?: string;
   speciesId?: string;
-  backgroundId?: string;
-  originFeatId?: string | null;
-
   className?: string;
   speciesName?: string;
-  backgroundName?: string;
 
-  imageUrl?: string;
+  currentHp?: number;
+  maxHp?: number;
+  conditions?: string[];
+  xp?: number;
 
-  abilityScores?: {
-    str: number;
-    dex: number;
-    con: number;
-    int: number;
-    wis: number;
-    cha: number;
+  derived?: {
+    maxHp?: number;
   };
-
-  alignment?: string;
-  notes?: string;
 };
 
-type AppUserDoc = {
-  displayName?: string;
+type CampaignMemberListItem = {
+  uid: string;
+  displayName: string;
   email?: string;
+  role?: CampaignMemberDoc["role"];
 };
 
 type CampaignCharacter = {
   id: string;
-
   ownerUid: string | null;
   createdByUid?: string | null;
 
-  ownerName?: string;
-  ownerEmail?: string;
-
-  campaignId: string | null;
+  campaignId: string;
   campaignStatus: CampaignCharacterStatus;
+
+  claimMode: CharacterClaimMode;
+  claimableByUid: string | null;
 
   name: string;
   race?: string;
@@ -81,31 +93,69 @@ type CampaignCharacter = {
   imageUrl?: string;
 };
 
+type AppUserDoc = {
+  displayName?: string;
+  email?: string;
+};
+
 const getCampaignStatus = (value: unknown): CampaignCharacterStatus =>
   value === "active" ? "active" : "inactive";
 
-const getCharacterRace = (data: CharacterDoc) => {
+const getClaimMode = (
+  value: unknown,
+  ownerUid: string | null,
+): CharacterClaimMode => {
+  if (ownerUid) {
+    return "locked";
+  }
+
+  return value === "open" || value === "assigned" ? value : "locked";
+};
+
+const getPrivateCharacterRace = (data: PrivateCharacterAccessDoc) => {
   if (data.buildMode === "custom") {
     return data.speciesName?.trim() || undefined;
   }
 
-  if (data.speciesId) {
-    return speciesById[data.speciesId]?.name ?? data.speciesId;
+  if (data.speciesName?.trim()) {
+    return data.speciesName.trim();
   }
 
-  return data.speciesName?.trim() || undefined;
+  return data.speciesId?.trim() || undefined;
 };
 
-const getCharacterClassName = (data: CharacterDoc) => {
+const getPrivateCharacterClassName = (data: PrivateCharacterAccessDoc) => {
   if (data.buildMode === "custom") {
     return data.className?.trim() || undefined;
   }
 
-  if (data.classId) {
-    return classesById[data.classId]?.name ?? data.classId;
+  if (data.className?.trim()) {
+    return data.className.trim();
   }
 
-  return data.className?.trim() || undefined;
+  return data.classId?.trim() || undefined;
+};
+
+const getPrivateMaxHp = (data: PrivateCharacterAccessDoc) => {
+  if (typeof data.maxHp === "number") {
+    return Math.max(1, data.maxHp);
+  }
+
+  if (typeof data.derived?.maxHp === "number") {
+    return Math.max(1, data.derived.maxHp);
+  }
+
+  return 1;
+};
+
+const getPrivateCurrentHp = (data: PrivateCharacterAccessDoc) => {
+  const maxHp = getPrivateMaxHp(data);
+
+  if (typeof data.currentHp === "number") {
+    return Math.max(0, Math.min(maxHp, data.currentHp));
+  }
+
+  return maxHp;
 };
 
 const getCharacterSummary = (character: CampaignCharacter) =>
@@ -118,22 +168,14 @@ const getCharacterSummary = (character: CampaignCharacter) =>
     .join(" ");
 
 const CampaignCharactersPage = () => {
-  const { campaignId } = useParams<{
-    campaignId: string;
-  }>();
-
+  const { campaignId } = useParams<{ campaignId: string }>();
   const { user } = useAuth();
   const location = useLocation();
 
   const [pageState, setPageState] = useState<PageState>("loading");
-
   const [campaign, setCampaign] = useState<
-    | (CampaignDoc & {
-        id: string;
-      })
-    | null
+    (CampaignDoc & { id: string }) | null
   >(null);
-
   const [myMembership, setMyMembership] = useState<CampaignMemberDoc | null>(
     null,
   );
@@ -141,15 +183,13 @@ const CampaignCharactersPage = () => {
   const [campaignCharacters, setCampaignCharacters] = useState<
     CampaignCharacter[]
   >([]);
-
   const [campaignCharactersLoading, setCampaignCharactersLoading] =
     useState(true);
 
-  const [myCharacters, setMyCharacters] = useState<CampaignCharacter[]>([]);
-
-  const [myCharactersLoading, setMyCharactersLoading] = useState(true);
-
+  const [members, setMembers] = useState<CampaignMemberListItem[]>([]);
   const [busyCharacterId, setBusyCharacterId] = useState<string | null>(null);
+  const [accessEditorId, setAccessEditorId] = useState<string | null>(null);
+  const [migrationComplete, setMigrationComplete] = useState(false);
 
   useEffect(() => {
     const loadAccess = async () => {
@@ -187,22 +227,169 @@ const CampaignCharactersPage = () => {
           id: campaignSnap.id,
           ...(campaignSnap.data() as CampaignDoc),
         });
-
         setMyMembership(memberSnap.data() as CampaignMemberDoc);
-
         setPageState("ready");
       } catch (error) {
         console.error("Failed to load campaign characters page:", error);
-
         setCampaign(null);
         setMyMembership(null);
         setPageState("error");
       }
     };
 
-    loadAccess();
+    void loadAccess();
   }, [campaignId, user]);
 
+  const isGm = myMembership?.role === "gm" || myMembership?.role === "co-gm";
+
+  /*
+   * One-time/backfill migration for campaigns that already had characters
+   * before the public /party collection was introduced.
+   *
+   * Only a GM/co-GM performs this. Existing private character documents remain
+   * untouched except for normal future access/status updates. Missing public
+   * party documents are created with conservative access:
+   *
+   *   owned character   -> owned (claimMode stored as locked)
+   *   unowned character -> locked
+   *
+   * This makes the migration safe: no legacy unowned character becomes
+   * claimable merely because the new access system was deployed.
+   */
+  useEffect(() => {
+    if (pageState !== "ready" || !campaignId || !isGm || migrationComplete) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const migrateLegacyCampaignCharacters = async () => {
+      try {
+        const privateCharactersQuery = query(
+          collection(db, "characters"),
+          where("campaignId", "==", campaignId),
+        );
+
+        const [privateSnapshot, publicSnapshot] = await Promise.all([
+          getDocs(privateCharactersQuery),
+          getDocs(collection(db, "campaigns", campaignId, "party")),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const existingPublicIds = new Set(
+          publicSnapshot.docs.map((partyDoc) => partyDoc.id),
+        );
+
+        const missingCharacters = privateSnapshot.docs.filter(
+          (characterDoc) => !existingPublicIds.has(characterDoc.id),
+        );
+
+        if (missingCharacters.length === 0) {
+          setMigrationComplete(true);
+          return;
+        }
+
+        /*
+         * Firestore batches are limited to 500 writes. Chunking keeps this
+         * migration safe even for unusually large campaigns.
+         */
+        const chunkSize = 400;
+
+        for (
+          let start = 0;
+          start < missingCharacters.length;
+          start += chunkSize
+        ) {
+          const batch = writeBatch(db);
+          const chunk = missingCharacters.slice(start, start + chunkSize);
+
+          for (const characterSnap of chunk) {
+            const data = characterSnap.data() as PrivateCharacterAccessDoc;
+            const ownerUid = data.ownerUid ?? null;
+            const maxHp = getPrivateMaxHp(data);
+            const currentHp = getPrivateCurrentHp(data);
+
+            const publicRef = doc(
+              db,
+              "campaigns",
+              campaignId,
+              "party",
+              characterSnap.id,
+            );
+
+            batch.set(
+              publicRef,
+              {
+                characterId: characterSnap.id,
+                ownerUid,
+                createdByUid: data.createdByUid ?? null,
+
+                campaignStatus: getCampaignStatus(data.campaignStatus),
+
+                // Conservative migration default.
+                claimMode: "locked",
+                claimableByUid: null,
+
+                name: data.name?.trim() || "Unnamed Character",
+                imageUrl: data.imageUrl?.trim() || null,
+                level: typeof data.level === "number" ? data.level : 1,
+
+                classId: data.classId ?? null,
+                speciesId: data.speciesId ?? null,
+                className: getPrivateCharacterClassName(data) ?? null,
+                speciesName: getPrivateCharacterRace(data) ?? null,
+                race: getPrivateCharacterRace(data) ?? null,
+
+                currentHp,
+                maxHp,
+                conditions: Array.isArray(data.conditions)
+                  ? data.conditions
+                  : [],
+                xp: typeof data.xp === "number" ? data.xp : 0,
+
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true },
+            );
+          }
+
+          await batch.commit();
+
+          if (cancelled) {
+            return;
+          }
+        }
+
+        setMigrationComplete(true);
+      } catch (error) {
+        console.error(
+          "Failed to migrate legacy campaign characters to public party roster:",
+          error,
+        );
+
+        /*
+         * Do not mark migration complete after a failure. This lets a later
+         * page load retry after rules/configuration have been corrected.
+         */
+      }
+    };
+
+    void migrateLegacyCampaignCharacters();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [campaignId, isGm, migrationComplete, pageState]);
+
+  /*
+   * The campaign roster is intentionally loaded from the public party
+   * collection. Campaign members must not need read access to the private
+   * /characters documents just to see the roster.
+   */
   useEffect(() => {
     if (pageState !== "ready" || !campaignId) {
       return;
@@ -210,70 +397,37 @@ const CampaignCharactersPage = () => {
 
     setCampaignCharactersLoading(true);
 
-    const q = query(
-      collection(db, "characters"),
-      where("campaignId", "==", campaignId),
-    );
-
     const unsub = onSnapshot(
-      q,
-      async (snapshot) => {
-        try {
-          const nextCharacters = await Promise.all(
-            snapshot.docs.map(async (characterSnap) => {
-              const data = characterSnap.data() as CharacterDoc;
+      collection(db, "campaigns", campaignId, "party"),
+      (snapshot) => {
+        const nextCharacters: CampaignCharacter[] = snapshot.docs.map(
+          (characterSnap) => {
+            const data = characterSnap.data() as PublicCharacterDoc;
+            const ownerUid = data.ownerUid ?? null;
 
-              let ownerName = "";
-              let ownerEmail = "";
+            return {
+              id: data.characterId || characterSnap.id,
+              ownerUid,
+              createdByUid: data.createdByUid ?? null,
+              campaignId,
+              campaignStatus: getCampaignStatus(data.campaignStatus),
+              claimMode: getClaimMode(data.claimMode, ownerUid),
+              claimableByUid: data.claimableByUid ?? null,
+              name: data.name?.trim() || "Unnamed Character",
+              race: data.race?.trim() || data.speciesName?.trim() || undefined,
+              className: data.className?.trim() || undefined,
+              level: typeof data.level === "number" ? data.level : undefined,
+              imageUrl: data.imageUrl?.trim() || undefined,
+            };
+          },
+        );
 
-              if (data.ownerUid) {
-                try {
-                  const ownerSnap = await getDoc(
-                    doc(db, "users", data.ownerUid),
-                  );
-
-                  if (ownerSnap.exists()) {
-                    const ownerData = ownerSnap.data() as AppUserDoc;
-
-                    ownerName = ownerData.displayName ?? "";
-                    ownerEmail = ownerData.email ?? "";
-                  }
-                } catch (error) {
-                  console.warn("Could not load character owner:", error);
-                }
-              }
-
-              return {
-                id: characterSnap.id,
-                ownerUid: data.ownerUid ?? null,
-                createdByUid: data.createdByUid ?? null,
-                ownerName,
-                ownerEmail,
-                campaignId: data.campaignId ?? null,
-                campaignStatus: getCampaignStatus(data.campaignStatus),
-                name: data.name?.trim() || "Unnamed Character",
-                race: getCharacterRace(data),
-                className: getCharacterClassName(data),
-                level: typeof data.level === "number" ? data.level : undefined,
-                imageUrl: data.imageUrl?.trim() || undefined,
-              } satisfies CampaignCharacter;
-            }),
-          );
-
-          nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
-
-          setCampaignCharacters(nextCharacters);
-          setCampaignCharactersLoading(false);
-        } catch (error) {
-          console.error("Failed to load campaign characters:", error);
-
-          setCampaignCharacters([]);
-          setCampaignCharactersLoading(false);
-        }
+        nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
+        setCampaignCharacters(nextCharacters);
+        setCampaignCharactersLoading(false);
       },
       (error) => {
-        console.error("Failed to load campaign characters:", error);
-
+        console.error("Failed to load campaign character roster:", error);
         setCampaignCharacters([]);
         setCampaignCharactersLoading(false);
       },
@@ -282,75 +436,69 @@ const CampaignCharactersPage = () => {
     return () => unsub();
   }, [campaignId, pageState]);
 
+  /*
+   * GM-only member list used by the Assigned access mode. We resolve names
+   * from /users so the access picker remains useful even if the membership
+   * document itself only contains role/status information.
+   */
   useEffect(() => {
-    if (pageState !== "ready" || !user) {
+    if (pageState !== "ready" || !campaignId || !isGm) {
+      setMembers([]);
       return;
     }
 
-    setMyCharactersLoading(true);
-
-    const q = query(
-      collection(db, "characters"),
-      where("ownerUid", "==", user.uid),
-    );
-
     const unsub = onSnapshot(
-      q,
-      (snapshot) => {
-        const nextCharacters: CampaignCharacter[] = snapshot.docs.map(
-          (characterSnap) => {
-            const data = characterSnap.data() as CharacterDoc;
+      collection(db, "campaigns", campaignId, "members"),
+      async (snapshot) => {
+        try {
+          const nextMembers = await Promise.all(
+            snapshot.docs.map(async (memberSnap) => {
+              const membership = memberSnap.data() as CampaignMemberDoc;
+              let displayName = "";
+              let email = "";
 
-            return {
-              id: characterSnap.id,
-              ownerUid: data.ownerUid ?? null,
-              createdByUid: data.createdByUid ?? null,
-              ownerName: "",
-              ownerEmail: user.email ?? "",
-              campaignId: data.campaignId ?? null,
-              campaignStatus: getCampaignStatus(data.campaignStatus),
-              name: data.name?.trim() || "Unnamed Character",
-              race: getCharacterRace(data),
-              className: getCharacterClassName(data),
-              level: typeof data.level === "number" ? data.level : undefined,
-              imageUrl: data.imageUrl?.trim() || undefined,
-            };
-          },
-        );
+              try {
+                const userSnap = await getDoc(doc(db, "users", memberSnap.id));
 
-        nextCharacters.sort((a, b) => a.name.localeCompare(b.name));
+                if (userSnap.exists()) {
+                  const userData = userSnap.data() as AppUserDoc;
+                  displayName = userData.displayName?.trim() ?? "";
+                  email = userData.email?.trim() ?? "";
+                }
+              } catch (error) {
+                console.warn(
+                  `Could not load user ${memberSnap.id} for assignment picker:`,
+                  error,
+                );
+              }
 
-        setMyCharacters(nextCharacters);
-        setMyCharactersLoading(false);
+              return {
+                uid: memberSnap.id,
+                displayName:
+                  displayName || email || `Player ${memberSnap.id.slice(0, 6)}`,
+                email: email || undefined,
+                role: membership.role,
+              } satisfies CampaignMemberListItem;
+            }),
+          );
+
+          nextMembers.sort((a, b) =>
+            a.displayName.localeCompare(b.displayName),
+          );
+          setMembers(nextMembers);
+        } catch (error) {
+          console.error("Failed to load campaign members:", error);
+          setMembers([]);
+        }
       },
       (error) => {
-        console.error("Failed to load your characters:", error);
-
-        setMyCharacters([]);
-        setMyCharactersLoading(false);
+        console.error("Failed to subscribe to campaign members:", error);
+        setMembers([]);
       },
     );
 
     return () => unsub();
-  }, [pageState, user]);
-
-  const isGm = myMembership?.role === "gm" || myMembership?.role === "co-gm";
-
-  /*
-   * "Your characters" should only show characters that can actually be
-   * attached to this campaign. Characters assigned to another campaign are
-   * deliberately hidden.
-   */
-  const myCampaignCharacters = useMemo(
-    () =>
-      myCharacters.filter((character) => character.campaignId === campaignId),
-    [campaignId, myCharacters],
-  );
-
-  const myAvailableCharacters = useMemo(
-    () => myCharacters.filter((character) => character.campaignId === null),
-    [myCharacters],
-  );
+  }, [campaignId, isGm, pageState]);
 
   const activeCampaignCharacters = useMemo(
     () =>
@@ -368,53 +516,64 @@ const CampaignCharactersPage = () => {
     [campaignCharacters],
   );
 
-  const claimableCount = useMemo(
+  const openCount = useMemo(
     () =>
-      campaignCharacters.filter((character) => character.ownerUid === null)
-        .length,
+      campaignCharacters.filter(
+        (character) => !character.ownerUid && character.claimMode === "open",
+      ).length,
     [campaignCharacters],
   );
 
-  const handleAssignToCampaign = async (characterId: string) => {
+  const assignedCount = useMemo(
+    () =>
+      campaignCharacters.filter(
+        (character) =>
+          !character.ownerUid && character.claimMode === "assigned",
+      ).length,
+    [campaignCharacters],
+  );
+
+  const lockedCount = useMemo(
+    () =>
+      campaignCharacters.filter(
+        (character) => !character.ownerUid && character.claimMode === "locked",
+      ).length,
+    [campaignCharacters],
+  );
+
+  const getMemberName = (uid: string | null | undefined) => {
+    if (!uid) {
+      return undefined;
+    }
+
+    if (uid === user?.uid) {
+      return "You";
+    }
+
+    return members.find((member) => member.uid === uid)?.displayName;
+  };
+
+  const updateCharacterAndParty = async (
+    characterId: string,
+    updates: Record<string, unknown>,
+  ) => {
     if (!campaignId) {
       return;
     }
 
-    setBusyCharacterId(characterId);
+    const batch = writeBatch(db);
 
-    try {
-      const characterRef = doc(db, "characters", characterId);
+    batch.update(doc(db, "characters", characterId), {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
 
-      await updateDoc(characterRef, {
-        campaignId,
-        campaignStatus: "inactive",
-      });
-    } catch (error) {
-      console.error("Failed to assign character to campaign:", error);
+    batch.update(doc(db, "campaigns", campaignId, "party", characterId), {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
 
-      alert("Could not assign character to campaign.");
-    } finally {
-      setBusyCharacterId(null);
-    }
-  };
-
-  const handleRemoveFromCampaign = async (characterId: string) => {
-    setBusyCharacterId(characterId);
-
-    try {
-      const characterRef = doc(db, "characters", characterId);
-
-      await updateDoc(characterRef, {
-        campaignId: null,
-        campaignStatus: "inactive",
-      });
-    } catch (error) {
-      console.error("Failed to remove character from campaign:", error);
-
-      alert("Could not remove character from campaign.");
-    } finally {
-      setBusyCharacterId(null);
-    }
+    await batch.commit();
   };
 
   const handleSetCampaignStatus = async (
@@ -424,53 +583,104 @@ const CampaignCharactersPage = () => {
     setBusyCharacterId(characterId);
 
     try {
-      const characterRef = doc(db, "characters", characterId);
-
-      await updateDoc(characterRef, {
+      await updateCharacterAndParty(characterId, {
         campaignStatus: nextStatus,
       });
     } catch (error) {
       console.error("Failed to update campaign character status:", error);
-
       alert("Could not update character status.");
     } finally {
       setBusyCharacterId(null);
     }
   };
 
-  const handleClaimCharacter = async (characterId: string) => {
+  const handleSetAccess = async (
+    character: CampaignCharacter,
+    claimMode: CharacterClaimMode,
+    claimableByUid: string | null = null,
+  ) => {
+    if (!isGm || character.ownerUid) {
+      return;
+    }
+
+    if (claimMode === "assigned" && !claimableByUid) {
+      return;
+    }
+
+    setBusyCharacterId(character.id);
+
+    try {
+      await updateCharacterAndParty(character.id, {
+        claimMode,
+        claimableByUid: claimMode === "assigned" ? claimableByUid : null,
+      });
+
+      setAccessEditorId(null);
+    } catch (error) {
+      console.error("Failed to update character access:", error);
+      alert("Could not update character access.");
+    } finally {
+      setBusyCharacterId(null);
+    }
+  };
+
+  const handleClaimCharacter = async (character: CampaignCharacter) => {
     if (!user || !campaignId) {
       return;
     }
 
-    setBusyCharacterId(characterId);
+    setBusyCharacterId(character.id);
 
     try {
+      /*
+       * The public party document is readable to campaign members and is used
+       * as the transaction's claim source. Firestore rules must enforce the
+       * corresponding private /characters ownership transition.
+       */
       await runTransaction(db, async (transaction) => {
-        const characterRef = doc(db, "characters", characterId);
-        const characterSnap = await transaction.get(characterRef);
+        const partyRef = doc(
+          db,
+          "campaigns",
+          campaignId,
+          "party",
+          character.id,
+        );
+        const characterRef = doc(db, "characters", character.id);
 
-        if (!characterSnap.exists()) {
-          throw new Error("Character not found.");
+        const partySnap = await transaction.get(partyRef);
+
+        if (!partySnap.exists()) {
+          throw new Error("Character is no longer available.");
         }
 
-        const data = characterSnap.data() as CharacterDoc;
+        const partyData = partySnap.data() as PublicCharacterDoc;
+        const ownerUid = partyData.ownerUid ?? null;
+        const claimMode = getClaimMode(partyData.claimMode, ownerUid);
 
-        if (data.campaignId !== campaignId) {
-          throw new Error("Character is no longer in this campaign.");
-        }
-
-        if (data.ownerUid) {
+        if (ownerUid) {
           throw new Error("Character has already been claimed.");
         }
 
-        transaction.update(characterRef, {
+        const canClaim =
+          claimMode === "open" ||
+          (claimMode === "assigned" && partyData.claimableByUid === user.uid);
+
+        if (!canClaim) {
+          throw new Error("This character is not available to you.");
+        }
+
+        const updates = {
           ownerUid: user.uid,
-        });
+          claimMode: "locked" as const,
+          claimableByUid: null,
+          updatedAt: serverTimestamp(),
+        };
+
+        transaction.update(characterRef, updates);
+        transaction.update(partyRef, updates);
       });
     } catch (error) {
       console.error("Failed to claim character:", error);
-
       alert(
         error instanceof Error ? error.message : "Could not claim character.",
       );
@@ -479,24 +689,18 @@ const CampaignCharactersPage = () => {
     }
   };
 
-  const handleMakeCharacterClaimable = async (characterId: string) => {
-    setBusyCharacterId(characterId);
+  const canPlayerOpen = (character: CampaignCharacter) =>
+    isGm ||
+    character.ownerUid === user?.uid ||
+    (!character.ownerUid &&
+      character.claimMode === "assigned" &&
+      character.claimableByUid === user?.uid);
 
-    try {
-      const characterRef = doc(db, "characters", characterId);
-
-      await updateDoc(characterRef, {
-        ownerUid: null,
-        campaignStatus: "inactive",
-      });
-    } catch (error) {
-      console.error("Failed to make character claimable:", error);
-
-      alert("Could not make character claimable.");
-    } finally {
-      setBusyCharacterId(null);
-    }
-  };
+  const canPlayerClaim = (character: CampaignCharacter) =>
+    !character.ownerUid &&
+    (character.claimMode === "open" ||
+      (character.claimMode === "assigned" &&
+        character.claimableByUid === user?.uid));
 
   if (pageState === "loading") {
     return (
@@ -510,11 +714,9 @@ const CampaignCharactersPage = () => {
     return (
       <PageMessage>
         <h1 className="text-xl font-bold text-white">Campaign not found</h1>
-
         <p className="mt-2 text-sm text-zinc-400">
           The campaign you tried to open does not exist.
         </p>
-
         <Link
           to="/"
           className="mt-4 inline-flex rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
@@ -529,11 +731,9 @@ const CampaignCharactersPage = () => {
     return (
       <PageMessage>
         <h1 className="text-xl font-bold text-white">Access denied</h1>
-
         <p className="mt-2 text-sm text-zinc-400">
           You do not have access to this campaign.
         </p>
-
         <Link
           to="/"
           className="mt-4 inline-flex rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
@@ -548,11 +748,9 @@ const CampaignCharactersPage = () => {
     return (
       <PageMessage tone="error">
         <h1 className="text-xl font-bold text-white">Something went wrong</h1>
-
         <p className="mt-2 text-sm text-red-200/80">
           We could not load the campaign characters page right now.
         </p>
-
         <Link
           to="/"
           className="mt-4 inline-flex rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
@@ -563,16 +761,139 @@ const CampaignCharactersPage = () => {
     );
   }
 
+  const renderAccessBadge = (character: CampaignCharacter) => {
+    if (character.ownerUid) {
+      return (
+        <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
+          {character.ownerUid === user?.uid
+            ? "Yours"
+            : `Owned${getMemberName(character.ownerUid) ? `: ${getMemberName(character.ownerUid)}` : ""}`}
+        </span>
+      );
+    }
+
+    if (character.claimMode === "open") {
+      return (
+        <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
+          Available
+        </span>
+      );
+    }
+
+    if (character.claimMode === "assigned") {
+      const assignedName = getMemberName(character.claimableByUid);
+
+      return (
+        <span className="rounded-md border border-violet-500/20 bg-violet-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-violet-300">
+          {character.claimableByUid === user?.uid
+            ? "Reserved for you"
+            : isGm && assignedName
+              ? `Reserved: ${assignedName}`
+              : "Reserved"}
+        </span>
+      );
+    }
+
+    return isGm ? (
+      <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-medium text-zinc-400">
+        <i className="fa-solid fa-lock mr-1" />
+        Locked
+      </span>
+    ) : null;
+  };
+
+  const renderAccessEditor = (character: CampaignCharacter) => {
+    if (!isGm || character.ownerUid || accessEditorId !== character.id) {
+      return null;
+    }
+
+    return (
+      <div className="mt-2 rounded-lg border border-white/[0.08] bg-black/20 p-2.5">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+              Character access
+            </p>
+            <p className="mt-1 text-[10px] text-zinc-500">
+              Locked hides the sheet. Open lets any player claim it. Assigned
+              lets only the selected player inspect and claim it.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => void handleSetAccess(character, "locked")}
+              disabled={busyCharacterId === character.id}
+              className={`rounded-md border px-2.5 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+                character.claimMode === "locked"
+                  ? "border-white/20 bg-white/[0.1] text-white"
+                  : "border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08]"
+              }`}
+            >
+              <i className="fa-solid fa-lock mr-1.5" />
+              Locked
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handleSetAccess(character, "open")}
+              disabled={busyCharacterId === character.id}
+              className={`rounded-md border px-2.5 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+                character.claimMode === "open"
+                  ? "border-amber-500/30 bg-amber-500/[0.12] text-amber-200"
+                  : "border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08]"
+              }`}
+            >
+              Open to players
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-2 flex flex-col gap-1.5 sm:flex-row sm:items-center">
+          <span className="text-[10px] font-medium text-zinc-500">
+            Assign to player
+          </span>
+
+          <select
+            value={
+              character.claimMode === "assigned"
+                ? (character.claimableByUid ?? "")
+                : ""
+            }
+            onChange={(event) => {
+              const uid = event.target.value;
+
+              if (uid) {
+                void handleSetAccess(character, "assigned", uid);
+              }
+            }}
+            disabled={busyCharacterId === character.id}
+            className="h-8 min-w-52 rounded-md border border-white/[0.08] bg-zinc-950 px-2 text-[10px] text-zinc-200 outline-none transition focus:border-white/20 disabled:opacity-50"
+          >
+            <option value="">Select player…</option>
+            {members
+              .filter(
+                (member) => member.role !== "gm" && member.role !== "co-gm",
+              )
+              .map((member) => (
+                <option key={member.uid} value={member.uid}>
+                  {member.displayName}
+                </option>
+              ))}
+          </select>
+        </div>
+      </div>
+    );
+  };
+
   const renderCampaignCharacter = (
     character: CampaignCharacter,
     isActive: boolean,
   ) => {
-    const isOwnCharacter = character.ownerUid === user?.uid;
-    const isClaimable = character.ownerUid === null;
     const isBusy = busyCharacterId === character.id;
-
-    const canOpen = isGm || isOwnCharacter;
-    const canRemove = isGm || isOwnCharacter;
+    const canOpen = canPlayerOpen(character);
+    const canClaim = canPlayerClaim(character);
 
     return (
       <div
@@ -594,29 +915,12 @@ const CampaignCharactersPage = () => {
                 </h3>
 
                 <StatusBadge active={isActive} />
-
-                {isClaimable ? (
-                  <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
-                    Claimable
-                  </span>
-                ) : isOwnCharacter ? (
-                  <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
-                    Yours
-                  </span>
-                ) : null}
+                {renderAccessBadge(character)}
               </div>
 
               <p className="mt-0.5 truncate text-[10px] text-zinc-500">
                 {getCharacterSummary(character) || "Character"}
               </p>
-
-              {!isClaimable && character.ownerUid ? (
-                <p className="mt-0.5 truncate text-[9px] text-zinc-600">
-                  {character.ownerName ||
-                    character.ownerEmail ||
-                    "Assigned player"}
-                </p>
-              ) : null}
             </div>
           </div>
 
@@ -626,6 +930,7 @@ const CampaignCharactersPage = () => {
                 to={`/characters/${character.id}`}
                 state={{
                   from: `${location.pathname}${location.search}`,
+                  label: "Back to campaign",
                 }}
                 className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
               >
@@ -633,10 +938,10 @@ const CampaignCharactersPage = () => {
               </Link>
             ) : null}
 
-            {isClaimable ? (
+            {canClaim ? (
               <button
                 type="button"
-                onClick={() => handleClaimCharacter(character.id)}
+                onClick={() => void handleClaimCharacter(character)}
                 disabled={isBusy}
                 className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -649,7 +954,7 @@ const CampaignCharactersPage = () => {
                 <button
                   type="button"
                   onClick={() =>
-                    handleSetCampaignStatus(
+                    void handleSetCampaignStatus(
                       character.id,
                       isActive ? "inactive" : "active",
                     )
@@ -664,31 +969,27 @@ const CampaignCharactersPage = () => {
                   {isActive ? "Set inactive" : "Set active"}
                 </button>
 
-                {!isClaimable ? (
+                {!character.ownerUid ? (
                   <button
                     type="button"
-                    onClick={() => handleMakeCharacterClaimable(character.id)}
+                    onClick={() =>
+                      setAccessEditorId((current) =>
+                        current === character.id ? null : character.id,
+                      )
+                    }
                     disabled={isBusy}
-                    className="rounded-md border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-1.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-500/[0.12] disabled:opacity-50"
+                    className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
                   >
-                    Make claimable
+                    <i className="fa-solid fa-key mr-1.5" />
+                    Access
                   </button>
                 ) : null}
               </>
             ) : null}
-
-            {canRemove && !isClaimable ? (
-              <button
-                type="button"
-                onClick={() => handleRemoveFromCampaign(character.id)}
-                disabled={isBusy}
-                className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
-              >
-                Remove
-              </button>
-            ) : null}
           </div>
         </div>
+
+        {renderAccessEditor(character)}
       </div>
     );
   };
@@ -708,214 +1009,74 @@ const CampaignCharactersPage = () => {
         ) : null}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
-        <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
-          {campaignCharactersLoading ? (
-            <EmptyState>Loading campaign characters…</EmptyState>
-          ) : campaignCharacters.length === 0 ? (
-            <EmptyState>No campaign characters yet.</EmptyState>
-          ) : (
-            <div className="space-y-5">
-              <div>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-base font-semibold text-white">
-                    Active characters
-                  </h2>
+      {isGm ? (
+        <div className="mb-3 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[9px] text-zinc-400">
+            <i className="fa-solid fa-lock mr-1" />
+            {lockedCount} locked
+          </span>
+          <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-1 text-[9px] text-amber-300">
+            {openCount} open
+          </span>
+          <span className="rounded-md border border-violet-500/20 bg-violet-500/[0.08] px-2 py-1 text-[9px] text-violet-300">
+            {assignedCount} reserved
+          </span>
+        </div>
+      ) : null}
 
-                  <div className="flex flex-wrap items-center gap-1.5 text-[9px]">
-                    <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-emerald-300">
-                      {activeCampaignCharacters.length} active
-                    </span>
+      <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
+        {campaignCharactersLoading ? (
+          <EmptyState>Loading campaign characters…</EmptyState>
+        ) : campaignCharacters.length === 0 ? (
+          <EmptyState>No campaign characters yet.</EmptyState>
+        ) : (
+          <div className="space-y-5">
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-white">
+                  Active characters
+                </h2>
 
-                    {claimableCount > 0 ? (
-                      <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-0.5 text-amber-300">
-                        {claimableCount} claimable
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-
-                {activeCampaignCharacters.length === 0 ? (
-                  <EmptyState>No active characters.</EmptyState>
-                ) : (
-                  <div className="space-y-1.5">
-                    {activeCampaignCharacters.map((character) =>
-                      renderCampaignCharacter(character, true),
-                    )}
-                  </div>
-                )}
+                <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-[9px] text-emerald-300">
+                  {activeCampaignCharacters.length} active
+                </span>
               </div>
 
-              <div className="border-t border-white/[0.08] pt-4">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-base font-semibold text-white">
-                    Inactive characters
-                  </h2>
-
-                  <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] text-zinc-400">
-                    {inactiveCampaignCharacters.length} inactive
-                  </span>
-                </div>
-
-                {inactiveCampaignCharacters.length === 0 ? (
-                  <EmptyState>No inactive characters.</EmptyState>
-                ) : (
-                  <div className="space-y-1.5">
-                    {inactiveCampaignCharacters.map((character) =>
-                      renderCampaignCharacter(character, false),
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </section>
-
-        <aside>
-          <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-semibold text-white">
-                Your characters
-              </h2>
-
-              <Link
-                to="/characters/new"
-                className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
-              >
-                Create
-              </Link>
-            </div>
-
-            {myCharactersLoading ? (
-              <div className="mt-3">
-                <EmptyState>Loading your characters…</EmptyState>
-              </div>
-            ) : (
-              <div className="mt-3 space-y-4">
-                {myCampaignCharacters.length > 0 ? (
-                  <div>
-                    <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                      This campaign
-                    </h3>
-
-                    <div className="mt-2 space-y-1.5">
-                      {myCampaignCharacters.map((character) => (
-                        <div
-                          key={character.id}
-                          className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5"
-                        >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <Avatar
-                              src={character.imageUrl}
-                              name={character.name}
-                              className="h-9 w-9 shrink-0 rounded-lg"
-                            />
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-1.5">
-                                <p className="truncate text-xs font-semibold text-white">
-                                  {character.name}
-                                </p>
-
-                                <StatusBadge
-                                  active={character.campaignStatus === "active"}
-                                />
-                              </div>
-
-                              <p className="mt-0.5 truncate text-[10px] text-zinc-500">
-                                {getCharacterSummary(character) || "Character"}
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="mt-2">
-                            <Link
-                              to={`/characters/${character.id}`}
-                              state={{
-                                from: `${location.pathname}${location.search}`,
-                              }}
-                              className="inline-flex rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-                            >
-                              Open
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                <div>
-                  <h3 className="text-[9px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                    Available
-                  </h3>
-
-                  {myAvailableCharacters.length === 0 ? (
-                    <div className="mt-2">
-                      <EmptyState>No available characters.</EmptyState>
-                    </div>
-                  ) : (
-                    <div className="mt-2 space-y-1.5">
-                      {myAvailableCharacters.map((character) => {
-                        const isBusy = busyCharacterId === character.id;
-
-                        return (
-                          <div
-                            key={character.id}
-                            className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5"
-                          >
-                            <div className="flex min-w-0 items-center gap-3">
-                              <Avatar
-                                src={character.imageUrl}
-                                name={character.name}
-                                className="h-9 w-9 shrink-0 rounded-lg"
-                              />
-
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-xs font-semibold text-white">
-                                  {character.name}
-                                </p>
-
-                                <p className="mt-0.5 truncate text-[10px] text-zinc-500">
-                                  {getCharacterSummary(character) ||
-                                    "Character"}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleAssignToCampaign(character.id)
-                                }
-                                disabled={isBusy}
-                                className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-                              >
-                                {isBusy ? "Attaching…" : "Attach"}
-                              </button>
-
-                              <Link
-                                to={`/characters/${character.id}`}
-                                state={{
-                                  from: `${location.pathname}${location.search}`,
-                                }}
-                                className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-                              >
-                                Open
-                              </Link>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+              {activeCampaignCharacters.length === 0 ? (
+                <EmptyState>No active characters.</EmptyState>
+              ) : (
+                <div className="space-y-1.5">
+                  {activeCampaignCharacters.map((character) =>
+                    renderCampaignCharacter(character, true),
                   )}
                 </div>
+              )}
+            </div>
+
+            <div className="border-t border-white/[0.08] pt-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h2 className="text-base font-semibold text-white">
+                  Inactive characters
+                </h2>
+
+                <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] text-zinc-400">
+                  {inactiveCampaignCharacters.length} inactive
+                </span>
               </div>
-            )}
-          </section>
-        </aside>
-      </div>
+
+              {inactiveCampaignCharacters.length === 0 ? (
+                <EmptyState>No inactive characters.</EmptyState>
+              ) : (
+                <div className="space-y-1.5">
+                  {inactiveCampaignCharacters.map((character) =>
+                    renderCampaignCharacter(character, false),
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
     </div>
   );
 };
