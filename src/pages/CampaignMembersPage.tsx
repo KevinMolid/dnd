@@ -30,6 +30,12 @@ type CampaignInvite = CampaignInviteDoc & {
   id: string;
 };
 
+type AppUserDoc = {
+  displayName?: string;
+  email?: string;
+  imageUrl?: string;
+};
+
 type PageState = "loading" | "ready" | "not-found" | "forbidden" | "error";
 
 const formatRoleLabel = (role: CampaignRole) => {
@@ -99,6 +105,8 @@ const CampaignMembersPage = () => {
   const [members, setMembers] = useState<CampaignMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(true);
 
+  const [usersById, setUsersById] = useState<Record<string, AppUserDoc>>({});
+
   const [invites, setInvites] = useState<CampaignInvite[]>([]);
   const [invitesLoading, setInvitesLoading] = useState(true);
 
@@ -162,6 +170,32 @@ const CampaignMembersPage = () => {
   }, [campaignId, user]);
 
   useEffect(() => {
+    if (pageState !== "ready") {
+      setUsersById({});
+      return;
+    }
+
+    const unsub = onSnapshot(
+      collection(db, "users"),
+      (snapshot) => {
+        const nextUsers: Record<string, AppUserDoc> = {};
+
+        snapshot.docs.forEach((userDoc) => {
+          nextUsers[userDoc.id] = userDoc.data() as AppUserDoc;
+        });
+
+        setUsersById(nextUsers);
+      },
+      (error) => {
+        console.error("Failed to load user profiles:", error);
+        setUsersById({});
+      },
+    );
+
+    return () => unsub();
+  }, [pageState]);
+
+  useEffect(() => {
     if (pageState !== "ready" || !campaignId) return;
 
     setMembersLoading(true);
@@ -171,12 +205,21 @@ const CampaignMembersPage = () => {
     const unsub = onSnapshot(
       membersRef,
       (snapshot) => {
-        const nextMembers: CampaignMember[] = snapshot.docs.map(
-          (memberDoc) => ({
-            id: memberDoc.id,
-            ...(memberDoc.data() as CampaignMemberDoc),
-          }),
-        );
+        const nextMembers: CampaignMember[] = snapshot.docs.map((memberDoc) => {
+          const member = memberDoc.data() as CampaignMemberDoc;
+          const uid = memberDoc.id;
+          const userDoc = usersById[uid];
+
+          return {
+            ...member,
+            id: uid,
+            uid,
+            displayName: member.displayName ?? userDoc?.displayName ?? "",
+            email: member.email ?? userDoc?.email ?? "",
+            // Profile data is authoritative for avatars.
+            imageUrl: userDoc?.imageUrl ?? "",
+          };
+        });
 
         nextMembers.sort((a, b) => {
           const roleOrder = { gm: 0, "co-gm": 1, player: 2 };
@@ -184,8 +227,8 @@ const CampaignMembersPage = () => {
 
           if (roleDiff !== 0) return roleDiff;
 
-          const aName = (a.displayName || a.email || a.uid).toLowerCase();
-          const bName = (b.displayName || b.email || b.uid).toLowerCase();
+          const aName = (a.displayName?.trim() || "Player").toLowerCase();
+          const bName = (b.displayName?.trim() || "Player").toLowerCase();
 
           return aName.localeCompare(bName);
         });
@@ -201,7 +244,7 @@ const CampaignMembersPage = () => {
     );
 
     return () => unsub();
-  }, [campaignId, pageState]);
+  }, [campaignId, pageState, usersById]);
 
   useEffect(() => {
     if (pageState !== "ready" || !campaignId) return;
@@ -277,7 +320,7 @@ const CampaignMembersPage = () => {
   const handleRemoveMember = async (member: CampaignMember) => {
     if (!campaignId) return;
 
-    const label = member.displayName || member.email || member.uid;
+    const label = member.displayName?.trim() || "this player";
     const confirmed = window.confirm(`Remove ${label} from this campaign?`);
 
     if (!confirmed) return;
@@ -338,7 +381,7 @@ const CampaignMembersPage = () => {
           <button
             type="button"
             onClick={() => setInviteModalOpen(true)}
-            className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+            className="rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
             Invite players
           </button>
@@ -352,7 +395,7 @@ const CampaignMembersPage = () => {
               Campaign members
             </h3>
 
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-xs text-zinc-400">
               {members.length} member{members.length === 1 ? "" : "s"}
             </span>
           </div>
@@ -373,26 +416,24 @@ const CampaignMembersPage = () => {
                 return (
                   <div
                     key={member.id}
-                    className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5 transition hover:border-white/15 hover:bg-white/[0.025]"
+                    className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-3 transition hover:border-white/15 hover:bg-white/[0.025]"
                   >
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex min-w-0 items-center gap-3">
                         <Avatar
-                          name={
-                            member.displayName || member.email || member.uid
-                          }
+                          name={member.displayName?.trim() || "Player"}
                           src={member.imageUrl || ""}
-                          className="h-10 w-10 shrink-0 rounded-full"
+                          className="h-12 w-12 shrink-0 rounded-full"
                         />
 
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <h4 className="truncate text-xs font-semibold text-white">
-                              {member.displayName || member.email || member.uid}
+                            <h4 className="truncate text-sm font-semibold text-white">
+                              {member.displayName?.trim() || "Player"}
                             </h4>
 
                             <span
-                              className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold ${getRoleBadgeClass(
+                              className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
                                 member.role,
                               )}`}
                             >
@@ -400,23 +441,25 @@ const CampaignMembersPage = () => {
                             </span>
 
                             {isOwner ? (
-                              <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-500">
+                              <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-zinc-400">
                                 Owner
                               </span>
                             ) : null}
 
                             {isSelf ? (
-                              <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] text-sky-300">
+                              <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[10px] text-sky-300">
                                 You
                               </span>
                             ) : null}
                           </div>
 
-                          <p className="mt-0.5 truncate text-[10px] text-zinc-500">
-                            {member.email || member.uid}
-                          </p>
+                          {isGm && member.email ? (
+                            <p className="mt-0.5 truncate text-xs text-zinc-400">
+                              {member.email}
+                            </p>
+                          ) : null}
 
-                          <p className="mt-0.5 text-[9px] text-zinc-600">
+                          <p className="mt-1 text-[11px] text-zinc-500">
                             Joined {formatDateTime(member.joinedAt)}
                           </p>
                         </div>
@@ -434,7 +477,7 @@ const CampaignMembersPage = () => {
                                 )
                               }
                               disabled={busyKey === `role-${member.id}`}
-                              className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
+                              className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 disabled:opacity-50"
                             >
                               {member.role === "player"
                                 ? "Make co-GM"
@@ -447,7 +490,7 @@ const CampaignMembersPage = () => {
                               type="button"
                               onClick={() => handleRemoveMember(member)}
                               disabled={busyKey === `remove-${member.id}`}
-                              className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
+                              className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-3 py-2 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/[0.08] hover:text-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/40 disabled:opacity-50"
                             >
                               Remove
                             </button>
@@ -468,7 +511,7 @@ const CampaignMembersPage = () => {
               <h3 className="text-sm font-semibold text-white">Your access</h3>
 
               <span
-                className={`rounded-md px-2 py-0.5 text-[9px] font-semibold ${getRoleBadgeClass(
+                className={`rounded-md px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
                   myMembership.role,
                 )}`}
               >
@@ -483,7 +526,7 @@ const CampaignMembersPage = () => {
                 Active invites
               </h3>
 
-              <span className="text-[10px] text-zinc-500">
+              <span className="text-xs text-zinc-400">
                 {activeInvites.length}
               </span>
             </div>
@@ -500,7 +543,7 @@ const CampaignMembersPage = () => {
                   <button
                     type="button"
                     onClick={() => setInviteModalOpen(true)}
-                    className="mt-2 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                    className="mt-2 rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                   >
                     Create invite
                   </button>
@@ -519,14 +562,14 @@ const CampaignMembersPage = () => {
                   return (
                     <div
                       key={invite.id}
-                      className="rounded-lg border border-white/[0.08] bg-black/15 p-2.5"
+                      className="rounded-lg border border-white/[0.08] bg-black/15 p-3"
                     >
                       <div className="flex flex-wrap items-center gap-1">
-                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-400">
+                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-zinc-300">
                           {formatRoleLabel(invite.role)}
                         </span>
 
-                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-500">
+                        <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-zinc-400">
                           {invite.useCount}
                           {typeof invite.maxUses === "number"
                             ? `/${invite.maxUses} used`
@@ -534,20 +577,20 @@ const CampaignMembersPage = () => {
                         </span>
 
                         {remainingUses !== null ? (
-                          <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-500">
+                          <span className="rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-zinc-400">
                             {remainingUses} left
                           </span>
                         ) : null}
                       </div>
 
                       <p
-                        className="mt-2 truncate text-[9px] text-zinc-600"
+                        className="mt-2 truncate text-[11px] text-zinc-400"
                         title={inviteUrl}
                       >
                         {inviteUrl}
                       </p>
 
-                      <p className="mt-1 text-[9px] text-zinc-600">
+                      <p className="mt-1 text-[11px] text-zinc-500">
                         Created {formatDateTime(invite.createdAt)}
                       </p>
 
@@ -558,7 +601,7 @@ const CampaignMembersPage = () => {
                             onClick={() =>
                               navigator.clipboard.writeText(inviteUrl)
                             }
-                            className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[9px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                            className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                           >
                             Copy
                           </button>
@@ -567,7 +610,7 @@ const CampaignMembersPage = () => {
                             type="button"
                             onClick={() => handleRevokeInvite(invite)}
                             disabled={busyKey === `invite-${invite.id}`}
-                            className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2 py-1 text-[9px] font-semibold text-rose-300/80 transition hover:bg-rose-500/[0.08] hover:text-rose-200 disabled:opacity-50"
+                            className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-2.5 py-1.5 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/[0.08] hover:text-rose-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/40 disabled:opacity-50"
                           >
                             Revoke
                           </button>
@@ -587,7 +630,7 @@ const CampaignMembersPage = () => {
                   Revoked invites
                 </h3>
 
-                <span className="text-[10px] text-zinc-500">
+                <span className="text-xs text-zinc-400">
                   {revokedInvites.length}
                 </span>
               </div>
@@ -598,11 +641,11 @@ const CampaignMembersPage = () => {
                     key={invite.id}
                     className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.07] bg-black/10 px-2.5 py-2"
                   >
-                    <span className="text-[10px] text-zinc-500">
+                    <span className="text-xs text-zinc-400">
                       {formatRoleLabel(invite.role)}
                     </span>
 
-                    <span className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-1.5 py-0.5 text-[9px] text-rose-300/70">
+                    <span className="rounded-md border border-rose-500/15 bg-rose-500/[0.04] px-1.5 py-0.5 text-[10px] text-rose-300">
                       Revoked
                     </span>
                   </div>
@@ -627,7 +670,7 @@ const CampaignMembersPage = () => {
 
 const EmptyState = ({ children }: { children: string }) => (
   <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/10 px-3 py-4 text-center">
-    <p className="text-[11px] text-zinc-500">{children}</p>
+    <p className="text-xs text-zinc-400">{children}</p>
   </div>
 );
 

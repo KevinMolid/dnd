@@ -49,23 +49,15 @@ const CampaignMembersSection = ({
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Avatar
-                  name={
-                    member.displayName?.trim() || member.email || member.uid
-                  }
+                  name={member.displayName?.trim() || "Player"}
                   src={member.imageUrl?.trim() || ""}
                   className="h-9 w-9 shrink-0 rounded-full"
                 />
 
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-zinc-100">
-                    {member.displayName || member.email || member.uid}
+                    {member.displayName?.trim() || "Player"}
                   </p>
-
-                  {member.email ? (
-                    <p className="mt-0.5 truncate text-xs text-zinc-400">
-                      {member.email}
-                    </p>
-                  ) : null}
                 </div>
               </div>
 

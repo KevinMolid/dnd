@@ -67,21 +67,21 @@ const CampaignMapsPage = () => {
         <button
           type="button"
           onClick={() => setIsCreateModalOpen(true)}
-          className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+          className="rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
         >
-          <i className="fa-solid fa-plus mr-1.5 text-[9px]" />
+          <i className="fa-solid fa-plus mr-1.5 text-[10px]" />
           Add map
         </button>
       </div>
 
       {loading ? (
         <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
-          <p className="text-[11px] text-zinc-500">Loading maps...</p>
+          <p className="text-xs text-zinc-400">Loading maps...</p>
         </div>
       ) : maps.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/10 bg-zinc-900/25 p-6 text-center">
-          <p className="text-xs font-semibold text-zinc-200">No maps yet.</p>
-          <p className="mt-1 text-[11px] text-zinc-500">
+          <p className="text-sm font-semibold text-zinc-100">No maps yet.</p>
+          <p className="mt-1 text-xs text-zinc-400">
             Create your first map to start adding areas.
           </p>
         </div>
@@ -95,8 +95,9 @@ const CampaignMapsPage = () => {
               <button
                 type="button"
                 onClick={() => openMap(map.id)}
-                className="block w-full overflow-hidden bg-black text-left"
+                className="block w-full overflow-hidden bg-black text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-inset"
                 title={`Open ${map.title}`}
+                aria-label={`Open map ${map.title}`}
               >
                 <div className="aspect-[16/9] overflow-hidden">
                   <img
@@ -111,10 +112,10 @@ const CampaignMapsPage = () => {
               <div className="p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-xs font-semibold text-white">
+                    <h3 className="truncate text-sm font-semibold text-white">
                       {map.title}
                     </h3>
-                    <p className="mt-0.5 text-[10px] text-zinc-500">
+                    <p className="mt-0.5 text-xs text-zinc-400">
                       {map.rooms?.length ?? 0} areas
                     </p>
                   </div>
@@ -123,7 +124,7 @@ const CampaignMapsPage = () => {
                     <button
                       type="button"
                       onClick={() => openMap(map.id)}
-                      className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+                      className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                     >
                       Open
                     </button>
@@ -131,7 +132,7 @@ const CampaignMapsPage = () => {
                     <button
                       type="button"
                       onClick={() => setEditingMapId(map.id)}
-                      className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-400 transition hover:bg-white/[0.08] hover:text-white"
+                      className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                     >
                       Edit
                     </button>
@@ -139,18 +140,18 @@ const CampaignMapsPage = () => {
                 </div>
 
                 {map.rooms?.length ? (
-                  <div className="mt-2 flex flex-wrap gap-1">
+                  <div className="mt-2.5 flex flex-wrap gap-1.5">
                     {map.rooms.slice(0, 4).map((room) => (
                       <span
                         key={room.id}
-                        className="rounded-md border border-white/[0.07] bg-black/20 px-1.5 py-0.5 text-[9px] text-zinc-500"
+                        className="rounded-md border border-white/[0.07] bg-black/20 px-2 py-1 text-[10px] text-zinc-400"
                       >
                         {room.id}. {room.name}
                       </span>
                     ))}
 
                     {map.rooms.length > 4 ? (
-                      <span className="rounded-md border border-white/[0.07] bg-black/20 px-1.5 py-0.5 text-[9px] text-zinc-600">
+                      <span className="rounded-md border border-white/[0.07] bg-black/20 px-2 py-1 text-[10px] text-zinc-400">
                         +{map.rooms.length - 4}
                       </span>
                     ) : null}
