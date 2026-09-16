@@ -29,7 +29,7 @@ const CampaignMembersSection = ({
           <button
             type="button"
             onClick={onInvitePlayers}
-            className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+            className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
           >
             Invite
           </button>
@@ -37,15 +37,15 @@ const CampaignMembersSection = ({
       </div>
 
       {loading ? (
-        <p className="mt-3 text-[11px] text-zinc-500">Loading players…</p>
+        <p className="mt-3 text-xs text-zinc-400">Loading players…</p>
       ) : members.length === 0 ? (
-        <p className="mt-3 text-[11px] text-zinc-500">No members yet.</p>
+        <p className="mt-3 text-xs text-zinc-400">No members yet.</p>
       ) : (
         <div className="mt-3 divide-y divide-white/[0.055]">
           {members.map((member) => (
             <div
               key={member.uid}
-              className="flex min-w-0 items-center justify-between gap-3 py-2 first:pt-0 last:pb-0"
+              className="flex min-w-0 items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0"
             >
               <div className="flex min-w-0 items-center gap-2.5">
                 <Avatar
@@ -53,16 +53,16 @@ const CampaignMembersSection = ({
                     member.displayName?.trim() || member.email || member.uid
                   }
                   src={member.imageUrl?.trim() || ""}
-                  className="h-8 w-8 shrink-0 rounded-full"
+                  className="h-9 w-9 shrink-0 rounded-full"
                 />
 
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-zinc-100">
+                  <p className="truncate text-sm font-semibold text-zinc-100">
                     {member.displayName || member.email || member.uid}
                   </p>
 
                   {member.email ? (
-                    <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                    <p className="mt-0.5 truncate text-xs text-zinc-400">
                       {member.email}
                     </p>
                   ) : null}
@@ -70,7 +70,7 @@ const CampaignMembersSection = ({
               </div>
 
               <span
-                className={`shrink-0 rounded-md px-2 py-0.5 text-[9px] font-semibold ${getRoleBadgeClass(
+                className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeClass(
                   member.role,
                 )}`}
               >

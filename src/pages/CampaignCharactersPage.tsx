@@ -545,7 +545,7 @@ const CampaignCharactersPage = () => {
       const ownerName = getMemberName(character.ownerUid);
 
       return (
-        <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
+        <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
           {character.ownerUid === user?.uid
             ? "Yours"
             : `Owned: ${ownerName || "Assigned player"}`}
@@ -555,7 +555,7 @@ const CampaignCharactersPage = () => {
 
     if (character.claimMode === "open") {
       return (
-        <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
+        <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
           Available
         </span>
       );
@@ -565,7 +565,7 @@ const CampaignCharactersPage = () => {
       const assignedName = getMemberName(character.claimableByUid);
 
       return (
-        <span className="rounded-md border border-violet-500/20 bg-violet-500/[0.08] px-1.5 py-0.5 text-[9px] font-medium text-violet-300">
+        <span className="rounded-md border border-violet-500/20 bg-violet-500/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-violet-300">
           {character.claimableByUid === user?.uid
             ? "Reserved for you"
             : isGm && assignedName
@@ -576,7 +576,7 @@ const CampaignCharactersPage = () => {
     }
 
     return isGm ? (
-      <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-medium text-zinc-400">
+      <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
         <i className="fa-solid fa-lock mr-1" />
         Locked
       </span>
@@ -592,10 +592,10 @@ const CampaignCharactersPage = () => {
       <div className="mt-2 rounded-lg border border-white/[0.08] bg-black/20 p-2.5">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
           <div className="min-w-0 flex-1">
-            <p className="text-[9px] font-semibold uppercase tracking-[0.1em] text-zinc-500">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
               Character access
             </p>
-            <p className="mt-1 text-[10px] text-zinc-500">
+            <p className="mt-1 text-xs leading-5 text-zinc-400">
               Locked hides the sheet. Open lets any player claim it. Assigned
               lets only the selected player inspect and claim it.
             </p>
@@ -606,7 +606,7 @@ const CampaignCharactersPage = () => {
               type="button"
               onClick={() => void handleSetAccess(character, "locked")}
               disabled={busyCharacterId === character.id}
-              className={`rounded-md border px-2.5 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+              className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                 character.claimMode === "locked"
                   ? "border-white/20 bg-white/[0.1] text-white"
                   : "border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08]"
@@ -620,7 +620,7 @@ const CampaignCharactersPage = () => {
               type="button"
               onClick={() => void handleSetAccess(character, "open")}
               disabled={busyCharacterId === character.id}
-              className={`rounded-md border px-2.5 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+              className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                 character.claimMode === "open"
                   ? "border-amber-500/30 bg-amber-500/[0.12] text-amber-200"
                   : "border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08]"
@@ -632,7 +632,7 @@ const CampaignCharactersPage = () => {
         </div>
 
         <div className="mt-2 flex flex-col gap-1.5 sm:flex-row sm:items-center">
-          <span className="text-[10px] font-medium text-zinc-500">
+          <span className="text-xs font-medium text-zinc-400">
             Assign to player
           </span>
 
@@ -650,7 +650,7 @@ const CampaignCharactersPage = () => {
               }
             }}
             disabled={busyCharacterId === character.id}
-            className="h-8 min-w-52 rounded-md border border-white/[0.08] bg-zinc-950 px-2 text-[10px] text-zinc-200 outline-none transition focus:border-white/20 disabled:opacity-50"
+            className="h-8 min-w-52 rounded-md border border-white/[0.08] bg-zinc-950 px-2 text-xs text-zinc-200 outline-none transition focus:border-white/20 disabled:opacity-50"
           >
             <option value="">Select player…</option>
             {members
@@ -679,19 +679,19 @@ const CampaignCharactersPage = () => {
     return (
       <div
         key={character.id}
-        className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2.5 transition hover:border-white/15 hover:bg-white/[0.025]"
+        className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-3 transition hover:border-white/15 hover:bg-white/[0.025]"
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-3">
             <Avatar
               src={character.imageUrl}
               name={character.name}
-              className="h-10 w-10 shrink-0 rounded-lg"
+              className="h-12 w-12 shrink-0 rounded-lg"
             />
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-1.5">
-                <h3 className="truncate text-xs font-semibold text-white">
+                <h3 className="truncate text-sm font-semibold text-white">
                   {character.name}
                 </h3>
 
@@ -699,7 +699,7 @@ const CampaignCharactersPage = () => {
                 {renderAccessBadge(character)}
               </div>
 
-              <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+              <p className="mt-0.5 truncate text-xs text-zinc-400">
                 {getCharacterSummary(character) || "Character"}
               </p>
             </div>
@@ -713,7 +713,7 @@ const CampaignCharactersPage = () => {
                   from: `${location.pathname}${location.search}`,
                   label: "Back to campaign",
                 }}
-                className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+                className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
               >
                 Open
               </Link>
@@ -724,7 +724,7 @@ const CampaignCharactersPage = () => {
                 type="button"
                 onClick={() => void handleClaimCharacter(character)}
                 disabled={isBusy}
-                className="rounded-md bg-white px-2.5 py-1.5 text-[10px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isBusy ? "Claiming…" : "Claim"}
               </button>
@@ -741,7 +741,7 @@ const CampaignCharactersPage = () => {
                     )
                   }
                   disabled={isBusy}
-                  className={`rounded-md border px-2.5 py-1.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+                  className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                     isActive
                       ? "border-white/10 bg-white/[0.04] text-zinc-300 hover:bg-white/[0.08] hover:text-white"
                       : "border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-300 hover:bg-emerald-500/[0.12]"
@@ -759,7 +759,7 @@ const CampaignCharactersPage = () => {
                       )
                     }
                     disabled={isBusy}
-                    className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
+                    className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-50"
                   >
                     <i className="fa-solid fa-key mr-1.5" />
                     Access
@@ -783,7 +783,7 @@ const CampaignCharactersPage = () => {
         {isGm ? (
           <Link
             to={`/characters/new?campaignId=${campaign.id}&campaignMode=unassigned`}
-            className="inline-flex rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+            className="inline-flex rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
           >
             Create campaign character
           </Link>
@@ -792,14 +792,14 @@ const CampaignCharactersPage = () => {
 
       {isGm ? (
         <div className="mb-3 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[9px] text-zinc-400">
+          <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10px] text-zinc-400">
             <i className="fa-solid fa-lock mr-1" />
             {lockedCount} locked
           </span>
-          <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-1 text-[9px] text-amber-300">
+          <span className="rounded-md border border-amber-500/20 bg-amber-500/[0.08] px-2 py-1 text-[10px] text-amber-300">
             {openCount} open
           </span>
-          <span className="rounded-md border border-violet-500/20 bg-violet-500/[0.08] px-2 py-1 text-[9px] text-violet-300">
+          <span className="rounded-md border border-violet-500/20 bg-violet-500/[0.08] px-2 py-1 text-[10px] text-violet-300">
             {assignedCount} reserved
           </span>
         </div>
@@ -818,7 +818,7 @@ const CampaignCharactersPage = () => {
                   Active characters
                 </h2>
 
-                <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-[9px] text-emerald-300">
+                <span className="rounded-md border border-emerald-500/20 bg-emerald-500/[0.08] px-2 py-0.5 text-[10px] text-emerald-300">
                   {activeCampaignCharacters.length} active
                 </span>
               </div>
@@ -840,7 +840,7 @@ const CampaignCharactersPage = () => {
                   Inactive characters
                 </h2>
 
-                <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[9px] text-zinc-400">
+                <span className="rounded-md border border-white/10 bg-white/[0.03] px-2 py-0.5 text-[10px] text-zinc-400">
                   {inactiveCampaignCharacters.length} inactive
                 </span>
               </div>
@@ -864,10 +864,10 @@ const CampaignCharactersPage = () => {
 
 const StatusBadge = ({ active }: { active: boolean }) => (
   <span
-    className={`rounded-md border px-1.5 py-0.5 text-[9px] font-medium ${
+    className={`rounded-md border px-1.5 py-0.5 text-[10px] font-medium ${
       active
         ? "border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-300"
-        : "border-white/10 bg-white/[0.03] text-zinc-500"
+        : "border-white/10 bg-white/[0.03] text-zinc-400"
     }`}
   >
     {active ? "Active" : "Inactive"}
@@ -876,7 +876,7 @@ const StatusBadge = ({ active }: { active: boolean }) => (
 
 const EmptyState = ({ children }: { children: string }) => (
   <div className="rounded-lg border border-dashed border-white/[0.08] bg-black/10 px-3 py-4 text-center">
-    <p className="text-[11px] text-zinc-500">{children}</p>
+    <p className="text-xs text-zinc-400">{children}</p>
   </div>
 );
 

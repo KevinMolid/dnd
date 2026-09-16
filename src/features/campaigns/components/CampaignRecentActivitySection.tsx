@@ -25,37 +25,35 @@ const CampaignRecentActivitySection = ({
 
         <Link
           to={`/campaigns/${campaignId}/journal`}
-          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
         >
           Journal
         </Link>
       </div>
 
       {loading ? (
-        <p className="mt-3 text-[11px] text-zinc-500">Loading activity…</p>
+        <p className="mt-3 text-xs text-zinc-400">Loading activity…</p>
       ) : !latestJournalEntry ? (
-        <p className="mt-3 text-[11px] text-zinc-500">
-          No journal entries yet.
-        </p>
+        <p className="mt-3 text-xs text-zinc-400">No journal entries yet.</p>
       ) : (
         <div className="mt-3 border-t border-white/[0.06] pt-3">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px] text-zinc-400">
+            <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-zinc-300">
               {getJournalTypeLabel(latestJournalEntry.type)}
             </span>
 
             {latestJournalEntry.pinned ? (
-              <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-300">
+              <span className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-300">
                 Pinned
               </span>
             ) : null}
           </div>
 
-          <h3 className="mt-2 text-xs font-semibold text-zinc-100">
+          <h3 className="mt-2 text-sm font-semibold text-zinc-100">
             {latestJournalEntry.title}
           </h3>
 
-          <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[9px] text-zinc-500">
+          <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[11px] text-zinc-400">
             {typeof latestJournalEntry.sessionNumber === "number" ? (
               <span>Session {latestJournalEntry.sessionNumber}</span>
             ) : null}
@@ -70,7 +68,7 @@ const CampaignRecentActivitySection = ({
           </div>
 
           {latestJournalEntry.content ? (
-            <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-[11px] leading-5 text-zinc-300">
+            <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-sm leading-5 text-zinc-300">
               {latestJournalEntry.content}
             </p>
           ) : null}

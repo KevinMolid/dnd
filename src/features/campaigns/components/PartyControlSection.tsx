@@ -125,12 +125,12 @@ const PartyControlSection = ({
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="truncate text-xs font-semibold text-white">
+                        <p className="truncate text-sm font-semibold text-white">
                           {character.name}
                         </p>
 
                         {character.ownerUid ? (
-                          <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[9px] font-medium text-sky-300">
+                          <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
                             {character.ownerUid === currentUserId
                               ? "Yours"
                               : `Owned: ${
@@ -140,7 +140,7 @@ const PartyControlSection = ({
                                 }`}
                           </span>
                         ) : (
-                          <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-medium text-zinc-500">
+                          <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
                             Unassigned
                           </span>
                         )}
@@ -149,14 +149,14 @@ const PartyControlSection = ({
                           currentUserId === character.ownerUid && (
                             <button
                               onClick={() => onOpenLevelUp(character)}
-                              className="rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-amber-300 transition hover:bg-amber-400/15"
+                              className="rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-400/15"
                             >
                               Level up
                             </button>
                           )}
                       </div>
 
-                      <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                      <p className="mt-0.5 truncate text-xs text-zinc-400">
                         {[
                           character.level ? `Level ${character.level}` : null,
                           character.race,
@@ -169,7 +169,7 @@ const PartyControlSection = ({
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                    <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
                       <span
                         className={`rounded-full border px-2 py-0.5 ${
                           hpPercent <= 25
@@ -192,7 +192,7 @@ const PartyControlSection = ({
                         (character.conditions ?? []).map((condition) => (
                           <span
                             key={condition}
-                            className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[9px] text-amber-300"
+                            className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-300"
                           >
                             {condition}
                           </span>
@@ -208,7 +208,7 @@ const PartyControlSection = ({
                               prev === character.id ? null : character.id,
                             )
                           }
-                          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+                          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
                         >
                           {isExpanded ? "Close" : "Manage"}
                         </button>
@@ -221,7 +221,7 @@ const PartyControlSection = ({
                             from: `${location.pathname}${location.search}`,
                             label: "Back to campaign",
                           }}
-                          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                         >
                           Open
                         </Link>
@@ -291,7 +291,7 @@ const PartyControlSection = ({
                                 [character.id]: 0,
                               }));
                             }}
-                            className="ml-auto rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
+                            className="ml-auto rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
                           >
                             Apply
                           </button>
@@ -329,7 +329,7 @@ const PartyControlSection = ({
                                 [character.id]: 0,
                               }));
                             }}
-                            className="rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
+                            className="rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
                           >
                             Apply
                           </button>
