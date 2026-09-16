@@ -32,6 +32,8 @@ import MonstersPage from "./pages/MonstersPage";
 import EditCharacter from "./pages/EditCharacter";
 import DMWorkspacePage from "./pages/DMWorkspacePage";
 
+import CampaignGmOutlet from "./features/campaigns/components/CampaignGmOutlet";
+
 // Context
 import { EncounterProvider } from "./context/EncounterContext";
 
@@ -134,9 +136,11 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
 
         <Route path="journal" element={<CampaignJournalPage />} />
 
-        <Route path="maps" element={<CampaignMapsPage />} />
+        <Route element={<CampaignGmOutlet />}>
+          <Route path="maps" element={<CampaignMapsPage />} />
 
-        <Route path="members" element={<CampaignMembersPage />} />
+          <Route path="members" element={<CampaignMembersPage />} />
+        </Route>
       </Route>
 
       {/* Full-page campaign tools */}

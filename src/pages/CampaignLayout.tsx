@@ -65,7 +65,15 @@ const CampaignLayout = () => {
           onOpenSettings={() => navigate(`/campaigns/${campaign.id}/settings`)}
         />
 
-        <Outlet />
+        <Outlet
+          context={{
+            campaign,
+            membership,
+            isGm,
+            canManageCampaign:
+              membership.role === "gm" || membership.role === "co-gm",
+          }}
+        />
       </div>
     </div>
   );

@@ -210,21 +210,23 @@ const CampaignHeader = ({
                 )}
               </NavLink>
 
-              <NavLink
-                to={`/campaigns/${campaign.id}/maps`}
-                className={({ isActive }) =>
-                  `${tabBaseClass} ${
-                    isActive ? tabActiveClass : tabInactiveClass
-                  }`
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    Maps
-                    <TabUnderline active={isActive} />
-                  </>
-                )}
-              </NavLink>
+              {canManageCampaign ? (
+                <NavLink
+                  to={`/campaigns/${campaign.id}/maps`}
+                  className={({ isActive }) =>
+                    `${tabBaseClass} ${
+                      isActive ? tabActiveClass : tabInactiveClass
+                    }`
+                  }
+                >
+                  {({ isActive }) => (
+                    <>
+                      Maps
+                      <TabUnderline active={isActive} />
+                    </>
+                  )}
+                </NavLink>
+              ) : null}
 
               {canManageCampaign ? (
                 <NavLink
