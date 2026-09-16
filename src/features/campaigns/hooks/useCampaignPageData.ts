@@ -6,10 +6,11 @@ import {
   getDoc,
   onSnapshot,
   query,
-  updateDoc,
   where,
   type UpdateData,
   runTransaction,
+  writeBatch,
+  serverTimestamp,
 } from "firebase/firestore";
 
 import { useAuth } from "../../../context/AuthContext";
@@ -63,6 +64,7 @@ import { applyBackgroundBonuses } from "../../character-sheet/utils/characterShe
 import { itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
 
 import { addLogEntry } from "../utils/campaignLog";
+import { pickPublicCharacterUpdates } from "../utils/characterPublic";
 
 export type CampaignJournalPreview = {
   id: string;
@@ -163,6 +165,10 @@ export type CharacterDoc = {
 
   campaignStatus?: CampaignCharacterStatus;
 
+  claimMode?: "locked" | "open" | "assigned";
+
+  claimableByUid?: string | null;
+
   name: string;
 
   imageUrl?: string;
@@ -257,6 +263,10 @@ export type CampaignCharacter = {
   campaignId: string | null;
 
   campaignStatus: CampaignCharacterStatus;
+
+  claimMode?: "locked" | "open" | "assigned";
+
+  claimableByUid?: string | null;
 
   name: string;
 
@@ -1012,6 +1022,12 @@ export const useCampaignPageData = (
       null,
     );
 
+  const isGm =
+    membership?.role ===
+      "gm" ||
+    membership?.role ===
+      "co-gm";
+
   const [
     campaignCharacters,
     setCampaignCharacters,
@@ -1251,18 +1267,14 @@ export const useCampaignPageData = (
       true,
     );
 
-    const q = query(
-      collection(
-        db,
-        "characters",
-      ),
-
-      where(
-        "campaignId",
-        "==",
-        campaignId,
-      ),
-    );
+    const q = isGm
+      ? query(
+          collection(db, "characters"),
+          where("campaignId", "==", campaignId),
+        )
+      : query(
+          collection(db, "campaigns", campaignId, "party"),
+        );
 
     const unsub =
       onSnapshot(
@@ -1400,6 +1412,12 @@ export const useCampaignPageData = (
                         getCampaignStatus(
                           data.campaignStatus,
                         ),
+
+                      claimMode:
+                        data.claimMode ?? "locked",
+
+                      claimableByUid:
+                        data.claimableByUid ?? null,
 
                       name:
                         data.name?.trim() ||
@@ -1582,6 +1600,7 @@ export const useCampaignPageData = (
     campaignId,
     pageState,
     usersById,
+    isGm,
   ]);
 
   useEffect(() => {
@@ -1682,12 +1701,6 @@ export const useCampaignPageData = (
     pageState,
     usersById,
   ]);
-
-  const isGm =
-    membership?.role ===
-      "gm" ||
-    membership?.role ===
-      "co-gm";
 
   useEffect(() => {
     if (
@@ -1823,33 +1836,41 @@ export const useCampaignPageData = (
     useCallback(
       async (
         id: string,
-
-        updates: Record<
-          string,
-          unknown
-        >,
+        updates: Record<string, unknown>,
       ) => {
         try {
-          await updateDoc(
-            doc(
-              db,
-              "characters",
-              id,
-            ),
+          const character = campaignCharacters.find((entry) => entry.id === id);
+          const batch = writeBatch(db);
 
-            updates as UpdateData<CharacterDoc>,
+          batch.update(
+            doc(db, "characters", id),
+            {
+              ...(updates as UpdateData<CharacterDoc>),
+              updatedAt: serverTimestamp(),
+            },
           );
-        } catch (
-          error
-        ) {
-          console.error(
-            "Failed to update character:",
-            error,
-          );
+
+          if (character?.campaignId) {
+            const publicUpdates = pickPublicCharacterUpdates(updates);
+
+            if (Object.keys(publicUpdates).length > 0) {
+              batch.update(
+                doc(db, "campaigns", character.campaignId, "party", id),
+                {
+                  ...publicUpdates,
+                  updatedAt: serverTimestamp(),
+                },
+              );
+            }
+          }
+
+          await batch.commit();
+        } catch (error) {
+          console.error("Failed to update character:", error);
+          throw error;
         }
       },
-
-      [],
+      [campaignCharacters],
     );
 
   const updateCharacterXp =
@@ -2092,14 +2113,9 @@ export const useCampaignPageData = (
                 null,
             });
 
-          await updateDoc(
-            doc(
-              db,
-              "characters",
-              character.id,
-            ),
-
-            payload,
+          await updateCharacter(
+            character.id,
+            payload as Record<string, unknown>,
           );
         } catch (
           error
@@ -2111,7 +2127,7 @@ export const useCampaignPageData = (
         }
       },
 
-      [],
+      [updateCharacter],
     );
 
   const handleApplyXp =
@@ -2168,87 +2184,38 @@ export const useCampaignPageData = (
 
   const handleClaimCharacter =
     useCallback(
-      async (
-        characterId: string,
-      ) => {
-        if (
-          !user ||
-          !campaignId
-        ) {
-          return;
+      async (characterId: string) => {
+        if (!user || !campaignId) return;
+
+        const character = campaignCharacters.find((entry) => entry.id === characterId);
+        if (!character || character.ownerUid !== null) return;
+
+        const canClaim =
+          character.claimMode === "open" ||
+          (character.claimMode === "assigned" &&
+            character.claimableByUid === user.uid);
+
+        if (!canClaim) {
+          throw new Error("This character is not available to you.");
         }
 
-        try {
-          await runTransaction(
-            db,
+        const batch = writeBatch(db);
+        const claimUpdates = {
+          ownerUid: user.uid,
+          claimMode: "locked",
+          claimableByUid: null,
+          updatedAt: serverTimestamp(),
+        };
 
-            async (
-              transaction,
-            ) => {
-              const characterRef =
-                doc(
-                  db,
-                  "characters",
-                  characterId,
-                );
+        batch.update(doc(db, "characters", characterId), claimUpdates);
+        batch.update(
+          doc(db, "campaigns", campaignId, "party", characterId),
+          claimUpdates,
+        );
 
-              const characterSnap =
-                await transaction.get(
-                  characterRef,
-                );
-
-              if (
-                !characterSnap.exists()
-              ) {
-                throw new Error(
-                  "Character not found.",
-                );
-              }
-
-              const data =
-                characterSnap.data() as CharacterDoc;
-
-              if (
-                data.campaignId !==
-                campaignId
-              ) {
-                throw new Error(
-                  "Character is no longer in this campaign.",
-                );
-              }
-
-              if (
-                data.ownerUid !==
-                null
-              ) {
-                throw new Error(
-                  "Character has already been claimed.",
-                );
-              }
-
-              transaction.update(
-                characterRef,
-                {
-                  ownerUid:
-                    user.uid,
-                },
-              );
-            },
-          );
-        } catch (
-          error
-        ) {
-          console.error(
-            "Failed to claim character:",
-            error,
-          );
-        }
+        await batch.commit();
       },
-
-      [
-        campaignId,
-        user,
-      ],
+      [campaignCharacters, campaignId, user],
     );
 
   const handleSetCharacterActive =

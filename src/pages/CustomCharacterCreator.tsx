@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
 
 import { createCharacter } from "../characters";
 import { db } from "../firebase";
@@ -14,8 +14,6 @@ import SpellPickerModal from "../components/character/SpellPickerModal";
 import { defaultCharacterPortraits } from "../data/defaultCharacterPortraits";
 
 import { itemsById } from "../rulesets/dnd/dnd2024/data/items";
-
-import { calculateArmorClass } from "../rulesets/dnd/dnd2024/armorClass";
 
 import type {
   AbilityKey,
@@ -342,24 +340,8 @@ const CustomCharacterCreator = ({
     ) as Record<AbilityKey, string>;
   });
 
-  /*
-   * Existing custom characters predate automatic AC. Keep their old AC as a
-   * manual override until the player explicitly switches them to Automatic.
-   * Newly created characters default to Automatic.
-   */
-  const [armorClassMode, setArmorClassMode] = useState<"automatic" | "manual">(
-    initialStats.armorClassMode ??
-      (isEditing && typeof initialStats.armorClass === "number"
-        ? "manual"
-        : "automatic"),
-  );
-
-  const [manualArmorClass, setManualArmorClass] = useState(
-    initialStats.manualArmorClass ?? initialStats.armorClass ?? 10,
-  );
-
-  const [armorClassBonus, setArmorClassBonus] = useState(
-    initialStats.armorClassBonus ?? 0,
+  const [customArmorClass, setCustomArmorClass] = useState(
+    initialStats.armorClass ?? 10,
   );
 
   const [customMaxHp, setCustomMaxHp] = useState(initialStats.maxHp ?? 10);
@@ -432,34 +414,6 @@ const CustomCharacterCreator = ({
   const [equipment, setEquipment] = useState<CharacterEquipmentEntry[]>(
     initialCharacter?.equipment ?? [],
   );
-
-  const armorClassResult = useMemo(
-    () =>
-      calculateArmorClass({
-        abilityScores,
-        className: customClassName,
-        equipment,
-        resolveItem: (entry) => {
-          const itemId =
-            entry.source === "campaign" ? entry.baseItemId : entry.itemId;
-
-          return itemId ? itemsById[itemId] : undefined;
-        },
-        mode: armorClassMode,
-        manualArmorClass,
-        extraModifier: armorClassBonus,
-      }),
-    [
-      abilityScores,
-      customClassName,
-      equipment,
-      armorClassMode,
-      manualArmorClass,
-      armorClassBonus,
-    ],
-  );
-
-  const customArmorClass = armorClassResult.value;
 
   const [itemPickerOpen, setItemPickerOpen] = useState(false);
 
@@ -962,9 +916,6 @@ const CustomCharacterCreator = ({
 
     customStats: {
       armorClass: customArmorClass,
-      armorClassMode,
-      manualArmorClass,
-      armorClassBonus,
 
       currentHp: getSavedCurrentHp(),
 
@@ -1080,15 +1031,39 @@ const CustomCharacterCreator = ({
          * ownerUid, campaignId, campaignStatus,
          * XP, etc. are preserved.
          */
-        await updateDoc(
-          doc(db, "characters", characterId),
+        const batch = writeBatch(db);
 
-          {
-            ...payload,
+        batch.update(doc(db, "characters", characterId), {
+          ...payload,
+          updatedAt: serverTimestamp(),
+        } as any);
 
-            updatedAt: new Date(),
-          } as any,
-        );
+        if (initialCharacter?.campaignId) {
+          batch.update(
+            doc(
+              db,
+              "campaigns",
+              initialCharacter.campaignId,
+              "party",
+              characterId,
+            ),
+            {
+              name: payload.name,
+              imageUrl: payload.imageUrl ?? null,
+              level: payload.level,
+              className: payload.className ?? null,
+              speciesName: payload.speciesName ?? null,
+              race: payload.speciesName ?? null,
+              currentHp: payload.customStats?.currentHp ?? 0,
+              maxHp: payload.customStats?.maxHp ?? 1,
+              armorClass: payload.customStats?.armorClass ?? null,
+              speed: payload.customStats?.speed ?? null,
+              updatedAt: serverTimestamp(),
+            },
+          );
+        }
+
+        await batch.commit();
 
         navigate(`/characters/${characterId}`);
 
@@ -1396,80 +1371,10 @@ const CustomCharacterCreator = ({
 
                   <Card title="Combat">
                     <div className="grid gap-2.5 sm:grid-cols-5">
-                      <div className="sm:col-span-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm text-zinc-300">
-                            Armor Class
-                          </span>
-
-                          <div className="flex rounded-lg border border-white/10 bg-zinc-950/70 p-0.5">
-                            {(["automatic", "manual"] as const).map((mode) => (
-                              <button
-                                key={mode}
-                                type="button"
-                                onClick={() => setArmorClassMode(mode)}
-                                className={`rounded-md px-2 py-1 text-[10px] font-semibold transition ${
-                                  armorClassMode === mode
-                                    ? "bg-white/10 text-white"
-                                    : "text-zinc-500 hover:text-zinc-300"
-                                }`}
-                              >
-                                {mode === "automatic" ? "Automatic" : "Manual"}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {armorClassMode === "automatic" ? (
-                          <div className="mt-1.5 rounded-lg border border-sky-500/10 bg-sky-500/[0.04] px-2.5 py-2">
-                            <div className="flex items-center justify-between gap-3">
-                              <div>
-                                <p className="text-[10px] font-semibold text-sky-300/80">
-                                  {armorClassResult.formulaLabel}
-                                </p>
-                                <p className="mt-0.5 text-[9px] text-zinc-500">
-                                  Calculated from abilities and equipped gear
-                                </p>
-                              </div>
-
-                              <span className="text-xl font-bold text-white">
-                                {customArmorClass}
-                              </span>
-                            </div>
-
-                            <div className="mt-2 space-y-1 border-t border-white/[0.06] pt-2">
-                              {armorClassResult.breakdown.map((line) => (
-                                <div
-                                  key={line.id}
-                                  className="flex items-center justify-between gap-3 text-[10px]"
-                                >
-                                  <span className="min-w-0 truncate text-zinc-500">
-                                    {line.label}
-                                  </span>
-                                  <span className="font-semibold text-zinc-300">
-                                    {line.value >= 0 ? "+" : ""}
-                                    {line.value}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-1.5">
-                            <NumberInput
-                              label="Manual AC"
-                              value={manualArmorClass}
-                              min={0}
-                              onChange={setManualArmorClass}
-                            />
-                          </div>
-                        )}
-                      </div>
-
                       <NumberInput
-                        label="Extra AC modifier"
-                        value={armorClassBonus}
-                        onChange={setArmorClassBonus}
+                        label="AC"
+                        value={customArmorClass}
+                        onChange={setCustomArmorClass}
                       />
 
                       <NumberInput

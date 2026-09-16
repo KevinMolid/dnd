@@ -11,6 +11,7 @@ import {
   getDocs,
   serverTimestamp,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
@@ -280,6 +281,31 @@ export const useCharacterSheetData = (
     loadCharacter();
   }, [characterId]);
 
+  const updatePrivateAndPublic = async (
+    privateUpdates: Record<string, unknown>,
+    publicUpdates: Record<string, unknown> = {},
+  ) => {
+    if (!character || !characterId) return;
+
+    const batch = writeBatch(db);
+    batch.update(doc(db, "characters", characterId), {
+      ...privateUpdates,
+      updatedAt: serverTimestamp(),
+    });
+
+    if (character.campaignId && Object.keys(publicUpdates).length > 0) {
+      batch.update(
+        doc(db, "campaigns", character.campaignId, "party", characterId),
+        {
+          ...publicUpdates,
+          updatedAt: serverTimestamp(),
+        },
+      );
+    }
+
+    await batch.commit();
+  };
+
   /* =========================================================
      LIVE STATE
   ========================================================= */
@@ -346,16 +372,9 @@ export const useCharacterSheetData = (
     );
 
     try {
-      await updateDoc(
-        doc(
-          db,
-          "characters",
-          characterId,
-        ),
-        {
-          "customStats.currentHp":
-            normalizedHp,
-        },
+      await updatePrivateAndPublic(
+        { "customStats.currentHp": normalizedHp },
+        { currentHp: normalizedHp },
       );
     } catch (
       err
@@ -418,16 +437,9 @@ export const useCharacterSheetData = (
   );
 
   try {
-    await updateDoc(
-      doc(
-        db,
-        "characters",
-        characterId,
-      ),
-      {
-        currentHp:
-          normalizedHp,
-      },
+    await updatePrivateAndPublic(
+      { currentHp: normalizedHp },
+      { currentHp: normalizedHp },
     );
   } catch (
     err
@@ -494,16 +506,9 @@ const handleSetConditions = async (
   );
 
   try {
-    await updateDoc(
-      doc(
-        db,
-        "characters",
-        characterId,
-      ),
-      {
-        conditions:
-          normalizedConditions,
-      },
+    await updatePrivateAndPublic(
+      { conditions: normalizedConditions },
+      { conditions: normalizedConditions },
     );
   } catch (err) {
     console.error(
@@ -1253,22 +1258,13 @@ const handleSetConditions = async (
       );
 
       try {
-        await updateDoc(
-          doc(
-            db,
-            "characters",
-            characterId,
-          ),
+        await updatePrivateAndPublic(
           {
-            "customStats.currentHp":
-              nextHp,
-
-            "customStats.hitDiceRemaining":
-              nextHitDiceRemaining,
-
-            lastShortRestAt:
-              serverTimestamp(),
+            "customStats.currentHp": nextHp,
+            "customStats.hitDiceRemaining": nextHitDiceRemaining,
+            lastShortRestAt: serverTimestamp(),
           },
+          { currentHp: nextHp },
         );
       } catch (
         err
@@ -1307,22 +1303,13 @@ const handleSetConditions = async (
       );
 
       try {
-        await updateDoc(
-          doc(
-            db,
-            "characters",
-            characterId,
-          ),
+        await updatePrivateAndPublic(
           {
-            currentHp:
-              nextHp,
-
-            hitDiceRemaining:
-              nextHitDiceRemaining,
-
-            lastShortRestAt:
-              serverTimestamp(),
+            currentHp: nextHp,
+            hitDiceRemaining: nextHitDiceRemaining,
+            lastShortRestAt: serverTimestamp(),
           },
+          { currentHp: nextHp },
         );
       } catch (
         err
@@ -1481,28 +1468,15 @@ const handleSetConditions = async (
         );
 
         try {
-          await updateDoc(
-            doc(
-              db,
-              "characters",
-              characterId,
-            ),
+          await updatePrivateAndPublic(
             {
-              "customStats.currentHp":
-                maxHp,
-
-              "customStats.hitDiceRemaining":
-                level,
-
-              "customSpellcasting.spellSlots":
-                restoredSpellSlots,
-
-              deathSaves:
-                emptyDeathSaves,
-
-              lastLongRestAt:
-                serverTimestamp(),
+              "customStats.currentHp": maxHp,
+              "customStats.hitDiceRemaining": level,
+              "customSpellcasting.spellSlots": restoredSpellSlots,
+              deathSaves: emptyDeathSaves,
+              lastLongRestAt: serverTimestamp(),
             },
+            { currentHp: maxHp },
           );
         } catch (
           err
@@ -1584,28 +1558,15 @@ const handleSetConditions = async (
       );
 
       try {
-        await updateDoc(
-          doc(
-            db,
-            "characters",
-            characterId,
-          ),
+        await updatePrivateAndPublic(
           {
-            currentHp:
-              maxHp,
-
-            hitDiceRemaining:
-              level,
-
-            spellSlotsRemaining:
-              restoredSpellSlots,
-
-            deathSaves:
-              emptyDeathSaves,
-
-            lastLongRestAt:
-              serverTimestamp(),
+            currentHp: maxHp,
+            hitDiceRemaining: level,
+            spellSlotsRemaining: restoredSpellSlots,
+            deathSaves: emptyDeathSaves,
+            lastLongRestAt: serverTimestamp(),
           },
+          { currentHp: maxHp },
         );
       } catch (
         err

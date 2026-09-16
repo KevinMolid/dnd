@@ -97,7 +97,10 @@ const PartyControlSection = ({
             const canOpenCharacter =
               isGm ||
               (character.ownerUid !== null &&
-                currentUserId === character.ownerUid);
+                currentUserId === character.ownerUid) ||
+              (character.ownerUid === null &&
+                character.claimMode === "assigned" &&
+                currentUserId === character.claimableByUid);
 
             const xpProgressLabel =
               xpData.nextLevelXp !== null
