@@ -139,6 +139,15 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
         <Route element={<CampaignGmOutlet />}>
           <Route path="maps" element={<CampaignMapsPage />} />
 
+          <Route
+            path="maps/:mapId"
+            element={
+              <CampaignEncounterScope>
+                <MapViewerPage />
+              </CampaignEncounterScope>
+            }
+          />
+
           <Route path="members" element={<CampaignMembersPage />} />
         </Route>
       </Route>
@@ -148,15 +157,6 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
       <Route
         path="/campaigns/:campaignId/settings"
         element={<CampaignSettingsPage />}
-      />
-
-      <Route
-        path="/campaigns/:campaignId/maps/:mapId"
-        element={
-          <CampaignEncounterScope>
-            <MapViewerPage />
-          </CampaignEncounterScope>
-        }
       />
 
       <Route
