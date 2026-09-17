@@ -52,6 +52,8 @@ export type WorkspaceModuleConfig = {
    */
   noteContent?: string;
 
+  selectedNoteId?: string;
+
   /*
    * Map module
    */
