@@ -550,7 +550,7 @@ const CampaignCharactersPage = () => {
         <span className="rounded-md border border-sky-500/20 bg-sky-500/[0.07] px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
           {character.ownerUid === user?.uid
             ? "Yours"
-            : `Owned: ${ownerName || "Assigned player"}`}
+            : ownerName || "Assigned player"}
         </span>
       );
     }
