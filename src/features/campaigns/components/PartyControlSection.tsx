@@ -52,6 +52,8 @@ const PartyControlSection = ({
   const [openConditionMenuId, setOpenConditionMenuId] = useState<string | null>(
     null,
   );
+  const [portraitCharacter, setPortraitCharacter] =
+    useState<CampaignCharacter | null>(null);
 
   return (
     <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
@@ -117,11 +119,27 @@ const PartyControlSection = ({
               >
                 <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0 flex items-center gap-3">
-                    <Avatar
-                      name={character.name}
-                      src={character.imageUrl}
-                      className="h-10 w-10 shrink-0 rounded-lg"
-                    />
+                    {character.imageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setPortraitCharacter(character)}
+                        aria-label={`Enlarge portrait for ${character.name}`}
+                        title="Enlarge portrait"
+                        className="group shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+                      >
+                        <Avatar
+                          name={character.name}
+                          src={character.imageUrl}
+                          className="h-10 w-10 rounded-lg transition group-hover:brightness-110"
+                        />
+                      </button>
+                    ) : (
+                      <Avatar
+                        name={character.name}
+                        src={character.imageUrl}
+                        className="h-10 w-10 shrink-0 rounded-lg"
+                      />
+                    )}
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -391,6 +409,32 @@ const PartyControlSection = ({
           })
         )}
       </div>
+
+      {portraitCharacter?.imageUrl ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${portraitCharacter.name} portrait`}
+          onMouseDown={() => setPortraitCharacter(null)}
+        >
+          <button
+            type="button"
+            onClick={() => setPortraitCharacter(null)}
+            aria-label="Close portrait"
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-zinc-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+          >
+            <i className="fa-solid fa-xmark" />
+          </button>
+
+          <img
+            src={portraitCharacter.imageUrl}
+            alt={portraitCharacter.name}
+            onMouseDown={(event) => event.stopPropagation()}
+            className="max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] rounded-xl object-contain shadow-2xl"
+          />
+        </div>
+      ) : null}
     </section>
   );
 };
