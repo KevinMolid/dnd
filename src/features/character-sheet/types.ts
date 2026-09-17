@@ -4,6 +4,11 @@ import type {
 } from "react";
 
 import type {
+  CharacterSpell,
+  SpellId,
+} from "../../rulesets/dnd/dnd2024/types";
+
+import type {
   AbilityKey,
   SkillId,
   LanguageId,
@@ -118,6 +123,10 @@ export type CharacterDoc = CharacterSheetData & {
   hitDiceRemaining?: number;
 
   spellSlotsRemaining?: Record<string, number>;
+  spellOverrides?: {
+  added: CharacterSpell[];
+  removedSpellIds: SpellId[];
+};
 
   age?: string | number;
   height?: string;
@@ -333,6 +342,16 @@ export type CharacterSheetDataHookResult = {
     level: number,
     remaining: number,
   ) => Promise<void>;
+
+  handleAddSpell: (spell: {
+  spellId: string;
+  name: string;
+  level: number;
+}) => Promise<void>;
+
+handleRemoveSpell: (
+  spellId: string,
+) => Promise<void>;
 
   handleApplyDecision: (
     level: number,

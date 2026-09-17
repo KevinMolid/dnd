@@ -1080,6 +1080,339 @@ const handleSetConditions = async (
     }
   };
 
+  const handleAddSpell = async (spell: {
+  spellId: string;
+  name: string;
+  level: number;
+}) => {
+  if (!character || !characterId) {
+    return;
+  }
+
+  /* ===============================================
+     CUSTOM
+  =============================================== */
+
+  if (character.buildMode === "custom") {
+    const currentSpells =
+      character.customSpellcasting?.spells ?? [];
+
+    if (
+      currentSpells.some(
+        (entry) => entry.spellId === spell.spellId,
+      )
+    ) {
+      return;
+    }
+
+    const nextSpells = [
+      ...currentSpells,
+      {
+        spellId: spell.spellId,
+        name: spell.name,
+        level: spell.level,
+      },
+    ];
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+
+            customSpellcasting: {
+              ...(current.customSpellcasting ?? {}),
+
+              spells: nextSpells,
+            },
+          }
+        : current,
+    );
+
+    try {
+      await updateDoc(
+        doc(db, "characters", characterId),
+        {
+          "customSpellcasting.spells": nextSpells,
+          updatedAt: serverTimestamp(),
+        },
+      );
+    } catch (err) {
+      console.error(
+        "Failed to add spell:",
+        err,
+      );
+
+      setCharacter((current) =>
+        current
+          ? {
+              ...current,
+
+              customSpellcasting: {
+                ...(current.customSpellcasting ?? {}),
+
+                spells: currentSpells,
+              },
+            }
+          : current,
+      );
+
+      setError("Failed to add spell.");
+
+      throw err;
+    }
+
+    return;
+  }
+
+  /* ===============================================
+     GUIDED
+  =============================================== */
+
+  const currentOverrides =
+    character.spellOverrides ?? {
+      added: [],
+      removedSpellIds: [],
+    };
+
+  const currentAdded =
+    currentOverrides.added ?? [];
+
+  const currentRemoved =
+    currentOverrides.removedSpellIds ?? [];
+
+  const alreadyAdded = currentAdded.some(
+    (entry) => entry.spellId === spell.spellId,
+  );
+
+  const nextAdded = alreadyAdded
+    ? currentAdded
+    : [
+        ...currentAdded,
+        {
+          spellId: spell.spellId as SpellId,
+          level: spell.level as any,
+          sourceType: "class" as const,
+          sourceId: character.classId,
+          known: true,
+          prepared: false,
+          countsAgainstKnownLimit: false,
+          countsAgainstPreparationLimit: false,
+        },
+      ];
+
+  /*
+   * Adding a spell that was previously removed should simply
+   * cancel the removal override.
+   */
+  const nextRemoved = currentRemoved.filter(
+    (spellId) => spellId !== spell.spellId,
+  );
+
+  setCharacter((current) =>
+    current
+      ? {
+          ...current,
+
+          spellOverrides: {
+            added: nextAdded,
+            removedSpellIds: nextRemoved,
+          },
+        }
+      : current,
+  );
+
+  try {
+    await updateDoc(
+      doc(db, "characters", characterId),
+      {
+        spellOverrides: {
+          added: nextAdded,
+          removedSpellIds: nextRemoved,
+        },
+
+        updatedAt: serverTimestamp(),
+      },
+    );
+  } catch (err) {
+    console.error(
+      "Failed to add spell:",
+      err,
+    );
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+
+            spellOverrides: currentOverrides,
+          }
+        : current,
+    );
+
+    setError("Failed to add spell.");
+
+    throw err;
+  }
+};
+
+const handleRemoveSpell = async (
+  spellId: string,
+) => {
+  if (!character || !characterId) {
+    return;
+  }
+
+  /* ===============================================
+     CUSTOM
+  =============================================== */
+
+  if (character.buildMode === "custom") {
+    const currentSpells =
+      character.customSpellcasting?.spells ?? [];
+
+    const nextSpells = currentSpells.filter(
+      (entry) => entry.spellId !== spellId,
+    );
+
+    if (nextSpells.length === currentSpells.length) {
+      return;
+    }
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+
+            customSpellcasting: {
+              ...(current.customSpellcasting ?? {}),
+
+              spells: nextSpells,
+            },
+          }
+        : current,
+    );
+
+    try {
+      await updateDoc(
+        doc(db, "characters", characterId),
+        {
+          "customSpellcasting.spells": nextSpells,
+          updatedAt: serverTimestamp(),
+        },
+      );
+    } catch (err) {
+      console.error(
+        "Failed to remove spell:",
+        err,
+      );
+
+      setCharacter((current) =>
+        current
+          ? {
+              ...current,
+
+              customSpellcasting: {
+                ...(current.customSpellcasting ?? {}),
+
+                spells: currentSpells,
+              },
+            }
+          : current,
+      );
+
+      setError("Failed to remove spell.");
+
+      throw err;
+    }
+
+    return;
+  }
+
+  /* ===============================================
+     GUIDED
+  =============================================== */
+
+  const currentOverrides =
+    character.spellOverrides ?? {
+      added: [],
+      removedSpellIds: [],
+    };
+
+  const currentAdded =
+    currentOverrides.added ?? [];
+
+  const currentRemoved =
+    currentOverrides.removedSpellIds ?? [];
+
+  /*
+   * If this was manually added, removing it just deletes
+   * the addition. Otherwise hide the spell using a removal
+   * override without touching its original source.
+   */
+  const wasManuallyAdded = currentAdded.some(
+    (entry) => entry.spellId === spellId,
+  );
+
+  const nextAdded = currentAdded.filter(
+    (entry) => entry.spellId !== spellId,
+  );
+
+  const nextRemoved = wasManuallyAdded
+    ? currentRemoved
+    : Array.from(
+        new Set([
+          ...currentRemoved,
+          spellId as SpellId,
+        ]),
+      );
+
+  setCharacter((current) =>
+    current
+      ? {
+          ...current,
+
+          spellOverrides: {
+            added: nextAdded,
+            removedSpellIds: nextRemoved,
+          },
+        }
+      : current,
+  );
+
+  try {
+    await updateDoc(
+      doc(db, "characters", characterId),
+      {
+        spellOverrides: {
+          added: nextAdded,
+          removedSpellIds: nextRemoved,
+        },
+
+        updatedAt: serverTimestamp(),
+      },
+    );
+  } catch (err) {
+    console.error(
+      "Failed to remove spell:",
+      err,
+    );
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+
+            spellOverrides: currentOverrides,
+          }
+        : current,
+    );
+
+    setError("Failed to remove spell.");
+
+    throw err;
+  }
+};
+
   const handleShortRest = async (
     requestedHitDice: number,
   ): Promise<ShortRestResult> => {
@@ -2718,14 +3051,28 @@ const handleSetConditions = async (
             ),
           ];
 
-        const nonSpeciesDerivedKnownSpells =
-          derivedKnownSpells.filter(
-            (
-              spell,
-            ) =>
-              spell.sourceType !==
-              "species",
-          );
+        const spellOverrides =
+  character.spellOverrides ?? {
+    added: [],
+    removedSpellIds: [],
+  };
+
+const removedSpellIds = new Set(
+  spellOverrides.removedSpellIds ?? [],
+);
+
+const nonSpeciesDerivedKnownSpells = [
+  ...derivedKnownSpells.filter(
+    (spell) =>
+      spell.sourceType !== "species" &&
+      !removedSpellIds.has(spell.spellId),
+  ),
+
+  ...(spellOverrides.added ?? []).filter(
+    (spell) =>
+      !removedSpellIds.has(spell.spellId),
+  ),
+];
 
         const spells =
           unique(
@@ -3397,39 +3744,42 @@ const handleSetConditions = async (
     );
 
   return {
-    character,
+  character,
 
-    loading,
+  loading,
 
-    error,
+  error,
 
-    campaignItemsById,
+  campaignItemsById,
 
-    derived,
+  derived,
 
-    setError,
+  setError,
 
-    handleSetCurrentHp,
+  handleSetCurrentHp,
 
-    handleSetConditions,
+  handleSetConditions,
 
-    handleSetDefenses,
+  handleSetDefenses,
 
-    handleSetPlayerNotes,
+  handleSetPlayerNotes,
 
-    handleEquipmentChange,
+  handleEquipmentChange,
 
-    handleSetHeroicInspiration,
+  handleSetHeroicInspiration,
 
-    handleSetDeathSaves,
+  handleSetDeathSaves,
 
-    handleSetSpellSlotRemaining,
+  handleSetSpellSlotRemaining,
 
-    handleApplyDecision,
+  handleAddSpell,
+  handleRemoveSpell,
 
-    handleCompleteLevelUp,
+  handleApplyDecision,
 
-    handleShortRest,
-    handleLongRest,
-  };
+  handleCompleteLevelUp,
+
+  handleShortRest,
+  handleLongRest,
+};
 };

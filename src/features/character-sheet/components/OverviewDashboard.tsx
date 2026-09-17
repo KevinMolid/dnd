@@ -10,6 +10,10 @@ import { formatLabel, formatModifier } from "../utils/characterSheetHelpers";
 
 import type { AbilityKey, Spell } from "../../../rulesets/dnd/dnd2024/types";
 
+import SpellPickerModal from "../../../components/character/SpellPickerModal";
+
+import type { CustomSpellEntry } from "../../../types/customCharacter";
+
 export type OverviewAttack = {
   id: string;
 
@@ -97,6 +101,10 @@ type OverviewDashboardProps = {
     level: number,
     remaining: number,
   ) => void | Promise<void>;
+
+  onAddSpell?: (spell: CustomSpellEntry) => void | Promise<void>;
+
+  onRemoveSpell?: (spellId: string) => void | Promise<void>;
 
   actions?: OverviewAction[];
 
@@ -248,6 +256,10 @@ const OverviewDashboard = ({
 
   onSpellSlotChange,
 
+  onAddSpell,
+
+  onRemoveSpell,
+
   actions = [],
 
   bonusActions = [],
@@ -339,6 +351,8 @@ const OverviewDashboard = ({
             spells={spells}
             spellcasting={spellcasting}
             onSpellSlotChange={onSpellSlotChange}
+            onAddSpell={onAddSpell}
+            onRemoveSpell={onRemoveSpell}
           />
         ) : null}
 
@@ -526,20 +540,27 @@ const AttackRow = ({ attack }: { attack: OverviewAttack }) => {
 
 const SpellsPanel = ({
   spells,
-
   spellcasting,
-
   onSpellSlotChange,
+  onAddSpell,
+  onRemoveSpell,
 }: {
   spells: OverviewSpell[];
-
   spellcasting?: OverviewSpellcasting;
-
   onSpellSlotChange?: (
     level: number,
     remaining: number,
   ) => void | Promise<void>;
+  onAddSpell?: (spell: CustomSpellEntry) => void | Promise<void>;
+  onRemoveSpell?: (spellId: string) => void | Promise<void>;
 }) => {
+  const [spellPickerOpen, setSpellPickerOpen] = useState(false);
+  const [removeMode, setRemoveMode] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<OverviewSpell | null>(
+    null,
+  );
+  const [busySpellId, setBusySpellId] = useState<string | null>(null);
+
   const sorted = [...spells].sort(
     (a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name),
   );
@@ -547,13 +568,8 @@ const SpellsPanel = ({
   const grouped = sorted.reduce<Record<number, OverviewSpell[]>>(
     (groups, spell) => {
       const level = spell.level ?? 0;
-
-      if (!groups[level]) {
-        groups[level] = [];
-      }
-
+      if (!groups[level]) groups[level] = [];
       groups[level].push(spell);
-
       return groups;
     },
     {},
@@ -566,119 +582,267 @@ const SpellsPanel = ({
     typeof spellcasting?.saveDc === "number" ||
     typeof spellcasting?.attackBonus === "number";
 
-  if (sorted.length === 0 && slots.length === 0 && !hasStats) {
-    return (
-      <PanelSection title="Spells">
-        <EmptyText>This character has no spells.</EmptyText>
-      </PanelSection>
-    );
-  }
+  const selectedSpellIds = sorted
+    .map((spell) => spell.spellId ?? spell.id)
+    .filter((id): id is string => Boolean(id));
+
+  const requestRemove = (spell: OverviewSpell) => {
+    if (!onRemoveSpell) return;
+    setConfirmRemove(spell);
+  };
+
+  const confirmRemoval = async () => {
+    if (!confirmRemove || !onRemoveSpell) return;
+
+    const spellId = confirmRemove.spellId ?? confirmRemove.id;
+    if (!spellId) return;
+
+    setBusySpellId(spellId);
+
+    try {
+      await onRemoveSpell(spellId);
+      setConfirmRemove(null);
+    } finally {
+      setBusySpellId(null);
+    }
+  };
 
   return (
-    <div>
-      {hasStats || slots.length > 0 ? (
-        <section className="border-b border-white/[0.07] p-3">
-          {hasStats ? (
-            <div className="grid grid-cols-3 gap-1">
-              <SpellcastingStat
-                label="Ability"
-                value={spellcasting?.abilityLabel ?? "—"}
-              />
+    <>
+      <div>
+        {hasStats || slots.length > 0 ? (
+          <section className="border-b border-white/[0.07] p-3">
+            {hasStats ? (
+              <div className="grid grid-cols-3 gap-1">
+                <SpellcastingStat
+                  label="Ability"
+                  value={spellcasting?.abilityLabel ?? "—"}
+                />
+                <SpellcastingStat
+                  label="Save DC"
+                  value={spellcasting?.saveDc ?? "—"}
+                />
+                <SpellcastingStat
+                  label="Attack"
+                  value={
+                    typeof spellcasting?.attackBonus === "number"
+                      ? formatModifier(spellcasting.attackBonus)
+                      : "—"
+                  }
+                />
+              </div>
+            ) : null}
 
-              <SpellcastingStat
-                label="Save DC"
-                value={spellcasting?.saveDc ?? "—"}
-              />
-
-              <SpellcastingStat
-                label="Attack"
-                value={
-                  typeof spellcasting?.attackBonus === "number"
-                    ? formatModifier(spellcasting.attackBonus)
-                    : "—"
+            {slots.length > 0 ? (
+              <div
+                className={
+                  hasStats ? "mt-3 border-t border-white/[0.06] pt-3" : ""
                 }
-              />
-            </div>
-          ) : null}
+              >
+                <div className="mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
+                    Spell Slots
+                  </span>
+                </div>
 
-          {slots.length > 0 ? (
-            <div
-              className={
-                hasStats ? "mt-3 border-t border-white/[0.06] pt-3" : ""
-              }
-            >
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
-                  Spell Slots
-                </span>
-
-                <span className="text-[9px] text-zinc-500">
-                  Click to use or restore
-                </span>
+                <div className="space-y-2">
+                  {slots.map((slot) => (
+                    <SpellSlotRow
+                      key={slot.level}
+                      slot={slot}
+                      onChange={onSpellSlotChange}
+                    />
+                  ))}
+                </div>
               </div>
+            ) : null}
+          </section>
+        ) : null}
 
-              <div className="space-y-2">
-                {slots.map((slot) => (
-                  <SpellSlotRow
-                    key={slot.level}
-                    slot={slot}
-                    onChange={onSpellSlotChange}
-                  />
-                ))}
-              </div>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
-
-      {Object.entries(grouped).map(([level, levelSpells]) => (
         <section
-          key={level}
-          className="border-b border-white/[0.06] p-3 last:border-b-0"
+          className={`border-b p-3 transition ${
+            removeMode
+              ? "border-white/[0.08] bg-white/[0.015]"
+              : "border-white/[0.06]"
+          }`}
         >
-          <div className="mb-2 flex items-center gap-2">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
-              {Number(level) === 0 ? "Cantrips" : `Level ${level}`}
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
+              Spells
             </span>
 
-            <span className="text-sm text-zinc-500">{levelSpells.length}</span>
-          </div>
+            <div className="flex items-center gap-1.5">
+              {onAddSpell ? (
+                <button
+                  type="button"
+                  onClick={() => setSpellPickerOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-zinc-300 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+                >
+                  <i className="fa-solid fa-plus text-[9px]" />
+                  Add
+                </button>
+              ) : null}
 
-          <div className="flex flex-wrap gap-1.5">
-            {levelSpells.map((spell, index) => (
-              <SpellTooltip
-                key={spell.spellId ?? spell.id ?? `${spell.name}-${index}`}
-                spell={spell}
-              >
-                <div className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-white/[0.07] bg-black/20 px-2 py-1.5 transition hover:border-white/15 hover:bg-white/[0.05]">
-                  <span className="whitespace-nowrap text-[11px] font-semibold text-white">
-                    {spell.name}
-                  </span>
-
-                  {spell.concentration ? (
-                    <span
-                      title="Concentration"
-                      className="text-[9px] font-bold text-fuchsia-300"
-                    >
-                      C
-                    </span>
-                  ) : null}
-
-                  {spell.ritual ? (
-                    <span
-                      title="Ritual"
-                      className="text-[9px] font-bold text-sky-300"
-                    >
-                      R
-                    </span>
-                  ) : null}
-                </div>
-              </SpellTooltip>
-            ))}
+              {onRemoveSpell && sorted.length > 0 ? (
+                <button
+                  type="button"
+                  aria-pressed={removeMode}
+                  onClick={() => setRemoveMode((current) => !current)}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[10px] font-semibold transition ${
+                    removeMode
+                      ? "border-white/[0.12] bg-white/[0.07] text-zinc-200"
+                      : "border-white/[0.08] bg-white/[0.04] text-zinc-400 hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+                  }`}
+                >
+                  <i
+                    className={`fa-solid ${
+                      removeMode ? "fa-check" : "fa-trash-can"
+                    } text-[9px]`}
+                  />
+                  {removeMode ? "Done" : "Remove"}
+                </button>
+              ) : null}
+            </div>
           </div>
         </section>
-      ))}
-    </div>
+
+        {Object.entries(grouped).map(([level, levelSpells]) => (
+          <section
+            key={level}
+            className={`border-b border-white/[0.06] p-3 last:border-b-0 ${
+              removeMode ? "bg-white/[0.01]" : ""
+            }`}
+          >
+            <div className="mb-2 flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.1em] text-zinc-400">
+                {Number(level) === 0 ? "Cantrips" : `Level ${level}`}
+              </span>
+              <span className="text-sm text-zinc-500">
+                {levelSpells.length}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {levelSpells.map((spell, index) => {
+                const spellId =
+                  spell.spellId ?? spell.id ?? `${spell.name}-${index}`;
+
+                return (
+                  <div key={spellId} className="inline-flex items-stretch">
+                    <SpellTooltip spell={spell}>
+                      <div
+                        className={`inline-flex cursor-pointer items-center gap-1.5 border px-2 py-1.5 transition ${
+                          removeMode
+                            ? "rounded-l-md border-white/[0.08] bg-white/[0.025]"
+                            : "rounded-md border-white/[0.07] bg-black/20 hover:border-white/15 hover:bg-white/[0.05]"
+                        }`}
+                      >
+                        <span className="whitespace-nowrap text-[11px] font-semibold text-white">
+                          {spell.name}
+                        </span>
+
+                        {spell.concentration ? (
+                          <span
+                            title="Concentration"
+                            className="text-[9px] font-bold text-fuchsia-300"
+                          >
+                            C
+                          </span>
+                        ) : null}
+
+                        {spell.ritual ? (
+                          <span
+                            title="Ritual"
+                            className="text-[9px] font-bold text-sky-300"
+                          >
+                            R
+                          </span>
+                        ) : null}
+                      </div>
+                    </SpellTooltip>
+
+                    {removeMode ? (
+                      <button
+                        type="button"
+                        title={`Remove ${spell.name}`}
+                        aria-label={`Remove ${spell.name}`}
+                        onClick={() => requestRemove(spell)}
+                        className="inline-flex w-7 items-center justify-center rounded-r-md border border-l-0 border-white/[0.08] bg-white/[0.04] text-[10px] text-zinc-400 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+                      >
+                        <i className="fa-solid fa-xmark" />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+
+        {sorted.length === 0 ? (
+          <div className="p-3">
+            <EmptyText>No spells added.</EmptyText>
+          </div>
+        ) : null}
+      </div>
+
+      <SpellPickerModal
+        isOpen={spellPickerOpen}
+        onClose={() => setSpellPickerOpen(false)}
+        selectedSpellIds={selectedSpellIds}
+        onSelect={async (spell) => {
+          if (!onAddSpell) return;
+          await onAddSpell(spell);
+        }}
+        onRemove={
+          onRemoveSpell
+            ? async (spellId) => {
+                await onRemoveSpell(spellId);
+              }
+            : undefined
+        }
+      />
+
+      {confirmRemove ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/80 p-4">
+          <div className="w-full max-w-sm overflow-hidden rounded-xl border border-white/10 bg-zinc-950 shadow-2xl">
+            <div className="border-b border-white/10 bg-white/[0.025] px-4 py-3">
+              <h3 className="text-sm font-semibold text-white">
+                Remove {confirmRemove.name}?
+              </h3>
+            </div>
+
+            <div className="p-4">
+              <p className="text-xs leading-5 text-zinc-400">
+                Remove {confirmRemove.name} from this character&apos;s spell
+                list?
+              </p>
+
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmRemove(null)}
+                  className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/[0.08]"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={
+                    busySpellId === (confirmRemove.spellId ?? confirmRemove.id)
+                  }
+                  onClick={() => void confirmRemoval()}
+                  className="rounded-lg border border-red-700/60 bg-red-950/60 px-3 py-2 text-xs font-semibold text-red-100 transition hover:bg-red-900/70 disabled:opacity-40"
+                >
+                  Remove Spell
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 };
 

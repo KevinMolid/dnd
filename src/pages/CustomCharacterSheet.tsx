@@ -79,6 +79,14 @@ type CustomCharacterSheetProps = {
     remaining: number,
   ) => Promise<void>;
 
+  handleAddSpell: (spell: {
+    spellId: string;
+    name: string;
+    level: number;
+  }) => Promise<void>;
+
+  handleRemoveSpell: (spellId: string) => Promise<void>;
+
   handleShortRest: (hitDiceToSpend: number) => Promise<ShortRestResult>;
 
   handleLongRest: () => Promise<void>;
@@ -311,6 +319,8 @@ const CustomCharacterSheet = ({
   handleSetHeroicInspiration,
   handleSetDeathSaves,
   handleSetSpellSlotRemaining,
+  handleAddSpell,
+  handleRemoveSpell,
   handleShortRest,
   handleLongRest,
 }: CustomCharacterSheetProps) => {
@@ -867,6 +877,10 @@ const CustomCharacterSheet = ({
                   : undefined
               }
               onSpellSlotChange={handleSetSpellSlotRemaining}
+              onAddSpell={spellcasting.enabled ? handleAddSpell : undefined}
+              onRemoveSpell={
+                spellcasting.enabled ? handleRemoveSpell : undefined
+              }
               actions={featureActions}
               bonusActions={featureBonusActions}
               reactions={featureReactions}

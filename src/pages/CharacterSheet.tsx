@@ -73,6 +73,8 @@ const CharacterSheet = () => {
     handleSetConditions,
     handleSetDefenses,
     handleSetSpellSlotRemaining,
+    handleAddSpell,
+    handleRemoveSpell,
     handleSetPlayerNotes,
 
     handleApplyDecision,
@@ -146,6 +148,8 @@ const CharacterSheet = () => {
         handleSetHeroicInspiration={handleSetHeroicInspiration}
         handleSetDeathSaves={handleSetDeathSaves}
         handleSetSpellSlotRemaining={handleSetSpellSlotRemaining}
+        handleAddSpell={handleAddSpell}
+        handleRemoveSpell={handleRemoveSpell}
         handleSetPlayerNotes={handleSetPlayerNotes}
         handleShortRest={handleShortRest}
         handleLongRest={handleLongRest}
@@ -692,6 +696,8 @@ const CharacterSheet = () => {
                 slots: guidedSpellSlots,
               }}
               onSpellSlotChange={handleSetSpellSlotRemaining}
+              onAddSpell={handleAddSpell}
+              onRemoveSpell={handleRemoveSpell}
               actions={characterActions}
               bonusActions={characterBonusActions}
               reactions={characterReactions}
