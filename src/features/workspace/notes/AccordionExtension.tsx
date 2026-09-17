@@ -5,14 +5,19 @@ import {
   ReactNodeViewRenderer,
   type NodeViewProps,
 } from "@tiptap/react";
-import { useState } from "react";
 
 function AccordionNodeView({
   node,
   updateAttributes,
   selected,
 }: NodeViewProps) {
-  const [open, setOpen] = useState(true);
+  const open = node.attrs.open !== false;
+
+  const toggleOpen = () => {
+    updateAttributes({
+      open: !open,
+    });
+  };
 
   return (
     <NodeViewWrapper
@@ -27,21 +32,29 @@ function AccordionNodeView({
       >
         <button
           type="button"
-          onClick={() => setOpen((current) => !current)}
+          onClick={toggleOpen}
           title={open ? "Collapse section" : "Expand section"}
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[9px] text-zinc-500 transition hover:bg-white/10 hover:text-white"
         >
           <i
-            className={`fa-solid fa-chevron-right transition-transform ${open ? "rotate-90" : ""}`}
+            className={`fa-solid fa-chevron-right transition-transform ${
+              open ? "rotate-90" : ""
+            }`}
           />
         </button>
+
         <input
           value={(node.attrs.title as string) || ""}
-          onChange={(event) => updateAttributes({ title: event.target.value })}
+          onChange={(event) =>
+            updateAttributes({
+              title: event.target.value,
+            })
+          }
           placeholder="Section title"
           className="min-w-0 flex-1 bg-transparent py-1 text-xs font-semibold text-zinc-200 outline-none placeholder:text-zinc-600"
         />
       </div>
+
       <div className={open ? "block" : "hidden"}>
         <NodeViewContent className="note-accordion-content min-h-9 px-3 py-2" />
       </div>
@@ -51,43 +64,80 @@ function AccordionNodeView({
 
 export const AccordionExtension = Node.create({
   name: "accordion",
+
   group: "block",
+
   content: "block+",
+
   defining: true,
+
   isolating: true,
+
   addAttributes() {
     return {
       title: {
         default: "New section",
+
         parseHTML: (element) =>
           element.getAttribute("data-title") || "New section",
-        renderHTML: (attributes) => ({ "data-title": attributes.title }),
+
+        renderHTML: (attributes) => ({
+          "data-title": attributes.title,
+        }),
+      },
+
+      open: {
+        default: true,
+
+        parseHTML: (element) => element.getAttribute("data-open") !== "false",
+
+        renderHTML: (attributes) => ({
+          "data-open": attributes.open === false ? "false" : "true",
+        }),
       },
     };
   },
+
   parseHTML() {
     return [
       {
         tag: 'div[data-note-accordion="true"]',
+
         contentElement: '[data-note-accordion-content="true"]',
+
         getAttrs: (element) => ({
           title:
             (element as HTMLElement).getAttribute("data-title") ||
             "New section",
+
+          open: (element as HTMLElement).getAttribute("data-open") !== "false",
         }),
       },
     ];
   },
+
   renderHTML({ HTMLAttributes }) {
     return [
       "div",
-      mergeAttributes(HTMLAttributes, { "data-note-accordion": "true" }),
-      ["div", { "data-note-accordion-content": "true" }, 0],
+
+      mergeAttributes(HTMLAttributes, {
+        "data-note-accordion": "true",
+      }),
+
+      [
+        "div",
+        {
+          "data-note-accordion-content": "true",
+        },
+        0,
+      ],
     ];
   },
+
   addNodeView() {
     return ReactNodeViewRenderer(AccordionNodeView);
   },
+
   addCommands() {
     return {
       insertAccordion:
@@ -95,11 +145,21 @@ export const AccordionExtension = Node.create({
         ({ commands }) =>
           commands.insertContent({
             type: this.name,
-            attrs: { title },
-            content: [{ type: "paragraph" }],
+
+            attrs: {
+              title,
+              open: true,
+            },
+
+            content: [
+              {
+                type: "paragraph",
+              },
+            ],
           }),
     };
   },
+
   addKeyboardShortcuts() {
     return {
       "Mod-Alt-a": () => this.editor.commands.insertAccordion("New section"),
