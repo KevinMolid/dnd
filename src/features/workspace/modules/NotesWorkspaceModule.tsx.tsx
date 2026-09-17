@@ -22,6 +22,8 @@ import {
 
 import { db } from "../../../firebase";
 
+import AccordionExtension from "../notes/AccordionExtension";
+
 import useMonsterLibrary from "../../../hooks/useMonsterLibrary";
 import useNpcLibrary from "../../../hooks/useNpcLibrary";
 import useCampaignPageData from "../../campaigns/hooks/useCampaignPageData";
@@ -336,6 +338,7 @@ export function NotesWorkspaceModule({
         strike: false,
         link: false,
       }),
+      AccordionExtension,
       createEntityMentionExtension(() => mentionItemsRef.current),
     ],
     [],
@@ -789,6 +792,19 @@ export function NotesWorkspaceModule({
               className={getFormatButtonClass(editor.isActive("underline"))}
             >
               <span className="underline">U</span>
+            </button>
+
+            <div className="mx-0.5 h-4 w-px bg-white/10" />
+
+            <button
+              type="button"
+              onClick={() =>
+                editor.chain().focus().insertAccordion("New section").run()
+              }
+              title="Insert accordion (Ctrl+Alt+A)"
+              className={getFormatButtonClass(false)}
+            >
+              <i className="fa-solid fa-bars-staggered text-[9px]" />
             </button>
           </div>
         ) : null}
