@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -7,6 +8,10 @@ import {
 } from "react";
 
 import { EditorContent, useEditor } from "@tiptap/react";
+
+import { doc, onSnapshot, serverTimestamp, setDoc } from "firebase/firestore";
+
+import { db } from "../../../firebase";
 
 import StarterKit from "@tiptap/starter-kit";
 
@@ -71,7 +76,13 @@ export function NotesWorkspaceModule({
   updateModule,
   removeModule,
 }: WorkspaceModuleRenderProps) {
-  const noteContent = module.config?.noteContent ?? "";
+  const legacyNoteContent = module.config?.noteContent ?? "";
+
+  const [noteContent, setNoteContent] = useState(legacyNoteContent);
+
+  const [storedTitle, setStoredTitle] = useState(module.title);
+
+  const [notesLoaded, setNotesLoaded] = useState(false);
 
   const [editingTitle, setEditingTitle] = useState(false);
 
@@ -86,6 +97,158 @@ export function NotesWorkspaceModule({
   const { npcs } = useNpcLibrary(campaignId);
 
   const { selectEntity, selectCharacter } = useWorkspace();
+
+  const noteDocRef = useMemo(
+    () =>
+      campaignId
+        ? doc(db, "campaigns", campaignId, "workspaceNotes", module.id)
+        : null,
+    [campaignId, module.id],
+  );
+
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const pendingContentRef = useRef<string | null>(null);
+
+  const pendingTitleRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!noteDocRef) {
+      return;
+    }
+
+    setNotesLoaded(false);
+
+    const unsubscribe = onSnapshot(
+      noteDocRef,
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data() as {
+            title?: string;
+            content?: string;
+          };
+
+          const nextContent =
+            typeof data.content === "string" ? data.content : "";
+          const nextTitle =
+            typeof data.title === "string" && data.title.trim()
+              ? data.title
+              : module.title;
+
+          if (
+            pendingContentRef.current === null ||
+            pendingContentRef.current === nextContent
+          ) {
+            if (pendingContentRef.current === nextContent) {
+              pendingContentRef.current = null;
+            }
+
+            setNoteContent(nextContent);
+          }
+
+          if (
+            pendingTitleRef.current === null ||
+            pendingTitleRef.current === nextTitle
+          ) {
+            if (pendingTitleRef.current === nextTitle) {
+              pendingTitleRef.current = null;
+            }
+
+            setStoredTitle(nextTitle);
+          }
+
+          setNotesLoaded(true);
+          return;
+        }
+
+        /*
+         * One-time migration path for existing notes that previously lived
+         * only inside the browser-local workspace config.
+         */
+        const migratedContent = module.config?.noteContent ?? "";
+        const migratedTitle = module.title || "DM Notes";
+
+        setNoteContent(migratedContent);
+        setStoredTitle(migratedTitle);
+        setNotesLoaded(true);
+
+        void setDoc(noteDocRef, {
+          title: migratedTitle,
+          content: migratedContent,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      },
+      (error) => {
+        console.error("Failed to load workspace notes:", error);
+        setNotesLoaded(true);
+      },
+    );
+
+    return () => {
+      unsubscribe();
+
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, [noteDocRef, module.id]);
+
+  const persistContent = useCallback(
+    (content: string) => {
+      if (!noteDocRef) {
+        return;
+      }
+
+      pendingContentRef.current = content;
+      setNoteContent(content);
+
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+
+      saveTimerRef.current = setTimeout(() => {
+        void setDoc(
+          noteDocRef,
+          {
+            title: storedTitle || module.title || "DM Notes",
+            content,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        ).catch((error) => {
+          console.error("Failed to save workspace notes:", error);
+        });
+      }, 350);
+    },
+    [noteDocRef, storedTitle, module.title],
+  );
+
+  const persistTitle = useCallback(
+    async (title: string) => {
+      if (!noteDocRef) {
+        return;
+      }
+
+      pendingTitleRef.current = title;
+      setStoredTitle(title);
+
+      try {
+        await setDoc(
+          noteDocRef,
+          {
+            title,
+            content: noteContent,
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      } catch (error) {
+        console.error("Failed to save workspace note title:", error);
+      }
+    },
+    [noteDocRef, noteContent],
+  );
 
   const mentionItems = useMemo<EntityMentionItem[]>(
     () => [
@@ -174,18 +337,6 @@ export function NotesWorkspaceModule({
     mentionItemsRef.current = mentionItems;
   }, [mentionItems]);
 
-  const moduleRef = useRef(module);
-
-  const updateModuleRef = useRef(updateModule);
-
-  useEffect(() => {
-    moduleRef.current = module;
-  }, [module]);
-
-  useEffect(() => {
-    updateModuleRef.current = updateModule;
-  }, [updateModule]);
-
   const extensions = useMemo(
     () => [
       StarterKit.configure({
@@ -213,35 +364,30 @@ export function NotesWorkspaceModule({
     [],
   );
 
-  const editor = useEditor({
-    immediatelyRender: false,
+  const editor = useEditor(
+    {
+      immediatelyRender: false,
 
-    extensions,
+      extensions,
 
-    content: normalizeStoredNoteContent(noteContent),
+      content: normalizeStoredNoteContent(noteContent),
 
-    editorProps: {
-      attributes: {
-        class: "workspace-note-editor",
+      editorProps: {
+        attributes: {
+          class: "workspace-note-editor",
+        },
+      },
+
+      onUpdate: ({ editor: currentEditor }) => {
+        persistContent(currentEditor.getHTML());
+      },
+
+      onSelectionUpdate: () => {
+        setEditorRevision((current) => current + 1);
       },
     },
-
-    onUpdate: ({ editor: currentEditor }) => {
-      const currentModule = moduleRef.current;
-
-      updateModuleRef.current(currentModule.id, {
-        config: {
-          ...currentModule.config,
-
-          noteContent: currentEditor.getHTML(),
-        },
-      });
-    },
-
-    onSelectionUpdate: () => {
-      setEditorRevision((current) => current + 1);
-    },
-  });
+    [extensions, persistContent],
+  );
 
   void editorRevision;
 
@@ -266,8 +412,8 @@ export function NotesWorkspaceModule({
   }, [editor, noteContent]);
 
   useEffect(() => {
-    setTitleDraft(module.title);
-  }, [module.title]);
+    setTitleDraft(storedTitle);
+  }, [storedTitle]);
 
   const saveTitle = () => {
     const trimmed = titleDraft.trim();
@@ -278,13 +424,15 @@ export function NotesWorkspaceModule({
       title: nextTitle,
     });
 
+    void persistTitle(nextTitle);
+
     setTitleDraft(nextTitle);
 
     setEditingTitle(false);
   };
 
   const cancelTitleEdit = () => {
-    setTitleDraft(module.title);
+    setTitleDraft(storedTitle);
 
     setEditingTitle(false);
   };
@@ -383,7 +531,7 @@ export function NotesWorkspaceModule({
             className="workspace-no-drag group flex min-w-0 flex-1 items-center gap-2 text-left"
           >
             <span className="truncate text-xs font-semibold text-zinc-200 group-hover:text-white">
-              {module.title}
+              {storedTitle}
             </span>
 
             <i className="fa-solid fa-pen shrink-0 text-[9px] text-zinc-700 opacity-0 transition group-hover:opacity-100" />
@@ -437,7 +585,13 @@ export function NotesWorkspaceModule({
         onClick={handleEditorClick}
         className="workspace-no-drag workspace-scrollbar min-h-0 flex-1 overflow-y-auto"
       >
-        <EditorContent editor={editor} className="min-h-full" />
+        {notesLoaded ? (
+          <EditorContent editor={editor} className="min-h-full" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-[11px] text-zinc-600">
+            Loading notes...
+          </div>
+        )}
       </div>
     </div>
   );

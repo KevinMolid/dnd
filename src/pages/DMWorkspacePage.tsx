@@ -145,10 +145,25 @@ function loadWorkspace(campaignId: string): SavedWorkspace | null {
 
 function saveWorkspace(campaignId: string, workspace: SavedWorkspace) {
   try {
+    const browserWorkspace: SavedWorkspace = {
+      ...workspace,
+      modules: workspace.modules.map((module) =>
+        module.type === "notes"
+          ? {
+              ...module,
+              config: {
+                ...module.config,
+                noteContent: undefined,
+              },
+            }
+          : module,
+      ),
+    };
+
     localStorage.setItem(
       getStorageKey(campaignId),
 
-      JSON.stringify(workspace),
+      JSON.stringify(browserWorkspace),
     );
   } catch (error) {
     console.error("Failed to save workspace", error);

@@ -18,7 +18,7 @@ import RandomEncounterWorkspaceModule from "./modules/RandomEncounterWorkspaceMo
 
 import {
   NotesWorkspaceModule,
-} from "./modules/PlaceholderWorkspaceModules";
+} from "./modules/NotesWorkspaceModule.tsx";
 
 import type {
   WorkspaceModuleRenderProps,
