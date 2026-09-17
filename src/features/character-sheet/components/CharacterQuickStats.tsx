@@ -1,6 +1,7 @@
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { createPortal } from "react-dom";
+import { useParams } from "react-router-dom";
 
 import DefensesControl from "./DefensesControl";
 
@@ -125,6 +126,7 @@ const CharacterQuickStats = ({
       <div className="grid gap-2 xl:grid-cols-[250px_minmax(430px,1fr)_360px] xl:grid-rows-[auto_auto]">
         <QuickSection
           title="Live State"
+          storageId="live-state"
           defaultOpen
           summary={`${currentHp}/${maxHp} HP · AC ${armorClass}`}
           className="xl:col-start-3 xl:row-span-2 xl:row-start-1"
@@ -273,6 +275,7 @@ const CharacterQuickStats = ({
 
         <QuickSection
           title="Abilities & Saving Throws"
+          storageId="abilities"
           defaultOpen={false}
           summary={`STR ${formatModifier(getModifier(abilityScores.str ?? 10))} · DEX ${formatModifier(getModifier(abilityScores.dex ?? 10))} · CON ${formatModifier(getModifier(abilityScores.con ?? 10))}`}
           className="xl:col-start-1 xl:row-start-1"
@@ -331,6 +334,7 @@ const CharacterQuickStats = ({
 
         <QuickSection
           title="Skills"
+          storageId="skills"
           defaultOpen={false}
           summary={`${skills.filter((skill) => skill.proficient).length} proficient`}
           className="xl:col-start-2 xl:row-start-1"
@@ -344,6 +348,7 @@ const CharacterQuickStats = ({
 
         <QuickSection
           title="Proficiencies"
+          storageId="proficiencies"
           defaultOpen={false}
           summary={`${languages.length} ${languages.length === 1 ? "language" : "languages"}`}
           className="xl:col-span-2 xl:col-start-1 xl:row-start-2"
@@ -362,6 +367,7 @@ const CharacterQuickStats = ({
 
 type QuickSectionProps = {
   title: string;
+  storageId: string;
   children: ReactNode;
   defaultOpen?: boolean;
   summary?: ReactNode;
@@ -370,12 +376,53 @@ type QuickSectionProps = {
 
 const QuickSection = ({
   title,
+  storageId,
   children,
   defaultOpen = true,
   summary,
   className = "",
 }: QuickSectionProps) => {
+  const { characterId } = useParams();
   const [open, setOpen] = useState(defaultOpen);
+  const restoredKeyRef = useRef<string | null>(null);
+
+  const storageKey = characterId
+    ? `lorebound:character-sheet:${characterId}:section:${storageId}`
+    : null;
+
+  useEffect(() => {
+    if (!storageKey || restoredKeyRef.current === storageKey) {
+      return;
+    }
+
+    restoredKeyRef.current = storageKey;
+
+    try {
+      const stored = localStorage.getItem(storageKey);
+
+      if (stored === "open") {
+        setOpen(true);
+      } else if (stored === "closed") {
+        setOpen(false);
+      } else {
+        setOpen(defaultOpen);
+      }
+    } catch {
+      setOpen(defaultOpen);
+    }
+  }, [storageKey, defaultOpen]);
+
+  useEffect(() => {
+    if (!storageKey || restoredKeyRef.current !== storageKey) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(storageKey, open ? "open" : "closed");
+    } catch {
+      // UI persistence is optional.
+    }
+  }, [storageKey, open]);
 
   return (
     <section
