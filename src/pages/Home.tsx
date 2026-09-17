@@ -35,6 +35,7 @@ type Campaign = {
   imagePositionY?: number;
   imageZoom?: number;
   lastPlayed?: string;
+  description?: string;
 };
 
 type Character = {
@@ -178,6 +179,7 @@ const Home = () => {
                 imagePositionX: campaignData.imagePositionX ?? 50,
                 imagePositionY: campaignData.imagePositionY ?? 50,
                 imageZoom: campaignData.imageZoom ?? 1,
+                description: campaignData.description?.trim() || undefined,
               };
             }),
           );
@@ -434,12 +436,13 @@ const Home = () => {
                               </p>
                             </div>
 
-                            <p className="mt-1.5 text-sm text-zinc-400">
-                              {campaign.system ?? "Tabletop RPG"}
-                              {campaign.lastPlayed
-                                ? ` · Last active ${campaign.lastPlayed}`
-                                : ""}
-                            </p>
+                            {campaign.description ? (
+                              <p className="mt-1.5 line-clamp-2 text-sm text-zinc-500">
+                                {campaign.description.length > 100
+                                  ? `${campaign.description.slice(0, 100).trimEnd()}…`
+                                  : campaign.description}
+                              </p>
+                            ) : null}
                           </div>
                         </Link>
 
