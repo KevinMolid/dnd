@@ -330,16 +330,16 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen min-w-0 overflow-x-hidden bg-zinc-950 text-zinc-100">
       <Container>
         <div className="py-6 sm:py-8">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+          <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
             {/* =====================================================
               CAMPAIGNS
           ===================================================== */}
 
-            <section className="rounded-2xl border border-white/10 bg-zinc-900/35 p-4 sm:p-5">
-              <div className="mb-4 flex items-center justify-between gap-4">
+            <section className="min-w-0 rounded-2xl border border-white/10 bg-zinc-900/35 p-3 sm:p-5">
+              <div className="mb-4 flex items-center justify-between gap-2 sm:gap-4">
                 <h1 className="text-xl font-semibold text-white sm:text-2xl">
                   Campaigns
                 </h1>
@@ -349,7 +349,8 @@ const Home = () => {
                   className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                 >
                   <i className="fa-solid fa-plus text-xs" />
-                  Create campaign
+                  <span className="hidden sm:inline">Create campaign</span>
+                  <span className="sm:hidden">Create</span>
                 </Link>
               </div>
 
@@ -376,13 +377,13 @@ const Home = () => {
                       key={campaign.id}
                       className="group relative rounded-xl border border-white/[0.08] bg-black/15 p-3 transition hover:border-white/15 hover:bg-white/[0.025]"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
                         <Link
                           to={`/campaigns/${campaign.id}`}
-                          className="flex min-w-0 flex-1 items-center gap-4 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:gap-4"
                           aria-label={`Open ${campaign.name}`}
                         >
-                          <div className="h-[72px] w-28 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
+                          <div className="h-14 w-16 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30 sm:h-[72px] sm:w-28">
                             {campaign.imageUrl ? (
                               <img
                                 src={campaign.imageUrl}
@@ -406,18 +407,31 @@ const Home = () => {
                           </div>
 
                           <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h2 className="truncate text-base font-semibold text-white sm:text-lg">
+                            <div className="min-w-0">
+                              <h2 className="truncate text-sm font-semibold text-white sm:text-lg">
                                 {campaign.name}
                               </h2>
 
-                              <span
-                                className={`rounded-full px-2.5 py-1 text-xs font-medium ${getRoleBadgeClass(
-                                  campaign.role,
-                                )}`}
-                              >
-                                {formatRoleLabel(campaign.role)}
-                              </span>
+                              <div className="mt-1 flex items-center gap-2">
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium sm:px-2.5 sm:py-1 sm:text-xs ${getRoleBadgeClass(
+                                    campaign.role,
+                                  )}`}
+                                >
+                                  {formatRoleLabel(campaign.role)}
+                                </span>
+
+                                <span className="truncate text-xs text-zinc-400 sm:hidden">
+                                  {campaign.system ?? "Tabletop RPG"}
+                                </span>
+                              </div>
+
+                              <p className="mt-1.5 hidden text-sm text-zinc-400 sm:block">
+                                {campaign.system ?? "Tabletop RPG"}
+                                {campaign.lastPlayed
+                                  ? ` · Last active ${campaign.lastPlayed}`
+                                  : ""}
+                              </p>
                             </div>
 
                             <p className="mt-1.5 text-sm text-zinc-400">
@@ -436,7 +450,7 @@ const Home = () => {
                               to={`/campaigns/${campaign.id}/settings`}
                               aria-label={`Settings for ${campaign.name}`}
                               title="Campaign settings"
-                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sm text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:h-10 sm:w-10 sm:text-sm"
                             >
                               <i className="fa-solid fa-gear" />
                             </Link>
@@ -453,7 +467,7 @@ const Home = () => {
               CHARACTERS
           ===================================================== */}
 
-            <section className="rounded-2xl border border-white/10 bg-zinc-900/35 p-4 sm:p-5">
+            <section className="min-w-0 rounded-2xl border border-white/10 bg-zinc-900/35 p-3 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <h2 className="text-xl font-semibold text-white sm:text-2xl">
                   Characters
@@ -464,7 +478,8 @@ const Home = () => {
                   className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
                 >
                   <i className="fa-solid fa-plus text-xs" />
-                  Create character
+                  <span className="hidden sm:inline">Create character</span>
+                  <span className="sm:hidden">Create</span>
                 </Link>
               </div>
 
@@ -526,7 +541,7 @@ const Home = () => {
                           <div className="flex shrink-0 items-center gap-2">
                             <Link
                               to={`/characters/${character.id}/edit`}
-                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sm text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:h-10 sm:w-10 sm:text-sm"
                               aria-label={`Edit ${character.name}`}
                               title="Edit character"
                             >
@@ -537,7 +552,7 @@ const Home = () => {
                               type="button"
                               onClick={() => handleDeleteCharacter(character)}
                               disabled={deletingCharacterId === character.id}
-                              className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sm text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/[0.07] hover:text-rose-300 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:h-10 sm:w-10 sm:text-sm"
                               aria-label={`Delete ${character.name}`}
                               title="Delete character"
                             >

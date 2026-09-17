@@ -72,7 +72,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 text-white backdrop-blur-xl">
       <Container>
-        <div className="flex min-h-[80px] items-center justify-between gap-4">
+        <div className="flex min-h-[64px] items-center justify-between gap-2 sm:min-h-[80px] sm:gap-4">
           {/* =====================================================
               BRAND
           ===================================================== */}
@@ -80,7 +80,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
           <Link
             to="/"
             aria-label="Lorebound home"
-            className="flex min-w-0 items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+            className="flex min-w-0 items-center gap-2 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
           >
             <img
               src={logo}
@@ -89,7 +89,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
             />
 
             <span
-              className="hidden text-[30px] font-medium leading-none tracking-[-0.035em] text-zinc-100 sm:block"
+              className="text-[22px] font-medium leading-none tracking-[-0.035em] text-zinc-100 sm:text-[30px]"
               style={{
                 fontFamily: 'Georgia, "Times New Roman", Times, serif',
               }}
@@ -108,7 +108,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
                 ref={triggerRef}
                 type="button"
                 onClick={() => setMenuOpen((prev) => !prev)}
-                className="flex min-h-11 items-center gap-2.5 rounded-xl border border-white/10 bg-white/[0.035] px-2 py-1.5 text-left transition hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+                className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.035] px-2 py-1.5 ..."
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-label="Open account menu"
