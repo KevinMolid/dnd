@@ -123,76 +123,12 @@ const CharacterQuickStats = ({
   return (
     <div className="mb-3">
       <div className="grid gap-2 xl:grid-cols-[250px_minmax(430px,1fr)_360px] xl:grid-rows-[auto_auto]">
-        <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
-          <SectionLabel>Abilities & Saving Throws</SectionLabel>
-
-          <div className="mt-2 divide-y divide-white/[0.045]">
-            {abilities.map((ability) => {
-              const score = abilityScores[ability.id] ?? 10;
-              const modifier = getModifier(score);
-              const proficient = savingThrowProficiencies.includes(ability.id);
-              const save = modifier + (proficient ? proficiencyBonus : 0);
-
-              return (
-                <div
-                  key={ability.id}
-                  className="grid min-h-[36px] grid-cols-[38px_48px_minmax(0,1fr)] items-center gap-2 py-1.5"
-                >
-                  <span className="text-xs font-bold tracking-[0.06em] text-zinc-200">
-                    {ability.label}
-                  </span>
-
-                  <span className="text-right text-lg font-bold leading-none text-white">
-                    {formatModifier(modifier)}
-                  </span>
-
-                  <div className="flex min-w-0 items-center justify-end gap-1.5">
-                    <span
-                      title={`Ability score ${score}`}
-                      className="text-[10px] text-zinc-500"
-                    >
-                      {score}
-                    </span>
-
-                    <span className="text-[10px] font-medium text-zinc-400">
-                      Save
-                    </span>
-
-                    <span
-                      className={`text-xs font-semibold ${
-                        proficient ? "text-emerald-300" : "text-zinc-300"
-                      }`}
-                    >
-                      {formatModifier(save)}
-                    </span>
-
-                    {proficient ? (
-                      <span className="text-[9px] font-bold uppercase tracking-[0.07em] text-emerald-400">
-                        Prof
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
-          <SectionLabel>Skills</SectionLabel>
-
-          <div className="mt-2 grid grid-cols-1 gap-x-4 sm:grid-cols-2">
-            {skills.map((skill) => (
-              <SkillRow key={skill.id} skill={skill} />
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3 xl:row-span-2">
-          <div className="flex items-center justify-between gap-2">
-            <SectionLabel>Live State</SectionLabel>
-          </div>
-
+        <QuickSection
+          title="Live State"
+          defaultOpen
+          summary={`${currentHp}/${maxHp} HP · AC ${armorClass}`}
+          className="xl:col-start-3 xl:row-span-2 xl:row-start-1"
+        >
           <div className="mt-2 grid grid-cols-6 gap-1">
             <HpStat
               currentHp={currentHp}
@@ -333,24 +269,152 @@ const CharacterQuickStats = ({
               ) : null}
             </div>
           ) : null}
-        </section>
+        </QuickSection>
 
-        <section className="rounded-xl border border-white/[0.08] bg-zinc-900/35 p-3 xl:col-span-2">
-          <div className="grid gap-3 md:grid-cols-[110px_minmax(0,1fr)]">
-            <div>
-              <SectionLabel>Proficiencies</SectionLabel>
-            </div>
+        <QuickSection
+          title="Abilities & Saving Throws"
+          defaultOpen={false}
+          summary={`STR ${formatModifier(getModifier(abilityScores.str ?? 10))} · DEX ${formatModifier(getModifier(abilityScores.dex ?? 10))} · CON ${formatModifier(getModifier(abilityScores.con ?? 10))}`}
+          className="xl:col-start-1 xl:row-start-1"
+        >
+          <div className="mt-2 divide-y divide-white/[0.045]">
+            {abilities.map((ability) => {
+              const score = abilityScores[ability.id] ?? 10;
+              const modifier = getModifier(score);
+              const proficient = savingThrowProficiencies.includes(ability.id);
+              const save = modifier + (proficient ? proficiencyBonus : 0);
 
-            <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-              <ProficiencyRow label="Languages" values={languages} />
-              <ProficiencyRow label="Armor" values={armorProficiencies} />
-              <ProficiencyRow label="Weapons" values={weaponProficiencies} />
-              <ProficiencyRow label="Tools" values={toolProficiencies} />
-            </div>
+              return (
+                <div
+                  key={ability.id}
+                  className="grid min-h-[36px] grid-cols-[38px_48px_minmax(0,1fr)] items-center gap-2 py-1.5"
+                >
+                  <span className="text-xs font-bold tracking-[0.06em] text-zinc-200">
+                    {ability.label}
+                  </span>
+
+                  <span className="text-right text-lg font-bold leading-none text-white">
+                    {formatModifier(modifier)}
+                  </span>
+
+                  <div className="flex min-w-0 items-center justify-end gap-1.5">
+                    <span
+                      title={`Ability score ${score}`}
+                      className="text-[10px] text-zinc-500"
+                    >
+                      {score}
+                    </span>
+
+                    <span className="text-[10px] font-medium text-zinc-400">
+                      Save
+                    </span>
+
+                    <span
+                      className={`text-xs font-semibold ${
+                        proficient ? "text-emerald-300" : "text-zinc-300"
+                      }`}
+                    >
+                      {formatModifier(save)}
+                    </span>
+
+                    {proficient ? (
+                      <span className="text-[9px] font-bold uppercase tracking-[0.07em] text-emerald-400">
+                        Prof
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </section>
+        </QuickSection>
+
+        <QuickSection
+          title="Skills"
+          defaultOpen={false}
+          summary={`${skills.filter((skill) => skill.proficient).length} proficient`}
+          className="xl:col-start-2 xl:row-start-1"
+        >
+          <div className="mt-2 grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+            {skills.map((skill) => (
+              <SkillRow key={skill.id} skill={skill} />
+            ))}
+          </div>
+        </QuickSection>
+
+        <QuickSection
+          title="Proficiencies"
+          defaultOpen={false}
+          summary={`${languages.length} ${languages.length === 1 ? "language" : "languages"}`}
+          className="xl:col-span-2 xl:col-start-1 xl:row-start-2"
+        >
+          <div className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+            <ProficiencyRow label="Languages" values={languages} />
+            <ProficiencyRow label="Armor" values={armorProficiencies} />
+            <ProficiencyRow label="Weapons" values={weaponProficiencies} />
+            <ProficiencyRow label="Tools" values={toolProficiencies} />
+          </div>
+        </QuickSection>
       </div>
     </div>
+  );
+};
+
+type QuickSectionProps = {
+  title: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+  summary?: ReactNode;
+  className?: string;
+};
+
+const QuickSection = ({
+  title,
+  children,
+  defaultOpen = true,
+  summary,
+  className = "",
+}: QuickSectionProps) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <section
+      className={`overflow-hidden rounded-xl border border-white/10 bg-zinc-900/40 ${className}`}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((current) => !current)}
+        aria-expanded={open}
+        className={`flex w-full items-center justify-between gap-3 px-3 text-left transition hover:bg-white/[0.025] md:pointer-events-none md:cursor-default md:hover:bg-transparent ${
+          open ? "py-3" : "py-2.5"
+        }`}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <SectionLabel>{title}</SectionLabel>
+
+          {!open && summary ? (
+            <div className="min-w-0 truncate text-[10px] font-medium text-zinc-500 md:hidden">
+              {summary}
+            </div>
+          ) : null}
+        </div>
+
+        <i
+          className={`fa-solid fa-chevron-down shrink-0 text-[9px] text-zinc-500 transition-transform md:hidden ${
+            open ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+        />
+      </button>
+
+      <div
+        className={`border-t border-white/[0.06] px-3 pb-3 ${
+          open ? "block" : "hidden md:block"
+        }`}
+      >
+        {children}
+      </div>
+    </section>
   );
 };
 
