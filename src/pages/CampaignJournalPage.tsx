@@ -1,9 +1,22 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+} from "react";
+import { Link, useSearchParams, useParams } from "react-router-dom";
 import { collection, doc, getDoc, onSnapshot, query } from "firebase/firestore";
+
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase";
 import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
+import RichTextContent from "../features/richText/RichTextContent";
+import RichTextEditor from "../features/richText/RichTextEditor";
+import Select from "../components/ui/Select";
+import DatePicker from "../components/ui/DatePicker";
+import Avatar from "../components/Avatar";
 import {
   createJournalEntry,
   deleteJournalEntry,
@@ -41,6 +54,20 @@ type SortOption =
   | "sessionDesc"
   | "titleAsc";
 
+const inputClass =
+  "w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-white/20";
+
+const compactButton =
+  "flex h-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.035] px-3 text-xs font-medium text-zinc-300 transition hover:bg-white/[0.08] hover:text-white";
+
+const stripHtml = (value: string) =>
+  value
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const CampaignJournalPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const { user } = useAuth();
@@ -54,22 +81,124 @@ const CampaignJournalPage = () => {
 
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [journalLoading, setJournalLoading] = useState(true);
+  const [players, setPlayers] = useState<CampaignPlayer[]>([]);
+  const [authorImagesByUid, setAuthorImagesByUid] = useState<
+    Record<string, string>
+  >({});
 
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<JournalEntryType | "all">("all");
   const [sortBy, setSortBy] = useState<SortOption>("updatedDesc");
   const [onlyPinned, setOnlyPinned] = useState(false);
 
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [expandedEntryIds, setExpandedEntryIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [expandedStateHydrated, setExpandedStateHydrated] = useState(false);
+
+  const [editingEntryId, setEditingEntryId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<JournalEntryFormState>(
     createEmptyJournalFormState(),
   );
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const [players, setPlayers] = useState<CampaignPlayer[]>([]);
-  const currentPlayerId: string | null = user?.uid ?? null;
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const requestedEntryId = searchParams.get("entry");
+
+  const currentPlayerId = user?.uid ?? null;
+
+  const expandedStorageKey = campaignId
+    ? `lorebound:campaign:${campaignId}:journal:expanded`
+    : null;
+
+  useEffect(() => {
+    if (!expandedStorageKey) return;
+
+    try {
+      const stored = localStorage.getItem(expandedStorageKey);
+      const parsed = stored ? JSON.parse(stored) : [];
+
+      setExpandedEntryIds(
+        new Set(
+          Array.isArray(parsed)
+            ? parsed.filter(
+                (value): value is string => typeof value === "string",
+              )
+            : [],
+        ),
+      );
+    } catch {
+      setExpandedEntryIds(new Set());
+    }
+
+    setExpandedStateHydrated(true);
+  }, [expandedStorageKey]);
+
+  useEffect(() => {
+    if (!expandedStorageKey || !expandedStateHydrated) return;
+
+    localStorage.setItem(
+      expandedStorageKey,
+      JSON.stringify(Array.from(expandedEntryIds)),
+    );
+  }, [expandedEntryIds, expandedStateHydrated, expandedStorageKey]);
+
+  useEffect(() => {
+    if (!requestedEntryId || journalLoading) return;
+
+    const entryExists = entries.some((entry) => entry.id === requestedEntryId);
+
+    if (!entryExists) return;
+
+    setExpandedEntryIds((current) => {
+      if (current.has(requestedEntryId)) {
+        return current;
+      }
+
+      const next = new Set(current);
+      next.add(requestedEntryId);
+
+      return next;
+    });
+
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`journal-entry-${requestedEntryId}`)
+        ?.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+    });
+
+    setSearchParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        next.delete("entry");
+        return next;
+      },
+      {
+        replace: true,
+      },
+    );
+  }, [entries, journalLoading, requestedEntryId, setSearchParams]);
+
+  function toggleEntryExpanded(entryId: string) {
+    setExpandedEntryIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(entryId)) {
+        next.delete(entryId);
+      } else {
+        next.add(entryId);
+      }
+
+      return next;
+    });
+  }
 
   useEffect(() => {
     const loadCampaignAccess = async () => {
@@ -81,12 +210,9 @@ const CampaignJournalPage = () => {
       setPageState("loading");
 
       try {
-        const campaignRef = doc(db, "campaigns", campaignId);
-        const memberRef = doc(db, "campaigns", campaignId, "members", user.uid);
-
         const [campaignSnap, memberSnap] = await Promise.all([
-          getDoc(campaignRef),
-          getDoc(memberRef),
+          getDoc(doc(db, "campaigns", campaignId)),
+          getDoc(doc(db, "campaigns", campaignId, "members", user.uid)),
         ]);
 
         if (!campaignSnap.exists()) {
@@ -107,7 +233,6 @@ const CampaignJournalPage = () => {
           id: campaignSnap.id,
           ...(campaignSnap.data() as CampaignDoc),
         });
-
         setMembership(memberSnap.data() as CampaignMemberDoc);
         setPageState("ready");
       } catch (error) {
@@ -118,7 +243,7 @@ const CampaignJournalPage = () => {
       }
     };
 
-    loadCampaignAccess();
+    void loadCampaignAccess();
   }, [campaignId, user]);
 
   const isGm = membership?.role === "gm" || membership?.role === "co-gm";
@@ -126,29 +251,49 @@ const CampaignJournalPage = () => {
   useEffect(() => {
     if (pageState !== "ready" || !campaignId) return;
 
-    const membersRef = collection(db, "campaigns", campaignId, "members");
-    const membersQuery = query(membersRef);
+    return onSnapshot(
+      query(collection(db, "campaigns", campaignId, "members")),
+      async (snapshot) => {
+        const nextPlayers = snapshot.docs
+          .map((docSnap) => {
+            const data = docSnap.data() as CampaignMemberDoc;
+            if (data.role === "gm" || data.role === "co-gm") return null;
 
-    const unsubscribe = onSnapshot(membersQuery, (snapshot) => {
-      const nextPlayers: CampaignPlayer[] = snapshot.docs
-        .map((docSnap) => {
-          const data = docSnap.data() as CampaignMemberDoc;
+            return {
+              id: docSnap.id,
+              name: data.displayName || "Unknown player",
+            };
+          })
+          .filter((value): value is CampaignPlayer => Boolean(value));
 
-          if (data.role === "gm" || data.role === "co-gm") {
-            return null;
-          }
+        setPlayers(nextPlayers);
 
-          return {
-            id: docSnap.id, // uid
-            name: data.displayName || "Unknown player",
-          };
-        })
-        .filter((value): value is CampaignPlayer => Boolean(value));
+        try {
+          const userSnapshots = await Promise.all(
+            snapshot.docs.map((memberSnap) =>
+              getDoc(doc(db, "users", memberSnap.id)),
+            ),
+          );
 
-      setPlayers(nextPlayers);
-    });
+          const nextAuthorImages: Record<string, string> = {};
 
-    return unsubscribe;
+          userSnapshots.forEach((userSnap) => {
+            if (!userSnap.exists()) return;
+
+            const imageUrl = userSnap.data().imageUrl;
+
+            if (typeof imageUrl === "string" && imageUrl.trim()) {
+              nextAuthorImages[userSnap.id] = imageUrl.trim();
+            }
+          });
+
+          setAuthorImagesByUid(nextAuthorImages);
+        } catch (error) {
+          console.error("Failed to load journal author images:", error);
+          setAuthorImagesByUid({});
+        }
+      },
+    );
   }, [campaignId, pageState]);
 
   useEffect(() => {
@@ -156,7 +301,7 @@ const CampaignJournalPage = () => {
 
     setJournalLoading(true);
 
-    const unsubscribe = subscribeToJournalEntries(
+    return subscribeToJournalEntries(
       campaignId,
       { isGm, currentPlayerId },
       (nextEntries) => {
@@ -164,19 +309,19 @@ const CampaignJournalPage = () => {
         setJournalLoading(false);
       },
     );
-
-    return unsubscribe;
   }, [campaignId, pageState, isGm, currentPlayerId]);
 
-  const visibleEntries = useMemo(() => {
-    return entries.filter((entry) =>
-      canReadJournalEntry({
-        entry,
-        isDm: isGm,
-        currentPlayerId,
-      }),
-    );
-  }, [entries, isGm, currentPlayerId]);
+  const visibleEntries = useMemo(
+    () =>
+      entries.filter((entry) =>
+        canReadJournalEntry({
+          entry,
+          isDm: isGm,
+          currentPlayerId,
+        }),
+      ),
+    [entries, isGm, currentPlayerId],
+  );
 
   const filteredEntries = useMemo(() => {
     let next = [...visibleEntries];
@@ -190,23 +335,20 @@ const CampaignJournalPage = () => {
     }
 
     if (search.trim()) {
-      const query = search.trim().toLowerCase();
+      const searchValue = search.trim().toLowerCase();
 
-      next = next.filter((entry) => {
-        return (
-          entry.title.toLowerCase().includes(query) ||
-          entry.content.toLowerCase().includes(query) ||
-          entry.tags.some((tag) => tag.toLowerCase().includes(query))
-        );
-      });
+      next = next.filter(
+        (entry) =>
+          entry.title.toLowerCase().includes(searchValue) ||
+          stripHtml(entry.content).toLowerCase().includes(searchValue) ||
+          entry.tags.some((tag) => tag.toLowerCase().includes(searchValue)),
+      );
     }
 
     next.sort((a, b) => {
       switch (sortBy) {
         case "updatedAsc":
           return a.updatedAt - b.updatedAt;
-        case "updatedDesc":
-          return b.updatedAt - a.updatedAt;
         case "sessionAsc":
           return (
             (a.sessionNumber ?? Number.MAX_SAFE_INTEGER) -
@@ -216,6 +358,7 @@ const CampaignJournalPage = () => {
           return (b.sessionNumber ?? -1) - (a.sessionNumber ?? -1);
         case "titleAsc":
           return a.title.localeCompare(b.title);
+        case "updatedDesc":
         default:
           return b.updatedAt - a.updatedAt;
       }
@@ -225,45 +368,54 @@ const CampaignJournalPage = () => {
   }, [visibleEntries, typeFilter, onlyPinned, search, sortBy]);
 
   const nextSessionNumber = useMemo(() => {
-    const maxSession = entries.reduce<number>((max, entry) => {
-      if (typeof entry.sessionNumber === "number") {
-        return Math.max(max, entry.sessionNumber);
-      }
-
-      return max;
-    }, 0);
+    const maxSession = entries.reduce(
+      (max, entry) =>
+        typeof entry.sessionNumber === "number"
+          ? Math.max(max, entry.sessionNumber)
+          : max,
+      0,
+    );
 
     return maxSession > 0 ? maxSession + 1 : 1;
   }, [entries]);
 
-  const pinnedEntries = useMemo(
-    () => filteredEntries.filter((entry) => entry.pinned),
+  const orderedEntries = useMemo(
+    () =>
+      [...filteredEntries].sort((a, b) => {
+        if (a.pinned !== b.pinned) {
+          return a.pinned ? -1 : 1;
+        }
+
+        return 0;
+      }),
     [filteredEntries],
   );
 
-  const regularEntries = useMemo(
-    () => filteredEntries.filter((entry) => !entry.pinned),
-    [filteredEntries],
-  );
+  const editingEntry =
+    editingEntryId === null
+      ? null
+      : (entries.find((entry) => entry.id === editingEntryId) ?? null);
 
-  function openCreateEditor() {
-    setEditingEntry(null);
+  const editorActive = creating || editingEntryId !== null;
+
+  function beginCreate() {
+    setEditingEntryId(null);
     setForm(createEmptyJournalFormState(nextSessionNumber));
     setSaveError(null);
-    setEditorOpen(true);
+    setCreating(true);
   }
 
-  function openEditEditor(entry: JournalEntry) {
-    setEditingEntry(entry);
+  function beginEdit(entry: JournalEntry) {
+    setCreating(false);
+    setEditingEntryId(entry.id);
     setForm(journalEntryToFormState(entry));
     setSaveError(null);
-    setEditorOpen(true);
   }
 
-  function closeEditor() {
+  function cancelEditor() {
     if (isSaving) return;
-    setEditorOpen(false);
-    setEditingEntry(null);
+    setCreating(false);
+    setEditingEntryId(null);
     setSaveError(null);
   }
 
@@ -296,8 +448,8 @@ const CampaignJournalPage = () => {
         await createJournalEntry(campaignId, input);
       }
 
-      setEditorOpen(false);
-      setEditingEntry(null);
+      setCreating(false);
+      setEditingEntryId(null);
     } catch (error) {
       console.error(error);
       setSaveError("Failed to save journal entry.");
@@ -308,15 +460,13 @@ const CampaignJournalPage = () => {
 
   async function handleDelete(entry: JournalEntry) {
     if (!campaignId) return;
-
-    const confirmed = window.confirm(
-      `Delete "${entry.title}"? This cannot be undone.`,
-    );
-
-    if (!confirmed) return;
+    if (!window.confirm(`Delete "${entry.title}"? This cannot be undone.`)) {
+      return;
+    }
 
     try {
       await deleteJournalEntry(campaignId, entry.id);
+      if (editingEntryId === entry.id) cancelEditor();
     } catch (error) {
       console.error(error);
       window.alert("Failed to delete journal entry.");
@@ -346,645 +496,634 @@ const CampaignJournalPage = () => {
   }
 
   function getSelectedPlayerNames(entry: JournalEntry) {
-    if (!entry.visibleToPlayerIds.length) return "";
-
     return entry.visibleToPlayerIds
       .map((playerId) => players.find((player) => player.id === playerId)?.name)
       .filter(Boolean)
       .join(", ");
   }
 
-  if (pageState === "loading") {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-          <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
-            <p className="text-sm text-zinc-400">Loading journal...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (pageState !== "ready" || !campaign || !membership) {
+    const title =
+      pageState === "loading"
+        ? "Loading journal..."
+        : pageState === "not-found"
+          ? "Campaign not found"
+          : pageState === "forbidden"
+            ? "Access denied"
+            : "Something went wrong";
 
-  if (pageState === "not-found") {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
-            <h1 className="text-2xl font-bold text-white">
-              Campaign not found
-            </h1>
-            <p className="mt-3 text-sm text-zinc-400">
-              The campaign you tried to open does not exist.
-            </p>
-            <div className="mt-6">
-              <Link
-                to="/"
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Back to home
-              </Link>
-            </div>
+      <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
+        <h1 className="text-lg font-semibold text-white">{title}</h1>
+        {pageState !== "loading" ? (
+          <div className="mt-5">
+            <Link
+              to="/"
+              className="rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-zinc-200 hover:bg-white/10"
+            >
+              Back to home
+            </Link>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (pageState === "forbidden") {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
-            <h1 className="text-2xl font-bold text-white">Access denied</h1>
-            <p className="mt-3 text-sm text-zinc-400">
-              You do not have access to this campaign.
-            </p>
-            <div className="mt-6">
-              <Link
-                to="/"
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Back to home
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (pageState === "error" || !campaign || !membership) {
-    return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
-        <div className="mx-auto max-w-7xl py-6 sm:py-8">
-          <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-8 text-center">
-            <h1 className="text-2xl font-bold text-white">
-              Something went wrong
-            </h1>
-            <p className="mt-3 text-sm text-red-200/80">
-              We could not load this journal right now.
-            </p>
-            <div className="mt-6 flex justify-center gap-3">
-              <button
-                onClick={() => window.location.reload()}
-                className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
-              >
-                Retry
-              </button>
-
-              <Link
-                to="/"
-                className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-              >
-                Back to home
-              </Link>
-            </div>
-          </div>
-        </div>
+        ) : null}
       </div>
     );
   }
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-base font-semibold text-white">Journal</h2>
-
-        {isGm ? (
+      <div className="mb-3 flex justify-end">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={openCreateEditor}
-            className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
-          >
-            New journal entry
-          </button>
-        ) : null}
-      </div>
-
-      <div className="mb-3 grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-zinc-900/35 p-3 md:grid-cols-4">
-        <div className="md:col-span-2">
-          <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-            Search
-          </label>
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search title, content, or tags..."
-            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
-          />
-        </div>
-
-        <div>
-          <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-            Type
-          </label>
-          <select
-            value={typeFilter}
-            onChange={(e) =>
-              setTypeFilter(e.target.value as JournalEntryType | "all")
+            onClick={() => setFiltersOpen((current) => !current)}
+            title={filtersOpen ? "Hide search and filters" : "Search journal"}
+            aria-label={
+              filtersOpen ? "Hide search and filters" : "Search journal"
             }
-            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
+            className={`${compactButton} w-8 px-0 ${
+              filtersOpen ||
+              search ||
+              typeFilter !== "all" ||
+              onlyPinned ||
+              sortBy !== "updatedDesc"
+                ? "border-sky-400/25 bg-sky-500/10 text-sky-300"
+                : ""
+            }`}
           >
-            <option value="all">All</option>
-            {JOURNAL_ENTRY_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {getJournalTypeLabel(type)}
-              </option>
-            ))}
-          </select>
-        </div>
+            <i className="fa-solid fa-magnifying-glass text-[11px]" />
+          </button>
 
-        <div>
-          <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-            Sort
-          </label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as SortOption)}
-            className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
-          >
-            <option value="updatedDesc">Recently updated</option>
-            <option value="updatedAsc">Oldest updated</option>
-            <option value="sessionAsc">Session number ↑</option>
-            <option value="sessionDesc">Session number ↓</option>
-            <option value="titleAsc">Title A–Z</option>
-          </select>
+          {isGm ? (
+            <button
+              type="button"
+              onClick={beginCreate}
+              disabled={editorActive}
+              className={`${compactButton} disabled:cursor-not-allowed disabled:opacity-40`}
+            >
+              <i className="fa-solid fa-plus mr-1.5 text-[9px]" />
+              New entry
+            </button>
+          ) : null}
         </div>
-
-        <label className="flex items-center gap-2 text-sm text-zinc-300 md:col-span-4">
-          <input
-            type="checkbox"
-            checked={onlyPinned}
-            onChange={(e) => setOnlyPinned(e.target.checked)}
-          />
-          Only show pinned entries
-        </label>
       </div>
+
+      {filtersOpen ? (
+        <div className="mb-4 grid grid-cols-1 gap-2 rounded-xl border border-white/10 bg-zinc-900/35 p-3 md:grid-cols-[minmax(0,2fr)_minmax(160px,1fr)_minmax(180px,1fr)_auto]">
+          <input
+            autoFocus
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search title, content, or tags..."
+            className={inputClass}
+          />
+
+          <Select<JournalEntryType | "all">
+            value={typeFilter}
+            onChange={setTypeFilter}
+            ariaLabel="Filter journal by type"
+            options={[
+              { value: "all", label: "All types" },
+              ...JOURNAL_ENTRY_TYPES.map((type) => ({
+                value: type,
+                label: getJournalTypeLabel(type),
+              })),
+            ]}
+          />
+
+          <Select<SortOption>
+            value={sortBy}
+            onChange={setSortBy}
+            ariaLabel="Sort journal entries"
+            options={[
+              { value: "updatedDesc", label: "Recently updated" },
+              { value: "updatedAsc", label: "Oldest updated" },
+              { value: "sessionAsc", label: "Session number ↑" },
+              { value: "sessionDesc", label: "Session number ↓" },
+              { value: "titleAsc", label: "Title A–Z" },
+            ]}
+          />
+
+          <label className="flex min-h-9 items-center gap-2 whitespace-nowrap rounded-lg border border-white/10 bg-black/20 px-3 text-xs text-zinc-300">
+            <input
+              type="checkbox"
+              checked={onlyPinned}
+              onChange={(event) => setOnlyPinned(event.target.checked)}
+            />
+            Pinned only
+          </label>
+        </div>
+      ) : null}
+
+      {creating && isGm ? (
+        <div className="mb-5">
+          <InlineJournalEditor
+            form={form}
+            setForm={setForm}
+            players={players}
+            isSaving={isSaving}
+            saveError={saveError}
+            mode="create"
+            onCancel={cancelEditor}
+            onSave={handleSave}
+          />
+        </div>
+      ) : null}
 
       {journalLoading ? (
-        <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
-          <p className="text-sm text-zinc-400">Loading entries...</p>
+        <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center text-sm text-zinc-400">
+          Loading entries...
         </div>
-      ) : filteredEntries.length === 0 ? (
+      ) : filteredEntries.length === 0 && !creating ? (
         <div className="rounded-xl border border-dashed border-white/10 bg-zinc-900/25 p-6 text-center">
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-base font-semibold text-white">
             No journal entries
           </h2>
-          <p className="mt-2 text-sm text-zinc-400">
+          <p className="mt-1.5 text-sm text-zinc-400">
             {isGm
               ? "Create your first entry to start documenting the campaign."
               : "There are no journal entries available for you yet."}
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {pinnedEntries.length > 0 && (
-            <section>
-              <h2 className="mb-3 text-lg font-semibold text-white">Pinned</h2>
-              <div className="space-y-4">
-                {pinnedEntries.map((entry) => (
-                  <article
-                    key={entry.id}
-                    className="rounded-xl border border-amber-400/20 bg-zinc-900/35 p-4"
-                  >
-                    <EntryCardHeader
-                      entry={entry}
-                      isGm={isGm}
-                      selectedPlayerNames={getSelectedPlayerNames(entry)}
-                      onEdit={() => openEditEditor(entry)}
-                      onDelete={() => handleDelete(entry)}
-                      onTogglePinned={() => handleTogglePinned(entry)}
-                      onTogglePublished={() => handleTogglePublished(entry)}
-                    />
-
-                    <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-200">
-                      {entry.content}
-                    </div>
-
-                    {entry.tags.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {entry.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="rounded-full border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-zinc-300"
-                          >
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            </section>
+        <div className="space-y-2">
+          {orderedEntries.map((entry) =>
+            editingEntryId === entry.id ? (
+              <InlineJournalEditor
+                key={entry.id}
+                form={form}
+                setForm={setForm}
+                players={players}
+                isSaving={isSaving}
+                saveError={saveError}
+                mode="edit"
+                onCancel={cancelEditor}
+                onSave={handleSave}
+              />
+            ) : (
+              <JournalEntryCard
+                key={entry.id}
+                entry={entry}
+                isGm={isGm}
+                authorImageUrl={
+                  entry.createdByUid
+                    ? authorImagesByUid[entry.createdByUid]
+                    : undefined
+                }
+                expanded={expandedEntryIds.has(entry.id)}
+                selectedPlayerNames={getSelectedPlayerNames(entry)}
+                onToggleExpanded={() => toggleEntryExpanded(entry.id)}
+                onEdit={() => beginEdit(entry)}
+                onDelete={() => void handleDelete(entry)}
+                onTogglePinned={() => void handleTogglePinned(entry)}
+                onTogglePublished={() => void handleTogglePublished(entry)}
+              />
+            ),
           )}
-
-          <section>
-            <h2 className="mb-3 text-lg font-semibold text-white">
-              {onlyPinned ? "Pinned entries" : "Entries"}
-            </h2>
-
-            <div className="space-y-4">
-              {regularEntries.map((entry) => (
-                <article
-                  key={entry.id}
-                  className="rounded-xl border border-white/10 bg-zinc-900/35 p-4"
-                >
-                  <EntryCardHeader
-                    entry={entry}
-                    isGm={isGm}
-                    selectedPlayerNames={getSelectedPlayerNames(entry)}
-                    onEdit={() => openEditEditor(entry)}
-                    onDelete={() => handleDelete(entry)}
-                    onTogglePinned={() => handleTogglePinned(entry)}
-                    onTogglePublished={() => handleTogglePublished(entry)}
-                  />
-
-                  <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-200">
-                    {entry.content}
-                  </div>
-
-                  {entry.tags.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      {entry.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded-full border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-zinc-300"
-                        >
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
-        </div>
-      )}
-
-      {editorOpen && isGm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-3xl border border-white/10 bg-zinc-950 p-5 shadow-2xl">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-white">
-                  {editingEntry ? "Edit journal entry" : "New journal entry"}
-                </h2>
-                <p className="mt-1 text-sm text-zinc-400">
-                  Organize the campaign journal and control who can see what.
-                </p>
-              </div>
-
-              <button
-                onClick={closeEditor}
-                className="rounded-2xl border border-white/10 px-3 py-2 text-sm text-zinc-300 hover:bg-white/5"
-              >
-                Close
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-                  Title
-                </label>
-                <input
-                  value={form.title}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-                  Type
-                </label>
-                <select
-                  value={form.type}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      type: e.target.value as JournalEntryType,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
-                >
-                  {JOURNAL_ENTRY_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {getJournalTypeLabel(type)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-                  Visibility
-                </label>
-                <select
-                  value={form.visibility}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      visibility: e.target.value as JournalEntry["visibility"],
-                    }))
-                  }
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
-                >
-                  <option value="dm">DM only</option>
-                  <option value="allPlayers">All players</option>
-                  <option value="selectedPlayers">Selected players</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-                  Session number
-                </label>
-                <input
-                  type="number"
-                  value={form.sessionNumber ?? ""}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      sessionNumber: e.target.value
-                        ? Number(e.target.value)
-                        : null,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-                  Session date
-                </label>
-                <input
-                  type="date"
-                  value={form.sessionDate ?? ""}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      sessionDate: e.target.value || null,
-                    }))
-                  }
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-                  Tags
-                </label>
-                <input
-                  value={form.tagsText}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, tagsText: e.target.value }))
-                  }
-                  placeholder="e.g. Phandalin, Redbrands, Goblins"
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
-                />
-              </div>
-
-              {form.visibility === "selectedPlayers" && (
-                <div className="md:col-span-2">
-                  <label className="mb-2 block text-sm text-zinc-300">
-                    Visible to selected players
-                  </label>
-
-                  {players.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-white/10 p-4 text-sm text-zinc-400">
-                      No campaign players loaded yet. Connect this to your
-                      campaign player/character list.
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {players.map((player) => {
-                        const checked = form.visibleToPlayerIds.includes(
-                          player.id,
-                        );
-
-                        return (
-                          <label
-                            key={player.id}
-                            className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-zinc-200"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={(e) => {
-                                setForm((prev) => ({
-                                  ...prev,
-                                  visibleToPlayerIds: e.target.checked
-                                    ? [...prev.visibleToPlayerIds, player.id]
-                                    : prev.visibleToPlayerIds.filter(
-                                        (id) => id !== player.id,
-                                      ),
-                                }));
-                              }}
-                            />
-                            {player.name}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-[10px] font-medium text-zinc-400">
-                  Content
-                </label>
-                <textarea
-                  value={form.content}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, content: e.target.value }))
-                  }
-                  rows={12}
-                  className="w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-white outline-none focus:border-white/20"
-                  placeholder={`Summary:
-- 
-
-Important events:
-- 
-
-NPCs met:
-- 
-
-Loot / rewards:
-- 
-
-Open quests / hooks:
-- `}
-                />
-              </div>
-
-              <label className="flex items-center gap-2 text-sm text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={form.published}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      published: e.target.checked,
-                    }))
-                  }
-                />
-                Published
-              </label>
-
-              <label className="flex items-center gap-2 text-sm text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={form.pinned}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      pinned: e.target.checked,
-                    }))
-                  }
-                />
-                Pinned
-              </label>
-            </div>
-
-            {saveError && (
-              <div className="mt-4 rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-                {saveError}
-              </div>
-            )}
-
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                onClick={closeEditor}
-                className="rounded-2xl border border-white/10 px-4 py-2 text-zinc-300 hover:bg-white/5"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="rounded-2xl bg-white px-4 py-2 font-medium text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isSaving
-                  ? "Saving..."
-                  : editingEntry
-                    ? "Save changes"
-                    : "Create entry"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
   );
 };
 
-type EntryCardHeaderProps = {
+type InlineJournalEditorProps = {
+  form: JournalEntryFormState;
+  setForm: Dispatch<SetStateAction<JournalEntryFormState>>;
+  players: CampaignPlayer[];
+  isSaving: boolean;
+  saveError: string | null;
+  mode: "create" | "edit";
+  onCancel: () => void;
+  onSave: () => void;
+};
+
+function InlineJournalEditor({
+  form,
+  setForm,
+  players,
+  isSaving,
+  saveError,
+  mode,
+  onCancel,
+  onSave,
+}: InlineJournalEditorProps) {
+  return (
+    <article className="rounded-xl border border-emerald-400/20 bg-zinc-900/45 p-3 shadow-[0_0_0_1px_rgba(16,185,129,0.03)] sm:p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
+          {mode === "create" ? "New journal entry" : "Editing entry"}
+        </span>
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className={compactButton}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={isSaving}
+            className="flex h-8 items-center justify-center rounded-lg bg-white px-3 text-xs font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isSaving ? "Saving..." : mode === "create" ? "Create" : "Save"}
+          </button>
+        </div>
+      </div>
+
+      <input
+        value={form.title}
+        onChange={(event) =>
+          setForm((previous) => ({ ...previous, title: event.target.value }))
+        }
+        placeholder="Entry title"
+        className="mb-3 w-full border-0 bg-transparent px-0 text-xl font-semibold text-white outline-none placeholder:text-zinc-600"
+      />
+
+      <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+        <Select<JournalEntryType>
+          value={form.type}
+          onChange={(type) =>
+            setForm((previous) => ({
+              ...previous,
+              type,
+            }))
+          }
+          ariaLabel="Journal entry type"
+          options={JOURNAL_ENTRY_TYPES.map((type) => ({
+            value: type,
+            label: getJournalTypeLabel(type),
+          }))}
+        />
+
+        <Select<JournalEntry["visibility"]>
+          value={form.visibility}
+          onChange={(visibility) =>
+            setForm((previous) => ({
+              ...previous,
+              visibility,
+            }))
+          }
+          ariaLabel="Journal entry visibility"
+          options={[
+            { value: "dm", label: "DM only" },
+            { value: "allPlayers", label: "All players" },
+            { value: "selectedPlayers", label: "Selected players" },
+          ]}
+        />
+
+        <input
+          type="number"
+          min={0}
+          value={form.sessionNumber ?? ""}
+          onChange={(event) =>
+            setForm((previous) => ({
+              ...previous,
+              sessionNumber: event.target.value
+                ? Number(event.target.value)
+                : null,
+            }))
+          }
+          placeholder="Session"
+          className={inputClass}
+        />
+
+        <DatePicker
+          value={form.sessionDate}
+          onChange={(sessionDate) =>
+            setForm((previous) => ({
+              ...previous,
+              sessionDate,
+            }))
+          }
+          ariaLabel="Session date"
+        />
+      </div>
+
+      {form.visibility === "selectedPlayers" ? (
+        <div className="mb-3 rounded-lg border border-white/[0.08] bg-black/15 p-2.5">
+          <div className="mb-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            Visible to
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {players.length === 0 ? (
+              <span className="text-xs text-zinc-500">
+                No players available.
+              </span>
+            ) : (
+              players.map((player) => {
+                const checked = form.visibleToPlayerIds.includes(player.id);
+
+                return (
+                  <label
+                    key={player.id}
+                    className={`flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition ${
+                      checked
+                        ? "border-sky-400/30 bg-sky-500/10 text-sky-200"
+                        : "border-white/10 bg-white/[0.025] text-zinc-400 hover:text-zinc-200"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="sr-only"
+                      checked={checked}
+                      onChange={(event) =>
+                        setForm((previous) => ({
+                          ...previous,
+                          visibleToPlayerIds: event.target.checked
+                            ? [...previous.visibleToPlayerIds, player.id]
+                            : previous.visibleToPlayerIds.filter(
+                                (id) => id !== player.id,
+                              ),
+                        }))
+                      }
+                    />
+                    {player.name}
+                  </label>
+                );
+              })
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      <RichTextEditor
+        value={form.content}
+        onChange={(content) =>
+          setForm((previous) => ({ ...previous, content }))
+        }
+        placeholder="Write the journal entry..."
+        minHeightClassName="min-h-[220px]"
+      />
+
+      <div className="mt-3 flex flex-col gap-2 md:flex-row md:items-center">
+        <input
+          value={form.tagsText}
+          onChange={(event) =>
+            setForm((previous) => ({
+              ...previous,
+              tagsText: event.target.value,
+            }))
+          }
+          placeholder="Tags, separated by commas"
+          className={`${inputClass} md:flex-1`}
+        />
+
+        <div className="flex shrink-0 items-center gap-4 rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2">
+          <label className="flex items-center gap-2 text-xs text-zinc-300">
+            <input
+              type="checkbox"
+              checked={form.published}
+              onChange={(event) =>
+                setForm((previous) => ({
+                  ...previous,
+                  published: event.target.checked,
+                }))
+              }
+            />
+            Published
+          </label>
+
+          <label className="flex items-center gap-2 text-xs text-zinc-300">
+            <input
+              type="checkbox"
+              checked={form.pinned}
+              onChange={(event) =>
+                setForm((previous) => ({
+                  ...previous,
+                  pinned: event.target.checked,
+                }))
+              }
+            />
+            Pinned
+          </label>
+        </div>
+      </div>
+
+      {saveError ? (
+        <div className="mt-3 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          {saveError}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+type JournalEntryCardProps = {
   entry: JournalEntry;
   isGm: boolean;
+  authorImageUrl?: string;
+  expanded: boolean;
   selectedPlayerNames: string;
+  onToggleExpanded: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePinned: () => void;
   onTogglePublished: () => void;
 };
 
-function EntryCardHeader({
+function JournalEntryCard({
   entry,
   isGm,
+  authorImageUrl,
+  expanded,
   selectedPlayerNames,
+  onToggleExpanded,
   onEdit,
   onDelete,
   onTogglePinned,
   onTogglePublished,
-}: EntryCardHeaderProps) {
+}: JournalEntryCardProps) {
+  const preview = stripHtml(entry.content);
+  const displayDate = entry.sessionDate
+    ? new Date(`${entry.sessionDate}T00:00:00`).toLocaleDateString()
+    : null;
+
+  const updatedDate = new Date(entry.updatedAt).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return (
-    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-      <div className="min-w-0">
-        <div className="mb-2 flex flex-wrap gap-2">
-          <Badge>{getJournalTypeLabel(entry.type)}</Badge>
-
-          {entry.published ? (
-            <Badge tone="green">Published</Badge>
-          ) : (
-            <Badge tone="yellow">Draft</Badge>
-          )}
-
-          <Badge tone="blue">
-            {getJournalVisibilityLabel(entry.visibility)}
-          </Badge>
-
-          {entry.pinned && <Badge tone="amber">Pinned</Badge>}
+    <article
+      id={`journal-entry-${entry.id}`}
+      className={`overflow-hidden rounded-xl border transition ${
+        entry.pinned
+          ? "border-amber-400/15 bg-zinc-900/35"
+          : expanded
+            ? "border-white/[0.14] bg-zinc-900/40"
+            : "border-white/[0.08] bg-zinc-900/30 hover:border-white/[0.14] hover:bg-zinc-900/40"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={onToggleExpanded}
+        aria-expanded={expanded}
+        className="grid min-h-[62px] w-full grid-cols-[20px_minmax(0,1fr)_auto] items-start gap-x-3 px-3 py-3 text-left sm:px-4"
+      >
+        <div className="col-start-1 row-span-2 flex h-6 items-center justify-center pt-0.5 text-[9px] text-zinc-500">
+          <i
+            className={`fa-solid fa-chevron-right transition-transform ${
+              expanded ? "rotate-90" : ""
+            }`}
+          />
         </div>
 
-        <h3 className="text-xl font-semibold text-white">{entry.title}</h3>
+        <div className="col-start-2 min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              {entry.pinned ? (
+                <span
+                  title="Pinned"
+                  className="flex h-5 w-4 shrink-0 items-center justify-center text-[10px] text-amber-300"
+                >
+                  <i className="fa-solid fa-thumbtack" />
+                </span>
+              ) : null}
 
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-400">
-          {typeof entry.sessionNumber === "number" && (
-            <span>Session {entry.sessionNumber}</span>
-          )}
-
-          {entry.sessionDate && <span>{entry.sessionDate}</span>}
-
-          <span>Updated {new Date(entry.updatedAt).toLocaleString()}</span>
-
-          {entry.createdByName && <span>By {entry.createdByName}</span>}
-        </div>
-
-        {isGm &&
-          entry.visibility === "selectedPlayers" &&
-          selectedPlayerNames && (
-            <div className="mt-2 text-sm text-zinc-400">
-              Visible to: {selectedPlayerNames}
+              <h3 className="truncate text-sm font-semibold text-white sm:text-[15px]">
+                {entry.title}
+              </h3>
             </div>
-          )}
-      </div>
 
-      {isGm && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={onTogglePublished}
-            className="rounded-2xl border border-white/10 px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
-          >
-            {entry.published ? "Unpublish" : "Publish"}
-          </button>
+            <div className="flex flex-wrap items-center gap-1">
+              <Badge>{getJournalTypeLabel(entry.type)}</Badge>
 
-          <button
-            onClick={onTogglePinned}
-            className="rounded-2xl border border-white/10 px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
-          >
-            {entry.pinned ? "Unpin" : "Pin"}
-          </button>
+              {isGm ? (
+                <Badge tone={entry.published ? "green" : "yellow"}>
+                  {entry.published ? "Published" : "Draft"}
+                </Badge>
+              ) : null}
 
-          <button
-            onClick={onEdit}
-            className="rounded-2xl border border-white/10 px-3 py-2 text-sm text-zinc-200 hover:bg-white/5"
-          >
-            Edit
-          </button>
+              <Badge tone="blue">
+                {getJournalVisibilityLabel(entry.visibility)}
+              </Badge>
+            </div>
+          </div>
 
-          <button
-            onClick={onDelete}
-            className="rounded-2xl border border-red-500/30 px-3 py-2 text-sm text-red-300 hover:bg-red-500/10"
-          >
-            Delete
-          </button>
+          {expanded ? (
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-zinc-600">
+              <span>Updated {updatedDate}</span>
+              {typeof entry.sessionNumber === "number" ? (
+                <span>· Session {entry.sessionNumber}</span>
+              ) : null}
+              {displayDate ? <span>· {displayDate}</span> : null}
+            </div>
+          ) : preview ? (
+            <p className="mt-1.5 truncate text-xs text-zinc-500">{preview}</p>
+          ) : null}
         </div>
-      )}
-    </div>
+
+        <div className="col-start-3 row-span-2 hidden shrink-0 sm:block">
+          {entry.createdByName ? (
+            <div className="flex items-center justify-end gap-2">
+              <Avatar
+                name={entry.createdByName}
+                src={authorImageUrl}
+                className="h-7 w-7 shrink-0 rounded-full"
+              />
+              <span className="text-xs font-semibold text-zinc-200">
+                {entry.createdByName}
+              </span>
+            </div>
+          ) : null}
+        </div>
+      </button>
+
+      {expanded ? (
+        <div className="grid grid-cols-[20px_minmax(0,1fr)] gap-x-3 border-t border-white/[0.06] px-3 pb-4 pt-4 sm:grid-cols-[20px_minmax(0,1fr)_auto] sm:px-4">
+          <div className="col-start-2 min-w-0 sm:col-end-4">
+            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 sm:hidden">
+              {entry.createdByName ? (
+                <span className="flex items-center gap-2 font-semibold text-zinc-200">
+                  <Avatar
+                    name={entry.createdByName}
+                    src={authorImageUrl}
+                    className="h-6 w-6 shrink-0 rounded-full"
+                  />
+                  {entry.createdByName}
+                </span>
+              ) : null}
+            </div>
+
+            {isGm &&
+            entry.visibility === "selectedPlayers" &&
+            selectedPlayerNames ? (
+              <div className="mb-3 text-[11px] text-zinc-600">
+                Visible to: {selectedPlayerNames}
+              </div>
+            ) : null}
+
+            {entry.content ? (
+              <div className="journal-entry-content [&_.workspace-note-editor]:!m-0 [&_.workspace-note-editor]:!p-0 [&_.workspace-note-editor]:!leading-5 [&_.workspace-note-editor>p]:!my-1 [&_.workspace-note-editor>p:first-child]:!mt-0 [&_.workspace-note-editor>p:last-child]:!mb-0">
+                {" "}
+                <RichTextContent value={entry.content} />
+              </div>
+            ) : (
+              <p className="text-sm italic text-zinc-600">No content.</p>
+            )}
+
+            {entry.tags.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {entry.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[11px] text-zinc-400"
+                  >
+                    #{tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            {isGm ? (
+              <div className="mt-4 flex flex-wrap justify-end gap-1.5 border-t border-white/[0.06] pt-3">
+                <button
+                  type="button"
+                  onClick={onTogglePublished}
+                  className={compactButton}
+                >
+                  {entry.published ? "Unpublish" : "Publish"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onTogglePinned}
+                  className={compactButton}
+                >
+                  {entry.pinned ? "Unpin" : "Pin"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className={compactButton}
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="flex h-8 items-center rounded-lg border border-red-500/20 px-3 text-xs font-medium text-red-300 transition hover:bg-red-500/10"
+                >
+                  Delete
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </article>
   );
 }
 
 type BadgeProps = {
-  children: React.ReactNode;
+  children: ReactNode;
   tone?: "default" | "green" | "yellow" | "blue" | "amber";
 };
 
@@ -998,11 +1137,11 @@ function Badge({ children, tone = "default" }: BadgeProps) {
           ? "border-sky-500/30 bg-sky-500/10 text-sky-300"
           : tone === "amber"
             ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-            : "border-white/10 bg-zinc-900 text-zinc-300";
+            : "border-white/10 bg-black/20 text-zinc-300";
 
   return (
     <span
-      className={`rounded-full border px-2 py-1 text-xs font-medium ${className}`}
+      className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${className}`}
     >
       {children}
     </span>

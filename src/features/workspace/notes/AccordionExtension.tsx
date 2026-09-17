@@ -5,24 +5,37 @@ import {
   ReactNodeViewRenderer,
   type NodeViewProps,
 } from "@tiptap/react";
+import { useEffect, useState } from "react";
 
 function AccordionNodeView({
   node,
+  editor,
   updateAttributes,
   selected,
 }: NodeViewProps) {
-  const open = node.attrs.open !== false;
+  const storedOpen = node.attrs.open !== false;
+  const [localOpen, setLocalOpen] = useState(storedOpen);
+
+  useEffect(() => {
+    setLocalOpen(storedOpen);
+  }, [storedOpen]);
+
+  const open = editor.isEditable ? storedOpen : localOpen;
 
   const toggleOpen = () => {
-    updateAttributes({
-      open: !open,
-    });
+    if (editor.isEditable) {
+      updateAttributes({ open: !storedOpen });
+    } else {
+      setLocalOpen((current) => !current);
+    }
   };
 
   return (
     <NodeViewWrapper
       className={`note-accordion my-2 overflow-hidden rounded-lg border ${
-        selected ? "border-emerald-500/30" : "border-white/10"
+        selected && editor.isEditable
+          ? "border-emerald-500/30"
+          : "border-white/10"
       } bg-black/15`}
       data-accordion="true"
     >
@@ -43,16 +56,22 @@ function AccordionNodeView({
           />
         </button>
 
-        <input
-          value={(node.attrs.title as string) || ""}
-          onChange={(event) =>
-            updateAttributes({
-              title: event.target.value,
-            })
-          }
-          placeholder="Section title"
-          className="min-w-0 flex-1 bg-transparent py-1 text-xs font-semibold text-zinc-200 outline-none placeholder:text-zinc-600"
-        />
+        {editor.isEditable ? (
+          <input
+            value={(node.attrs.title as string) || ""}
+            onChange={(event) =>
+              updateAttributes({
+                title: event.target.value,
+              })
+            }
+            placeholder="Section title"
+            className="min-w-0 flex-1 bg-transparent py-1 text-xs font-semibold text-zinc-200 outline-none placeholder:text-zinc-600"
+          />
+        ) : (
+          <div className="min-w-0 flex-1 py-1 text-xs font-semibold text-zinc-200">
+            {(node.attrs.title as string) || "Section"}
+          </div>
+        )}
       </div>
 
       <div className={open ? "block" : "hidden"}>
@@ -64,23 +83,17 @@ function AccordionNodeView({
 
 export const AccordionExtension = Node.create({
   name: "accordion",
-
   group: "block",
-
   content: "block+",
-
   defining: true,
-
   isolating: true,
 
   addAttributes() {
     return {
       title: {
         default: "New section",
-
         parseHTML: (element) =>
           element.getAttribute("data-title") || "New section",
-
         renderHTML: (attributes) => ({
           "data-title": attributes.title,
         }),
@@ -88,9 +101,7 @@ export const AccordionExtension = Node.create({
 
       open: {
         default: true,
-
         parseHTML: (element) => element.getAttribute("data-open") !== "false",
-
         renderHTML: (attributes) => ({
           "data-open": attributes.open === false ? "false" : "true",
         }),
@@ -102,14 +113,11 @@ export const AccordionExtension = Node.create({
     return [
       {
         tag: 'div[data-note-accordion="true"]',
-
         contentElement: '[data-note-accordion-content="true"]',
-
         getAttrs: (element) => ({
           title:
             (element as HTMLElement).getAttribute("data-title") ||
             "New section",
-
           open: (element as HTMLElement).getAttribute("data-open") !== "false",
         }),
       },
@@ -119,18 +127,10 @@ export const AccordionExtension = Node.create({
   renderHTML({ HTMLAttributes }) {
     return [
       "div",
-
       mergeAttributes(HTMLAttributes, {
         "data-note-accordion": "true",
       }),
-
-      [
-        "div",
-        {
-          "data-note-accordion-content": "true",
-        },
-        0,
-      ],
+      ["div", { "data-note-accordion-content": "true" }, 0],
     ];
   },
 
@@ -145,17 +145,11 @@ export const AccordionExtension = Node.create({
         ({ commands }) =>
           commands.insertContent({
             type: this.name,
-
             attrs: {
               title,
               open: true,
             },
-
-            content: [
-              {
-                type: "paragraph",
-              },
-            ],
+            content: [{ type: "paragraph" }],
           }),
     };
   },

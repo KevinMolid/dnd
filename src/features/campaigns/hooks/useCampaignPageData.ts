@@ -73,7 +73,11 @@ export type CampaignJournalPreview = {
 
   content: string;
 
+  createdByUid?: string;
+
   createdByName?: string;
+
+  createdByImageUrl?: string;
 
   updatedAt: number;
 
@@ -1767,7 +1771,7 @@ export const useCampaignPageData = (
     );
 
     const currentPlayerId: string | null =
-      null;
+      user?.uid ?? null;
 
     const unsubscribe =
       subscribeToJournalEntries(
@@ -1781,6 +1785,7 @@ export const useCampaignPageData = (
           const visibleEntries =
             entries.filter(
               (entry) =>
+                entry.published &&
                 canReadJournalEntry({
                   entry,
 
@@ -1826,8 +1831,16 @@ export const useCampaignPageData = (
             content:
               latest.content,
 
+            createdByUid:
+              latest.createdByUid,
+
             createdByName:
               latest.createdByName,
+
+            createdByImageUrl:
+              latest.createdByUid
+                ? usersById[latest.createdByUid]?.imageUrl
+                : undefined,
 
             updatedAt:
               latest.updatedAt,
@@ -1860,6 +1873,8 @@ export const useCampaignPageData = (
     campaignId,
     pageState,
     isGm,
+    user?.uid,
+    usersById,
   ]);
 
   const queuedCharacterUpdatesRef = useRef<
