@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Link, useLocation, useParams } from "react-router-dom";
 
@@ -11,9 +11,6 @@ import { classesById } from "../rulesets/dnd/dnd2024/helpers";
 import type { AbilityKey } from "../rulesets/dnd/dnd2024/types";
 
 import { useCharacterSheetData } from "../features/character-sheet/hooks/useCharacterSheetData";
-
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../firebase";
 
 import type {
   CharacterSheetTab,
@@ -45,8 +42,6 @@ import { abilityFullLabels } from "../features/character-sheet/utils/characterSh
 import { formatLabel } from "../features/character-sheet/utils/characterSheetHelpers";
 
 const CharacterSheet = () => {
-  const [ownerName, setOwnerName] = useState("Unassigned");
-
   const { characterId } = useParams();
 
   const location = useLocation();
@@ -86,47 +81,6 @@ const CharacterSheet = () => {
     handleShortRest,
     handleLongRest,
   } = useCharacterSheetData(characterId);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadOwner = async () => {
-      if (!character?.ownerUid) {
-        setOwnerName("Unassigned");
-        return;
-      }
-
-      try {
-        const ownerSnap = await getDoc(doc(db, "users", character.ownerUid));
-
-        if (cancelled) return;
-
-        if (ownerSnap.exists()) {
-          const owner = ownerSnap.data() as {
-            displayName?: string;
-            email?: string;
-          };
-
-          setOwnerName(
-            owner.displayName?.trim() ||
-              owner.email?.trim() ||
-              "Assigned player",
-          );
-        } else {
-          setOwnerName("Assigned player");
-        }
-      } catch (error) {
-        console.warn("Could not load character owner:", error);
-        if (!cancelled) setOwnerName("Assigned player");
-      }
-    };
-
-    void loadOwner();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [character?.ownerUid]);
 
   const navigationState = location.state as
     | {
@@ -184,7 +138,6 @@ const CharacterSheet = () => {
         character={character as any}
         backTo={backTo}
         backLabel="Back"
-        ownerName={ownerName}
         campaignItemsById={campaignItemsById}
         handleEquipmentChange={handleEquipmentChange}
         handleSetCurrentHp={handleSetCurrentHp}
@@ -655,10 +608,6 @@ const CharacterSheet = () => {
             onLongRest: handleLongRest,
           }}
         />
-
-        <p className="mt-1 text-[10px] text-zinc-500">
-          Owner: <span className="text-zinc-300">{ownerName}</span>
-        </p>
 
         <CharacterQuickStats
           currentHp={derived.currentHp}

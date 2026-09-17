@@ -20,6 +20,8 @@ import CustomFeatureTooltip from "../features/character-sheet/components/CustomF
 
 import { collectFeatureActions } from "../features/character-sheet/utils/featureActionHelpers";
 
+import { calculateArmorClass } from "../rulesets/dnd/dnd2024/armorClass";
+
 import type {
   CharacterSheetTab,
   DeathSaves,
@@ -55,8 +57,6 @@ type CustomCharacterSheetProps = {
   backTo: string;
 
   backLabel: string;
-
-  ownerName: string;
 
   campaignItemsById: Record<string, any>;
 
@@ -302,7 +302,6 @@ const CustomCharacterSheet = ({
   characterId,
   character,
   backTo,
-  ownerName,
   campaignItemsById,
   handleSetPlayerNotes,
   handleEquipmentChange,
@@ -335,7 +334,18 @@ const CustomCharacterSheet = ({
 
   const xpProgress = getXpProgressWithinLevel(xp);
 
-  const armorClass = stats.armorClass ?? 10;
+  const armorClassResult = calculateArmorClass({
+    abilityScores,
+    className: character.className ?? "",
+    equipment: character.equipment ?? [],
+    resolveItem: (entry) =>
+      resolveItemFromEquipmentEntry(entry, campaignItemsById),
+    mode: stats.armorClassMode ?? "automatic",
+    manualArmorClass: stats.manualArmorClass ?? stats.armorClass ?? 10,
+    extraModifier: stats.armorClassBonus ?? 0,
+  });
+
+  const armorClass = armorClassResult.value;
 
   const currentHp = stats.currentHp ?? 0;
 
@@ -773,10 +783,6 @@ const CustomCharacterSheet = ({
             onLongRest: handleLongRest,
           }}
         />
-
-        <p className="mt-1 text-[10px] text-zinc-500">
-          Owner: <span className="text-zinc-300">{ownerName}</span>
-        </p>
 
         <CharacterQuickStats
           currentHp={currentHp}

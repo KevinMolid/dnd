@@ -14,6 +14,9 @@ import SpellPickerModal from "../components/character/SpellPickerModal";
 import { defaultCharacterPortraits } from "../data/defaultCharacterPortraits";
 
 import { itemsById } from "../rulesets/dnd/dnd2024/data/items";
+import { calculateArmorClass } from "../rulesets/dnd/dnd2024/armorClass";
+import type { ArmorClassMode } from "../rulesets/dnd/dnd2024/armorClass";
+import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
 import type {
   AbilityKey,
@@ -340,8 +343,16 @@ const CustomCharacterCreator = ({
     ) as Record<AbilityKey, string>;
   });
 
-  const [customArmorClass, setCustomArmorClass] = useState(
-    initialStats.armorClass ?? 10,
+  const [armorClassMode, setArmorClassMode] = useState<ArmorClassMode>(
+    initialStats.armorClassMode ?? "automatic",
+  );
+
+  const [manualArmorClass, setManualArmorClass] = useState(
+    initialStats.manualArmorClass ?? initialStats.armorClass ?? 10,
+  );
+
+  const [armorClassBonus, setArmorClassBonus] = useState(
+    initialStats.armorClassBonus ?? 0,
   );
 
   const [customMaxHp, setCustomMaxHp] = useState(initialStats.maxHp ?? 10);
@@ -479,6 +490,29 @@ const CustomCharacterCreator = ({
         : 0);
 
   const passivePerception = 10 + perceptionBonus;
+
+  const armorClassResult = useMemo(
+    () =>
+      calculateArmorClass({
+        abilityScores,
+        className: customClassName,
+        equipment,
+        resolveItem: (entry) => resolveItemFromEquipmentEntry(entry, {}),
+        mode: armorClassMode,
+        manualArmorClass,
+        extraModifier: armorClassBonus,
+      }),
+    [
+      abilityScores,
+      customClassName,
+      equipment,
+      armorClassMode,
+      manualArmorClass,
+      armorClassBonus,
+    ],
+  );
+
+  const resolvedArmorClass = armorClassResult.value;
 
   const handleAbilityChange = (key: AbilityKey, value: string) => {
     setAbilityScoreInputs((current) => ({
@@ -915,7 +949,10 @@ const CustomCharacterCreator = ({
     abilityScores,
 
     customStats: {
-      armorClass: customArmorClass,
+      armorClass: resolvedArmorClass,
+      armorClassMode,
+      manualArmorClass,
+      armorClassBonus,
 
       currentHp: getSavedCurrentHp(),
 
@@ -1370,13 +1407,97 @@ const CustomCharacterCreator = ({
                   {/* COMBAT */}
 
                   <Card title="Combat">
-                    <div className="grid gap-2.5 sm:grid-cols-5">
-                      <NumberInput
-                        label="AC"
-                        value={customArmorClass}
-                        onChange={setCustomArmorClass}
-                      />
+                    <div className="mb-3 rounded-lg border border-white/10 bg-zinc-900/55 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-white">
+                            Armor Class
+                          </p>
+                          <p className="mt-0.5 text-xs text-zinc-500">
+                            Calculate AC automatically, or use a manual
+                            override.
+                          </p>
+                        </div>
 
+                        <div
+                          className="inline-flex rounded-lg border border-white/10 bg-black/25 p-1"
+                          role="group"
+                          aria-label="Armor Class calculation mode"
+                        >
+                          {(["automatic", "manual"] as const).map(
+                            (modeOption) => {
+                              const selected = armorClassMode === modeOption;
+
+                              return (
+                                <button
+                                  key={modeOption}
+                                  type="button"
+                                  aria-pressed={selected}
+                                  onClick={() => setArmorClassMode(modeOption)}
+                                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
+                                    selected
+                                      ? "bg-white text-zinc-950"
+                                      : "text-zinc-400 hover:bg-white/[0.06] hover:text-white"
+                                  }`}
+                                >
+                                  {modeOption === "automatic"
+                                    ? "Automatic"
+                                    : "Manual"}
+                                </button>
+                              );
+                            },
+                          )}
+                        </div>
+                      </div>
+
+                      {armorClassMode === "automatic" ? (
+                        <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
+                          <div className="rounded-lg border border-white/[0.08] bg-black/20 p-3">
+                            <div className="flex items-end gap-3">
+                              <span className="text-3xl font-bold leading-none text-white">
+                                {resolvedArmorClass}
+                              </span>
+                              <span className="pb-0.5 text-sm font-medium text-zinc-300">
+                                {armorClassResult.formulaLabel}
+                              </span>
+                            </div>
+
+                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                              {armorClassResult.breakdown.map((line) => (
+                                <span
+                                  key={line.id}
+                                  className="text-xs text-zinc-400"
+                                  title={line.detail}
+                                >
+                                  {line.label}{" "}
+                                  <span className="font-semibold text-zinc-200">
+                                    {line.value >= 0 ? "+" : ""}
+                                    {line.value}
+                                  </span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          <NumberInput
+                            label="Additional modifier"
+                            value={armorClassBonus}
+                            onChange={setArmorClassBonus}
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-3 max-w-[180px]">
+                          <NumberInput
+                            label="Manual AC"
+                            value={manualArmorClass}
+                            min={0}
+                            onChange={setManualArmorClass}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="grid gap-2.5 sm:grid-cols-4">
                       <NumberInput
                         label="Max HP"
                         value={customMaxHp}
@@ -1386,13 +1507,12 @@ const CustomCharacterCreator = ({
 
                       <label className="block">
                         <span className="text-sm text-zinc-300">Hit Die</span>
-
                         <select
                           value={customHitDie}
                           onChange={(event) =>
                             setCustomHitDie(event.target.value)
                           }
-                          className="mt-2 w-full rounded-lg border border-white/10 bg-zinc-900 p-2.5 text-white outline-none focus:border-white/25"
+                          className="mt-1.5 w-full rounded-lg border border-white/10 bg-zinc-900 p-2.5 text-white outline-none focus:border-white/25"
                         >
                           <option value="d4">d4</option>
                           <option value="d6">d6</option>
@@ -1408,7 +1528,6 @@ const CustomCharacterCreator = ({
                         min={0}
                         onChange={setCustomSpeed}
                       />
-
                       <NumberInput
                         label="Prof. Bonus"
                         value={customProficiencyBonus}
@@ -2286,7 +2405,7 @@ const CustomCharacterCreator = ({
                   value={`${getSavedCurrentHp()}/${customMaxHp}`}
                 />
 
-                <MiniStat label="AC" value={customArmorClass} />
+                <MiniStat label="AC" value={resolvedArmorClass} />
 
                 <MiniStat
                   label="Initiative"
