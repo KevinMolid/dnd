@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
+import RichTextEditor from "../features/richText/RichTextEditor";
 import useMonsterLibrary from "../hooks/useMonsterLibrary";
 import { allItems, itemsById } from "../rulesets/dnd/dnd2024/data/items";
 import type { CampaignItem } from "../rulesets/dnd/dnd2024/types";
@@ -36,32 +37,88 @@ type MapPoint = {
 };
 
 type EditableRoom = {
+  editorId: string;
+  sourceIndex: number | null;
   id: number;
   name: string;
   markers: MapPoint[];
   pin?: MapPoint;
-  readAloud: string;
-  descriptionText: string;
-  developmentsText: string;
-  captivesText: string;
+  descriptionHtml: string;
   treasure: MapTreasure[];
   monsters: MapMonster[];
   clues: MapEncounterEntry[];
   phenomena: MapEncounterEntry[];
   events: MapEncounterEntry[];
   encounterWeights: EncounterCategoryWeights;
-  notesText: string;
   exitsText: string;
   experience: string;
 };
 
-const toMultilineText = (value?: string[]) => (value ?? []).join("\n");
-
-const parseStringLines = (value: string) =>
+const escapeHtml = (value: string) =>
   value
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const paragraphsToHtml = (values?: string[]) =>
+  (values ?? [])
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .map((value) => `<p>${escapeHtml(value).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+
+const accordionToHtml = (title: string, content: string) => {
+  const trimmed = content.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  return `<div data-note-accordion="true" data-title="${escapeHtml(
+    title,
+  )}" data-open="true"><div data-note-accordion-content="true">${trimmed}</div></div>`;
+};
+
+const legacyRoomDescriptionToHtml = (room: CampaignMapRoom) => {
+  if (room.descriptionHtml?.trim()) {
+    return room.descriptionHtml;
+  }
+
+  return [
+    paragraphsToHtml(room.description),
+    accordionToHtml(
+      "Read aloud",
+      room.readAloud?.trim()
+        ? `<p>${escapeHtml(room.readAloud).replace(/\n/g, "<br>")}</p>`
+        : "",
+    ),
+    accordionToHtml("Developments", paragraphsToHtml(room.developments)),
+    accordionToHtml("Captives", paragraphsToHtml(room.captives)),
+    accordionToHtml("Notes", paragraphsToHtml(room.notes)),
+  ]
+    .filter(Boolean)
+    .join("");
+};
+
+const legacyOverviewDescriptionToHtml = (map: CampaignMap) => {
+  if (map.descriptionHtml?.trim()) {
+    return map.descriptionHtml;
+  }
+
+  return [
+    paragraphsToHtml(map.generalDescription),
+    accordionToHtml(
+      "Read aloud",
+      map.readAloud?.trim()
+        ? `<p>${escapeHtml(map.readAloud).replace(/\n/g, "<br>")}</p>`
+        : "",
+    ),
+  ]
+    .filter(Boolean)
+    .join("");
+};
 
 const parseExits = (value: string) =>
   value
@@ -124,9 +181,10 @@ const EntityPicker = ({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-emerald-500"
+        className={compactButtonClass}
       >
-        + {label}
+        <i className="fa-solid fa-plus" />
+        {label.replace(/^Add /, "")}
       </button>
       {open ? (
         <div className="absolute right-0 top-full z-50 mt-2 w-[340px] max-w-[70vw] rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
@@ -391,12 +449,17 @@ const EncounterEntryEditor = ({
           onClick={() =>
             onChange([
               ...value,
-              { id: createEncounterEntryId(), name: "", description: "" },
+              {
+                id: createEncounterEntryId(),
+                name: "",
+                description: "",
+              },
             ])
           }
-          className="shrink-0 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-600"
+          className={compactButtonClass}
         >
-          + Add
+          <i className="fa-solid fa-plus" />
+          Add
         </button>
       </div>
 
@@ -451,6 +514,34 @@ const EncounterEntryEditor = ({
   );
 };
 
+const CollapsibleSection = ({
+  title,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) => (
+  <details
+    open={defaultOpen}
+    className="group overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
+  >
+    <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.04] [&::-webkit-details-marker]:hidden">
+      <i className="fa-solid fa-chevron-right text-[10px] text-zinc-500 transition-transform group-open:rotate-90" />
+      <span className="min-w-0 flex-1">{title}</span>
+      {typeof count === "number" ? (
+        <span className="min-w-6 rounded-md bg-white/[0.10] px-2 py-0.5 text-center text-xs font-semibold text-zinc-300">
+          {count}
+        </span>
+      ) : null}
+    </summary>
+    <div className="border-t border-white/[0.08] p-3">{children}</div>
+  </details>
+);
+
 const EncounterWeightsEditor = ({
   value,
   onChange,
@@ -458,9 +549,10 @@ const EncounterWeightsEditor = ({
   value: EncounterCategoryWeights;
   onChange: (value: EncounterCategoryWeights) => void;
 }) => (
-  <details className="rounded-xl border border-white/10 bg-white/[0.03]">
-    <summary className="cursor-pointer px-3 py-2 text-sm font-semibold text-white/75">
-      Encounter settings
+  <details className="group overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+    <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.04] [&::-webkit-details-marker]:hidden">
+      <i className="fa-solid fa-chevron-right text-[10px] text-zinc-500 transition-transform group-open:rotate-90" />
+      <span>Encounter settings</span>
     </summary>
     <div className="grid grid-cols-2 gap-2 border-t border-white/10 p-3">
       {(
@@ -508,25 +600,79 @@ const getDefaultPinPosition = (markers: MapPoint[]): MapPoint => {
   };
 };
 
-const roomToEditable = (room: CampaignMapRoom): EditableRoom => ({
-  id: room.id,
-  name: room.name,
-  markers: room.markers ?? [],
-  pin: room.pin,
-  readAloud: room.readAloud ?? "",
-  descriptionText: toMultilineText(room.description),
-  developmentsText: toMultilineText(room.developments),
-  captivesText: toMultilineText(room.captives),
-  treasure: normalizeLegacyTreasure(room.treasure),
-  monsters: room.monsters ?? [],
-  clues: room.clues ?? [],
-  phenomena: room.phenomena ?? [],
-  events: room.events ?? [],
-  encounterWeights: normalizeWeights(room.encounterWeights),
-  notesText: toMultilineText(room.notes),
-  exitsText: (room.exits ?? []).join(", "),
-  experience: room.experience ?? "",
-});
+const createEditorRoomId = () =>
+  `room-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
+const normalizeRoomsForEditing = (
+  sourceRooms: CampaignMapRoom[],
+): EditableRoom[] => {
+  const sorted = sourceRooms
+    .map((room, sourceIndex) => ({ room, sourceIndex }))
+    .sort((a, b) => {
+      if (a.room.id !== b.room.id) {
+        return a.room.id - b.room.id;
+      }
+
+      return a.sourceIndex - b.sourceIndex;
+    });
+
+  /*
+   * Old maps may contain duplicate or otherwise broken numeric IDs.
+   * Keep every room and all of its content, but give the editor a clean
+   * sequential display order immediately.
+   *
+   * Exits are remapped by old ID. If an old ID was duplicated, an exit
+   * could never distinguish between those rooms in the stored data, so it
+   * is mapped to the first matching room rather than discarded.
+   */
+  const firstNewIdByOldId = new Map<number, number>();
+
+  sorted.forEach(({ room }, index) => {
+    if (!firstNewIdByOldId.has(room.id)) {
+      firstNewIdByOldId.set(room.id, index + 1);
+    }
+  });
+
+  return sorted.map(({ room, sourceIndex }, index) => ({
+    editorId: `existing-${sourceIndex}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 7)}`,
+    sourceIndex,
+    id: index + 1,
+    name: room.name,
+    markers: room.markers ?? [],
+    pin: room.pin,
+    descriptionHtml: legacyRoomDescriptionToHtml(room),
+    treasure: normalizeLegacyTreasure(room.treasure),
+    monsters: room.monsters ?? [],
+    clues: room.clues ?? [],
+    phenomena: room.phenomena ?? [],
+    events: room.events ?? [],
+    encounterWeights: normalizeWeights(room.encounterWeights),
+    exitsText: (room.exits ?? [])
+      .map((exitId) => firstNewIdByOldId.get(exitId))
+      .filter((exitId): exitId is number => exitId !== undefined)
+      .join(", "),
+    experience: room.experience ?? "",
+  }));
+};
+
+const renumberRooms = (rooms: EditableRoom[]): EditableRoom[] => {
+  const oldToNew = new Map<number, number>();
+
+  rooms.forEach((room, index) => {
+    oldToNew.set(room.id, index + 1);
+  });
+
+  return rooms.map((room, index) => ({
+    ...room,
+    id: index + 1,
+    exitsText: parseExits(room.exitsText)
+      .map((exitId) => oldToNew.get(exitId))
+      .filter((exitId): exitId is number => exitId !== undefined)
+      .join(", "),
+  }));
+};
 
 const editableToRoom = (
   editable: EditableRoom,
@@ -536,16 +682,13 @@ const editableToRoom = (
     id: editable.id,
     name: editable.name.trim() || `Room ${editable.id}`,
     markers: editable.markers,
-    description: parseStringLines(editable.descriptionText),
-    developments: parseStringLines(editable.developmentsText),
-    captives: parseStringLines(editable.captivesText),
+    descriptionHtml: editable.descriptionHtml,
     treasure: editable.treasure,
     monsters: editable.monsters,
     clues: editable.clues.filter((entry) => entry.name.trim()),
     phenomena: editable.phenomena.filter((entry) => entry.name.trim()),
     events: editable.events.filter((entry) => entry.name.trim()),
     encounterWeights: editable.encounterWeights,
-    notes: parseStringLines(editable.notesText),
     exits: parseExits(editable.exitsText),
     encounterTemplate: original?.encounterTemplate ?? null,
   };
@@ -558,11 +701,6 @@ const editableToRoom = (
     room.environment = original.environment;
   }
 
-  const readAloud = editable.readAloud.trim();
-
-  if (readAloud) {
-    room.readAloud = readAloud;
-  }
 
   const experience = editable.experience.trim();
 
@@ -634,6 +772,21 @@ const textAreaClass =
   "min-h-[110px] w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none transition focus:border-white/20";
 
 const labelClass = "mb-2 block text-sm font-medium text-white/85";
+
+const buttonClass =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-semibold text-zinc-200 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40";
+
+const compactButtonClass =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-300 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40";
+
+const primaryButtonClass =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/15 bg-white/[0.08] px-3 py-2 text-sm font-semibold text-white transition hover:border-white/20 hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-40";
+
+const dangerButtonClass =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/[0.08] px-3 py-2 text-sm font-semibold text-red-300 transition hover:border-red-500/30 hover:bg-red-500/[0.14] disabled:cursor-not-allowed disabled:opacity-40";
+
+const compactDangerButtonClass =
+  "inline-flex items-center justify-center gap-1.5 rounded-lg border border-red-500/20 bg-red-500/[0.08] px-2.5 py-1.5 text-xs font-semibold text-red-300 transition hover:border-red-500/30 hover:bg-red-500/[0.14] disabled:cursor-not-allowed disabled:opacity-40";
 
 const MapEditorModal = ({
   campaignId,
@@ -710,12 +863,8 @@ const MapEditorModal = ({
 
   const [imageUrl, setImageUrl] = useState(map.imageUrl);
 
-  const [overviewDescriptionText, setOverviewDescriptionText] = useState(
-    toMultilineText(map.generalDescription),
-  );
-
-  const [overviewReadAloud, setOverviewReadAloud] = useState(
-    map.readAloud ?? "",
+  const [overviewDescriptionHtml, setOverviewDescriptionHtml] = useState(
+    legacyOverviewDescriptionToHtml(map),
   );
 
   const [overviewMonsters, setOverviewMonsters] = useState<MapMonster[]>(
@@ -745,12 +894,16 @@ const MapEditorModal = ({
     EnvironmentEffect[]
   >(map.environmentEffects ?? []);
 
-  const [rooms, setRooms] = useState<EditableRoom[]>(
-    map.rooms.map(roomToEditable).sort((a, b) => a.id - b.id),
+  const [rooms, setRooms] = useState<EditableRoom[]>(() =>
+    normalizeRoomsForEditing(map.rooms),
   );
 
-  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(
-    initialSelectedRoomId,
+  const [selectedRoomEditorId, setSelectedRoomEditorId] = useState<
+    string | null
+  >(null);
+
+  const [draggedRoomEditorId, setDraggedRoomEditorId] = useState<string | null>(
+    null,
   );
 
   const [expandedEffectIds, setExpandedEffectIds] = useState<Set<string>>(
@@ -766,8 +919,7 @@ const MapEditorModal = ({
   useEffect(() => {
     setTitle(map.title);
     setImageUrl(map.imageUrl);
-    setOverviewDescriptionText(toMultilineText(map.generalDescription));
-    setOverviewReadAloud(map.readAloud ?? "");
+    setOverviewDescriptionHtml(legacyOverviewDescriptionToHtml(map));
     setOverviewMonsters(map.monsters ?? []);
     setOverviewTreasure(normalizeLegacyTreasure(map.treasure));
     setOverviewClues(map.clues ?? []);
@@ -778,14 +930,14 @@ const MapEditorModal = ({
     setEnvironmentEffects(map.environmentEffects ?? []);
     setExpandedEffectIds(new Set());
 
-    const nextRooms = map.rooms.map(roomToEditable).sort((a, b) => a.id - b.id);
+    const nextRooms = normalizeRoomsForEditing(map.rooms);
 
     setRooms(nextRooms);
 
-    setSelectedRoomId(
-      initialSelectedRoomId !== null &&
-        nextRooms.some((room) => room.id === initialSelectedRoomId)
-        ? initialSelectedRoomId
+    setSelectedRoomEditorId(
+      initialSelectedRoomId !== null
+        ? nextRooms.find((room) => room.id === initialSelectedRoomId)
+            ?.editorId ?? null
         : null,
     );
 
@@ -793,28 +945,19 @@ const MapEditorModal = ({
   }, [map, initialSelectedRoomId]);
 
   const selectedRoom = useMemo(
-    () => rooms.find((room) => room.id === selectedRoomId) ?? null,
-    [rooms, selectedRoomId],
+    () =>
+      rooms.find((room) => room.editorId === selectedRoomEditorId) ?? null,
+    [rooms, selectedRoomEditorId],
   );
 
-  const originalRoomById = useMemo(() => {
-    const roomMap = new Map<number, CampaignMapRoom>();
-
-    map.rooms.forEach((room) => {
-      roomMap.set(room.id, room);
-    });
-
-    return roomMap;
-  }, [map.rooms]);
-
   const updateSelectedRoom = (updates: Partial<EditableRoom>) => {
-    if (selectedRoomId === null) {
+    if (selectedRoomEditorId === null) {
       return;
     }
 
     setRooms((prev) =>
       prev.map((room) =>
-        room.id === selectedRoomId
+        room.editorId === selectedRoomEditorId
           ? {
               ...room,
               ...updates,
@@ -1052,32 +1195,28 @@ const MapEditorModal = ({
    */
 
   const addRoom = () => {
-    const nextId =
-      rooms.length > 0 ? Math.max(...rooms.map((room) => room.id)) + 1 : 1;
+    const nextId = rooms.length + 1;
 
     const newRoom: EditableRoom = {
+      editorId: createEditorRoomId(),
+      sourceIndex: null,
       id: nextId,
       name: `Room ${nextId}`,
       markers: [],
       pin: undefined,
-      readAloud: "",
-      descriptionText: "",
-      developmentsText: "",
-      captivesText: "",
+      descriptionHtml: "",
       treasure: [],
       monsters: [],
       clues: [],
       phenomena: [],
       events: [],
       encounterWeights: { ...DEFAULT_ENCOUNTER_WEIGHTS },
-      notesText: "",
       exitsText: "",
       experience: "",
     };
 
-    setRooms((prev) => [...prev, newRoom].sort((a, b) => a.id - b.id));
-
-    setSelectedRoomId(nextId);
+    setRooms((prev) => [...prev, newRoom]);
+    setSelectedRoomEditorId(newRoom.editorId);
   };
 
   const deleteSelectedRoom = () => {
@@ -1095,22 +1234,40 @@ const MapEditorModal = ({
 
     setRooms((prev) => {
       const remaining = prev
-        .filter((room) => room.id !== selectedRoom.id)
-        .map((room) => {
-          const exits = parseExits(room.exitsText).filter(
-            (exitId) => exitId !== selectedRoom.id,
-          );
+        .filter((room) => room.editorId !== selectedRoom.editorId)
+        .map((room) => ({
+          ...room,
+          exitsText: parseExits(room.exitsText)
+            .filter((exitId) => exitId !== selectedRoom.id)
+            .join(", "),
+        }));
 
-          return {
-            ...room,
-            exitsText: exits.join(", "),
-          };
-        })
-        .sort((a, b) => a.id - b.id);
+      const renumbered = renumberRooms(remaining);
+      setSelectedRoomEditorId(renumbered[0]?.editorId ?? null);
+      return renumbered;
+    });
+  };
 
-      setSelectedRoomId(remaining[0]?.id ?? null);
+  const moveRoom = (draggedEditorId: string, targetEditorId: string) => {
+    if (draggedEditorId === targetEditorId) {
+      return;
+    }
 
-      return remaining;
+    setRooms((prev) => {
+      const fromIndex = prev.findIndex(
+        (room) => room.editorId === draggedEditorId,
+      );
+      const toIndex = prev.findIndex((room) => room.editorId === targetEditorId);
+
+      if (fromIndex < 0 || toIndex < 0) {
+        return prev;
+      }
+
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+
+      return renumberRooms(next);
     });
   };
 
@@ -1173,7 +1330,7 @@ const MapEditorModal = ({
 
   const handlePinPointerDown = (
     event: React.PointerEvent<HTMLButtonElement>,
-    roomId: number,
+    roomEditorId: string,
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -1199,7 +1356,7 @@ const MapEditorModal = ({
 
       setRooms((prev) =>
         prev.map((room) =>
-          room.id === roomId
+          room.editorId === roomEditorId
             ? {
                 ...room,
 
@@ -1246,10 +1403,10 @@ const MapEditorModal = ({
 
       const normalizedRooms: CampaignMapRoom[] = rooms
         .map((room) => {
-          const normalized = editableToRoom(
-            room,
-            originalRoomById.get(room.id),
-          );
+          const original =
+            room.sourceIndex !== null ? map.rooms[room.sourceIndex] : undefined;
+
+          const normalized = editableToRoom(room, original);
 
           /*
            * Preserve environment values belonging
@@ -1283,9 +1440,11 @@ const MapEditorModal = ({
 
         environmentEffects,
 
-        generalDescription: parseStringLines(overviewDescriptionText),
+        descriptionHtml: overviewDescriptionHtml,
 
-        readAloud: overviewReadAloud.trim(),
+        // Clear legacy overview prose after it has been migrated.
+        generalDescription: [],
+        readAloud: "",
 
         monsters: overviewMonsters,
 
@@ -1335,44 +1494,34 @@ const MapEditorModal = ({
   return (
     <div className="fixed inset-0 z-[70] bg-black/80 p-4 md:p-6">
       <div className="flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-zinc-950 text-white shadow-2xl">
-        {/* Header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-4 md:px-6">
-          <div>
-            <h2 className="text-xl font-bold">Edit map</h2>
+        {/* Compact header */}
+        <div className="flex items-center justify-end gap-2 border-b border-white/10 px-4 py-2 md:px-6">
+          <button
+            type="button"
+            onClick={handleDeleteMap}
+            disabled={isDeletingMap || isSaving}
+            className={dangerButtonClass}
+          >
+            {isDeletingMap ? "Deleting..." : "Delete map"}
+          </button>
 
-            <p className="text-sm text-white/55">
-              Update map info, environment effects, areas, pins, and notes.
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isDeletingMap || isSaving}
+            className={buttonClass}
+          >
+            Cancel
+          </button>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleDeleteMap}
-              disabled={isDeletingMap || isSaving}
-              className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
-            >
-              {isDeletingMap ? "Deleting..." : "Delete map"}
-            </button>
-
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isDeletingMap || isSaving}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-50"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isSaving || isDeletingMap}
-              className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600 disabled:opacity-50"
-            >
-              {isSaving ? "Saving..." : "Save changes"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={isSaving || isDeletingMap}
+            className={primaryButtonClass}
+          >
+            {isSaving ? "Saving..." : "Save changes"}
+          </button>
         </div>
 
         {/* Error */}
@@ -1383,399 +1532,101 @@ const MapEditorModal = ({
         )}
 
         {/* Main layout */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)_420px]">
+        <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[240px_minmax(0,1fr)_500px]">
           {/* Left sidebar */}
-          <aside className="min-h-0 overflow-auto border-b border-white/10 bg-zinc-950 p-4 xl:border-b-0 xl:border-r">
-            <div className="space-y-5">
-              {/* Map settings */}
-              <section>
-                <div className="space-y-4">
-                  <div>
-                    <label className={labelClass}>Title</label>
+          <aside className="workspace-scrollbar min-h-0 overflow-auto border-b border-white/10 bg-zinc-950 p-3 xl:border-b-0 xl:border-r">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-white/50">
+                Areas
+              </h3>
 
-                    <input
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
+              <button
+                type="button"
+                onClick={addRoom}
+                className={compactButtonClass}
+              >
+                <i className="fa-solid fa-plus" />
+                Add area
+              </button>
+            </div>
 
-                  <div>
-                    <label className={labelClass}>Image URL</label>
-
-                    <input
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
+            <div className="space-y-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedRoomEditorId(null)}
+                className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
+                  selectedRoomEditorId === null
+                    ? "border-white/25 bg-white/10"
+                    : "border-white/10 bg-white/[0.035] hover:bg-white/[0.07]"
+                }`}
+              >
+                <div className="truncate text-sm font-semibold text-white">
+                  Overview
                 </div>
-              </section>
+              </button>
 
-              {/* Environment effects */}
-              <section>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold uppercase tracking-wide text-white/65">
-                      Environment effects
-                    </h3>
-
-                    <p className="mt-1 text-xs text-white/45">
-                      Define systems that can change independently in each map
-                      area.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={addEnvironmentEffect}
-                    className="shrink-0 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-600"
-                  >
-                    <i className="fa-solid fa-plus" /> Add effect
-                  </button>
+              {rooms.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.03] p-3 text-sm text-white/50">
+                  No areas yet.
                 </div>
+              ) : (
+                rooms.map((room) => {
+                  const isSelected =
+                    selectedRoomEditorId === room.editorId;
+                  const isDragging =
+                    draggedRoomEditorId === room.editorId;
 
-                {environmentEffects.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-white/55">
-                    No environment effects yet. Add one when this map needs a
-                    dynamic system such as fog, corruption, weather, or danger.
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {environmentEffects.map((effect) => {
-                      const isExpanded = expandedEffectIds.has(effect.id);
+                  return (
+                    <button
+                      key={room.editorId}
+                      type="button"
+                      draggable
+                      onClick={() => setSelectedRoomEditorId(room.editorId)}
+                      onDragStart={(event) => {
+                        setDraggedRoomEditorId(room.editorId);
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData(
+                          "text/plain",
+                          room.editorId,
+                        );
+                      }}
+                      onDragEnd={() => setDraggedRoomEditorId(null)}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        event.dataTransfer.dropEffect = "move";
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
 
-                      return (
-                        <div
-                          key={effect.id}
-                          className="overflow-hidden rounded-2xl border border-white/10 bg-white/5"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => toggleEnvironmentEffect(effect.id)}
-                            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/5"
-                          >
-                            <span className="truncate text-sm font-semibold text-white">
-                              {effect.name || "Untitled environment"}
-                            </span>
+                        const draggedId =
+                          event.dataTransfer.getData("text/plain") ||
+                          draggedRoomEditorId;
 
-                            <i
-                              className={`fa-solid fa-chevron-down shrink-0 text-xs text-white/40 transition-transform ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
-                            />
-                          </button>
+                        if (draggedId) {
+                          moveRoom(draggedId, room.editorId);
+                        }
 
-                          {isExpanded && (
-                            <div className="border-t border-white/10 p-4">
-                              <div className="mb-4 flex items-start justify-between gap-3">
-                                <div className="min-w-0 flex-1">
-                                  <label className={labelClass}>
-                                    Effect name
-                                  </label>
-
-                                  <input
-                                    value={effect.name}
-                                    onChange={(e) =>
-                                      renameEnvironmentEffect(
-                                        effect.id,
-                                        e.target.value,
-                                      )
-                                    }
-                                    className={inputClass}
-                                    placeholder="Fog"
-                                  />
-
-                                  <div className="mt-1 text-xs text-white/40">
-                                    ID: {effect.id}
-                                  </div>
-                                </div>
-
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    deleteEnvironmentEffect(effect.id)
-                                  }
-                                  className="mt-7 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
-                                  title="Delete environment effect"
-                                >
-                                  <i className="fa-solid fa-trash" />
-                                </button>
-                              </div>
-
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <label className={labelClass}>
-                                    Die sides
-                                  </label>
-
-                                  <input
-                                    type="number"
-                                    min={2}
-                                    value={effect.diceSides}
-                                    onChange={(e) =>
-                                      updateEnvironmentEffect(effect.id, {
-                                        diceSides: Math.max(
-                                          2,
-                                          Number(e.target.value) || 2,
-                                        ),
-                                      })
-                                    }
-                                    className={inputClass}
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className={labelClass}>
-                                    Max change / roll
-                                  </label>
-
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={effect.maxChangePerRoll}
-                                    onChange={(e) =>
-                                      updateEnvironmentEffect(effect.id, {
-                                        maxChangePerRoll: Math.max(
-                                          0,
-                                          Number(e.target.value) || 0,
-                                        ),
-                                      })
-                                    }
-                                    className={inputClass}
-                                  />
-                                </div>
-                              </div>
-
-                              <div className="mt-4">
-                                <div className="mb-2 flex items-center justify-between gap-2">
-                                  <div>
-                                    <div className="text-sm font-medium text-white/85">
-                                      Levels and roll ranges
-                                    </div>
-
-                                    <div className="text-xs text-white/45">
-                                      Each level gets a target range on the d
-                                      {effect.diceSides}.
-                                    </div>
-                                  </div>
-
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      addEnvironmentLevel(effect.id)
-                                    }
-                                    className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-white/10"
-                                  >
-                                    <i className="fa-solid fa-plus" /> Level
-                                  </button>
-                                </div>
-
-                                <div className="space-y-2">
-                                  {effect.levels
-                                    .slice()
-                                    .sort((a, b) => a.value - b.value)
-                                    .map((level) => {
-                                      const range = effect.rollRanges.find(
-                                        (item) =>
-                                          item.targetLevel === level.value,
-                                      );
-
-                                      return (
-                                        <div
-                                          key={level.value}
-                                          className="rounded-xl border border-white/10 bg-zinc-950/50 p-3"
-                                        >
-                                          <div className="mb-2 flex items-center justify-between gap-2">
-                                            <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                                              Level {level.value}
-                                            </div>
-
-                                            <button
-                                              type="button"
-                                              disabled={
-                                                effect.levels.length <= 1
-                                              }
-                                              onClick={() =>
-                                                removeEnvironmentLevel(
-                                                  effect.id,
-                                                  level.value,
-                                                )
-                                              }
-                                              className="rounded-md px-2 py-1 text-xs text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-30"
-                                            >
-                                              Remove
-                                            </button>
-                                          </div>
-
-                                          <input
-                                            value={level.name}
-                                            onChange={(e) =>
-                                              updateEnvironmentLevel(
-                                                effect.id,
-                                                level.value,
-                                                {
-                                                  name: e.target.value,
-                                                },
-                                              )
-                                            }
-                                            className={inputClass}
-                                            placeholder={`Level ${level.value}`}
-                                          />
-
-                                          <div className="mt-2 grid grid-cols-2 gap-2">
-                                            <div>
-                                              <label className="mb-1 block text-xs text-white/50">
-                                                Roll min
-                                              </label>
-
-                                              <input
-                                                type="number"
-                                                min={1}
-                                                max={effect.diceSides}
-                                                value={range?.min ?? 1}
-                                                onChange={(e) =>
-                                                  updateRollRange(
-                                                    effect.id,
-                                                    level.value,
-                                                    {
-                                                      min: Math.max(
-                                                        1,
-                                                        Math.min(
-                                                          effect.diceSides,
-                                                          Number(
-                                                            e.target.value,
-                                                          ) || 1,
-                                                        ),
-                                                      ),
-                                                    },
-                                                  )
-                                                }
-                                                className={inputClass}
-                                              />
-                                            </div>
-
-                                            <div>
-                                              <label className="mb-1 block text-xs text-white/50">
-                                                Roll max
-                                              </label>
-
-                                              <input
-                                                type="number"
-                                                min={1}
-                                                max={effect.diceSides}
-                                                value={
-                                                  range?.max ?? effect.diceSides
-                                                }
-                                                onChange={(e) =>
-                                                  updateRollRange(
-                                                    effect.id,
-                                                    level.value,
-                                                    {
-                                                      max: Math.max(
-                                                        1,
-                                                        Math.min(
-                                                          effect.diceSides,
-                                                          Number(
-                                                            e.target.value,
-                                                          ) || 1,
-                                                        ),
-                                                      ),
-                                                    },
-                                                  )
-                                                }
-                                                className={inputClass}
-                                              />
-                                            </div>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </section>
-
-              {/* Areas */}
-              <section>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold uppercase tracking-wide text-white/65">
-                    Areas
-                  </h3>
-
-                  <button
-                    type="button"
-                    onClick={addRoom}
-                    className="shrink-0 rounded-xl bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-600"
-                  >
-                    <i className="fa-solid fa-plus" /> Add area
-                  </button>
-                </div>
-
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRoomId(null)}
-                    className={`w-full rounded-2xl border p-3 text-left transition ${
-                      selectedRoomId === null
-                        ? "border-white/25 bg-white/10"
-                        : "border-white/10 bg-white/5 hover:bg-white/10"
-                    }`}
-                  >
-                    <div className="text-sm font-semibold text-white">
-                      Overview
-                    </div>
-
-                    <div className="mt-1 text-xs text-white/55">
-                      General map description and read-aloud text
-                    </div>
-                  </button>
-
-                  {rooms.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-4 text-sm text-white/55">
-                      No areas yet.
-                    </div>
-                  ) : (
-                    rooms.map((room) => {
-                      const isSelected = selectedRoomId === room.id;
-
-                      return (
-                        <button
-                          key={room.id}
-                          type="button"
-                          onClick={() => setSelectedRoomId(room.id)}
-                          className={`w-full rounded-2xl border p-3 text-left transition ${
-                            isSelected
-                              ? "border-white/25 bg-white/10"
-                              : "border-white/10 bg-white/5 hover:bg-white/10"
-                          }`}
-                        >
-                          <div className="text-sm font-semibold text-white">
-                            {room.id}. {room.name}
-                          </div>
-
-                          <div className="mt-1 text-xs text-white/55">
-                            {room.markers.length} boundary point
-                            {room.markers.length === 1 ? "" : "s"}
-                            {room.pin ? " • custom pin" : ""}
-                          </div>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </section>
+                        setDraggedRoomEditorId(null);
+                      }}
+                      className={`group flex w-full items-center gap-2 rounded-xl border px-2.5 py-2.5 text-left transition ${
+                        isSelected
+                          ? "border-white/25 bg-white/10"
+                          : "border-white/10 bg-white/[0.035] hover:bg-white/[0.07]"
+                      } ${isDragging ? "opacity-40" : ""}`}
+                    >
+                      <i className="fa-solid fa-grip-vertical shrink-0 cursor-grab text-xs text-zinc-600 transition group-hover:text-zinc-400" />
+                      <div className="min-w-0 flex-1 truncate text-sm font-semibold text-white">
+                        {room.id}. {room.name}
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </aside>
 
           {/* Map */}
-          <section className="min-h-0 overflow-auto border-b border-white/10 bg-zinc-900 xl:border-b-0 xl:border-r">
+          <section className="workspace-scrollbar min-h-0 overflow-auto border-b border-white/10 bg-zinc-900 xl:border-b-0 xl:border-r">
             {imageUrl ? (
               <div
                 className={`relative w-full bg-black ${
@@ -1801,7 +1652,7 @@ const MapEditorModal = ({
                       return null;
                     }
 
-                    const isSelected = room.id === selectedRoomId;
+                    const isSelected = room.editorId === selectedRoomEditorId;
 
                     const polygonPoints = room.markers
                       .map((point) => `${point.x},${point.y}`)
@@ -1809,7 +1660,7 @@ const MapEditorModal = ({
 
                     return (
                       <polygon
-                        key={room.id}
+                        key={room.editorId}
                         points={polygonPoints}
                         fill={
                           isSelected
@@ -1880,19 +1731,19 @@ const MapEditorModal = ({
 
                   const pinPosition = room.pin ?? defaultPin;
 
-                  const isSelected = room.id === selectedRoomId;
+                  const isSelected = room.editorId === selectedRoomEditorId;
 
                   return (
                     <button
-                      key={`label-${room.id}`}
+                      key={`label-${room.editorId}`}
                       type="button"
                       onPointerDown={(event) =>
-                        handlePinPointerDown(event, room.id)
+                        handlePinPointerDown(event, room.editorId)
                       }
                       onClick={(event) => {
                         event.stopPropagation();
 
-                        setSelectedRoomId(room.id);
+                        setSelectedRoomEditorId(room.editorId);
                       }}
                       className={`absolute z-20 flex -translate-x-1/2 -translate-y-1/2 touch-none select-none items-center justify-center rounded-full border text-xs font-bold shadow-lg transition ${
                         isSelected
@@ -1918,320 +1769,538 @@ const MapEditorModal = ({
           </section>
 
           {/* Right sidebar */}
-          <aside className="min-h-0 overflow-auto bg-zinc-950 p-4">
+          <aside className="workspace-scrollbar min-h-0 overflow-auto bg-zinc-950 p-4">
             {!selectedRoom ? (
-              <div className="space-y-5">
+              <div className="space-y-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-2">
+                  <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    aria-label="Map title"
+                    placeholder="Map title"
+                    className="min-w-0 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-lg font-bold text-white outline-none transition focus:border-white/20"
+                  />
+
+                  <input
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    aria-label="Image URL"
+                    placeholder="Image URL"
+                    className="min-w-0 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-lg font-bold text-white outline-none transition placeholder:text-zinc-600 focus:border-white/20"
+                  />
+                </div>
+
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                    Overview
+                  <label className={labelClass}>Description</label>
+
+                  <RichTextEditor
+                    value={overviewDescriptionHtml}
+                    onChange={setOverviewDescriptionHtml}
+                    placeholder="Describe the map, add read-aloud text, notes, or organised accordion sections..."
+                    minHeightClassName="min-h-[220px]"
+                  />
+                </div>
+
+                <CollapsibleSection
+                  title="Environment effects"
+                  count={environmentEffects.length}
+                >
+                  <div className="mb-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={addEnvironmentEffect}
+                      className={compactButtonClass}
+                    >
+                      <i className="fa-solid fa-plus" />
+                      Add effect
+                    </button>
                   </div>
 
-                  <h3 className="mt-1 text-lg font-bold text-white">
-                    General map information
-                  </h3>
+                  {environmentEffects.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] p-3 text-sm text-white/50">
+                      No environment effects yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {environmentEffects.map((effect) => {
+                        const isExpanded = expandedEffectIds.has(effect.id);
 
-                  <p className="mt-1 text-sm text-white/55">
-                    Edit information shown when no specific area is selected.
-                    While Overview is selected, clicking the map will not add
-                    polygon points.
-                  </p>
-                </div>
+                        return (
+                          <div
+                            key={effect.id}
+                            className="overflow-hidden rounded-xl border border-white/10 bg-black/15"
+                          >
+                            <button
+                              type="button"
+                              onClick={() => toggleEnvironmentEffect(effect.id)}
+                              className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition hover:bg-white/[0.04]"
+                            >
+                              <span className="truncate text-sm font-semibold text-white">
+                                {effect.name || "Untitled environment"}
+                              </span>
 
-                <div>
-                  <label className={labelClass}>Read aloud</label>
+                              <i
+                                className={`fa-solid fa-chevron-down shrink-0 text-xs text-white/40 transition-transform ${
+                                  isExpanded ? "rotate-180" : ""
+                                }`}
+                              />
+                            </button>
 
-                  <textarea
-                    value={overviewReadAloud}
-                    onChange={(e) => setOverviewReadAloud(e.target.value)}
-                    className={textAreaClass}
-                    placeholder="Optional text to read when introducing the map..."
-                  />
-                </div>
+                            {isExpanded ? (
+                              <div className="border-t border-white/[0.08] p-3">
+                                <div className="mb-3 flex items-start gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <label className={labelClass}>
+                                      Effect name
+                                    </label>
 
-                <div>
-                  <label className={labelClass}>
-                    General description (one paragraph per line)
-                  </label>
+                                    <input
+                                      value={effect.name}
+                                      onChange={(e) =>
+                                        renameEnvironmentEffect(
+                                          effect.id,
+                                          e.target.value,
+                                        )
+                                      }
+                                      className={inputClass}
+                                      placeholder="Fog"
+                                    />
 
-                  <textarea
-                    value={overviewDescriptionText}
-                    onChange={(e) => setOverviewDescriptionText(e.target.value)}
-                    className={textAreaClass}
-                    placeholder="General notes or description for the whole map..."
-                  />
-                </div>
+                                    <div className="mt-1 text-xs text-white/40">
+                                      ID: {effect.id}
+                                    </div>
+                                  </div>
 
-                <TreasureEditor
-                  value={overviewTreasure}
-                  onChange={setOverviewTreasure}
-                  itemOptions={itemOptions}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      deleteEnvironmentEffect(effect.id)
+                                    }
+                                    className="mt-7 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/[0.08] text-xs text-red-300 transition hover:border-red-500/30 hover:bg-red-500/[0.14]"
+                                  >
+                                    <i className="fa-solid fa-trash" />
+                                  </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <label className={labelClass}>Die sides</label>
+                                    <input
+                                      type="number"
+                                      min={2}
+                                      value={effect.diceSides}
+                                      onChange={(e) =>
+                                        updateEnvironmentEffect(effect.id, {
+                                          diceSides: Math.max(
+                                            2,
+                                            Number(e.target.value) || 2,
+                                          ),
+                                        })
+                                      }
+                                      className={inputClass}
+                                    />
+                                  </div>
+
+                                  <div>
+                                    <label className={labelClass}>
+                                      Max change / roll
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      value={effect.maxChangePerRoll}
+                                      onChange={(e) =>
+                                        updateEnvironmentEffect(effect.id, {
+                                          maxChangePerRoll: Math.max(
+                                            0,
+                                            Number(e.target.value) || 0,
+                                          ),
+                                        })
+                                      }
+                                      className={inputClass}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="mt-3">
+                                  <div className="mb-2 flex items-center justify-between gap-2">
+                                    <div>
+                                      <div className="text-sm font-medium text-white/85">
+                                        Levels and roll ranges
+                                      </div>
+                                      <div className="text-xs text-white/45">
+                                        Each level gets a target range on the d
+                                        {effect.diceSides}.
+                                      </div>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        addEnvironmentLevel(effect.id)
+                                      }
+                                      className={compactButtonClass}
+                                    >
+                                      <i className="fa-solid fa-plus" />
+                                      Level
+                                    </button>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    {effect.levels
+                                      .slice()
+                                      .sort((a, b) => a.value - b.value)
+                                      .map((level) => {
+                                        const range = effect.rollRanges.find(
+                                          (item) =>
+                                            item.targetLevel === level.value,
+                                        );
+
+                                        return (
+                                          <div
+                                            key={level.value}
+                                            className="rounded-xl border border-white/10 bg-zinc-950/50 p-3"
+                                          >
+                                            <div className="mb-2 flex items-center justify-between gap-2">
+                                              <div className="text-xs font-semibold uppercase tracking-wide text-white/50">
+                                                Level {level.value}
+                                              </div>
+
+                                              <button
+                                                type="button"
+                                                disabled={
+                                                  effect.levels.length <= 1
+                                                }
+                                                onClick={() =>
+                                                  removeEnvironmentLevel(
+                                                    effect.id,
+                                                    level.value,
+                                                  )
+                                                }
+                                                className="rounded-md px-2 py-1 text-xs text-red-300 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-30"
+                                              >
+                                                Remove
+                                              </button>
+                                            </div>
+
+                                            <input
+                                              value={level.name}
+                                              onChange={(e) =>
+                                                updateEnvironmentLevel(
+                                                  effect.id,
+                                                  level.value,
+                                                  {
+                                                    name: e.target.value,
+                                                  },
+                                                )
+                                              }
+                                              className={inputClass}
+                                              placeholder={`Level ${level.value}`}
+                                            />
+
+                                            <div className="mt-2 grid grid-cols-2 gap-2">
+                                              <div>
+                                                <label className="mb-1 block text-xs text-white/50">
+                                                  Roll min
+                                                </label>
+                                                <input
+                                                  type="number"
+                                                  min={1}
+                                                  max={effect.diceSides}
+                                                  value={range?.min ?? 1}
+                                                  onChange={(e) =>
+                                                    updateRollRange(
+                                                      effect.id,
+                                                      level.value,
+                                                      {
+                                                        min: Math.max(
+                                                          1,
+                                                          Math.min(
+                                                            effect.diceSides,
+                                                            Number(
+                                                              e.target.value,
+                                                            ) || 1,
+                                                          ),
+                                                        ),
+                                                      },
+                                                    )
+                                                  }
+                                                  className={inputClass}
+                                                />
+                                              </div>
+
+                                              <div>
+                                                <label className="mb-1 block text-xs text-white/50">
+                                                  Roll max
+                                                </label>
+                                                <input
+                                                  type="number"
+                                                  min={1}
+                                                  max={effect.diceSides}
+                                                  value={
+                                                    range?.max ??
+                                                    effect.diceSides
+                                                  }
+                                                  onChange={(e) =>
+                                                    updateRollRange(
+                                                      effect.id,
+                                                      level.value,
+                                                      {
+                                                        max: Math.max(
+                                                          1,
+                                                          Math.min(
+                                                            effect.diceSides,
+                                                            Number(
+                                                              e.target.value,
+                                                            ) || 1,
+                                                          ),
+                                                        ),
+                                                      },
+                                                    )
+                                                  }
+                                                  className={inputClass}
+                                                />
+                                              </div>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CollapsibleSection>
+
+                <CollapsibleSection
                   title="Treasure"
-                />
+                  count={overviewTreasure.length}
+                >
+                  <TreasureEditor
+                    value={overviewTreasure}
+                    onChange={setOverviewTreasure}
+                    itemOptions={itemOptions}
+                    title="Treasure"
+                  />
+                </CollapsibleSection>
 
-                <CreatureEditor
-                  value={overviewMonsters}
-                  onChange={setOverviewMonsters}
-                  monsterOptions={monsterOptions}
+                <CollapsibleSection
                   title="Creatures"
-                />
+                  count={overviewMonsters.length}
+                >
+                  <CreatureEditor
+                    value={overviewMonsters}
+                    onChange={setOverviewMonsters}
+                    monsterOptions={monsterOptions}
+                    title="Creatures"
+                  />
+                </CollapsibleSection>
 
-                <EncounterEntryEditor
+                <CollapsibleSection
                   title="Phenomena"
-                  description="Atmospheric or supernatural occurrences."
-                  value={overviewPhenomena}
-                  onChange={setOverviewPhenomena}
-                />
+                  count={overviewPhenomena.length}
+                >
+                  <EncounterEntryEditor
+                    title="Phenomena"
+                    description="Atmospheric or supernatural occurrences."
+                    value={overviewPhenomena}
+                    onChange={setOverviewPhenomena}
+                  />
+                </CollapsibleSection>
 
-                <EncounterEntryEditor
+                <CollapsibleSection
                   title="Events"
-                  description="Things that happen around or to the party."
-                  value={overviewEvents}
-                  onChange={setOverviewEvents}
-                />
+                  count={overviewEvents.length}
+                >
+                  <EncounterEntryEditor
+                    title="Events"
+                    description="Things that happen around or to the party."
+                    value={overviewEvents}
+                    onChange={setOverviewEvents}
+                  />
+                </CollapsibleSection>
 
-                <EncounterEntryEditor
-                  title="Clues"
-                  description="Discoveries that reveal information or point somewhere."
-                  value={overviewClues}
-                  onChange={setOverviewClues}
-                />
+                <CollapsibleSection title="Clues" count={overviewClues.length}>
+                  <EncounterEntryEditor
+                    title="Clues"
+                    description="Discoveries that reveal information or point somewhere."
+                    value={overviewClues}
+                    onChange={setOverviewClues}
+                  />
+                </CollapsibleSection>
 
                 <EncounterWeightsEditor
                   value={overviewEncounterWeights}
                   onChange={setOverviewEncounterWeights}
                 />
-
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm leading-6 text-white/60">
-                  You can use the map overview as a playable encounter location
-                  without creating any areas. Add areas only when different
-                  parts of the map need their own content or creature
-                  populations.
-                </div>
               </div>
             ) : (
-              <div className="space-y-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-lg font-bold">
-                      Area {selectedRoom.id}
-                    </h3>
-
-                    <p className="text-sm text-white/55">
-                      Edit content, connections, boundary, and pin position.
-                    </p>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={selectedRoom.name}
+                    onChange={(e) =>
+                      updateSelectedRoom({
+                        name: e.target.value,
+                      })
+                    }
+                    aria-label="Area name"
+                    className="min-w-0 flex-1 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-lg font-bold text-white outline-none transition focus:border-white/20"
+                  />
 
                   <button
                     type="button"
                     onClick={deleteSelectedRoom}
-                    className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20"
+                    className={compactDangerButtonClass}
                   >
-                    Delete area
+                    <i className="fa-solid fa-trash" />
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className={labelClass}>Area ID</label>
-
-                    <input
-                      type="number"
-                      value={selectedRoom.id}
-                      onChange={(e) =>
-                        updateSelectedRoom({
-                          id: Number(e.target.value) || selectedRoom.id,
-                        })
-                      }
-                      className={inputClass}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={labelClass}>Area name</label>
-
-                    <input
-                      value={selectedRoom.name}
-                      onChange={(e) =>
-                        updateSelectedRoom({
-                          name: e.target.value,
-                        })
-                      }
-                      className={inputClass}
-                    />
-                  </div>
-                </div>
-
-                {/* Map area */}
-                <div>
-                  <label className={labelClass}>Map area</label>
-
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-sm leading-6 text-white/60">
-                      Click around the boundary of this area on the map. At
-                      least three points are required.
-                    </p>
-
-                    <div className="mt-3 text-sm font-medium text-white/85">
-                      {selectedRoom.markers.length} boundary point
-                      {selectedRoom.markers.length === 1 ? "" : "s"}
-                    </div>
-
-                    {selectedRoom.markers.length < 3 && (
-                      <div className="mt-2 text-xs text-yellow-300/80">
-                        Add at least {3 - selectedRoom.markers.length} more
-                        point
-                        {3 - selectedRoom.markers.length === 1 ? "" : "s"} to
-                        create the area.
+                <CollapsibleSection title="Map area">
+                  <div className="space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-white/80">
+                          Boundary
+                        </span>
+                        <span className="text-xs text-white/45">
+                          {selectedRoom.markers.length} point
+                          {selectedRoom.markers.length === 1 ? "" : "s"}
+                        </span>
                       </div>
-                    )}
 
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        disabled={selectedRoom.markers.length === 0}
-                        onClick={undoLastAreaPoint}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <i className="fa-solid fa-rotate-left" /> Undo point
-                      </button>
+                      {selectedRoom.markers.length < 3 ? (
+                        <div className="mt-1 text-xs text-yellow-300/80">
+                          Add at least {3 - selectedRoom.markers.length} more
+                          point
+                          {3 - selectedRoom.markers.length === 1 ? "" : "s"}.
+                        </div>
+                      ) : null}
 
-                      <button
-                        type="button"
-                        disabled={selectedRoom.markers.length === 0}
-                        onClick={clearArea}
-                        className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-300 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <i className="fa-solid fa-trash" /> Clear area
-                      </button>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={selectedRoom.markers.length === 0}
+                          onClick={undoLastAreaPoint}
+                          className={compactButtonClass}
+                        >
+                          <i className="fa-solid fa-rotate-left" />
+                          Undo point
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={selectedRoom.markers.length === 0}
+                          onClick={clearArea}
+                          className={compactDangerButtonClass}
+                        >
+                          <i className="fa-solid fa-trash" />
+                          Clear area
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-white/[0.08] pt-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-medium text-white/80">
+                          Pin
+                        </span>
+                        <span className="truncate text-xs text-white/45">
+                          {selectedRoom.pin
+                            ? `x ${selectedRoom.pin.x}, y ${selectedRoom.pin.y}`
+                            : "Automatic center"}
+                        </span>
+                      </div>
+
+                      <div className="mt-2">
+                        <button
+                          type="button"
+                          disabled={!selectedRoom.pin}
+                          onClick={resetPin}
+                          className={compactButtonClass}
+                        >
+                          <i className="fa-solid fa-location-dot" />
+                          Reset pin
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </CollapsibleSection>
 
-                {/* Pin position */}
-                <div>
-                  <label className={labelClass}>Area pin</label>
-
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                    <p className="text-sm leading-6 text-white/60">
-                      Drag the numbered pin directly on the map to move it.
-                    </p>
-
-                    <div className="mt-3 text-xs text-white/55">
-                      {selectedRoom.pin
-                        ? `Custom position: x ${selectedRoom.pin.x}, y ${selectedRoom.pin.y}`
-                        : "Using automatic center position."}
-                    </div>
-
-                    <div className="mt-4">
-                      <button
-                        type="button"
-                        disabled={!selectedRoom.pin}
-                        onClick={resetPin}
-                        className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        <i className="fa-solid fa-location-dot" /> Reset pin to
-                        center
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className={labelClass}>Read aloud</label>
-
-                  <textarea
-                    value={selectedRoom.readAloud}
-                    onChange={(e) =>
+                <CollapsibleSection title="Description" defaultOpen>
+                  <RichTextEditor
+                    value={selectedRoom.descriptionHtml}
+                    onChange={(descriptionHtml) =>
                       updateSelectedRoom({
-                        readAloud: e.target.value,
+                        descriptionHtml,
                       })
                     }
-                    className={textAreaClass}
+                    placeholder="Describe the area, add read-aloud text, developments, captives, notes, or organised accordion sections..."
+                    minHeightClassName="min-h-[220px]"
                   />
-                </div>
+                </CollapsibleSection>
 
-                <div>
-                  <label className={labelClass}>
-                    Description (one paragraph per line)
-                  </label>
-
-                  <textarea
-                    value={selectedRoom.descriptionText}
-                    onChange={(e) =>
-                      updateSelectedRoom({
-                        descriptionText: e.target.value,
-                      })
-                    }
-                    className={textAreaClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>
-                    Developments (one line per entry)
-                  </label>
-
-                  <textarea
-                    value={selectedRoom.developmentsText}
-                    onChange={(e) =>
-                      updateSelectedRoom({
-                        developmentsText: e.target.value,
-                      })
-                    }
-                    className={textAreaClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>
-                    Captives (one line per entry)
-                  </label>
-
-                  <textarea
-                    value={selectedRoom.captivesText}
-                    onChange={(e) =>
-                      updateSelectedRoom({
-                        captivesText: e.target.value,
-                      })
-                    }
-                    className={textAreaClass}
-                  />
-                </div>
-
-                <TreasureEditor
-                  value={selectedRoom.treasure}
-                  onChange={(treasure) => updateSelectedRoom({ treasure })}
-                  itemOptions={itemOptions}
+                <CollapsibleSection
                   title="Treasure"
-                />
+                  count={selectedRoom.treasure.length}
+                >
+                  <TreasureEditor
+                    value={selectedRoom.treasure}
+                    onChange={(treasure) => updateSelectedRoom({ treasure })}
+                    itemOptions={itemOptions}
+                    title="Treasure"
+                  />
+                </CollapsibleSection>
 
-                <CreatureEditor
-                  value={selectedRoom.monsters}
-                  onChange={(monsters) => updateSelectedRoom({ monsters })}
-                  monsterOptions={monsterOptions}
+                <CollapsibleSection
                   title="Creatures"
-                />
+                  count={selectedRoom.monsters.length}
+                >
+                  <CreatureEditor
+                    value={selectedRoom.monsters}
+                    onChange={(monsters) => updateSelectedRoom({ monsters })}
+                    monsterOptions={monsterOptions}
+                    title="Creatures"
+                  />
+                </CollapsibleSection>
 
-                <EncounterEntryEditor
+                <CollapsibleSection
                   title="Phenomena"
-                  description="Atmospheric or supernatural occurrences."
-                  value={selectedRoom.phenomena}
-                  onChange={(phenomena) => updateSelectedRoom({ phenomena })}
-                />
+                  count={selectedRoom.phenomena.length}
+                >
+                  <EncounterEntryEditor
+                    title="Phenomena"
+                    description="Atmospheric or supernatural occurrences."
+                    value={selectedRoom.phenomena}
+                    onChange={(phenomena) => updateSelectedRoom({ phenomena })}
+                  />
+                </CollapsibleSection>
 
-                <EncounterEntryEditor
+                <CollapsibleSection
                   title="Events"
-                  description="Things that happen around or to the party."
-                  value={selectedRoom.events}
-                  onChange={(events) => updateSelectedRoom({ events })}
-                />
+                  count={selectedRoom.events.length}
+                >
+                  <EncounterEntryEditor
+                    title="Events"
+                    description="Things that happen around or to the party."
+                    value={selectedRoom.events}
+                    onChange={(events) => updateSelectedRoom({ events })}
+                  />
+                </CollapsibleSection>
 
-                <EncounterEntryEditor
-                  title="Clues"
-                  description="Discoveries that reveal information or point somewhere."
-                  value={selectedRoom.clues}
-                  onChange={(clues) => updateSelectedRoom({ clues })}
-                />
+                <CollapsibleSection title="Clues" count={selectedRoom.clues.length}>
+                  <EncounterEntryEditor
+                    title="Clues"
+                    description="Discoveries that reveal information or point somewhere."
+                    value={selectedRoom.clues}
+                    onChange={(clues) => updateSelectedRoom({ clues })}
+                  />
+                </CollapsibleSection>
 
                 <EncounterWeightsEditor
                   value={selectedRoom.encounterWeights}
@@ -2240,57 +2309,43 @@ const MapEditorModal = ({
                   }
                 />
 
-                <div>
-                  <label className={labelClass}>
-                    Notes (one line per entry)
-                  </label>
+                <CollapsibleSection title="Connections & experience">
+                  <div className="space-y-3">
+                    <div>
+                      <label className={labelClass}>
+                        Exits (comma separated area IDs)
+                      </label>
+                      <input
+                        value={selectedRoom.exitsText}
+                        onChange={(e) =>
+                          updateSelectedRoom({
+                            exitsText: e.target.value,
+                          })
+                        }
+                        className={inputClass}
+                      />
+                    </div>
 
-                  <textarea
-                    value={selectedRoom.notesText}
-                    onChange={(e) =>
-                      updateSelectedRoom({
-                        notesText: e.target.value,
-                      })
-                    }
-                    className={textAreaClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>
-                    Exits (comma separated room ids)
-                  </label>
-
-                  <input
-                    value={selectedRoom.exitsText}
-                    onChange={(e) =>
-                      updateSelectedRoom({
-                        exitsText: e.target.value,
-                      })
-                    }
-                    className={inputClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Experience</label>
-
-                  <textarea
-                    value={selectedRoom.experience}
-                    onChange={(e) =>
-                      updateSelectedRoom({
-                        experience: e.target.value,
-                      })
-                    }
-                    className={textAreaClass}
-                  />
-                </div>
+                    <div>
+                      <label className={labelClass}>Experience</label>
+                      <textarea
+                        value={selectedRoom.experience}
+                        onChange={(e) =>
+                          updateSelectedRoom({
+                            experience: e.target.value,
+                          })
+                        }
+                        className={textAreaClass}
+                      />
+                    </div>
+                  </div>
+                </CollapsibleSection>
               </div>
             )}
           </aside>
         </div>
+        </div>
       </div>
-    </div>
   );
 };
 
