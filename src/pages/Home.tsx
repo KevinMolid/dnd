@@ -410,34 +410,30 @@ const Home = () => {
 
                           <div className="min-w-0 flex-1">
                             <div className="min-w-0">
-                              <h2 className="truncate text-sm font-semibold text-white sm:text-lg">
+                              <h2 className="truncate text-base font-semibold text-white">
                                 {campaign.name}
                               </h2>
 
-                              <div className="mt-1 flex items-center gap-2">
+                              <div className="mt-1 flex min-w-0 items-center gap-2">
+                                <span className="truncate text-sm text-zinc-500">
+                                  {campaign.system ?? "Tabletop RPG"}
+                                  {campaign.lastPlayed
+                                    ? ` · Last active ${campaign.lastPlayed}`
+                                    : ""}
+                                </span>
+
                                 <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium sm:px-2.5 sm:py-1 sm:text-xs ${getRoleBadgeClass(
+                                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(
                                     campaign.role,
                                   )}`}
                                 >
                                   {formatRoleLabel(campaign.role)}
                                 </span>
-
-                                <span className="truncate text-xs text-zinc-400 sm:hidden">
-                                  {campaign.system ?? "Tabletop RPG"}
-                                </span>
                               </div>
-
-                              <p className="mt-1.5 hidden text-sm text-zinc-400 sm:block">
-                                {campaign.system ?? "Tabletop RPG"}
-                                {campaign.lastPlayed
-                                  ? ` · Last active ${campaign.lastPlayed}`
-                                  : ""}
-                              </p>
                             </div>
 
                             {campaign.description ? (
-                              <p className="mt-1.5 line-clamp-2 text-sm text-zinc-500">
+                              <p className="mt-1.5 line-clamp-2 text-sm text-zinc-400">
                                 {campaign.description.length > 100
                                   ? `${campaign.description.slice(0, 100).trimEnd()}…`
                                   : campaign.description}
