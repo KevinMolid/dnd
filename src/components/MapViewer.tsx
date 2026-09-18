@@ -255,6 +255,25 @@ const renderParagraphs = (
   );
 };
 
+const RichDescription = ({
+  html,
+  legacyParagraphs,
+}: {
+  html?: string;
+  legacyParagraphs?: string[];
+}) => {
+  if (html?.trim()) {
+    return (
+      <div
+        className="rich-text-content text-sm leading-6 text-white/75 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-white/90 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+
+  return renderParagraphs(legacyParagraphs);
+};
+
 const getSortedLevels = (effect: EnvironmentEffect) => {
   return [...effect.levels].sort((a, b) => a.value - b.value);
 };
@@ -887,7 +906,7 @@ const MapViewer = ({
     <div className="h-dvh w-full overflow-hidden bg-zinc-950 text-white">
       <div className="flex h-full flex-col overflow-hidden bg-zinc-950">
         <div
-          className="flex min-h-0 flex-1 flex-col lg:flex-row"
+          className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row"
           style={
             {
               "--sidebar-width": `${sidebarWidth}px`,
@@ -914,7 +933,7 @@ const MapViewer = ({
 
               return getEnvironmentLevelName(activeEffect, level);
             }}
-            className="flex-1"
+            className="min-h-[420px] flex-1 lg:h-full lg:min-h-0"
           />
 
           {/* Resizable divider */}
@@ -1367,12 +1386,15 @@ const MapViewer = ({
                     </section>
                   )}
 
-                  {selectedRoom.description &&
-                    selectedRoom.description.length > 0 && (
-                      <section>
-                        {renderParagraphs(selectedRoom.description)}
-                      </section>
-                    )}
+                  {(selectedRoom.descriptionHtml?.trim() ||
+                    selectedRoom.description?.length) && (
+                    <section>
+                      <RichDescription
+                        html={selectedRoom.descriptionHtml}
+                        legacyParagraphs={selectedRoom.description}
+                      />
+                    </section>
+                  )}
 
                   {selectedRoom.captives &&
                     selectedRoom.captives.length > 0 && (

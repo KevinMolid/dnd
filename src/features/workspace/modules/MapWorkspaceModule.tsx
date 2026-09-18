@@ -56,6 +56,67 @@ const renderParagraphs = (paragraphs?: string[]) => {
   );
 };
 
+const renderRichDescriptionHtml = (html: string) => {
+  if (typeof DOMParser === "undefined") {
+    return html;
+  }
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+
+  doc
+    .querySelectorAll<HTMLElement>('[data-note-accordion="true"]')
+    .forEach((accordion) => {
+      const details = doc.createElement("details");
+      details.className =
+        "group my-2 overflow-hidden rounded-lg border border-white/10 bg-black/20";
+
+      if (accordion.getAttribute("data-open") !== "false") {
+        details.setAttribute("open", "");
+      }
+
+      const summary = doc.createElement("summary");
+      summary.className =
+        "flex cursor-pointer list-none items-center gap-2 border-b border-white/[0.06] bg-white/[0.025] px-2.5 py-2 text-xs font-semibold text-zinc-200 [&::-webkit-details-marker]:hidden";
+      summary.innerHTML = `<span class="text-[9px] text-zinc-500 transition-transform group-open:rotate-90">▶</span><span>${accordion.getAttribute("data-title") || "Section"}</span>`;
+
+      const content = doc.createElement("div");
+      content.className = "px-3 py-2";
+      const sourceContent = accordion.querySelector(
+        '[data-note-accordion-content="true"]',
+      );
+      content.innerHTML = sourceContent?.innerHTML ?? accordion.innerHTML;
+
+      details.append(summary, content);
+      accordion.replaceWith(details);
+    });
+
+  return doc.body.innerHTML;
+};
+
+const RichDescription = ({
+  html,
+  legacyParagraphs,
+}: {
+  html?: string;
+  legacyParagraphs?: string[];
+}) => {
+  const renderedHtml = useMemo(
+    () => (html?.trim() ? renderRichDescriptionHtml(html) : ""),
+    [html],
+  );
+
+  if (renderedHtml) {
+    return (
+      <div
+        className="rich-text-content text-xs leading-5 text-zinc-300 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-white/15 [&_blockquote]:pl-3 [&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h3]:mb-1.5 [&_h3]:text-sm [&_h3]:font-semibold [&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-zinc-100 [&_em]:italic [&_u]:underline [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5"
+        dangerouslySetInnerHTML={{ __html: renderedHtml }}
+      />
+    );
+  }
+
+  return renderParagraphs(legacyParagraphs);
+};
+
 const getRoomSummary = (room: CampaignMapRoom) => {
   const parts: string[] = [];
 
@@ -571,10 +632,6 @@ export default function MapWorkspaceModule({
     setEncounterStartedMessage(null);
   };
 
-  const fitMapToViewport = () => {
-    mapCanvasRef.current?.fitToViewport();
-  };
-
   const saveEnvironmentRooms = async (
     nextRooms: CampaignMapRoom[],
     previousRooms: CampaignMapRoom[],
@@ -921,12 +978,6 @@ export default function MapWorkspaceModule({
   const canStartRoomEncounter =
     Boolean(selectedRoom?.encounterTemplate) || currentMonsterCount > 0;
 
-  const isCurrentWorkspaceLocation =
-    activeLocation?.mapId === selectedMap.id &&
-    (selectedRoom
-      ? activeLocation.roomId === selectedRoom.id
-      : activeLocation.roomId === -1);
-
   return (
     <div className="relative flex h-full min-h-0 flex-col bg-zinc-950/20">
       {/* Integrated module header */}
@@ -1029,18 +1080,6 @@ export default function MapWorkspaceModule({
             </span>
           </button>
         ) : null}
-
-        {/* Fit map */}
-
-        <button
-          type="button"
-          onClick={fitMapToViewport}
-          title="Fit map"
-          aria-label="Fit map to available space"
-          className="workspace-no-drag flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 transition hover:bg-white/10 hover:text-white"
-        >
-          <i className="fa-solid fa-expand text-[11px]" />
-        </button>
 
         {/* Open full viewer */}
 
@@ -1363,67 +1402,75 @@ export default function MapWorkspaceModule({
         ) : null}
       </div>
 
-      {/* Map */}
+      {/* Map / information view */}
+      <div className="workspace-no-drag relative min-h-0 flex-1 overflow-hidden bg-zinc-950">
+        {!detailsExpanded ? (
+          <>
+            <MapCanvas
+              ref={mapCanvasRef}
+              map={selectedMap}
+              rooms={roomStates}
+              selectedRoomId={selectedRoomId}
+              hoveredRoomId={hoveredRoomId}
+              onSelectRoom={selectRoom}
+              onShowOverview={showOverview}
+              onHoverRoom={setHoveredRoomId}
+              getRoomEnvironmentLabel={(room) => {
+                if (!activeEffect) {
+                  return null;
+                }
 
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <MapCanvas
-          ref={mapCanvasRef}
-          map={selectedMap}
-          rooms={roomStates}
-          selectedRoomId={selectedRoomId}
-          hoveredRoomId={hoveredRoomId}
-          onSelectRoom={selectRoom}
-          onShowOverview={showOverview}
-          onHoverRoom={setHoveredRoomId}
-          getRoomEnvironmentLabel={(room) => {
-            if (!activeEffect) {
-              return null;
-            }
-
-            return getEnvironmentLevelName(
-              activeEffect,
-              getRoomEnvironmentLevel(room, activeEffect),
-            );
-          }}
-          className="h-full w-full"
-        />
-      </div>
-
-      {/* Details */}
-
-      <div className="workspace-no-drag shrink-0 border-t border-white/10 bg-zinc-950">
-        <button
-          type="button"
-          onClick={() => setDetailsExpanded((current) => !current)}
-          aria-expanded={detailsExpanded}
-          className="flex h-9 w-full items-center gap-2 px-2.5 text-left transition hover:bg-white/[0.03]"
-        >
-          <div
-            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${
-              selectedRoom
-                ? "bg-emerald-500/10 text-emerald-300"
-                : "bg-white/5 text-zinc-400"
-            }`}
-          >
-            <i
-              className={`fa-solid ${
-                selectedRoom ? "fa-location-dot" : "fa-map"
-              } text-[10px]`}
+                return getEnvironmentLevelName(
+                  activeEffect,
+                  getRoomEnvironmentLevel(room, activeEffect),
+                );
+              }}
+              className="h-full w-full"
             />
-          </div>
 
-          <div className="min-w-0 flex-1">
-            {selectedRoom ? (
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="truncate text-xs font-bold text-zinc-100">
-                  {selectedRoom.id}. {selectedRoom.name}
+            <button
+              type="button"
+              onClick={() => setDetailsExpanded(true)}
+              className="absolute inset-x-0 bottom-0 flex h-9 items-center gap-2 border-t border-white/10 bg-zinc-950/95 px-2.5 text-left backdrop-blur transition hover:bg-zinc-900/95"
+            >
+              <div className="flex h-6 w-6 shrink-0 items-center justify-center text-emerald-300">
+                <i className="fa-solid fa-thumbtack text-[10px]" />
+              </div>
+
+              <div className="min-w-0 flex-1 truncate text-xs font-bold text-zinc-100">
+                {selectedRoom
+                  ? `${selectedRoom.id}. ${selectedRoom.name}`
+                  : selectedMap.title}
+              </div>
+
+              {selectedRoomEnvironmentName ? (
+                <span className="shrink-0 rounded border border-sky-500/20 bg-sky-500/[0.08] px-1.5 py-0.5 text-[9px] font-semibold text-sky-300">
+                  {selectedRoomEnvironmentName}
+                </span>
+              ) : null}
+
+              <i className="fa-solid fa-chevron-up shrink-0 text-[9px] text-zinc-500" />
+            </button>
+          </>
+        ) : (
+          <div className="flex h-full min-h-0 flex-col bg-zinc-950">
+            <div className="flex h-9 shrink-0 items-center border-b border-white/10">
+              <button
+                type="button"
+                onClick={() => setDetailsExpanded(false)}
+                className="group flex h-full min-w-0 flex-1 items-center gap-2 px-2.5 text-left transition hover:bg-white/[0.025]"
+                aria-label="Collapse area information"
+                title="Collapse area information"
+              >
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center text-emerald-300">
+                  <i className="fa-solid fa-thumbtack text-[10px]" />
                 </div>
 
-                {isCurrentWorkspaceLocation ? (
-                  <span className="shrink-0 rounded border border-emerald-500/25 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-emerald-300">
-                    Current
-                  </span>
-                ) : null}
+                <div className="min-w-0 flex-1 truncate text-xs font-bold text-zinc-100">
+                  {selectedRoom
+                    ? `${selectedRoom.id}. ${selectedRoom.name}`
+                    : selectedMap.title}
+                </div>
 
                 {selectedRoomEnvironmentName ? (
                   <span className="shrink-0 rounded border border-sky-500/20 bg-sky-500/[0.08] px-1.5 py-0.5 text-[9px] font-semibold text-sky-300">
@@ -1431,78 +1478,24 @@ export default function MapWorkspaceModule({
                   </span>
                 ) : null}
 
-                {roomSummary ? (
-                  <span className="hidden min-w-0 truncate text-[10px] text-zinc-500 xl:inline">
-                    · {roomSummary}
-                  </span>
-                ) : null}
-              </div>
-            ) : (
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="truncate text-xs font-bold text-zinc-100">
-                  {selectedMap.title}
-                </div>
+                <i className="fa-solid fa-chevron-down shrink-0 text-[9px] text-zinc-500" />
+              </button>
 
-                <div className="shrink-0 text-[10px] text-zinc-500">
-                  · {roomStates.length}{" "}
-                  {roomStates.length === 1 ? "area" : "areas"}
-                </div>
-              </div>
-            )}
-          </div>
+              {canStartRoomEncounter ? (
+                <button
+                  type="button"
+                  onClick={startRoomEncounter}
+                  className="mr-2 inline-flex shrink-0 items-center gap-1 rounded border border-rose-500/20 bg-rose-500/[0.08] px-1.5 py-0.5 text-[9px] font-semibold text-rose-200 transition hover:bg-rose-500/[0.14]"
+                >
+                  <i className="fa-solid fa-play text-[8px]" />
+                  Start Encounter
+                </button>
+              ) : null}
+            </div>
 
-          <i
-            className={`fa-solid fa-chevron-up shrink-0 text-[9px] text-zinc-500 transition-transform ${
-              detailsExpanded ? "rotate-180" : ""
-            }`}
-          />
-        </button>
-
-        {detailsExpanded ? (
-          <div className="workspace-scrollbar max-h-64 overflow-y-auto border-t border-white/5 bg-black/20 p-3">
+            <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
             {selectedRoom ? (
               <div className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
-                      Area {selectedRoom.id}
-                    </div>
-
-                    {isCurrentWorkspaceLocation ? (
-                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-300">
-                        Active location
-                      </span>
-                    ) : null}
-                  </div>
-
-                  <h3 className="mt-0.5 text-base font-bold text-white">
-                    {selectedRoom.name}
-                  </h3>
-                </div>
-
-                {activeEffect && selectedRoomEnvironmentName ? (
-                  <button
-                    type="button"
-                    onClick={() => setEnvironmentOpen(true)}
-                    className="flex w-full items-center gap-3 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.05] p-2.5 text-left transition hover:bg-emerald-500/[0.09]"
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-300">
-                      <i className="fa-solid fa-cloud text-xs" />
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[10px] uppercase tracking-wide text-emerald-300/70">
-                        {activeEffect.name}
-                      </div>
-
-                      <div className="truncate text-xs font-semibold text-white">
-                        {selectedRoomEnvironmentName}
-                      </div>
-                    </div>
-
-                    <i className="fa-solid fa-sliders text-[10px] text-zinc-500" />
-                  </button>
-                ) : null}
 
                 {encounterStartedMessage ? (
                   <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-xs text-emerald-300">
@@ -1512,25 +1505,17 @@ export default function MapWorkspaceModule({
                   </div>
                 ) : null}
 
-                {selectedRoom.readAloud ? (
-                  <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
-                      Read aloud
-                    </div>
-
-                    <div className="whitespace-pre-wrap rounded-lg border border-amber-400/15 bg-amber-400/[0.06] p-2.5 text-xs leading-5 text-amber-50/90">
-                      {selectedRoom.readAloud}
-                    </div>
-                  </section>
-                ) : null}
-
-                {selectedRoom.description?.length ? (
+                {selectedRoom.descriptionHtml?.trim() ||
+                selectedRoom.description?.length ? (
                   <section>
                     <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                       Description
                     </div>
 
-                    {renderParagraphs(selectedRoom.description)}
+                    <RichDescription
+                      html={selectedRoom.descriptionHtml}
+                      legacyParagraphs={selectedRoom.description}
+                    />
                   </section>
                 ) : null}
 
@@ -1546,7 +1531,7 @@ export default function MapWorkspaceModule({
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-1.5">
                       {selectedRoom.monsters.map((monster, index) => {
                         const linkedMonster = getLinkedMonster(monster);
 
@@ -1703,38 +1688,6 @@ export default function MapWorkspaceModule({
                   </section>
                 ) : null}
 
-                {canStartRoomEncounter ? (
-                  <section className="rounded-xl border border-rose-500/15 bg-rose-500/[0.045] p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-300">
-                        <i className="fa-solid fa-swords text-xs" />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-semibold text-white">
-                          Area Encounter
-                        </div>
-
-                        <div className="mt-0.5 text-[11px] leading-4 text-zinc-400">
-                          {selectedRoom.encounterTemplate
-                            ? "Load the planned encounter for this area."
-                            : `Load all ${currentMonsterCount} listed creature${
-                                currentMonsterCount === 1 ? "" : "s"
-                              } into the encounter tracker.`}
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={startRoomEncounter}
-                      className="mt-3 w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-500"
-                    >
-                      <i className="fa-solid fa-play mr-1.5" />
-                      Start Encounter
-                    </button>
-                  </section>
-                ) : null}
 
                 {selectedRoom.exits?.length ? (
                   <section>
@@ -1777,28 +1730,17 @@ export default function MapWorkspaceModule({
                       {selectedMap.title}
                     </h3>
 
-                    {isCurrentWorkspaceLocation ? (
-                      <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-300">
-                        Active location
-                      </span>
-                    ) : null}
                   </div>
                 </div>
 
-                {selectedMap.readAloud ? (
+                {selectedMap.descriptionHtml?.trim() ||
+                mapDescription.length ? (
                   <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300">
-                      Read aloud
-                    </div>
-
-                    <div className="whitespace-pre-wrap rounded-lg border border-amber-400/15 bg-amber-400/[0.06] p-2.5 text-xs leading-5 text-amber-50/90">
-                      {selectedMap.readAloud}
-                    </div>
+                    <RichDescription
+                      html={selectedMap.descriptionHtml}
+                      legacyParagraphs={mapDescription}
+                    />
                   </section>
-                ) : null}
-
-                {mapDescription.length ? (
-                  <section>{renderParagraphs(mapDescription)}</section>
                 ) : (
                   <p className="text-xs text-zinc-500">
                     No general description has been added to this map.
@@ -1816,7 +1758,7 @@ export default function MapWorkspaceModule({
                       </div>
                     </div>
 
-                    <div className="space-y-1.5">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-1.5">
                       {selectedMap.monsters.map((monster, index) => {
                         const linkedMonster = getLinkedMonster(monster);
 
@@ -1893,37 +1835,6 @@ export default function MapWorkspaceModule({
                   </section>
                 ) : null}
 
-                {canStartRoomEncounter ? (
-                  <section className="rounded-xl border border-rose-500/15 bg-rose-500/[0.045] p-3">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-500/10 text-rose-300">
-                        <i className="fa-solid fa-swords text-xs" />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-semibold text-white">
-                          Map Encounter
-                        </div>
-                        <div className="mt-0.5 text-[11px] leading-4 text-zinc-400">
-                          Load all {currentMonsterCount} listed creature
-                          {currentMonsterCount === 1 ? "" : "s"} and{" "}
-                          {activeCharacters.length} active player
-                          {activeCharacters.length === 1 ? "" : "s"} into the
-                          encounter tracker.
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={startRoomEncounter}
-                      className="mt-3 w-full rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-500"
-                    >
-                      <i className="fa-solid fa-play mr-1.5" />
-                      Start Encounter
-                    </button>
-                  </section>
-                ) : null}
 
                 {roomStates.length ? (
                   <section>
@@ -1974,9 +1885,11 @@ export default function MapWorkspaceModule({
                 ) : null}
               </div>
             )}
+            </div>
           </div>
-        ) : null}
+        )}
       </div>
+
     </div>
   );
 }
