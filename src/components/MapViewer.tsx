@@ -17,8 +17,6 @@ import type { Item } from "../rulesets/dnd/dnd2024/types";
 
 import type { Money, PlayerCharacter } from "../data/players";
 
-import { updateCampaignMap } from "../features/maps/mapService";
-
 import type {
   CampaignMap,
   CampaignMapRoom,
@@ -27,6 +25,8 @@ import type {
 } from "../features/maps/types";
 
 import MapCanvas, { type MapCanvasHandle } from "./maps/MapCanvas";
+
+import RichTextContent from "../features/richText/RichTextContent";
 
 type MapViewerProps = {
   campaignId: string;
@@ -73,6 +73,8 @@ type LinkedTreasureEntry =
     };
 
 type ExtendedCampaignMap = CampaignMap & {
+  descriptionHtml?: string;
+
   description?: string[];
 
   overview?: string[];
@@ -82,20 +84,6 @@ type ExtendedCampaignMap = CampaignMap & {
   readAloud?: string;
 
   overviewTitle?: string;
-};
-
-type EnvironmentRollResult = {
-  roomId: number;
-
-  roomName: string;
-
-  roll: number;
-
-  previousLevel: number;
-
-  targetLevel: number;
-
-  nextLevel: number;
 };
 
 const normalizeItemText = (value: string) => {
@@ -119,18 +107,13 @@ const getTreasureSearchVariants = (value: string) => {
   const normalized = normalizeItemText(value);
   const variants = new Set<string>([normalized]);
 
-  /*
-   * The deleted legacy catalog named generated magic weapons "+1 Dagger",
-   * while the canonical catalog uses "Dagger +1". Support both spellings in
-   * existing map treasure text.
-   */
-  const leadingBonus = normalized.match(/^\\+(\\d+)\\s+(.+)$/);
+  const leadingBonus = normalized.match(/^\+(\d+)\s+(.+)$/);
 
   if (leadingBonus) {
     variants.add(`${leadingBonus[2]} +${leadingBonus[1]}`);
   }
 
-  const trailingBonus = normalized.match(/^(.+)\\s+\\+(\\d+)$/);
+  const trailingBonus = normalized.match(/^(.+)\s+\+(\d+)$/);
 
   if (trailingBonus) {
     variants.add(`+${trailingBonus[2]} ${trailingBonus[1]}`);
@@ -166,14 +149,11 @@ const parseMoneyText = (text: string): Partial<Money> | null => {
   }
 
   const amount = Number(match[1]);
-
   const currency = match[2].toLowerCase() as "gp" | "sp" | "cp";
 
   return {
     gp: currency === "gp" ? amount : 0,
-
     sp: currency === "sp" ? amount : 0,
-
     cp: currency === "cp" ? amount : 0,
   };
 };
@@ -199,7 +179,6 @@ const TreasureLink = ({
   item,
 }: {
   text: string;
-
   item: Item;
 }) => {
   return (
@@ -239,7 +218,6 @@ const TreasureLink = ({
 
 const renderParagraphs = (
   paragraphs?: string[],
-
   className = "space-y-2 text-sm leading-6 text-white/75",
 ) => {
   if (!paragraphs || paragraphs.length === 0) {
@@ -264,29 +242,23 @@ const RichDescription = ({
 }) => {
   if (html?.trim()) {
     return (
-      <div
-        className="rich-text-content text-sm leading-6 text-white/75 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-white/90 [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5"
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
+      <div className="text-sm text-white/75">
+        <RichTextContent value={html} />
+      </div>
     );
   }
 
   return renderParagraphs(legacyParagraphs);
 };
 
-const getSortedLevels = (effect: EnvironmentEffect) => {
-  return [...effect.levels].sort((a, b) => a.value - b.value);
-};
-
 const getDefaultEnvironmentLevel = (effect: EnvironmentEffect) => {
-  const levels = getSortedLevels(effect);
+  const levels = [...effect.levels].sort((a, b) => a.value - b.value);
 
   return levels[0]?.value ?? 0;
 };
 
 const getEnvironmentLevelName = (
   effect: EnvironmentEffect,
-
   value: number,
 ) => {
   return (
@@ -295,54 +267,11 @@ const getEnvironmentLevelName = (
   );
 };
 
-const moveTowardsTarget = (
+const getRoomEnvironmentLevel = (
+  room: CampaignMapRoom,
   effect: EnvironmentEffect,
-
-  currentValue: number,
-
-  targetValue: number,
 ) => {
-  const levels = getSortedLevels(effect);
-
-  if (levels.length === 0) {
-    return currentValue;
-  }
-
-  let currentIndex = levels.findIndex((level) => level.value === currentValue);
-
-  let targetIndex = levels.findIndex((level) => level.value === targetValue);
-
-  if (currentIndex < 0) {
-    currentIndex = 0;
-  }
-
-  if (targetIndex < 0) {
-    targetIndex = currentIndex;
-  }
-
-  const maxChange = Math.max(0, effect.maxChangePerRoll);
-
-  if (targetIndex > currentIndex) {
-    const nextIndex = Math.min(
-      currentIndex + maxChange,
-
-      targetIndex,
-    );
-
-    return levels[nextIndex].value;
-  }
-
-  if (targetIndex < currentIndex) {
-    const nextIndex = Math.max(
-      currentIndex - maxChange,
-
-      targetIndex,
-    );
-
-    return levels[nextIndex].value;
-  }
-
-  return levels[currentIndex].value;
+  return room.environment?.[effect.id] ?? getDefaultEnvironmentLevel(effect);
 };
 
 const MapViewer = ({
@@ -370,23 +299,9 @@ const MapViewer = ({
 
   const [hoveredRoomId, setHoveredRoomId] = useState<number | null>(null);
 
-  const [activeEffectId, setActiveEffectId] = useState<string | null>(
-    map?.environmentEffects?.[0]?.id ?? null,
-  );
-
-  const [isEnvironmentSaving, setIsEnvironmentSaving] = useState(false);
-
-  const [isEnvironmentExpanded, setIsEnvironmentExpanded] = useState(false);
-
-  const [sidebarWidth, setSidebarWidth] = useState(520);
+  const [sidebarWidth, setSidebarWidth] = useState(420);
 
   const [isResizingSidebar, setIsResizingSidebar] = useState(false);
-
-  const [environmentError, setEnvironmentError] = useState<string | null>(null);
-
-  const [lastRollResults, setLastRollResults] = useState<
-    EnvironmentRollResult[]
-  >([]);
 
   const [isTreasureModalOpen, setIsTreasureModalOpen] = useState(false);
 
@@ -396,17 +311,11 @@ const MapViewer = ({
 
   const mapCanvasRef = useRef<MapCanvasHandle | null>(null);
 
-  const environmentEffects = mapData?.environmentEffects ?? [];
+  const viewerRef = useRef<HTMLDivElement | null>(null);
 
-  const activeEffect = useMemo(() => {
-    if (!activeEffectId || environmentEffects.length === 0) {
-      return null;
-    }
+  const [viewerHeight, setViewerHeight] = useState<number | null>(null);
 
-    return (
-      environmentEffects.find((effect) => effect.id === activeEffectId) ?? null
-    );
-  }, [environmentEffects, activeEffectId]);
+  const activeEffect = mapData?.environmentEffects?.[0] ?? null;
 
   const overviewParagraphs =
     mapData?.generalDescription ??
@@ -430,10 +339,10 @@ const MapViewer = ({
 
       const nextWidth = viewportWidth - moveEvent.clientX;
 
-      const minWidth = 320;
+      const minWidth = 360;
 
       const maxWidth = Math.min(
-        800,
+        620,
 
         viewportWidth * 0.65,
       );
@@ -491,22 +400,6 @@ const MapViewer = ({
 
     setHoveredRoomId(null);
 
-    /*
-     * Preserve the selected environment effect
-     * if it still exists.
-     */
-    setActiveEffectId((currentEffectId) => {
-      if (
-        currentEffectId &&
-        map.environmentEffects?.some((effect) => effect.id === currentEffectId)
-      ) {
-        return currentEffectId;
-      }
-
-      return map.environmentEffects?.[0]?.id ?? null;
-    });
-
-    setEnvironmentError(null);
 
     setIsTreasureModalOpen(false);
 
@@ -518,6 +411,33 @@ const MapViewer = ({
 
     return () => window.clearTimeout(timer);
   }, [map]);
+
+  useEffect(() => {
+    const updateViewerHeight = () => {
+      const viewer = viewerRef.current;
+
+      if (!viewer) {
+        return;
+      }
+
+      const top = viewer.getBoundingClientRect().top;
+      const availableHeight = Math.max(420, window.innerHeight - top - 16);
+
+      setViewerHeight(availableHeight);
+
+      window.requestAnimationFrame(() => {
+        mapCanvasRef.current?.fitToViewport();
+      });
+    };
+
+    updateViewerHeight();
+
+    window.addEventListener("resize", updateViewerHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateViewerHeight);
+    };
+  }, []);
 
   const selectedRoom = useMemo(() => {
     if (!roomStates.length || selectedRoomId === null) {
@@ -584,228 +504,6 @@ const MapViewer = ({
     setSelectedRoomId(null);
 
     setIsTreasureModalOpen(false);
-  };
-
-  /*
-   * ENVIRONMENT
-   */
-
-  const saveEnvironmentRooms = async (
-    nextRooms: CampaignMapRoom[],
-
-    previousRooms: CampaignMapRoom[],
-  ) => {
-    if (!map) {
-      return;
-    }
-
-    setRoomStates(nextRooms);
-
-    try {
-      setIsEnvironmentSaving(true);
-
-      setEnvironmentError(null);
-
-      await updateCampaignMap(campaignId, map.id, {
-        rooms: nextRooms,
-      });
-    } catch (err) {
-      console.error("Failed to save environment:", err);
-
-      setRoomStates(previousRooms);
-
-      setEnvironmentError("Failed to save environment changes.");
-
-      throw err;
-    } finally {
-      setIsEnvironmentSaving(false);
-    }
-  };
-
-  const getRoomEnvironmentLevel = (
-    room: CampaignMapRoom,
-
-    effect: EnvironmentEffect,
-  ) => {
-    return room.environment?.[effect.id] ?? getDefaultEnvironmentLevel(effect);
-  };
-
-  const changeRoomEnvironmentLevel = async (
-    roomId: number,
-
-    direction: -1 | 1,
-  ) => {
-    if (!activeEffect || isEnvironmentSaving) {
-      return;
-    }
-
-    const levels = getSortedLevels(activeEffect);
-
-    if (levels.length === 0) {
-      return;
-    }
-
-    const previousRooms = roomStates;
-
-    const nextRooms = roomStates.map((room) => {
-      if (room.id !== roomId) {
-        return room;
-      }
-
-      const current = getRoomEnvironmentLevel(room, activeEffect);
-
-      let currentIndex = levels.findIndex((level) => level.value === current);
-
-      if (currentIndex < 0) {
-        currentIndex = 0;
-      }
-
-      const nextIndex = Math.max(
-        0,
-
-        Math.min(
-          levels.length - 1,
-
-          currentIndex + direction,
-        ),
-      );
-
-      const nextValue = levels[nextIndex].value;
-
-      return {
-        ...room,
-
-        environment: {
-          ...(room.environment ?? {}),
-
-          [activeEffect.id]: nextValue,
-        },
-      };
-    });
-
-    try {
-      await saveEnvironmentRooms(nextRooms, previousRooms);
-
-      setLastRollResults([]);
-    } catch {
-      // handled above
-    }
-  };
-
-  const randomizeEnvironmentForAllAreas = async () => {
-    if (!activeEffect || isEnvironmentSaving) {
-      return;
-    }
-
-    const previousRooms = roomStates;
-
-    const results: EnvironmentRollResult[] = [];
-
-    const nextRooms = roomStates.map((room) => {
-      const currentLevel = getRoomEnvironmentLevel(room, activeEffect);
-
-      const roll = Math.floor(Math.random() * activeEffect.diceSides) + 1;
-
-      const matchingRange = activeEffect.rollRanges.find(
-        (range) => roll >= range.min && roll <= range.max,
-      );
-
-      const targetLevel = matchingRange?.targetLevel ?? currentLevel;
-
-      const nextLevel = targetLevel;
-
-      results.push({
-        roomId: room.id,
-
-        roomName: room.name,
-
-        roll,
-
-        previousLevel: currentLevel,
-
-        targetLevel,
-
-        nextLevel,
-      });
-
-      return {
-        ...room,
-
-        environment: {
-          ...(room.environment ?? {}),
-
-          [activeEffect.id]: nextLevel,
-        },
-      };
-    });
-
-    try {
-      await saveEnvironmentRooms(nextRooms, previousRooms);
-
-      setLastRollResults(results);
-    } catch {
-      setLastRollResults([]);
-    }
-  };
-
-  const rollEnvironmentForAllAreas = async () => {
-    if (!activeEffect || isEnvironmentSaving) {
-      return;
-    }
-
-    const previousRooms = roomStates;
-
-    const results: EnvironmentRollResult[] = [];
-
-    const nextRooms = roomStates.map((room) => {
-      const currentLevel = getRoomEnvironmentLevel(room, activeEffect);
-
-      const roll = Math.floor(Math.random() * activeEffect.diceSides) + 1;
-
-      const matchingRange = activeEffect.rollRanges.find(
-        (range) => roll >= range.min && roll <= range.max,
-      );
-
-      const targetLevel = matchingRange?.targetLevel ?? currentLevel;
-
-      const nextLevel = moveTowardsTarget(
-        activeEffect,
-        currentLevel,
-        targetLevel,
-      );
-
-      results.push({
-        roomId: room.id,
-
-        roomName: room.name,
-
-        roll,
-
-        previousLevel: currentLevel,
-
-        targetLevel,
-
-        nextLevel,
-      });
-
-      return {
-        ...room,
-
-        environment: {
-          ...(room.environment ?? {}),
-
-          [activeEffect.id]: nextLevel,
-        },
-      };
-    });
-
-    try {
-      await saveEnvironmentRooms(nextRooms, previousRooms);
-
-      setLastRollResults(results);
-    } catch {
-      setLastRollResults([]);
-    }
   };
 
   /*
@@ -903,8 +601,36 @@ const MapViewer = ({
   }
 
   return (
-    <div className="h-dvh w-full overflow-hidden bg-zinc-950 text-white">
+    <div
+      ref={viewerRef}
+      className="w-full overflow-hidden bg-zinc-950 text-white"
+      style={{
+        height: viewerHeight ? `${viewerHeight}px` : "calc(100dvh - 1rem)",
+      }}
+    >
       <div className="flex h-full flex-col overflow-hidden bg-zinc-950">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-3 py-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            <i className="fa-solid fa-arrow-left text-[10px]" />
+            Maps
+          </button>
+
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={() => onEdit(selectedRoomId)}
+              className="inline-flex h-8 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              <i className="fa-solid fa-pen text-[10px]" />
+              Edit
+            </button>
+          ) : null}
+        </div>
+
         <div
           className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row"
           style={
@@ -913,354 +639,84 @@ const MapViewer = ({
             } as CSSProperties
           }
         >
-          {/* Shared map canvas */}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {roomStates.length > 0 ? (
+              <div className="workspace-scrollbar shrink-0 overflow-x-auto border-b border-white/[0.06] px-3 py-2">
+                <div className="flex min-w-max items-center gap-1.5">
+                  <span className="mr-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-600">
+                    Areas
+                  </span>
 
-          <MapCanvas
-            ref={mapCanvasRef}
-            map={mapData}
-            rooms={roomStates}
-            selectedRoomId={selectedRoomId}
-            hoveredRoomId={hoveredRoomId}
-            onSelectRoom={selectRoom}
-            onShowOverview={showOverview}
-            onHoverRoom={setHoveredRoomId}
-            getRoomEnvironmentLabel={(room) => {
-              if (!activeEffect) {
-                return null;
-              }
+                  {roomStates
+                    .slice()
+                    .sort((a, b) => a.id - b.id)
+                    .map((room) => {
+                      const selected = selectedRoomId === room.id;
 
-              const level = getRoomEnvironmentLevel(room, activeEffect);
+                      return (
+                        <button
+                          key={room.id}
+                          type="button"
+                          onClick={() => selectRoom(room.id)}
+                          onMouseEnter={() => setHoveredRoomId(room.id)}
+                          onMouseLeave={() => setHoveredRoomId(null)}
+                          className={`shrink-0 rounded-md border px-2.5 py-1.5 text-xs font-medium transition ${
+                            selected
+                              ? "border-cyan-400/30 bg-cyan-400/10 text-cyan-100"
+                              : "border-white/[0.08] bg-white/[0.035] text-zinc-400 hover:border-white/15 hover:bg-white/[0.07] hover:text-zinc-200"
+                          }`}
+                        >
+                          {room.id}. {room.name}
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            ) : null}
 
-              return getEnvironmentLevelName(activeEffect, level);
-            }}
-            className="min-h-[420px] flex-1 lg:h-full lg:min-h-0"
-          />
+            <div className="flex min-h-0 flex-1">
+              <MapCanvas
+                ref={mapCanvasRef}
+                map={mapData}
+                rooms={roomStates}
+                selectedRoomId={selectedRoomId}
+                hoveredRoomId={hoveredRoomId}
+                onSelectRoom={selectRoom}
+                onShowOverview={showOverview}
+                onHoverRoom={setHoveredRoomId}
+                getRoomEnvironmentLabel={(room) => {
+                  if (!activeEffect) {
+                    return null;
+                  }
 
-          {/* Resizable divider */}
+                  const level = getRoomEnvironmentLevel(room, activeEffect);
+
+                  return getEnvironmentLevelName(activeEffect, level);
+                }}
+                className="min-h-[420px] flex-1 lg:h-full lg:min-h-0"
+              />
+            </div>
+          </div>
 
           <div
             onPointerDown={handleSidebarResizeStart}
             className={`group relative hidden w-2 shrink-0 cursor-col-resize touch-none items-center justify-center border-l border-r border-white/5 bg-zinc-950 transition lg:flex ${
               isResizingSidebar ? "bg-white/10" : "hover:bg-white/5"
             }`}
-            title="Drag to resize map and sidebar"
+            title="Drag to resize map and information"
           >
             <div className="h-12 w-1 rounded-full bg-white/15 transition group-hover:bg-white/35" />
           </div>
 
           {/* Information panel */}
 
-          <aside className="min-h-0 w-full shrink-0 overflow-auto border-t border-white/10 bg-zinc-950 p-4 lg:w-[var(--sidebar-width)] lg:border-t-0">
-            <div className="mb-4 flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-              >
-                <i className="fa-solid fa-arrow-left" />
-                Maps
-              </button>
-
-              <button
-                type="button"
-                onClick={showOverview}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                  selectedRoomId === null
-                    ? "border-white/20 bg-white/15 text-white"
-                    : "border-white/10 bg-white/5 text-white hover:bg-white/10"
-                }`}
-              >
-                <i className="fa-solid fa-map" />
-                Overview
-              </button>
-
-              {onEdit && (
-                <button
-                  type="button"
-                  onClick={() => onEdit(selectedRoomId)}
-                  className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-                >
-                  <i className="fa-solid fa-pen" />
-                  Edit
-                </button>
-              )}
-            </div>
-
+          <aside className="workspace-scrollbar min-h-0 w-full shrink-0 overflow-y-auto border-t border-white/10 bg-zinc-950 p-4 lg:w-[var(--sidebar-width)] lg:border-t-0">
             <div className="space-y-5">
-              {/* Environment controls */}
-
-              {environmentEffects.length > 0 && (
-                <section className="rounded-2xl border border-emerald-500/15 bg-emerald-500/5">
-                  <div className="flex items-center justify-between gap-3 p-4">
-                    <button
-                      type="button"
-                      onClick={() => setIsEnvironmentExpanded((prev) => !prev)}
-                      className="min-w-0 flex-1 text-left"
-                      title={
-                        isEnvironmentExpanded
-                          ? "Collapse environment controls"
-                          : "Expand environment controls"
-                      }
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="min-w-0">
-                          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300/70">
-                            Environment
-                          </div>
-
-                          <div className="mt-0.5 truncate text-base font-bold text-white">
-                            {activeEffect?.name ?? "Environment"}
-                          </div>
-                        </div>
-
-                        <i
-                          className={`fa-solid fa-chevron-down ml-1 text-xs text-white/40 transition-transform ${
-                            isEnvironmentExpanded ? "rotate-180" : ""
-                          }`}
-                        />
-                      </div>
-                    </button>
-
-                    {activeEffect && (
-                      <button
-                        type="button"
-                        onClick={rollEnvironmentForAllAreas}
-                        disabled={
-                          isEnvironmentSaving || roomStates.length === 0
-                        }
-                        className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        <i className="fa-solid fa-dice-d20" />{" "}
-                        {isEnvironmentSaving
-                          ? "Saving..."
-                          : `Roll d${activeEffect.diceSides}`}
-                      </button>
-                    )}
-                  </div>
-
-                  {isEnvironmentExpanded && (
-                    <div className="border-t border-white/10 px-4 pb-4 pt-4">
-                      {environmentEffects.length > 1 && (
-                        <div className="mb-4">
-                          <label className="mb-1 block text-xs font-medium text-white/55">
-                            Effect
-                          </label>
-
-                          <select
-                            value={activeEffectId ?? ""}
-                            onChange={(e) => {
-                              setActiveEffectId(e.target.value || null);
-
-                              setLastRollResults([]);
-                            }}
-                            className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none"
-                          >
-                            {environmentEffects.map((effect) => (
-                              <option key={effect.id} value={effect.id}>
-                                {effect.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-
-                      {environmentError && (
-                        <div className="mb-4 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-sm text-red-300">
-                          {environmentError}
-                        </div>
-                      )}
-
-                      {activeEffect && (
-                        <>
-                          <div className="mb-4 flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={randomizeEnvironmentForAllAreas}
-                              disabled={
-                                isEnvironmentSaving || roomStates.length === 0
-                              }
-                              className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-                              title="Randomize all areas without applying the maximum level change"
-                            >
-                              <i className="fa-solid fa-shuffle" /> Randomize
-                            </button>
-                          </div>
-
-                          <div className="mb-4 text-xs leading-5 text-white/50">
-                            <strong className="font-semibold text-white/70">
-                              Randomize
-                            </strong>{" "}
-                            sets every area directly to its rolled target level.{" "}
-                            <strong className="font-semibold text-white/70">
-                              Roll d{activeEffect.diceSides}
-                            </strong>{" "}
-                            evolves the current environment, allowing each area
-                            to move at most {activeEffect.maxChangePerRoll}{" "}
-                            level
-                            {activeEffect.maxChangePerRoll === 1
-                              ? ""
-                              : "s"}{" "}
-                            toward its rolled target.
-                          </div>
-
-                          <div className="space-y-2">
-                            {roomStates
-                              .slice()
-                              .sort((a, b) => a.id - b.id)
-                              .map((room) => {
-                                const levels = getSortedLevels(activeEffect);
-
-                                const currentValue = getRoomEnvironmentLevel(
-                                  room,
-                                  activeEffect,
-                                );
-
-                                let currentIndex = levels.findIndex(
-                                  (level) => level.value === currentValue,
-                                );
-
-                                if (currentIndex < 0) {
-                                  currentIndex = 0;
-                                }
-
-                                const canDecrease = currentIndex > 0;
-
-                                const canIncrease =
-                                  currentIndex < levels.length - 1;
-
-                                return (
-                                  <div
-                                    key={room.id}
-                                    className={`flex items-center gap-3 rounded-xl border p-3 transition ${
-                                      selectedRoomId === room.id
-                                        ? "border-white/20 bg-white/10"
-                                        : "border-white/10 bg-black/10"
-                                    }`}
-                                  >
-                                    <button
-                                      type="button"
-                                      onClick={() => selectRoom(room.id)}
-                                      className="min-w-0 flex-1 text-left"
-                                    >
-                                      <div className="truncate text-sm font-semibold text-white">
-                                        {room.id}. {room.name}
-                                      </div>
-
-                                      <div className="mt-0.5 text-xs text-white/50">
-                                        {getEnvironmentLevelName(
-                                          activeEffect,
-                                          currentValue,
-                                        )}
-                                      </div>
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      disabled={
-                                        !canDecrease || isEnvironmentSaving
-                                      }
-                                      onClick={() =>
-                                        changeRoomEnvironmentLevel(room.id, -1)
-                                      }
-                                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
-                                    >
-                                      −
-                                    </button>
-
-                                    <div className="min-w-8 text-center text-sm font-bold text-white">
-                                      {currentValue}
-                                    </div>
-
-                                    <button
-                                      type="button"
-                                      disabled={
-                                        !canIncrease || isEnvironmentSaving
-                                      }
-                                      onClick={() =>
-                                        changeRoomEnvironmentLevel(room.id, 1)
-                                      }
-                                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-sm font-bold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-30"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                          </div>
-
-                          {lastRollResults.length > 0 && (
-                            <div className="mt-4 border-t border-white/10 pt-4">
-                              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/50">
-                                Last roll
-                              </div>
-
-                              <div className="space-y-2">
-                                {lastRollResults.map((result) => {
-                                  const changed =
-                                    result.previousLevel !== result.nextLevel;
-
-                                  return (
-                                    <div
-                                      key={result.roomId}
-                                      className="rounded-lg bg-black/20 px-3 py-2 text-xs"
-                                    >
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="font-semibold text-white/80">
-                                          {result.roomId}. {result.roomName}
-                                        </span>
-
-                                        <span className="font-bold text-emerald-300">
-                                          d{activeEffect.diceSides}:{" "}
-                                          {result.roll}
-                                        </span>
-                                      </div>
-
-                                      <div className="mt-1 text-white/50">
-                                        {getEnvironmentLevelName(
-                                          activeEffect,
-                                          result.previousLevel,
-                                        )}
-                                        {" → "}
-                                        {getEnvironmentLevelName(
-                                          activeEffect,
-                                          result.nextLevel,
-                                        )}
-
-                                        {!changed && " (no change)"}
-                                      </div>
-
-                                      {result.targetLevel !==
-                                        result.nextLevel && (
-                                        <div className="mt-0.5 text-white/35">
-                                          Rolled target:{" "}
-                                          {getEnvironmentLevelName(
-                                            activeEffect,
-                                            result.targetLevel,
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  )}
-                </section>
-              )}
-
               {/* Overview / selected area */}
 
               {selectedRoom === null ? (
                 <div className="space-y-5">
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-white/50">
-                      Overview
-                    </div>
-
                     <h3 className="text-xl font-bold">
                       {mapData.overviewTitle ?? mapData.title}
                     </h3>
@@ -1278,67 +734,20 @@ const MapViewer = ({
                     </section>
                   )}
 
-                  {overviewParagraphs.length > 0 ? (
-                    <section>{renderParagraphs(overviewParagraphs)}</section>
+                  {mapData.descriptionHtml?.trim() ||
+                  overviewParagraphs.length > 0 ? (
+                    <section>
+                      <RichDescription
+                        html={mapData.descriptionHtml}
+                        legacyParagraphs={overviewParagraphs}
+                      />
+                    </section>
                   ) : (
                     <p className="text-sm text-white/70">
                       This map does not yet have a general description.
                     </p>
                   )}
 
-                  <section className="space-y-3">
-                    <div className="text-sm font-semibold text-white/90">
-                      Areas
-                    </div>
-
-                    {roomStates.length === 0 ? (
-                      <p className="text-sm text-white/70">No areas yet.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {roomStates
-                          .slice()
-                          .sort((a, b) => a.id - b.id)
-                          .map((room) => (
-                            <button
-                              key={room.id}
-                              type="button"
-                              onClick={() => selectRoom(room.id)}
-                              className="flex w-full items-start justify-between rounded-lg border border-white/10 bg-white/5 p-3 text-left transition hover:bg-white/10"
-                            >
-                              <div>
-                                <div className="font-medium text-white">
-                                  {room.id}. {room.name}
-                                </div>
-
-                                <div className="mt-1 text-sm text-white/55">
-                                  {room.monsters?.length
-                                    ? (() => {
-                                        const creatureCount =
-                                          room.monsters.reduce(
-                                            (total, creature) =>
-                                              total +
-                                              Math.max(1, creature.count ?? 1),
-                                            0,
-                                          );
-
-                                        return `${creatureCount} ${
-                                          creatureCount === 1
-                                            ? "creature"
-                                            : "creatures"
-                                        }`;
-                                      })()
-                                    : "No creatures listed"}
-                                </div>
-                              </div>
-
-                              <span className="rounded bg-white/10 px-2 py-1 text-xs text-white/70">
-                                Open
-                              </span>
-                            </button>
-                          ))}
-                      </div>
-                    )}
-                  </section>
                 </div>
               ) : roomStates.length === 0 ? (
                 <div className="space-y-3">
@@ -1351,28 +760,11 @@ const MapViewer = ({
               ) : (
                 <div className="space-y-5">
                   <div>
-                    <div className="text-xs uppercase tracking-wide text-white/50">
-                      Area {selectedRoom.id}
-                    </div>
-
-                    <h3 className="text-xl font-bold">{selectedRoom.name}</h3>
+                    <h3 className="text-xl font-bold">
+                      {selectedRoom.id}. {selectedRoom.name}
+                    </h3>
                   </div>
 
-                  {activeEffect && (
-                    <section className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3">
-                      <div className="text-xs uppercase tracking-wide text-emerald-300/60">
-                        {activeEffect.name}
-                      </div>
-
-                      <div className="mt-1 text-sm font-semibold text-white">
-                        {getEnvironmentLevelName(
-                          activeEffect,
-
-                          getRoomEnvironmentLevel(selectedRoom, activeEffect),
-                        )}
-                      </div>
-                    </section>
-                  )}
 
                   {selectedRoom.readAloud && (
                     <section className="space-y-2">
