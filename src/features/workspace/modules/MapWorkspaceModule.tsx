@@ -117,31 +117,6 @@ const RichDescription = ({
   return renderParagraphs(legacyParagraphs);
 };
 
-const getRoomSummary = (room: CampaignMapRoom) => {
-  const parts: string[] = [];
-
-  if (room.monsters?.length) {
-    const monsterCount = room.monsters.reduce(
-      (total, monster) => total + Math.max(1, monster.count ?? 1),
-      0,
-    );
-
-    parts.push(
-      `${monsterCount} ${monsterCount === 1 ? "creature" : "creatures"}`,
-    );
-  }
-
-  if (room.treasure?.length) {
-    parts.push(`${room.treasure.length} treasure`);
-  }
-
-  if (room.encounterTemplate) {
-    parts.push("encounter");
-  }
-
-  return parts.join(" · ");
-};
-
 const normalizeMonsterName = (value: string) => {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 };
@@ -239,7 +214,7 @@ export default function MapWorkspaceModule({
     addPlayerToEncounter,
   } = useEncounter();
 
-  const { activeLocation, selectEntity, setActiveLocation } = useWorkspace();
+  const {selectEntity, setActiveLocation } = useWorkspace();
 
   const [hoveredRoomId, setHoveredRoomId] = useState<number | null>(null);
 
@@ -963,8 +938,6 @@ export default function MapWorkspaceModule({
   }
 
   const mapDescription = selectedMap.generalDescription ?? [];
-
-  const roomSummary = selectedRoom ? getRoomSummary(selectedRoom) : "";
 
   const currentPopulation = getResolvedPopulation(
     selectedRoom ? selectedRoom.monsters : selectedMap.monsters,
