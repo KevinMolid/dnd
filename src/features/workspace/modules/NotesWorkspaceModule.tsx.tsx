@@ -410,24 +410,49 @@ export function NotesWorkspaceModule({
   useEffect(() => {
     if (!editor) return;
 
-    if (!selectedNote) {
-      if (!editor.isEmpty) {
-        editor.commands.clearContent(false);
-      }
-      return;
-    }
+    /*
+     * TipTap can call ReactDOM.flushSync internally when commands mutate the
+     * editor. Running clearContent/setContent directly inside a React effect
+     * therefore produces:
+     *
+     * "flushSync was called from inside a lifecycle method"
+     *
+     * Defer the editor mutation until after the current React lifecycle has
+     * finished. The cancellation flag also prevents an older note selection
+     * from writing into the editor after the selection changes.
+     */
+    let cancelled = false;
 
-    if (pendingContentRef.current !== null) {
-      return;
-    }
+    const syncEditorContent = () => {
+      queueMicrotask(() => {
+        if (cancelled || editor.isDestroyed) return;
 
-    const normalized = normalizeStoredNoteContent(selectedNote.content);
+        if (!selectedNote) {
+          if (!editor.isEmpty) {
+            editor.commands.clearContent(false);
+          }
+          return;
+        }
 
-    if (editor.getHTML() !== normalized) {
-      editor.commands.setContent(normalized, {
-        emitUpdate: false,
+        if (pendingContentRef.current !== null) {
+          return;
+        }
+
+        const normalized = normalizeStoredNoteContent(selectedNote.content);
+
+        if (editor.getHTML() !== normalized) {
+          editor.commands.setContent(normalized, {
+            emitUpdate: false,
+          });
+        }
       });
-    }
+    };
+
+    syncEditorContent();
+
+    return () => {
+      cancelled = true;
+    };
   }, [editor, selectedNote]);
 
   useEffect(() => {
