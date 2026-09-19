@@ -4,10 +4,13 @@ export const tieflingLegacies: TieflingLegacy[] = [
   {
     id: "abyssal",
     name: "Abyssal",
+
     traits: [
       {
         id: "abyssal-legacy",
         name: "Abyssal Legacy",
+        description:
+          "You have Resistance to Poison damage and know the Poison Spray cantrip. Starting at level 3, you always have Ray of Sickness prepared, and starting at level 5, you always have Hold Person prepared. You can cast each of those leveled spells once without expending a spell slot, regaining the ability to do so when you finish a Long Rest. You can also cast them using any spell slots you have of the appropriate level. Use the spellcasting ability chosen for your Fiendish Legacy trait for these spells.",
         effects: [
           {
             type: "resistance",
@@ -16,7 +19,9 @@ export const tieflingLegacies: TieflingLegacy[] = [
           {
             type: "spell",
             spellId: "poison-spray",
-            frequency: { type: "at-will" },
+            frequency: {
+              type: "at-will",
+            },
           },
           {
             type: "spell",
@@ -24,7 +29,10 @@ export const tieflingLegacies: TieflingLegacy[] = [
             level: 3,
             frequency: {
               type: "limited",
-              uses: { type: "fixed", value: 1 },
+              uses: {
+                type: "fixed",
+                value: 1,
+              },
               recharge: "long-rest",
             },
           },
@@ -34,7 +42,10 @@ export const tieflingLegacies: TieflingLegacy[] = [
             level: 5,
             frequency: {
               type: "limited",
-              uses: { type: "fixed", value: 1 },
+              uses: {
+                type: "fixed",
+                value: 1,
+              },
               recharge: "long-rest",
             },
           },
@@ -47,13 +58,17 @@ export const tieflingLegacies: TieflingLegacy[] = [
       },
     ],
   },
+
   {
     id: "chthonic",
     name: "Chthonic",
+
     traits: [
       {
         id: "chthonic-legacy",
         name: "Chthonic Legacy",
+        description:
+          "You have Resistance to Necrotic damage and know the Chill Touch cantrip. Starting at level 3, you always have False Life prepared, and starting at level 5, you always have Ray of Enfeeblement prepared. You can cast each of those leveled spells once without expending a spell slot, regaining the ability to do so when you finish a Long Rest. You can also cast them using any spell slots you have of the appropriate level. Use the spellcasting ability chosen for your Fiendish Legacy trait for these spells.",
         effects: [
           {
             type: "resistance",
@@ -62,7 +77,9 @@ export const tieflingLegacies: TieflingLegacy[] = [
           {
             type: "spell",
             spellId: "chill-touch",
-            frequency: { type: "at-will" },
+            frequency: {
+              type: "at-will",
+            },
           },
           {
             type: "spell",
@@ -70,7 +87,10 @@ export const tieflingLegacies: TieflingLegacy[] = [
             level: 3,
             frequency: {
               type: "limited",
-              uses: { type: "fixed", value: 1 },
+              uses: {
+                type: "fixed",
+                value: 1,
+              },
               recharge: "long-rest",
             },
           },
@@ -80,7 +100,10 @@ export const tieflingLegacies: TieflingLegacy[] = [
             level: 5,
             frequency: {
               type: "limited",
-              uses: { type: "fixed", value: 1 },
+              uses: {
+                type: "fixed",
+                value: 1,
+              },
               recharge: "long-rest",
             },
           },
@@ -93,13 +116,17 @@ export const tieflingLegacies: TieflingLegacy[] = [
       },
     ],
   },
+
   {
     id: "infernal",
     name: "Infernal",
+
     traits: [
       {
         id: "infernal-legacy",
         name: "Infernal Legacy",
+        description:
+          "You have Resistance to Fire damage and know the Fire Bolt cantrip. Starting at level 3, you always have Hellish Rebuke prepared, and starting at level 5, you always have Darkness prepared. You can cast each of those leveled spells once without expending a spell slot, regaining the ability to do so when you finish a Long Rest. You can also cast them using any spell slots you have of the appropriate level. Use the spellcasting ability chosen for your Fiendish Legacy trait for these spells.",
         effects: [
           {
             type: "resistance",
@@ -108,7 +135,9 @@ export const tieflingLegacies: TieflingLegacy[] = [
           {
             type: "spell",
             spellId: "fire-bolt",
-            frequency: { type: "at-will" },
+            frequency: {
+              type: "at-will",
+            },
           },
           {
             type: "spell",
@@ -116,7 +145,10 @@ export const tieflingLegacies: TieflingLegacy[] = [
             level: 3,
             frequency: {
               type: "limited",
-              uses: { type: "fixed", value: 1 },
+              uses: {
+                type: "fixed",
+                value: 1,
+              },
               recharge: "long-rest",
             },
           },
@@ -126,7 +158,10 @@ export const tieflingLegacies: TieflingLegacy[] = [
             level: 5,
             frequency: {
               type: "limited",
-              uses: { type: "fixed", value: 1 },
+              uses: {
+                type: "fixed",
+                value: 1,
+              },
               recharge: "long-rest",
             },
           },

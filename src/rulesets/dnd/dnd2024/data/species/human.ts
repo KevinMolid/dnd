@@ -2,22 +2,34 @@ import type { Species } from "../../types";
 
 export const human: Species = {
   id: "human",
+
   name: "Human",
+
   sizeOptions: ["Medium", "Small"],
+
   speed: 30,
+
   languages: ["common"],
+
   traits: [
     {
       id: "resourceful",
       name: "Resourceful",
+      description:
+        "You gain Heroic Inspiration whenever you finish a Long Rest.",
       notes: [
         "You gain Heroic Inspiration whenever you finish a Long Rest.",
       ],
     },
+
     {
       id: "skillful",
       name: "Skillful",
-      notes: ["You gain proficiency in one skill of your choice."],
+      description:
+        "You gain proficiency in one skill of your choice.",
+      notes: [
+        "You gain proficiency in one skill of your choice.",
+      ],
       choices: [
         {
           id: "human-skill-choice",
@@ -46,10 +58,15 @@ export const human: Species = {
         },
       ],
     },
+
     {
       id: "versatile",
       name: "Versatile",
-      notes: ["You gain an Origin feat of your choice."],
+      description:
+        "You gain one Origin feat of your choice.",
+      notes: [
+        "You gain an Origin feat of your choice.",
+      ],
       choices: [
         {
           id: "human-origin-feat-choice",

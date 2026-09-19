@@ -2,9 +2,13 @@ import type { Species } from "../../types";
 
 export const dragonborn = {
   id: "dragonborn",
+
   name: "Dragonborn",
+
   size: "Medium",
+
   speed: 30,
+
   languages: ["common", "draconic"],
 
   choices: [
@@ -82,7 +86,7 @@ export const dragonborn = {
       id: "draconic-ancestry",
       name: "Draconic Ancestry",
       description:
-        "Your lineage stems from a dragon progenitor. Choose the kind of dragon from the Draconic Ancestors table. Your choice affects your Breath Weapon and Damage Resistance traits as well as your appearance.",
+        "Your lineage stems from a dragon progenitor. Choose Black, Blue, Brass, Bronze, Copper, Gold, Green, Red, Silver, or White. Your choice determines the damage type of your Breath Weapon and Damage Resistance traits.",
       effects: [
         {
           type: "choice-ref",
@@ -90,25 +94,33 @@ export const dragonborn = {
         },
       ],
     },
+
     {
       id: "breath-weapon",
       name: "Breath Weapon",
       description:
-        "When you take the Attack action on your turn, you can replace one of your attacks with an exhalation of magical energy in either a 15-foot Cone or a 30-foot Line that is 5 feet wide (choose the shape each time). Each creature in that area must make a Dexterity saving throw (DC 8 plus your Constitution modifier and Proficiency Bonus). On a failed save, a creature takes 1d10 damage of the type determined by your Draconic Ancestry trait. On a successful save, a creature takes half as much damage. This damage increases when you reach character levels 5 (2d10), 11 (3d10), and 17 (4d10). You can use this Breath Weapon a number of times equal to your Proficiency Bonus, and you regain all expended uses when you finish a Long Rest.",
+        "When you take the Attack action on your turn, you can replace one of your attacks with an exhalation of magical energy in either a 15-foot Cone or a 30-foot Line that is 5 feet wide. Each creature in that area must make a Dexterity saving throw against a DC equal to 8 + your Constitution modifier + your Proficiency Bonus. On a failed save, a creature takes 1d10 damage of the type determined by your Draconic Ancestry, or half as much damage on a successful save. The damage increases to 2d10 at level 5, 3d10 at level 11, and 4d10 at level 17. You can use this trait a number of times equal to your Proficiency Bonus, regaining all expended uses when you finish a Long Rest.",
+      usage: {
+        type: "limited",
+        uses: {
+          type: "proficiency-bonus",
+        },
+        recharge: "long-rest",
+      },
       notes: [
         "Replace one attack in the Attack action.",
         "Area: 15-foot Cone or 30-foot Line that is 5 feet wide.",
         "Save: Dexterity, DC 8 + Constitution modifier + Proficiency Bonus.",
         "Damage type is determined by your Draconic Ancestry.",
         "Damage: 1d10 at level 1, 2d10 at level 5, 3d10 at level 11, 4d10 at level 17.",
-        "Uses per Long Rest: equal to your Proficiency Bonus.",
       ],
     },
+
     {
       id: "damage-resistance",
       name: "Damage Resistance",
       description:
-        "You have Resistance to the damage type determined by your Draconic Ancestry trait.",
+        "You have Resistance to the damage type determined by your Draconic Ancestry: Acid, Lightning, Fire, Poison, or Cold.",
       effects: [
         {
           type: "text",
@@ -116,10 +128,12 @@ export const dragonborn = {
         },
       ],
     },
+
     {
       id: "darkvision",
       name: "Darkvision",
-      description: "You have Darkvision with a range of 60 feet.",
+      description:
+        "You have Darkvision with a range of 60 feet.",
       effects: [
         {
           type: "sense",
@@ -128,19 +142,32 @@ export const dragonborn = {
         },
       ],
     },
+
     {
       id: "draconic-flight",
       name: "Draconic Flight",
+      minLevel: 5,
       activation: "bonus-action",
       description:
-        "When you reach character level 5, you can channel draconic magic to give yourself temporary flight. As a Bonus Action, you sprout spectral wings on your back that last for 10 minutes or until you retract the wings (no action required) or have the Incapacitated condition. During that time, you have a Fly Speed equal to your Speed. Your wings appear to be made of the same energy as your Breath Weapon. Once you use this trait, you can't use it again until you finish a Long Rest.",
+        "Starting at level 5, you can use a Bonus Action to sprout spectral wings that last for 10 minutes. During that time, you have a Fly Speed equal to your Speed. The wings disappear early if you retract them or have the Incapacitated condition. Once you use this trait, you can't use it again until you finish a Long Rest.",
+      usage: {
+        type: "limited",
+        uses: {
+          type: "fixed",
+          value: 1,
+        },
+        recharge: "long-rest",
+      },
       effects: [
         {
           type: "speed-bonus",
           speedType: "fly",
           equals: "speed",
           minimumLevel: 5,
-          duration: { amount: 10, unit: "minute" },
+          duration: {
+            amount: 10,
+            unit: "minute",
+          },
           activation: "bonus-action",
           frequency: {
             type: "per-rest",
@@ -155,11 +182,9 @@ export const dragonborn = {
       ],
       notes: [
         "Available starting at level 5.",
-        "Activate as a Bonus Action.",
         "Duration: 10 minutes.",
         "Ends early if you retract the wings or become Incapacitated.",
         "Fly Speed equals your Speed.",
-        "Uses: once per Long Rest.",
       ],
     },
   ],
