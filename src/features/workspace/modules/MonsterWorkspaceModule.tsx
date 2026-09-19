@@ -11,55 +11,14 @@ import type {
   WorkspaceModuleRenderProps,
 } from "../workspaceTypes";
 
-import type { MonsterTextEntry } from "../../monsters/catalog/monsterTypes";
+import type {
+  MonsterDefinition,
+  MonsterSpeed,
+  MonsterTextEntry,
+} from "../../monsters/catalog/monsterTypes";
 
-type WorkspaceMonster = {
-  id: string;
-
+type WorkspaceMonster = MonsterDefinition & {
   source: "default" | "campaign";
-
-  name: string;
-
-  type?: string;
-
-  description: string;
-
-  img?: string;
-
-  armorClass: number;
-
-  armorClassNotes?: string;
-
-  hp: number;
-
-  speed: number | string;
-
-  stats: {
-    str: number;
-    dex: number;
-    con: number;
-    int: number;
-    wis: number;
-    cha: number;
-  };
-
-  skills?: string;
-
-  senses?: string;
-
-  language?: string;
-
-  challengeRating: string;
-
-  xp: number;
-
-  traits?: MonsterTextEntry[];
-
-  actions?: MonsterTextEntry[];
-
-  bonusActions?: MonsterTextEntry[];
-
-  reactions?: MonsterTextEntry[];
 };
 
 const ABILITIES = [
@@ -79,13 +38,65 @@ const formatModifier = (modifier: number) => {
   return modifier >= 0 ? `+${modifier}` : `${modifier}`;
 };
 
-const formatSpeed = (speed: number | string) => {
-  if (typeof speed === "number") {
-    return `${speed} ft`;
-  }
+const formatSpeed = (speed: MonsterSpeed) => {
+  const parts: string[] = [];
 
-  return speed;
+  if (speed.walk !== undefined) parts.push(`${speed.walk} ft.`);
+  if (speed.burrow !== undefined) parts.push(`Burrow ${speed.burrow} ft.`);
+  if (speed.climb !== undefined) parts.push(`Climb ${speed.climb} ft.`);
+  if (speed.fly !== undefined) {
+    parts.push(`Fly ${speed.fly} ft.${speed.hover ? " (hover)" : ""}`);
+  }
+  if (speed.swim !== undefined) parts.push(`Swim ${speed.swim} ft.`);
+  if (speed.notes?.trim()) parts.push(speed.notes.trim());
+
+  return parts.length ? parts.join(", ") : "—";
 };
+
+const formatIdentity = (monster: WorkspaceMonster) => {
+  const type = monster.subtype
+    ? `${monster.type} (${monster.subtype})`
+    : monster.type;
+
+  return [monster.size, type, monster.alignment].filter(Boolean).join(" • ");
+};
+
+const formatBonuses = (values?: Record<string, number>) => {
+  if (!values) return "";
+
+  return Object.entries(values)
+    .filter(([, bonus]) => Number.isFinite(bonus))
+    .map(([name, bonus]) => `${name} ${formatModifier(bonus)}`)
+    .join(", ");
+};
+
+const formatSenses = (monster: WorkspaceMonster) => {
+  const senses = monster.senses;
+  if (!senses) return "";
+
+  const parts: string[] = [];
+
+  if (senses.blindsight !== undefined) {
+    parts.push(`Blindsight ${senses.blindsight} ft.`);
+  }
+  if (senses.darkvision !== undefined) {
+    parts.push(`Darkvision ${senses.darkvision} ft.`);
+  }
+  if (senses.tremorsense !== undefined) {
+    parts.push(`Tremorsense ${senses.tremorsense} ft.`);
+  }
+  if (senses.truesight !== undefined) {
+    parts.push(`Truesight ${senses.truesight} ft.`);
+  }
+  if (senses.passivePerception !== undefined) {
+    parts.push(`Passive Perception ${senses.passivePerception}`);
+  }
+  if (senses.notes?.trim()) parts.push(senses.notes.trim());
+
+  return parts.join(", ");
+};
+
+const formatList = (values?: string[]) => values?.join(", ") ?? "";
 
 const MonsterTextSection = ({
   title,
@@ -188,9 +199,9 @@ export default function MonsterWorkspaceModule({
    * If there isn't one, keep showing the last
    * persisted monster.
    */
-  const displayedMonster = (
-    mode === "follow" ? (followedMonster ?? pinnedMonster) : pinnedMonster
-  ) as WorkspaceMonster | null;
+  const displayedMonster: WorkspaceMonster | null =
+    (mode === "follow" ? (followedMonster ?? pinnedMonster) : pinnedMonster) ??
+    null;
 
   const displayedMonsterKey = displayedMonster
     ? `${displayedMonster.source}:${displayedMonster.id}`
@@ -204,7 +215,15 @@ export default function MonsterWorkspaceModule({
     }
 
     return allMonsters.filter((monster) =>
-      [monster.name, monster.type, monster.description, monster.challengeRating]
+      [
+        monster.name,
+        monster.type,
+        monster.subtype,
+        monster.size,
+        monster.alignment,
+        monster.challengeRating,
+      ]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(value),
@@ -503,7 +522,7 @@ export default function MonsterWorkspaceModule({
                     </div>
 
                     <div className="mt-0.5 truncate text-[9px] text-zinc-500">
-                      {monster.description}
+                      {formatIdentity(monster as WorkspaceMonster)}
                     </div>
 
                     <div className="mt-0.5 truncate text-[9px] text-zinc-600">
@@ -758,7 +777,7 @@ export default function MonsterWorkspaceModule({
               </div>
 
               <div className="mt-0.5 text-[10px] italic leading-4 text-zinc-400">
-                {displayedMonster.description}
+                {formatIdentity(displayedMonster)}
               </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-1.5">
@@ -818,6 +837,12 @@ export default function MonsterWorkspaceModule({
               <div className="mt-0.5 text-sm font-bold text-white">
                 {displayedMonster.hp}
               </div>
+
+              {displayedMonster.hitDice ? (
+                <div className="mt-0.5 truncate text-[8px] text-zinc-500">
+                  {displayedMonster.hitDice}
+                </div>
+              ) : null}
             </div>
 
             {/* Speed */}
@@ -875,29 +900,112 @@ export default function MonsterWorkspaceModule({
 
         {/* Details */}
 
-        {displayedMonster.skills ||
+        {displayedMonster.savingThrows ||
+        displayedMonster.skills ||
         displayedMonster.senses ||
-        displayedMonster.language ? (
+        displayedMonster.languages?.length ||
+        displayedMonster.damageVulnerabilities?.length ||
+        displayedMonster.damageResistances?.length ||
+        displayedMonster.damageImmunities?.length ||
+        displayedMonster.conditionImmunities?.length ||
+        displayedMonster.gear?.length ||
+        displayedMonster.habitat?.length ||
+        displayedMonster.treasure?.length ? (
           <section className="border-b border-white/10 px-3 py-3">
             <div className="space-y-1.5 text-xs leading-5 text-zinc-300">
+              {displayedMonster.savingThrows ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">
+                    Saving Throws
+                  </span>{" "}
+                  {formatBonuses(displayedMonster.savingThrows)}
+                </p>
+              ) : null}
+
               {displayedMonster.skills ? (
                 <p>
                   <span className="font-semibold text-zinc-100">Skills</span>{" "}
-                  {displayedMonster.skills}
+                  {formatBonuses(displayedMonster.skills)}
+                </p>
+              ) : null}
+
+              {displayedMonster.damageVulnerabilities?.length ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">
+                    Damage Vulnerabilities
+                  </span>{" "}
+                  {formatList(displayedMonster.damageVulnerabilities)}
+                </p>
+              ) : null}
+
+              {displayedMonster.damageResistances?.length ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">
+                    Damage Resistances
+                  </span>{" "}
+                  {formatList(displayedMonster.damageResistances)}
+                </p>
+              ) : null}
+
+              {displayedMonster.damageImmunities?.length ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">
+                    Damage Immunities
+                  </span>{" "}
+                  {formatList(displayedMonster.damageImmunities)}
+                </p>
+              ) : null}
+
+              {displayedMonster.conditionImmunities?.length ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">
+                    Condition Immunities
+                  </span>{" "}
+                  {formatList(displayedMonster.conditionImmunities)}
                 </p>
               ) : null}
 
               {displayedMonster.senses ? (
                 <p>
                   <span className="font-semibold text-zinc-100">Senses</span>{" "}
-                  {displayedMonster.senses}
+                  {formatSenses(displayedMonster)}
                 </p>
               ) : null}
 
-              {displayedMonster.language ? (
+              {displayedMonster.languages?.length ? (
                 <p>
                   <span className="font-semibold text-zinc-100">Languages</span>{" "}
-                  {displayedMonster.language}
+                  {formatList(displayedMonster.languages)}
+                </p>
+              ) : null}
+
+              {displayedMonster.proficiencyBonus !== undefined ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">
+                    Proficiency Bonus
+                  </span>{" "}
+                  {formatModifier(displayedMonster.proficiencyBonus)}
+                </p>
+              ) : null}
+
+              {displayedMonster.gear?.length ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">Gear</span>{" "}
+                  {formatList(displayedMonster.gear)}
+                </p>
+              ) : null}
+
+              {displayedMonster.habitat?.length ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">Habitat</span>{" "}
+                  {formatList(displayedMonster.habitat)}
+                </p>
+              ) : null}
+
+              {displayedMonster.treasure?.length ? (
+                <p>
+                  <span className="font-semibold text-zinc-100">Treasure</span>{" "}
+                  {formatList(displayedMonster.treasure)}
                 </p>
               ) : null}
             </div>
@@ -919,6 +1027,16 @@ export default function MonsterWorkspaceModule({
         <MonsterTextSection
           title="Reactions"
           entries={displayedMonster.reactions}
+        />
+
+        <MonsterTextSection
+          title="Legendary Actions"
+          entries={displayedMonster.legendaryActions}
+        />
+
+        <MonsterTextSection
+          title="Lair Actions"
+          entries={displayedMonster.lairActions}
         />
       </div>
 
