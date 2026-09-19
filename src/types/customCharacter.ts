@@ -66,8 +66,6 @@ export type CustomSpellSlot = {
 export type CustomSpellcasting = {
   enabled: boolean;
   ability: AbilityKey | null;
-  spellSaveDc: number;
-  spellAttackBonus: number;
   spellSlots: Record<string, CustomSpellSlot>;
   spells: CustomSpellEntry[];
 };

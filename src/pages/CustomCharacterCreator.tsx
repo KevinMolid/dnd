@@ -436,10 +436,6 @@ const CustomCharacterCreator = ({
 
       ability: null,
 
-      spellSaveDc: 10,
-
-      spellAttackBonus: 0,
-
       spellSlots: createEmptySpellSlots(),
 
       spells: [],
@@ -1857,7 +1853,7 @@ const CustomCharacterCreator = ({
 
                     {customSpellcasting.enabled ? (
                       <div className="space-y-3">
-                        <div className="grid gap-2.5 sm:grid-cols-3">
+                        <div className="max-w-sm">
                           <label className="block">
                             <span className="text-sm text-zinc-300">
                               Spellcasting Ability
@@ -1885,30 +1881,6 @@ const CustomCharacterCreator = ({
                               ))}
                             </select>
                           </label>
-
-                          <NumberInput
-                            label="Spell Save DC"
-                            value={customSpellcasting.spellSaveDc}
-                            onChange={(value) =>
-                              setCustomSpellcasting((current) => ({
-                                ...current,
-
-                                spellSaveDc: value,
-                              }))
-                            }
-                          />
-
-                          <NumberInput
-                            label="Spell Attack Bonus"
-                            value={customSpellcasting.spellAttackBonus}
-                            onChange={(value) =>
-                              setCustomSpellcasting((current) => ({
-                                ...current,
-
-                                spellAttackBonus: value,
-                              }))
-                            }
-                          />
                         </div>
 
                         <div>

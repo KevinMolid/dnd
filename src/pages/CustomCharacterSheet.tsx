@@ -394,16 +394,26 @@ const CustomCharacterSheet = ({
 
     ability: null as AbilityKey | null,
 
-    spellSaveDc: 10,
-
-    spellAttackBonus: 0,
-
     spellSlots: createEmptySpellSlots(),
 
     spells: [],
 
     ...(character.customSpellcasting ?? {}),
   };
+
+  const spellcastingAbilityModifier = spellcasting.ability
+    ? getModifier(abilityScores[spellcasting.ability])
+    : null;
+
+  const spellSaveDc =
+    spellcastingAbilityModifier !== null
+      ? 8 + proficiencyBonus + spellcastingAbilityModifier
+      : undefined;
+
+  const spellAttackBonus =
+    spellcastingAbilityModifier !== null
+      ? proficiencyBonus + spellcastingAbilityModifier
+      : undefined;
 
   const spellsById = useMemo(
     () => Object.fromEntries(spells.map((spell) => [spell.id, spell])),
@@ -867,11 +877,8 @@ const CustomCharacterSheet = ({
                       abilityLabel: spellcasting.ability
                         ? abilityLabels[spellcasting.ability]
                         : undefined,
-
-                      saveDc: spellcasting.spellSaveDc,
-
-                      attackBonus: spellcasting.spellAttackBonus,
-
+                      saveDc: spellSaveDc,
+                      attackBonus: spellAttackBonus,
                       slots: customSpellSlots,
                     }
                   : undefined
