@@ -11,17 +11,18 @@ import {
   updateDoc,
 } from "firebase/firestore";
 
-import Container from "../components/Container";
-import H1 from "../components/H1";
-import { db } from "../firebase";
-import { useAuth } from "../context/AuthContext";
 import {
   monsters,
   monsterTypes,
   type MonsterDefinition,
   type MonsterTextEntry,
   type MonsterType,
-} from "../data/monsterCatalog";
+} from "../features/monsters/catalog/monsterCatalog";
+
+import Container from "../components/Container";
+import H1 from "../components/H1";
+import { db } from "../firebase";
+import { useAuth } from "../context/AuthContext";
 
 import MonsterStatBlock, {
   type MonsterListItem,

@@ -7,7 +7,10 @@ import React, {
   useState,
 } from "react";
 
-import { monsters, type MonsterDefinition } from "../data/monsterCatalog";
+import {
+  monsters,
+  type MonsterDefinition,
+} from "../features/monsters/catalog/monsterCatalog";
 
 const getStorageKey = (campaignId: string) => `rphub-encounter-${campaignId}`;
 

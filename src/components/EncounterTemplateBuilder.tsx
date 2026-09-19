@@ -3,9 +3,9 @@ import Avatar from "./Avatar";
 import H3 from "./H3";
 import {
   monsters,
+  MonsterDefinition,
   monsterTypes,
-  type MonsterDefinition,
-} from "../data/monsterCatalog";
+} from "../features/monsters/catalog/monsterCatalog";
 
 export type EncounterTemplateDraftMonster = {
   id: string;

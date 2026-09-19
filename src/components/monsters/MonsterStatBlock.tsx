@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-import type {
+import {
   MonsterDefinition,
   MonsterTextEntry,
-} from "../../data/monsterCatalog";
+} from "../../features/monsters/catalog/monsterTypes";
 
 export type MonsterSource = "default" | "campaign";
 

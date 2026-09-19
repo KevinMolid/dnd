@@ -6,7 +6,7 @@ import {
   monsters,
   monsterTypes,
   type MonsterDefinition,
-} from "../data/monsterCatalog";
+} from "../features/monsters/catalog/monsterCatalog";
 import { useEncounter } from "../context/EncounterContext";
 
 const Stats = () => {

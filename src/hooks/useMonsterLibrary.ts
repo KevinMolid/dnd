@@ -11,7 +11,7 @@ import { db } from "../firebase";
 import {
   monsters,
   type MonsterDefinition,
-} from "../data/monsterCatalog";
+} from "../features/monsters/catalog/monsterCatalog";
 
 import type {
   MonsterListItem,

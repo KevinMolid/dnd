@@ -2,7 +2,10 @@ import { useMemo, useState } from "react";
 import Avatar from "./Avatar";
 import H3 from "./H3";
 import { useEncounter } from "../context/EncounterContext";
-import { monsters, type MonsterDefinition } from "../data/monsterCatalog";
+import {
+  monsters,
+  type MonsterDefinition,
+} from "../features/monsters/catalog/monsterCatalog";
 
 const QuickAdd = () => {
   const { addMonsterToEncounter } = useEncounter();

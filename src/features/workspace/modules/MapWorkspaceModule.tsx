@@ -20,7 +20,7 @@ import type {
   MapMonster,
 } from "../../maps/types";
 
-import type { MonsterDefinition } from "../../../data/monsterCatalog";
+import type { MonsterDefinition } from "../../monsters/catalog/monsterTypes";
 
 import { useWorkspace } from "../WorkspaceContext";
 
@@ -214,7 +214,7 @@ export default function MapWorkspaceModule({
     addPlayerToEncounter,
   } = useEncounter();
 
-  const {selectEntity, setActiveLocation } = useWorkspace();
+  const { selectEntity, setActiveLocation } = useWorkspace();
 
   const [hoveredRoomId, setHoveredRoomId] = useState<number | null>(null);
 
@@ -1467,402 +1467,399 @@ export default function MapWorkspaceModule({
             </div>
 
             <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-3">
-            {selectedRoom ? (
-              <div className="space-y-4">
+              {selectedRoom ? (
+                <div className="space-y-4">
+                  {encounterStartedMessage ? (
+                    <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-xs text-emerald-300">
+                      <i className="fa-solid fa-check mr-1.5" />
 
-                {encounterStartedMessage ? (
-                  <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/[0.07] px-3 py-2 text-xs text-emerald-300">
-                    <i className="fa-solid fa-check mr-1.5" />
-
-                    {encounterStartedMessage}
-                  </div>
-                ) : null}
-
-                {selectedRoom.descriptionHtml?.trim() ||
-                selectedRoom.description?.length ? (
-                  <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Description
+                      {encounterStartedMessage}
                     </div>
+                  ) : null}
 
-                    <RichDescription
-                      html={selectedRoom.descriptionHtml}
-                      legacyParagraphs={selectedRoom.description}
-                    />
-                  </section>
-                ) : null}
-
-                {selectedRoom.monsters?.length ? (
-                  <section>
-                    <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                        Creatures
+                  {selectedRoom.descriptionHtml?.trim() ||
+                  selectedRoom.description?.length ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Description
                       </div>
 
-                      <div className="text-[10px] text-zinc-500">
-                        Click to inspect
+                      <RichDescription
+                        html={selectedRoom.descriptionHtml}
+                        legacyParagraphs={selectedRoom.description}
+                      />
+                    </section>
+                  ) : null}
+
+                  {selectedRoom.monsters?.length ? (
+                    <section>
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                          Creatures
+                        </div>
+
+                        <div className="text-[10px] text-zinc-500">
+                          Click to inspect
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-1.5">
-                      {selectedRoom.monsters.map((monster, index) => {
-                        const linkedMonster = getLinkedMonster(monster);
+                      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-1.5">
+                        {selectedRoom.monsters.map((monster, index) => {
+                          const linkedMonster = getLinkedMonster(monster);
 
-                        if (!linkedMonster) {
-                          return (
-                            <div
-                              key={`${monster.name}-${index}`}
-                              className="rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="min-w-0 flex-1 text-xs font-semibold text-zinc-300">
-                                  {monster.count ? `${monster.count}× ` : ""}
+                          if (!linkedMonster) {
+                            return (
+                              <div
+                                key={`${monster.name}-${index}`}
+                                className="rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="min-w-0 flex-1 text-xs font-semibold text-zinc-300">
+                                    {monster.count ? `${monster.count}× ` : ""}
 
-                                  {monster.name}
+                                    {monster.name}
+                                  </div>
+
+                                  <i className="fa-solid fa-link-slash shrink-0 text-[10px] text-zinc-600" />
                                 </div>
 
-                                <i className="fa-solid fa-link-slash shrink-0 text-[10px] text-zinc-600" />
+                                {monster.notes ? (
+                                  <div className="mt-1 text-[11px] leading-4 text-zinc-400">
+                                    {monster.notes}
+                                  </div>
+                                ) : null}
                               </div>
-
-                              {monster.notes ? (
-                                <div className="mt-1 text-[11px] leading-4 text-zinc-400">
-                                  {monster.notes}
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <button
-                            key={`${monster.name}-${index}`}
-                            type="button"
-                            onClick={() => inspectMonster(monster)}
-                            title={`Inspect ${linkedMonster.name}`}
-                            className="group flex w-full items-start gap-2 rounded-lg border border-amber-500/10 bg-amber-500/[0.035] px-2.5 py-2 text-left transition hover:border-amber-500/25 hover:bg-amber-500/[0.08]"
-                          >
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black/30">
-                              {linkedMonster.img ? (
-                                <img
-                                  src={linkedMonster.img}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <i className="fa-solid fa-dragon text-xs text-amber-300/50" />
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-xs font-semibold text-amber-200">
-                                {monster.count ? `${monster.count}× ` : ""}
-
-                                {monster.name}
-                              </div>
-
-                              <div className="mt-0.5 text-[10px] text-zinc-500">
-                                CR {linkedMonster.challengeRating} · AC{" "}
-                                {linkedMonster.armorClass} · HP{" "}
-                                {linkedMonster.hp}
-                              </div>
-
-                              {monster.disposition ? (
-                                <div className="mt-0.5 text-[10px] font-medium capitalize text-zinc-400">
-                                  {monster.disposition}
-                                </div>
-                              ) : null}
-
-                              {monster.notes ? (
-                                <div className="mt-1 text-[11px] leading-4 text-zinc-400">
-                                  {monster.notes}
-                                </div>
-                              ) : null}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ) : null}
-
-                {selectedRoom.developments?.length ? (
-                  <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Developments
-                    </div>
-
-                    {renderParagraphs(selectedRoom.developments)}
-                  </section>
-                ) : null}
-
-                {selectedRoom.captives?.length ? (
-                  <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Captives
-                    </div>
-
-                    {renderParagraphs(selectedRoom.captives)}
-                  </section>
-                ) : null}
-
-                {selectedRoom.treasure?.length ? (
-                  <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Treasure
-                    </div>
-
-                    <ul className="space-y-1 text-xs leading-5 text-zinc-300">
-                      {selectedRoom.treasure.map((treasure, index) => (
-                        <li
-                          key={treasure.itemKey ?? `${treasure.name}-${index}`}
-                          className="flex gap-2"
-                        >
-                          <span className="text-amber-400">•</span>
-
-                          <span>
-                            {(treasure.count ?? 1) > 1
-                              ? `${treasure.count}× `
-                              : ""}
-                            {treasure.name}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-
-                {selectedRoom.experience ? (
-                  <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Experience
-                    </div>
-
-                    <p className="text-xs leading-5 text-zinc-300">
-                      {selectedRoom.experience}
-                    </p>
-                  </section>
-                ) : null}
-
-                {selectedRoom.notes?.length ? (
-                  <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-300/80">
-                      DM Notes
-                    </div>
-
-                    <ul className="space-y-1 text-xs leading-5 text-zinc-300">
-                      {selectedRoom.notes.map((note, index) => (
-                        <li key={`${note}-${index}`} className="flex gap-2">
-                          <span className="text-violet-400">•</span>
-
-                          <span>{note}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ) : null}
-
-
-                {selectedRoom.exits?.length ? (
-                  <section>
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Connected Areas
-                    </div>
-
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedRoom.exits.map((exitRoomId) => {
-                        const exitRoom = roomStates.find(
-                          (room) => room.id === exitRoomId,
-                        );
-
-                        return (
-                          <button
-                            key={exitRoomId}
-                            type="button"
-                            onClick={() => selectRoom(exitRoomId)}
-                            className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-zinc-200 transition hover:bg-white/10 hover:text-white"
-                          >
-                            {exitRoomId}
-
-                            {exitRoom ? `. ${exitRoom.name}` : ""}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ) : null}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
-                    Map Overview
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <h3 className="mt-0.5 text-base font-bold text-white">
-                      {selectedMap.title}
-                    </h3>
-
-                  </div>
-                </div>
-
-                {selectedMap.descriptionHtml?.trim() ||
-                mapDescription.length ? (
-                  <section>
-                    <RichDescription
-                      html={selectedMap.descriptionHtml}
-                      legacyParagraphs={mapDescription}
-                    />
-                  </section>
-                ) : (
-                  <p className="text-xs text-zinc-500">
-                    No general description has been added to this map.
-                  </p>
-                )}
-
-                {selectedMap.monsters?.length ? (
-                  <section>
-                    <div className="mb-1.5 flex items-center justify-between gap-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                        Creatures
-                      </div>
-                      <div className="text-[10px] text-zinc-500">
-                        Click to inspect
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-1.5">
-                      {selectedMap.monsters.map((monster, index) => {
-                        const linkedMonster = getLinkedMonster(monster);
-
-                        if (!linkedMonster) {
-                          return (
-                            <div
-                              key={`${monster.name}-${index}`}
-                              className="rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2"
-                            >
-                              <div className="flex items-center gap-2">
-                                <div className="min-w-0 flex-1 text-xs font-semibold text-zinc-300">
-                                  {monster.count ? `${monster.count}× ` : ""}
-                                  {monster.name}
-                                </div>
-                                <i className="fa-solid fa-link-slash shrink-0 text-[10px] text-zinc-600" />
-                              </div>
-
-                              {monster.notes ? (
-                                <div className="mt-1 text-[11px] leading-4 text-zinc-400">
-                                  {monster.notes}
-                                </div>
-                              ) : null}
-                            </div>
-                          );
-                        }
-
-                        return (
-                          <button
-                            key={`${monster.name}-${index}`}
-                            type="button"
-                            onClick={() => inspectMonster(monster)}
-                            title={`Inspect ${linkedMonster.name}`}
-                            className="group flex w-full items-start gap-2 rounded-lg border border-amber-500/10 bg-amber-500/[0.035] px-2.5 py-2 text-left transition hover:border-amber-500/25 hover:bg-amber-500/[0.08]"
-                          >
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black/30">
-                              {linkedMonster.img ? (
-                                <img
-                                  src={linkedMonster.img}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <i className="fa-solid fa-dragon text-xs text-amber-300/50" />
-                              )}
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-xs font-semibold text-amber-200">
-                                {monster.count ? `${monster.count}× ` : ""}
-                                {monster.name}
-                              </div>
-                              <div className="mt-0.5 text-[10px] text-zinc-500">
-                                CR {linkedMonster.challengeRating} · AC{" "}
-                                {linkedMonster.armorClass} · HP{" "}
-                                {linkedMonster.hp}
-                              </div>
-
-                              {monster.disposition ? (
-                                <div className="mt-0.5 text-[10px] font-medium capitalize text-zinc-400">
-                                  {monster.disposition}
-                                </div>
-                              ) : null}
-
-                              {monster.notes ? (
-                                <div className="mt-1 text-[11px] leading-4 text-zinc-400">
-                                  {monster.notes}
-                                </div>
-                              ) : null}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </section>
-                ) : null}
-
-
-                {roomStates.length ? (
-                  <section>
-                    <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-                      Areas
-                    </div>
-
-                    <div className="grid gap-1.5 sm:grid-cols-2">
-                      {roomStates
-                        .slice()
-                        .sort((a, b) => a.id - b.id)
-                        .map((room) => {
-                          const environmentName = activeEffect
-                            ? getEnvironmentLevelName(
-                                activeEffect,
-
-                                getRoomEnvironmentLevel(room, activeEffect),
-                              )
-                            : null;
+                            );
+                          }
 
                           return (
                             <button
-                              key={room.id}
+                              key={`${monster.name}-${index}`}
                               type="button"
-                              onClick={() => selectRoom(room.id)}
-                              className="flex min-w-0 items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2 text-left transition hover:bg-white/[0.07]"
+                              onClick={() => inspectMonster(monster)}
+                              title={`Inspect ${linkedMonster.name}`}
+                              className="group flex w-full items-start gap-2 rounded-lg border border-amber-500/10 bg-amber-500/[0.035] px-2.5 py-2 text-left transition hover:border-amber-500/25 hover:bg-amber-500/[0.08]"
                             >
-                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-zinc-200">
-                                {room.id}
-                              </span>
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black/30">
+                                {linkedMonster.img ? (
+                                  <img
+                                    src={linkedMonster.img}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <i className="fa-solid fa-dragon text-xs text-amber-300/50" />
+                                )}
+                              </div>
 
                               <div className="min-w-0 flex-1">
-                                <div className="truncate text-xs font-semibold text-zinc-200">
-                                  {room.name}
+                                <div className="truncate text-xs font-semibold text-amber-200">
+                                  {monster.count ? `${monster.count}× ` : ""}
+
+                                  {monster.name}
                                 </div>
 
-                                {environmentName ? (
-                                  <div className="truncate text-[10px] font-medium text-emerald-300/80">
-                                    {environmentName}
+                                <div className="mt-0.5 text-[10px] text-zinc-500">
+                                  CR {linkedMonster.challengeRating} · AC{" "}
+                                  {linkedMonster.armorClass} · HP{" "}
+                                  {linkedMonster.hp}
+                                </div>
+
+                                {monster.disposition ? (
+                                  <div className="mt-0.5 text-[10px] font-medium capitalize text-zinc-400">
+                                    {monster.disposition}
+                                  </div>
+                                ) : null}
+
+                                {monster.notes ? (
+                                  <div className="mt-1 text-[11px] leading-4 text-zinc-400">
+                                    {monster.notes}
                                   </div>
                                 ) : null}
                               </div>
                             </button>
                           );
                         })}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {selectedRoom.developments?.length ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Developments
+                      </div>
+
+                      {renderParagraphs(selectedRoom.developments)}
+                    </section>
+                  ) : null}
+
+                  {selectedRoom.captives?.length ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Captives
+                      </div>
+
+                      {renderParagraphs(selectedRoom.captives)}
+                    </section>
+                  ) : null}
+
+                  {selectedRoom.treasure?.length ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Treasure
+                      </div>
+
+                      <ul className="space-y-1 text-xs leading-5 text-zinc-300">
+                        {selectedRoom.treasure.map((treasure, index) => (
+                          <li
+                            key={
+                              treasure.itemKey ?? `${treasure.name}-${index}`
+                            }
+                            className="flex gap-2"
+                          >
+                            <span className="text-amber-400">•</span>
+
+                            <span>
+                              {(treasure.count ?? 1) > 1
+                                ? `${treasure.count}× `
+                                : ""}
+                              {treasure.name}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  ) : null}
+
+                  {selectedRoom.experience ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Experience
+                      </div>
+
+                      <p className="text-xs leading-5 text-zinc-300">
+                        {selectedRoom.experience}
+                      </p>
+                    </section>
+                  ) : null}
+
+                  {selectedRoom.notes?.length ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-violet-300/80">
+                        DM Notes
+                      </div>
+
+                      <ul className="space-y-1 text-xs leading-5 text-zinc-300">
+                        {selectedRoom.notes.map((note, index) => (
+                          <li key={`${note}-${index}`} className="flex gap-2">
+                            <span className="text-violet-400">•</span>
+
+                            <span>{note}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  ) : null}
+
+                  {selectedRoom.exits?.length ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Connected Areas
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedRoom.exits.map((exitRoomId) => {
+                          const exitRoom = roomStates.find(
+                            (room) => room.id === exitRoomId,
+                          );
+
+                          return (
+                            <button
+                              key={exitRoomId}
+                              type="button"
+                              onClick={() => selectRoom(exitRoomId)}
+                              className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-zinc-200 transition hover:bg-white/10 hover:text-white"
+                            >
+                              {exitRoomId}
+
+                              {exitRoom ? `. ${exitRoom.name}` : ""}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
+                      Map Overview
                     </div>
-                  </section>
-                ) : null}
-              </div>
-            )}
+
+                    <div className="flex items-center gap-2">
+                      <h3 className="mt-0.5 text-base font-bold text-white">
+                        {selectedMap.title}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {selectedMap.descriptionHtml?.trim() ||
+                  mapDescription.length ? (
+                    <section>
+                      <RichDescription
+                        html={selectedMap.descriptionHtml}
+                        legacyParagraphs={mapDescription}
+                      />
+                    </section>
+                  ) : (
+                    <p className="text-xs text-zinc-500">
+                      No general description has been added to this map.
+                    </p>
+                  )}
+
+                  {selectedMap.monsters?.length ? (
+                    <section>
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                          Creatures
+                        </div>
+                        <div className="text-[10px] text-zinc-500">
+                          Click to inspect
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-1.5">
+                        {selectedMap.monsters.map((monster, index) => {
+                          const linkedMonster = getLinkedMonster(monster);
+
+                          if (!linkedMonster) {
+                            return (
+                              <div
+                                key={`${monster.name}-${index}`}
+                                className="rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="min-w-0 flex-1 text-xs font-semibold text-zinc-300">
+                                    {monster.count ? `${monster.count}× ` : ""}
+                                    {monster.name}
+                                  </div>
+                                  <i className="fa-solid fa-link-slash shrink-0 text-[10px] text-zinc-600" />
+                                </div>
+
+                                {monster.notes ? (
+                                  <div className="mt-1 text-[11px] leading-4 text-zinc-400">
+                                    {monster.notes}
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <button
+                              key={`${monster.name}-${index}`}
+                              type="button"
+                              onClick={() => inspectMonster(monster)}
+                              title={`Inspect ${linkedMonster.name}`}
+                              className="group flex w-full items-start gap-2 rounded-lg border border-amber-500/10 bg-amber-500/[0.035] px-2.5 py-2 text-left transition hover:border-amber-500/25 hover:bg-amber-500/[0.08]"
+                            >
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md bg-black/30">
+                                {linkedMonster.img ? (
+                                  <img
+                                    src={linkedMonster.img}
+                                    alt=""
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <i className="fa-solid fa-dragon text-xs text-amber-300/50" />
+                                )}
+                              </div>
+
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate text-xs font-semibold text-amber-200">
+                                  {monster.count ? `${monster.count}× ` : ""}
+                                  {monster.name}
+                                </div>
+                                <div className="mt-0.5 text-[10px] text-zinc-500">
+                                  CR {linkedMonster.challengeRating} · AC{" "}
+                                  {linkedMonster.armorClass} · HP{" "}
+                                  {linkedMonster.hp}
+                                </div>
+
+                                {monster.disposition ? (
+                                  <div className="mt-0.5 text-[10px] font-medium capitalize text-zinc-400">
+                                    {monster.disposition}
+                                  </div>
+                                ) : null}
+
+                                {monster.notes ? (
+                                  <div className="mt-1 text-[11px] leading-4 text-zinc-400">
+                                    {monster.notes}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {roomStates.length ? (
+                    <section>
+                      <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Areas
+                      </div>
+
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {roomStates
+                          .slice()
+                          .sort((a, b) => a.id - b.id)
+                          .map((room) => {
+                            const environmentName = activeEffect
+                              ? getEnvironmentLevelName(
+                                  activeEffect,
+
+                                  getRoomEnvironmentLevel(room, activeEffect),
+                                )
+                              : null;
+
+                            return (
+                              <button
+                                key={room.id}
+                                type="button"
+                                onClick={() => selectRoom(room.id)}
+                                className="flex min-w-0 items-center gap-2 rounded-lg border border-white/5 bg-white/[0.03] px-2.5 py-2 text-left transition hover:bg-white/[0.07]"
+                              >
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-zinc-200">
+                                  {room.id}
+                                </span>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-xs font-semibold text-zinc-200">
+                                    {room.name}
+                                  </div>
+
+                                  {environmentName ? (
+                                    <div className="truncate text-[10px] font-medium text-emerald-300/80">
+                                      {environmentName}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </button>
+                            );
+                          })}
+                      </div>
+                    </section>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
         )}
       </div>
-
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { monsters } from "./monsterCatalog";
+import { monsters } from "../features/monsters/catalog/monsterCatalog";
 
 export const monstersById = Object.fromEntries(
   monsters.map((monster) => [monster.id, monster]),

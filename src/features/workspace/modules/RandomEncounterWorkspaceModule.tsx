@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import type { MonsterDefinition } from "../../../data/monsterCatalog";
+import type { MonsterDefinition } from "../../monsters/catalog/monsterTypes";
 import { useEncounter } from "../../../context/EncounterContext";
 import useMonsterLibrary from "../../../hooks/useMonsterLibrary";
 import useCampaignPageData from "../../campaigns/hooks/useCampaignPageData";

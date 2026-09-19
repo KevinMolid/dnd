@@ -1,0 +1,839 @@
+import type { MonsterDefinition } from "./monsterTypes";
+
+import Lhupo from "/Monsters/Lhupo.png";
+import Yegg from "/Monsters/Yegg.png";
+import Snarl from "/Monsters/Snarl.png";
+
+export const customMonsters: MonsterDefinition[] = [
+  {
+    id: "yegg",
+    name: "Yegg",
+    type: "Humanoid",
+    description: "Small Humanoid (Goblinoid), Neutral Evil",
+    img: Yegg,
+    armorClass: 15,
+    armorClassNotes: "Leather Armor, Shield",
+    hp: 12,
+    speed: 30,
+    stats: {
+      str: 10,
+      dex: 14,
+      con: 12,
+      int: 10,
+      wis: 8,
+      cha: 10,
+    },
+    skills: "Stealth +6, Intimidation +2",
+    senses: "Darkvision 60 ft., passive Perception 9",
+    language: "Common, Goblin",
+    challengeRating: "1/4",
+    xp: 50,
+    actions: [
+      {
+        name: "Scimitar",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage.",
+      },
+      {
+        name: "Meat Cleaver",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) slashing damage.",
+      },
+    ],
+    bonusActions: [
+      {
+        name: "Nimble Escape",
+        text: "Yegg can take the Disengage or Hide action as a bonus action on each of its turns.",
+      },
+      {
+        name: "Kitchen Tyrant",
+        text: "Yegg shouts abuse at a goblin ally he can see within 30 ft. That goblin gains advantage on its next attack roll before the end of its next turn.",
+      },
+    ],
+  },
+    {
+    id: "lhupo",
+    name: "Lhupo",
+    type: "Humanoid",
+    description: "Small Humanoid (Goblinoid), Neutral Evil",
+    img: Lhupo,
+    armorClass: 15,
+    armorClassNotes: "Leather Armor, Shield",
+    hp: 12,
+    speed: 30,
+    stats: {
+      str: 8,
+      dex: 14,
+      con: 12,
+      int: 10,
+      wis: 12,
+      cha: 10,
+    },
+    skills: "Stealth +6, Religion +3, Deception +2",
+    senses: "Darkvision 60 ft., passive Perception 11",
+    language: "Common, Goblin",
+    challengeRating: "1/4",
+    xp: 50,
+    actions: [
+      {
+        name: "Ritual Dagger",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d4 + 2) piercing damage.",
+      },
+      {
+        name: "Shortbow",
+        text: "Ranged Weapon Attack: +4 to hit, range 80/320 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+      },
+    ],
+    bonusActions: [
+      {
+        name: "Nimble Escape",
+        text: "Lhupo can take the Disengage or Hide action as a bonus action on each of its turns.",
+      },
+      {
+        name: "Blessing of Maglubiyet (Recharge 5–6)",
+        text: "Lhupo shrieks a prayer to Maglubiyet. One goblin ally within 30 ft. gains advantage on its next attack roll before the end of its next turn.",
+      },
+    ],
+    reactions: [
+      {
+        name: "Protect the Prophet",
+        text: "When Lhupo is hit by an attack while within 5 ft. of a goblin ally, that goblin can become the target instead.",
+      },
+    ],
+  },
+  {
+    id: "iarno-albrek",
+    name: "Iarno Albrek",
+    type: "Humanoid",
+    description: "Medium Humanoid (Human, Wizard), Lawful Evil",
+    img: "https://static.wikia.nocookie.net/rysarian/images/f/fa/Redwizard.jpg/revision/latest/smart/width/386/height/259?cb=20170422184717",
+    armorClass: 12,
+    armorClassNotes: "16 with mage armor and staff of defense",
+    hp: 22,
+    speed: 30,
+    stats: {
+      str: 9,
+      dex: 14,
+      con: 11,
+      int: 17,
+      wis: 12,
+      cha: 11,
+    },
+    skills: "Arcana +5, History +5",
+    senses: "Passive Perception 11",
+    language: "Common, Draconic, Dwarvish, Elvish",
+    challengeRating: "1",
+    xp: 200,
+    traits: [
+      {
+        name: "Special Equipment",
+        text: "Glasstaff wields a staff of defense. With the staff in hand, he can use an action to cast the mage armor spell and use his reaction to cast the shield spell.",
+      },
+    ],
+    actions: [
+      {
+        name: "Multiattack",
+        text: "Glasstaff makes two Shocking Burst attacks.",
+      },
+      {
+        name: "Shocking Burst",
+        text: "Melee or Ranged Spell Attack: +5 to hit, reach 5 ft. or range 120 ft., one target. Hit: 6 (1d6 + 3) lightning damage.",
+      },
+      {
+        name: "Spellcasting",
+        text: "Glasstaff casts one of the following spells, requiring no material components and using Intelligence as his spellcasting ability (spell save DC 13):",
+      },
+      {
+        name: "At will",
+        text: "light, mage hand",
+      },
+      {
+        name: "1/day each",
+        text: "charm person, hold person, magic missile",
+      },
+    ],
+    bonusActions: [
+      {
+        name: "Teleport (2/Day)",
+        text: "Glasstaff magically teleports, along with any equipment he is wearing or carrying, up to 30 feet to an unoccupied space he can see.",
+      },
+    ],
+  },
+  {
+    id: "nezzar-den-sorte-edderkoppen",
+    name: 'Nezzar "Den sorte edderkoppen"',
+    type: "Humanoid",
+    description: "Medium Humanoid (Elf), Neutral Evil",
+    img: "https://static.wikia.nocookie.net/dnd-angel-grove/images/0/07/Black_Spider_-_Nezzaria_Yauntyrr.jpg/revision/latest?cb=20160723130647",
+    armorClass: 11,
+    armorClassNotes: "14 with mage armor",
+    hp: 27,
+    speed: 30,
+    stats: {
+      str: 9,
+      dex: 13,
+      con: 10,
+      int: 16,
+      wis: 14,
+      cha: 13,
+    },
+    skills: "Arcana +5, Perception +4, Stealth +3",
+    senses: "Darkvision 120 ft.",
+    language: "Elvish, Undercommon",
+    challengeRating: "2",
+    xp: 450,
+    traits: [
+      {
+        name: "Saving Throws",
+        text: "Int +5, Wis +4",
+      },
+      {
+        name: "Special Equipment",
+        text: "Nezznar has a spider staff.",
+      },
+      {
+        name: "Fey Ancestry",
+        text: "Nezznar has advantage on saving throws against being charmed, and magic can’t put him to sleep.",
+      },
+      {
+        name: "Sunlight Sensitivity",
+        text: "Nezznar has disadvantage on attack rolls when he or his target is in sunlight.",
+      },
+      {
+        name: "Innate Spellcasting",
+        text: "Nezznar can innately cast the following spells, requiring no material components:",
+      },
+      {
+        name: "At will",
+        text: "dancing lights",
+      },
+      {
+        name: "1/day each",
+        text: "darkness, faerie fire (save DC 12)",
+      },
+      {
+        name: "Spellcasting",
+        text: "Nezznar is a 4th-level spellcaster who uses Intelligence as his spellcasting ability (spell save DC 13; +5 to hit with spell attacks). Nezznar has the following spells prepared from the wizard spell list:",
+      },
+      {
+        name: "Cantrips (at will)",
+        text: "mage hand, ray of frost, shocking grasp",
+      },
+      {
+        name: "1st Level (4 slots)",
+        text: "mage armor, magic missile, shield",
+      },
+      {
+        name: "2nd Level (3 slots)",
+        text: "invisibility, suggestion",
+      },
+    ],
+    actions: [
+      {
+        name: "Spider Staff",
+        text: "Melee Weapon Attack: +1 to hit, reach 5 ft., one target. Hit: 2 (1d6 - 1) bludgeoning damage plus 3 (1d6) poison damage.",
+      },
+    ],
+  },
+  {
+    id: "redbrand-ruffian",
+    name: "Redbrand Ruffian",
+    type: "Humanoid",
+    description: "Medium Humanoid (Human), Neutral Evil",
+    img: "https://static.wikia.nocookie.net/forgottenrealms/images/2/28/Redbrand-ruffians.webp/revision/latest?cb=20231001232349https://static.wikia.nocookie.net/ian-melbourne-dnd/images/1/1c/Redbrand_Ruffian.png/revision/latest?cb=20180815091506https://www.aidedd.org/dnd/images/bandit.jpg",
+    armorClass: 14,
+    armorClassNotes: "Studded Leather Armor",
+    hp: 16,
+    speed: 30,
+    stats: {
+      str: 11,
+      dex: 14,
+      con: 12,
+      int: 9,
+      wis: 9,
+      cha: 11,
+    },
+    skills: "Intimidation +2",
+    language: "Common",
+    challengeRating: "1/2",
+    xp: 100,
+    actions: [
+      {
+        name: "Multiattack",
+        text: "The ruffian makes two melee attacks.",
+      },
+      {
+        name: "Shortsword",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+      },
+    ],
+  },
+  {
+    id: "klarg",
+    name: "Klarg",
+    type: "Humanoid",
+    description: "Medium Humanoid (Goblinoid), Chaotic Evil",
+    img: "https://static.wikia.nocookie.net/forgottenrealms/images/f/fa/Klarg-et-al.webp/revision/latest?cb=20231001230817",
+    armorClass: 16,
+    armorClassNotes: "Hide Armor, Shield",
+    hp: 27,
+    speed: 30,
+    stats: {
+      str: 15,
+      dex: 14,
+      con: 13,
+      int: 8,
+      wis: 11,
+      cha: 9,
+    },
+    skills: "Stealth +6, Survival +2",
+    senses: "Darkvision 60 ft., passive Perception 10",
+    language: "Common, Goblin",
+    challengeRating: "1",
+    xp: 200,
+    traits: [
+      {
+        name: "Brute",
+        text: "A melee weapon deals one extra die of its damage when Klarg hits with it (included in the attack).",
+      },
+      {
+        name: "Surprise Attack",
+        text: "If Klarg surprises a creature and hits it with an attack during the first round of combat, the target takes an extra 7 (2d6) damage from the attack.",
+      },
+    ],
+    actions: [
+      {
+        name: "Morningstar",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 11 (2d8 + 2) piercing damage.",
+      },
+      {
+        name: "Javelin (Melee)",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 9 (2d6 + 2) piercing damage.",
+      },
+      {
+        name: "Javelin (Ranged)",
+        text: "Ranged Weapon Attack: +4 to hit, range 30/120 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+      },
+    ],
+  },
+  {
+    id: "goblin-boss-yeemik",
+    name: "Goblin Boss (Yeemik)",
+    type: "Humanoid",
+    description: "Small Humanoid (Goblinoid), Neutral Evil",
+    img: "https://www.worldanvil.com/uploads/images/0ffc042c22d02cb1988052c9ff689a4f.jpg",
+    armorClass: 17,
+    armorClassNotes: "Chain Shirt, Shield",
+    hp: 21,
+    speed: 30,
+    stats: {
+      str: 10,
+      dex: 14,
+      con: 10,
+      int: 10,
+      wis: 8,
+      cha: 10,
+    },
+    senses: "Darkvision 60 ft., passive Perception 9",
+    language: "Common, Goblin",
+    challengeRating: "1",
+    xp: 200,
+    traits: [
+      {
+        name: "Nimble Escape",
+        text: "The goblin boss can take the Disengage or Hide action as a bonus action on each of its turns.",
+      },
+    ],
+    actions: [
+      {
+        name: "Multiattack",
+        text: "The goblin boss makes two attacks with its scimitar.",
+      },
+      {
+        name: "Scimitar",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 5 (1d6 + 2) slashing damage.",
+      },
+      {
+        name: "Javelin",
+        text: "Melee or Ranged Weapon Attack: +4 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 5 (1d6 + 2) piercing damage.",
+      },
+    ],
+    bonusActions: [
+      {
+        name: "Redirect Attack",
+        text: "When a creature the goblin boss can see targets it with an attack, the goblin boss chooses another goblin within 5 feet of it. The two goblins swap places, and the chosen goblin becomes the target instead.",
+      },
+    ],
+  },
+    {
+    id: "brughor-axe-biter",
+    name: "Brughor Axe-Biter",
+    type: "Humanoid",
+    description: "Medium Humanoid (Orc), Chaotic Evil",
+    img: "/Monsters/BrughorAxeBiter.png",
+    armorClass: 13,
+    armorClassNotes: "Hide Armor",
+    hp: 30,
+    speed: 30,
+    stats: {
+      str: 16,
+      dex: 12,
+      con: 16,
+      int: 7,
+      wis: 11,
+      cha: 12,
+    },
+    skills: "Intimidation +3",
+    senses: "Darkvision 60 ft., passive Perception 10",
+    language: "Common, Orc",
+    challengeRating: "1",
+    xp: 200,
+    traits: [
+      {
+        name: "Aggressive",
+        text: "As a bonus action, Brughor can move up to his speed toward a hostile creature that he can see.",
+      },
+      {
+        name: "Battle Leader",
+        text: "Allied orcs within 30 ft. of Brughor that can hear him have advantage on saving throws against being frightened.",
+      },
+    ],
+    actions: [
+      {
+        name: "Greataxe",
+        text: "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 9 (1d12 + 3) slashing damage.",
+      },
+      {
+        name: "Javelin",
+        text: "Melee or Ranged Weapon Attack: +5 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 6 (1d6 + 3) piercing damage.",
+      },
+    ],
+    bonusActions: [
+      {
+        name: "Command the Raid (Recharge 5–6)",
+        text: "Brughor bellows an order to one allied orc within 30 ft. that can hear him. That creature can use its reaction to move up to half its speed or make one weapon attack.",
+      },
+    ],
+  },  
+    {
+    id: "venomfang",
+    name: "Venomfang",
+    type: "Dragon",
+    description: "Large Dragon, Lawful Evil",
+    img: "https://static.wikia.nocookie.net/forgottenrealms/images/8/84/VenomFang.jpg/revision/latest?cb=20191007180410https://www.dndbeyond.com/avatars/thumbnails/16/431/1000/1000/636376315040015885.jpeg",
+    armorClass: 18,
+    armorClassNotes: "Natural Armor",
+    hp: 136,
+    speed: 40,
+    stats: {
+      str: 19,
+      dex: 12,
+      con: 17,
+      int: 16,
+      wis: 13,
+      cha: 15,
+    },
+    skills: "Deception +6, Insight +4, Perception +7, Stealth +4",
+    senses: "Blindsight 30 ft., Darkvision 120 ft., passive Perception 17",
+    language: "Common, Draconic",
+    challengeRating: "8",
+    xp: 3900,
+    traits: [
+      {
+        name: "Amphibious",
+        text: "The dragon can breathe air and water.",
+      },
+    ],
+    actions: [
+      {
+        name: "Multiattack",
+        text: "The dragon makes three attacks: one with its bite and two with its claws.",
+      },
+      {
+        name: "Bite",
+        text: "Melee Weapon Attack: +7 to hit, reach 10 ft., one target. Hit: 15 (2d10 + 4) piercing damage plus 7 (2d6) poison damage.",
+      },
+      {
+        name: "Claw",
+        text: "Melee Weapon Attack: +7 to hit, reach 5 ft., one target. Hit: 11 (2d6 + 4) slashing damage.",
+      },
+      {
+        name: "Poison Breath (Recharge 5–6)",
+        text: "The dragon exhales poisonous gas in a 30-foot cone. Each creature in that area must make a DC 15 Constitution saving throw, taking 42 (12d6) poison damage on a failed save, or half as much on a successful one.",
+      },
+    ],
+  },
+  {
+    id: "ash-zombie",
+    name: "Ash Zombie",
+    type: "Undead",
+    description: "Medium Undead, Neutral Evil",
+    img: "https://static.wikia.nocookie.net/forgottenrealms/images/8/84/Ash-zombie.webp/revision/latest?cb=20231002214113https://www.dndbeyond.com/avatars/thumbnails/16/452/1000/1000/636376315448564641.jpeg",
+    armorClass: 8,
+    hp: 22,
+    speed: 20,
+    stats: {
+      str: 13,
+      dex: 6,
+      con: 16,
+      int: 3,
+      wis: 6,
+      cha: 5,
+    },
+    senses: "Darkvision 60 ft., passive Perception 8",
+    language: "Understands the languages it knew in life but can't speak",
+    challengeRating: "1/4",
+    xp: 50,
+    traits: [
+      {
+        name: "Ash Puff",
+        text: "When the ash zombie drops to 0 hit points, it explodes into a cloud of ash. Each creature within 10 feet of it must succeed on a DC 10 Constitution saving throw or be blinded until the end of the creature's next turn.",
+      },
+      {
+        name: "Undead Fortitude",
+        text: "If damage reduces the zombie to 0 hit points, it must make a Constitution saving throw with a DC of 5 + the damage taken, unless the damage is radiant or from a critical hit. On a success, the zombie drops to 1 hit point instead.",
+      },
+    ],
+    actions: [
+      {
+        name: "Slam",
+        text: "Melee Weapon Attack: +3 to hit, reach 5 ft., one target. Hit: 4 (1d6 + 1) bludgeoning damage.",
+      },
+    ],
+  },
+  {
+    id: "sildar-hallwinter",
+    name: "Sildar Hallwinter",
+    type: "Humanoid",
+    description: "Medium Humanoid (Human), Lawful Good",
+    img: "https://static.wikia.nocookie.net/forgottenrealms/images/4/4b/Sildar-hallwinter.webp/revision/latest?cb=20230930202940",
+    armorClass: 16,
+    armorClassNotes: "Chain Shirt, Shield",
+    hp: 27,
+    speed: 30,
+    stats: {
+      str: 14,
+      dex: 12,
+      con: 14,
+      int: 11,
+      wis: 13,
+      cha: 13,
+    },
+    skills: "Athletics +4, Insight +3, Perception +3, Persuasion +3",
+    senses: "Passive Perception 13",
+    language: "Common",
+    challengeRating: "1",
+    xp: 200,
+    traits: [
+      {
+        name: "Brave",
+        text: "Sildar has advantage on saving throws against being frightened.",
+      },
+      {
+        name: "Protector",
+        text: "When a creature Sildar can see attacks a target other than him within 5 ft. of him, Sildar can impose disadvantage on the attack roll if he is wielding a shield.",
+      },
+    ],
+    actions: [
+      {
+        name: "Multiattack",
+        text: "Sildar makes two longsword attacks.",
+      },
+      {
+        name: "Longsword",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 6 (1d8 + 2) slashing damage, or 7 (1d10 + 2) slashing damage if used with two hands.",
+      },
+      {
+        name: "Light Crossbow",
+        text: "Ranged Weapon Attack: +3 to hit, range 80/320 ft., one target. Hit: 5 (1d8 + 1) piercing damage.",
+      },
+    ],
+    bonusActions: [
+      {
+        name: "Second Wind (1/Short Rest)",
+        text: "Sildar regains 7 (1d10 + 2) hit points.",
+      },
+    ],
+  },
+  {
+    id: "king-grol",
+    name: "King Grol",
+    type: "Humanoid",
+    description: "Medium Humanoid (Goblinoid), Neutral Evil",
+    img: "https://static.wikia.nocookie.net/the-hanged-three/images/0/09/King_Grol.jpg/revision/latest?cb=20170825204945",
+    armorClass: 17,
+    armorClassNotes: "Hide Armor, Shield",
+    hp: 45,
+    speed: 30,
+    stats: {
+      str: 17,
+      dex: 14,
+      con: 14,
+      int: 10,
+      wis: 11,
+      cha: 12,
+    },
+    skills: "Intimidation +3, Perception +2, Stealth +6",
+    senses: "Darkvision 60 ft., Passive Perception 12",
+    language: "Common, Goblin",
+    challengeRating: "2",
+    xp: 450,
+    traits: [
+      {
+        name: "Brute",
+        text: "A melee weapon deals one extra die of its damage when King Grol hits with it (included in the attack).",
+      },
+      {
+        name: "Surprise Attack",
+        text: "If King Grol surprises a creature and hits it with an attack during the first round of combat, the target takes an extra 7 (2d6) damage from the attack.",
+      },
+    ],
+    actions: [
+      {
+        name: "Morningstar",
+        text: "Melee Weapon Attack: +5 to hit, reach 5 ft., one target. Hit: 12 (2d8 + 3) piercing damage.",
+      },
+      {
+        name: "Javelin",
+        text: "Melee or Ranged Weapon Attack: +5 to hit, reach 5 ft. or range 30/120 ft., one target. Hit: 6 (1d6 + 3) piercing damage.",
+      },
+    ],
+  },  
+    {
+    id: "snarl",
+    name: "Snarl",
+    type: "Beast",
+    description: "Medium Beast, Unaligned",
+    img: Snarl,
+    armorClass: 13,
+    armorClassNotes: "Natural Armor",
+    hp: 18,
+    speed: 40,
+    stats: {
+      str: 12,
+      dex: 15,
+      con: 12,
+      int: 3,
+      wis: 12,
+      cha: 6,
+    },
+    skills: "Perception +3, Stealth +4",
+    senses: "Passive Perception 13",
+    language: "-",
+    challengeRating: "1/4",
+    xp: 50,
+    traits: [
+      {
+        name: "Keen Hearing and Smell",
+        text: "Snarl has advantage on Wisdom (Perception) checks that rely on hearing or smell.",
+      },
+      {
+        name: "Pack Tactics",
+        text: "Snarl has advantage on an attack roll against a creature if at least one of Snarl’s allies is within 5 ft. of the creature and the ally isn’t incapacitated.",
+      },
+    ],
+    actions: [
+      {
+        name: "Bite",
+        text: "Melee Weapon Attack: +4 to hit, reach 5 ft., one target. Hit: 7 (2d4 + 2) piercing damage. If the target is a creature, it must succeed on a DC 11 Strength saving throw or be knocked prone.",
+      },
+    ],
+  },
+  {
+    id: "vyerith",
+    name: "Vyerith",
+    type: "Monstrosity",
+    description: "Medium Monstrosity (Shapechanger), Neutral",
+    img: "/Monsters/Vyerith.png",
+    armorClass: 14,
+    hp: 52,
+    speed: 30,
+    stats: {
+      str: 11,
+      dex: 18,
+      con: 14,
+      int: 11,
+      wis: 12,
+      cha: 14,
+    },
+    skills: "Deception +6, Insight +3",
+    senses: "Darkvision 60 ft., passive Perception 11",
+    language: "Common",
+    challengeRating: "3",
+    xp: 700,
+    traits: [
+      {
+        name: "Shapechanger",
+        text: "Vyerith can use her action to polymorph into a Small or Medium humanoid she has seen, or back into her true form. Her statistics remain the same in each form.",
+      },
+      {
+        name: "Ambusher",
+        text: "In the first round of combat, Vyerith has advantage on attack rolls against any creature she surprised.",
+      },
+    ],
+    actions: [
+      {
+        name: "Multiattack",
+        text: "Vyerith makes two melee attacks.",
+      },
+      {
+        name: "Slam",
+        text: "Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 6 (1d6 + 3) bludgeoning damage.",
+      },
+      {
+        name: "Read Thoughts",
+        text: "Vyerith magically reads the surface thoughts of one creature within 60 ft. of her. While reading the target’s mind, she has advantage on Insight, Deception, and Intimidation checks against that creature.",
+      },
+    ],
+  },
+  {
+    id: "hamun-kost",
+    name: "Hamun Kost",
+    type: "Humanoid",
+    description: "Medium Humanoid (Human), Neutral Evil",
+    img: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRy-2qM8MEEOH_5bQ0wjiaAbxizb5JswqMDXQ&s",
+    armorClass: 12,
+    armorClassNotes: "15 with mage armor",
+    hp: 27,
+    speed: 30,
+    stats: {
+      str: 9,
+      dex: 14,
+      con: 12,
+      int: 16,
+      wis: 13,
+      cha: 11,
+    },
+    skills: "Arcana +5, History +5, Religion +5",
+    senses: "Passive Perception 11",
+    language: "Common, Draconic",
+    challengeRating: "3",
+    xp: 700,
+    traits: [
+      {
+        name: "Spellcasting",
+        text: "Hamun Kost is a 5th-level spellcaster who uses Intelligence as his spellcasting ability (spell save DC 13, +5 to hit with spell attacks). He has the following wizard spells prepared:",
+      },
+      {
+        name: "Cantrips (at will)",
+        text: "chill touch, light, mage hand, ray of frost",
+      },
+      {
+        name: "1st level (4 slots)",
+        text: "mage armor, magic missile, shield",
+      },
+      {
+        name: "2nd level (3 slots)",
+        text: "ray of enfeeblement, mirror image, misty step",
+      },
+      {
+        name: "3rd level (2 slots)",
+        text: "animate dead, fireball",
+      },
+    ],
+    actions: [
+      {
+        name: "Quarterstaff",
+        text: "Melee Weapon Attack: +1 to hit, reach 5 ft., one target. Hit: 2 (1d6 - 1) bludgeoning damage.",
+      },
+      {
+        name: "Chill Touch",
+        text: "Ranged Spell Attack: +5 to hit, range 120 ft., one target. Hit: 9 (2d8) necrotic damage, and the target can’t regain hit points until the start of Hamun Kost’s next turn.",
+      },
+    ],
+  },  
+    {
+    id: "reidoth",
+    name: "Reidoth",
+    type: "Humanoid",
+    description: "Medium Humanoid (Human), Neutral Good",
+    img: "https://i.redd.it/pkf9aumn5gib1.png",
+    armorClass: 11,
+    armorClassNotes: "14 with barkskin",
+    hp: 22,
+    speed: 30,
+    stats: {
+      str: 10,
+      dex: 12,
+      con: 13,
+      int: 12,
+      wis: 16,
+      cha: 11,
+    },
+    skills: "Medicine +5, Nature +3, Perception +5, Survival +5",
+    senses: "Passive Perception 15",
+    language: "Common, Druidic, Elvish",
+    challengeRating: "2",
+    xp: 450,
+    traits: [
+      {
+        name: "Spellcasting",
+        text: "Reidoth is a 4th-level spellcaster who uses Wisdom as his spellcasting ability (spell save DC 13, +5 to hit with spell attacks). He has the following druid spells prepared:",
+      },
+      {
+        name: "Cantrips (at will)",
+        text: "druidcraft, produce flame, shillelagh",
+      },
+      {
+        name: "1st level (4 slots)",
+        text: "cure wounds, entangle, faerie fire, thunderwave",
+      },
+      {
+        name: "2nd level (3 slots)",
+        text: "barkskin, flaming sphere, lesser restoration",
+      },
+    ],
+    actions: [
+      {
+        name: "Quarterstaff",
+        text: "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 3 (1d6) bludgeoning damage.",
+      },
+      {
+        name: "Produce Flame",
+        text: "Ranged Spell Attack: +5 to hit, range 30 ft., one target. Hit: 7 (2d6) fire damage.",
+      },
+    ],
+    bonusActions: [
+      {
+        name: "Healing Word",
+        text: "Reidoth speaks a brief word of magic to restore vitality to a creature he can see within 60 feet.",
+      },
+    ],
+  },
+  {
+    id: "gundren-rockseeker",
+    name: "Gundren Rockseeker",
+    type: "Humanoid",
+    description: "Medium Humanoid (Dwarf), Neutral Good",
+    img: "https://crossroadsofeternity.wordpress.com/wp-content/uploads/2015/08/gundren.jpg",
+    armorClass: 11,
+    hp: 9,
+    speed: 25,
+    stats: {
+      str: 10,
+      dex: 10,
+      con: 12,
+      int: 12,
+      wis: 11,
+      cha: 13,
+    },
+    skills: "History +3, Insight +2, Persuasion +3",
+    senses: "Darkvision 60 ft., Passive Perception 10",
+    language: "Common, Dwarvish",
+    challengeRating: "0",
+    xp: 10,
+    traits: [
+      {
+        name: "Dwarven Resilience",
+        text: "Gundren has advantage on saving throws against poison, and he has resistance to poison damage.",
+      },
+      {
+        name: "Helpful Merchant",
+        text: "Gundren has advantage on Charisma (Persuasion) checks made to negotiate, reassure, or rally allies.",
+      },
+    ],
+    actions: [
+      {
+        name: "Pick Hammer",
+        text: "Melee Weapon Attack: +2 to hit, reach 5 ft., one target. Hit: 3 (1d6) piercing damage.",
+      },
+    ],
+  },];

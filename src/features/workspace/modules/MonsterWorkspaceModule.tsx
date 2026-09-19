@@ -11,7 +11,7 @@ import type {
   WorkspaceModuleRenderProps,
 } from "../workspaceTypes";
 
-import type { MonsterTextEntry } from "../../../data/monsterCatalog";
+import type { MonsterTextEntry } from "../../monsters/catalog/monsterTypes";
 
 type WorkspaceMonster = {
   id: string;
