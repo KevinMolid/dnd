@@ -2,19 +2,14 @@ import Avatar from "./Avatar";
 import H3 from "./H3";
 import H4 from "./H4";
 
-type MonsterAbilityStats = {
-  str: number;
-  dex: number;
-  con: number;
-  int: number;
-  wis: number;
-  cha: number;
-};
-
-type MonsterTextEntry = {
-  name: string;
-  text: string;
-};
+import type {
+  MonsterDefinition,
+  MonsterSpeed,
+  MonsterSkills,
+  MonsterSenses,
+  MonsterSavingThrows,
+  MonsterTextEntry,
+} from "../features/monsters/catalog/monsterTypes";
 
 type QuickRow = {
   label: string;
@@ -65,42 +60,10 @@ type SharedStatBlockProps = {
   onAddToEncounter?: () => void;
 };
 
-export type MonsterType =
-  | "Aberration"
-  | "Beast"
-  | "Celestial"
-  | "Construct"
-  | "Dragon"
-  | "Elemental"
-  | "Fey"
-  | "Fiend"
-  | "Giant"
-  | "Humanoid"
-  | "Monstrosity"
-  | "Ooze"
-  | "Plant"
-  | "Undead";
-
-export type MonsterStatBlockProps = SharedStatBlockProps & {
-  variant?: "monster";
-  id?: string;
-  type: MonsterType;
-  description?: string;
-  armorClass: number | string;
-  armorClassNotes?: string;
-  hp: number;
-  speed: string | number;
-  stats: MonsterAbilityStats;
-  skills?: string;
-  senses?: string;
-  language?: string;
-  challengeRating?: string;
-  xp?: number | string;
-  traits?: MonsterTextEntry[];
-  actions?: MonsterTextEntry[];
-  bonusActions?: MonsterTextEntry[];
-  reactions?: MonsterTextEntry[];
-};
+export type MonsterStatBlockProps = MonsterDefinition &
+  SharedStatBlockProps & {
+    variant?: "monster";
+  };
 
 export type PlayerStatBlockProps = SharedStatBlockProps & {
   variant: "player";
@@ -126,7 +89,7 @@ const getRowToneClass = (tone?: QuickRow["tone"]) => {
   return "border-white/10 bg-zinc-900/70 text-zinc-200";
 };
 
-const formatAbilityLabel = (key: keyof MonsterAbilityStats) =>
+const formatAbilityLabel = (key: keyof MonsterDefinition["stats"]) =>
   key.toUpperCase();
 
 const HeaderActions = ({
@@ -322,6 +285,110 @@ const EntryList = ({ entries }: { entries: MonsterTextEntry[] }) => {
       ))}
     </div>
   );
+};
+
+const formatSignedNumber = (value: number) =>
+  value >= 0 ? `+${value}` : `${value}`;
+
+const formatSpeed = (speed: MonsterSpeed) => {
+  const parts: string[] = [];
+
+  if (speed.walk !== undefined) {
+    parts.push(`${speed.walk} ft.`);
+  }
+
+  if (speed.burrow !== undefined) {
+    parts.push(`Burrow ${speed.burrow} ft.`);
+  }
+
+  if (speed.climb !== undefined) {
+    parts.push(`Climb ${speed.climb} ft.`);
+  }
+
+  if (speed.fly !== undefined) {
+    parts.push(`Fly ${speed.fly} ft.${speed.hover ? " (hover)" : ""}`);
+  }
+
+  if (speed.swim !== undefined) {
+    parts.push(`Swim ${speed.swim} ft.`);
+  }
+
+  if (speed.notes) {
+    parts.push(speed.notes);
+  }
+
+  return parts.join(", ") || "—";
+};
+
+const formatSkills = (skills?: MonsterSkills) => {
+  if (!skills) return undefined;
+
+  const entries = Object.entries(skills);
+
+  if (entries.length === 0) return undefined;
+
+  return entries
+    .map(([skill, bonus]) => `${skill} ${formatSignedNumber(bonus)}`)
+    .join(", ");
+};
+
+const formatSavingThrows = (savingThrows?: MonsterSavingThrows) => {
+  if (!savingThrows) return undefined;
+
+  const labels = {
+    str: "Str",
+    dex: "Dex",
+    con: "Con",
+    int: "Int",
+    wis: "Wis",
+    cha: "Cha",
+  } as const;
+
+  return Object.entries(savingThrows)
+    .map(
+      ([ability, bonus]) =>
+        `${labels[ability as keyof typeof labels]} ${formatSignedNumber(
+          bonus as number,
+        )}`,
+    )
+    .join(", ");
+};
+
+const formatSenses = (senses?: MonsterSenses) => {
+  if (!senses) return undefined;
+
+  const parts: string[] = [];
+
+  if (senses.blindsight !== undefined) {
+    parts.push(`Blindsight ${senses.blindsight} ft.`);
+  }
+
+  if (senses.darkvision !== undefined) {
+    parts.push(`Darkvision ${senses.darkvision} ft.`);
+  }
+
+  if (senses.tremorsense !== undefined) {
+    parts.push(`Tremorsense ${senses.tremorsense} ft.`);
+  }
+
+  if (senses.truesight !== undefined) {
+    parts.push(`Truesight ${senses.truesight} ft.`);
+  }
+
+  if (senses.passivePerception !== undefined) {
+    parts.push(`Passive Perception ${senses.passivePerception}`);
+  }
+
+  if (senses.notes) {
+    parts.push(senses.notes);
+  }
+
+  return parts.join(", ") || undefined;
+};
+
+const formatList = (values?: string[]) => {
+  if (!values || values.length === 0) return undefined;
+  return values.join(", ");
 };
 
 const StatBlock = (props: StatBlockProps) => {
@@ -568,28 +635,61 @@ const StatBlock = (props: StatBlockProps) => {
   const {
     name,
     type,
-    description,
+    subtype,
+    size,
+    alignment,
     img,
+
     armorClass,
     armorClassNotes,
     hp,
+    hitDice,
+    initiative,
     speed,
+
     stats,
+    savingThrows,
     skills,
+
+    damageVulnerabilities,
+    damageResistances,
+    damageImmunities,
+    conditionImmunities,
+
     senses,
-    language,
+    languages,
+
     challengeRating,
     xp,
+    proficiencyBonus,
+
+    gear,
+    habitat,
+    treasure,
+
     traits,
     actions,
     bonusActions,
     reactions,
+    legendaryActions,
+    lairActions,
+
     isLocked = false,
     onToggleLock,
     onAddToEncounter,
   } = props;
 
-  const abilityOrder: Array<keyof MonsterAbilityStats> = [
+  const formattedSpeed = formatSpeed(speed);
+  const formattedSkills = formatSkills(skills);
+  const formattedSavingThrows = formatSavingThrows(savingThrows);
+  const formattedSenses = formatSenses(senses);
+  const formattedLanguages = formatList(languages);
+
+  const subtitle = [size, subtype ? `${type} (${subtype})` : type, alignment]
+    .filter(Boolean)
+    .join(" • ");
+
+  const abilityOrder: Array<keyof MonsterDefinition["stats"]> = [
     "str",
     "dex",
     "con",
@@ -602,7 +702,7 @@ const StatBlock = (props: StatBlockProps) => {
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-lg">
       <Header
         name={name}
-        subtitle={`${type}${description ? ` • ${description}` : ""}`}
+        subtitle={subtitle}
         img={img}
         onAddToEncounter={onAddToEncounter}
         onToggleLock={onToggleLock}
@@ -618,8 +718,8 @@ const StatBlock = (props: StatBlockProps) => {
             subValue={armorClassNotes}
             compact
           />
-          <StatPill label="HP" value={hp} accent compact />
-          <StatPill label="Speed" value={speed} compact />
+          <StatPill label="HP" value={hp} subValue={hitDice} accent compact />
+          <StatPill label="Speed" value={formattedSpeed} compact />
           {challengeRating && (
             <StatPill
               label="CR"
@@ -657,35 +757,111 @@ const StatBlock = (props: StatBlockProps) => {
           </div>
         </Section>
 
-        {(skills || senses || language) && (
-          <>
-            <Divider compact />
-            <Section title="Details" compact>
-              <div className="space-y-1.5 text-sm leading-5 text-zinc-300">
-                {skills && (
-                  <p>
-                    <span className="font-semibold text-white">Skills:</span>{" "}
-                    {skills}
-                  </p>
-                )}
+        <Divider compact />
 
-                {senses && (
-                  <p>
-                    <span className="font-semibold text-white">Senses:</span>{" "}
-                    {senses}
-                  </p>
-                )}
+        <Section title="Details" compact>
+          <div className="space-y-1.5 text-sm leading-5 text-zinc-300">
+            {initiative && (
+              <p>
+                <span className="font-semibold text-white">Initiative:</span>{" "}
+                {formatSignedNumber(initiative.modifier)}
+                {initiative.score !== undefined && ` (${initiative.score})`}
+              </p>
+            )}
 
-                {language && (
-                  <p>
-                    <span className="font-semibold text-white">Languages:</span>{" "}
-                    {language}
-                  </p>
-                )}
-              </div>
-            </Section>
-          </>
-        )}
+            {proficiencyBonus !== undefined && (
+              <p>
+                <span className="font-semibold text-white">
+                  Proficiency Bonus:
+                </span>{" "}
+                {formatSignedNumber(proficiencyBonus)}
+              </p>
+            )}
+
+            {formattedSavingThrows && (
+              <p>
+                <span className="font-semibold text-white">Saving Throws:</span>{" "}
+                {formattedSavingThrows}
+              </p>
+            )}
+
+            {formattedSkills && (
+              <p>
+                <span className="font-semibold text-white">Skills:</span>{" "}
+                {formattedSkills}
+              </p>
+            )}
+
+            {damageVulnerabilities?.length ? (
+              <p>
+                <span className="font-semibold text-white">
+                  Vulnerabilities:
+                </span>{" "}
+                {damageVulnerabilities.join(", ")}
+              </p>
+            ) : null}
+
+            {damageResistances?.length ? (
+              <p>
+                <span className="font-semibold text-white">Resistances:</span>{" "}
+                {damageResistances.join(", ")}
+              </p>
+            ) : null}
+
+            {damageImmunities?.length ? (
+              <p>
+                <span className="font-semibold text-white">
+                  Damage Immunities:
+                </span>{" "}
+                {damageImmunities.join(", ")}
+              </p>
+            ) : null}
+
+            {conditionImmunities?.length ? (
+              <p>
+                <span className="font-semibold text-white">
+                  Condition Immunities:
+                </span>{" "}
+                {conditionImmunities.join(", ")}
+              </p>
+            ) : null}
+
+            {formattedSenses && (
+              <p>
+                <span className="font-semibold text-white">Senses:</span>{" "}
+                {formattedSenses}
+              </p>
+            )}
+
+            {formattedLanguages && (
+              <p>
+                <span className="font-semibold text-white">Languages:</span>{" "}
+                {formattedLanguages}
+              </p>
+            )}
+
+            {gear?.length ? (
+              <p>
+                <span className="font-semibold text-white">Gear:</span>{" "}
+                {gear.join(", ")}
+              </p>
+            ) : null}
+
+            {habitat?.length ? (
+              <p>
+                <span className="font-semibold text-white">Habitat:</span>{" "}
+                {habitat.join(", ")}
+              </p>
+            ) : null}
+
+            {treasure?.length ? (
+              <p>
+                <span className="font-semibold text-white">Treasure:</span>{" "}
+                {treasure.join(", ")}
+              </p>
+            ) : null}
+          </div>
+        </Section>
 
         {traits && traits.length > 0 && (
           <>
@@ -719,6 +895,24 @@ const StatBlock = (props: StatBlockProps) => {
             <Divider compact />
             <Section title="Reactions" compact>
               <EntryList entries={reactions} />
+            </Section>
+          </>
+        )}
+
+        {legendaryActions && legendaryActions.length > 0 && (
+          <>
+            <Divider compact />
+            <Section title="Legendary Actions" compact>
+              <EntryList entries={legendaryActions} />
+            </Section>
+          </>
+        )}
+
+        {lairActions && lairActions.length > 0 && (
+          <>
+            <Divider compact />
+            <Section title="Lair Actions" compact>
+              <EntryList entries={lairActions} />
             </Section>
           </>
         )}
