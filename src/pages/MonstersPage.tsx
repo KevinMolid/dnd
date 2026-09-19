@@ -785,6 +785,12 @@ export default function MonstersPage() {
 
   const [typeFilter, setTypeFilter] = useState<"all" | MonsterType>("all");
 
+  const [minCrFilter, setMinCrFilter] = useState("all");
+  const [maxCrFilter, setMaxCrFilter] = useState("all");
+  const [sortMode, setSortMode] = useState<"name-asc" | "cr-asc" | "cr-desc">(
+    "name-asc",
+  );
+
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -853,6 +859,30 @@ export default function MonstersPage() {
     );
   }, [campaignMonsters]);
 
+  const crOptions = useMemo(() => {
+    const standardCrs = [
+      "0",
+      "1/8",
+      "1/4",
+      "1/2",
+      ...Array.from({ length: 30 }, (_, index) => String(index + 1)),
+    ];
+
+    const availableCrs = new Set(
+      allMonsters.map((monster) => monster.challengeRating),
+    );
+
+    return standardCrs.filter((cr) => availableCrs.has(cr));
+  }, [allMonsters]);
+
+  const hasActiveFilters =
+    search.trim() !== "" ||
+    sourceFilter !== "all" ||
+    typeFilter !== "all" ||
+    minCrFilter !== "all" ||
+    maxCrFilter !== "all" ||
+    sortMode !== "name-asc";
+
   const filteredMonsters = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -865,23 +895,85 @@ export default function MonstersPage() {
         return false;
       }
 
+      const monsterCr = crToNumber(monster.challengeRating);
+
+      if (minCrFilter !== "all" && monsterCr < crToNumber(minCrFilter)) {
+        return false;
+      }
+
+      if (maxCrFilter !== "all" && monsterCr > crToNumber(maxCrFilter)) {
+        return false;
+      }
+
       if (!normalizedSearch) {
         return true;
       }
 
-      return [
+      const searchableText = [
         monster.name,
         monster.type,
         monster.subtype,
         monster.size,
         monster.alignment,
         monster.challengeRating,
+        ...(monster.habitat ?? []),
+        ...(monster.languages ?? []),
+        ...(monster.damageVulnerabilities ?? []),
+        ...(monster.damageResistances ?? []),
+        ...(monster.damageImmunities ?? []),
+        ...(monster.conditionImmunities ?? []),
+        ...Object.keys(monster.skills ?? {}),
+        ...(monster.traits ?? []).flatMap((entry) => [entry.name, entry.text]),
+        ...(monster.actions ?? []).flatMap((entry) => [entry.name, entry.text]),
+        ...(monster.bonusActions ?? []).flatMap((entry) => [
+          entry.name,
+          entry.text,
+        ]),
+        ...(monster.reactions ?? []).flatMap((entry) => [
+          entry.name,
+          entry.text,
+        ]),
+        ...(monster.legendaryActions ?? []).flatMap((entry) => [
+          entry.name,
+          entry.text,
+        ]),
       ]
+        .filter(Boolean)
         .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearch);
+        .toLowerCase();
+
+      return searchableText.includes(normalizedSearch);
     });
-  }, [allMonsters, search, sourceFilter, typeFilter]);
+  }, [allMonsters, search, sourceFilter, typeFilter, minCrFilter, maxCrFilter]);
+
+  const sortedMonsters = useMemo(() => {
+    return [...filteredMonsters].sort((a, b) => {
+      const nameCompare = a.name.localeCompare(b.name, undefined, {
+        sensitivity: "base",
+      });
+      const crCompare =
+        crToNumber(a.challengeRating) - crToNumber(b.challengeRating);
+
+      if (sortMode === "cr-asc") {
+        return crCompare || nameCompare;
+      }
+
+      if (sortMode === "cr-desc") {
+        return -crCompare || nameCompare;
+      }
+
+      return nameCompare || crCompare;
+    });
+  }, [filteredMonsters, sortMode]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setSourceFilter("all");
+    setTypeFilter("all");
+    setMinCrFilter("all");
+    setMaxCrFilter("all");
+    setSortMode("name-asc");
+  };
 
   const selectedMonster = useMemo(() => {
     if (!selectedKey) {
@@ -1990,7 +2082,7 @@ export default function MonstersPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className={`${inputClass} w-full pl-8`}
-                  placeholder="Search monsters..."
+                  placeholder="Search name, habitat, traits, actions..."
                 />
               </div>
 
@@ -2002,6 +2094,7 @@ export default function MonstersPage() {
                   )
                 }
                 className={inputClass}
+                aria-label="Filter by source"
               >
                 <option value="all" className="bg-zinc-900">
                   All sources
@@ -2020,6 +2113,7 @@ export default function MonstersPage() {
                   setTypeFilter(e.target.value as "all" | MonsterType)
                 }
                 className={inputClass}
+                aria-label="Filter by creature type"
               >
                 <option value="all" className="bg-zinc-900">
                   All types
@@ -2030,6 +2124,74 @@ export default function MonstersPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-[auto_auto_minmax(150px,auto)_auto]">
+              <select
+                value={minCrFilter}
+                onChange={(e) => setMinCrFilter(e.target.value)}
+                className={inputClass}
+                aria-label="Minimum challenge rating"
+              >
+                <option value="all" className="bg-zinc-900">
+                  Min CR
+                </option>
+                {crOptions.map((cr) => (
+                  <option key={cr} value={cr} className="bg-zinc-900">
+                    CR {cr}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={maxCrFilter}
+                onChange={(e) => setMaxCrFilter(e.target.value)}
+                className={inputClass}
+                aria-label="Maximum challenge rating"
+              >
+                <option value="all" className="bg-zinc-900">
+                  Max CR
+                </option>
+                {crOptions.map((cr) => (
+                  <option key={cr} value={cr} className="bg-zinc-900">
+                    CR {cr}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={sortMode}
+                onChange={(e) =>
+                  setSortMode(
+                    e.target.value as "name-asc" | "cr-asc" | "cr-desc",
+                  )
+                }
+                className={inputClass}
+                aria-label="Sort monsters"
+              >
+                <option value="name-asc" className="bg-zinc-900">
+                  Name A-Z
+                </option>
+                <option value="cr-asc" className="bg-zinc-900">
+                  CR Low-High
+                </option>
+                <option value="cr-desc" className="bg-zinc-900">
+                  CR High-Low
+                </option>
+              </select>
+
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-medium text-zinc-400 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <i className="fa-solid fa-xmark text-[10px]" />
+                  Clear
+                </button>
+              ) : (
+                <div />
+              )}
             </div>
 
             <div className="mt-2.5 flex items-center justify-between px-0.5 text-[11px] text-zinc-600">
@@ -2049,69 +2211,57 @@ export default function MonstersPage() {
                 No monsters match the current filters.
               </p>
             ) : (
-              [...filteredMonsters]
-                .sort((a, b) => {
-                  const nameCompare = a.name.localeCompare(b.name, undefined, {
-                    sensitivity: "base",
-                  });
+              sortedMonsters.map((monster) => {
+                const key = `${monster.source}:${monster.id}`;
 
-                  return (
-                    nameCompare ||
-                    crToNumber(a.challengeRating) -
-                      crToNumber(b.challengeRating)
-                  );
-                })
-                .map((monster) => {
-                  const key = `${monster.source}:${monster.id}`;
+                const selected = key === selectedKey;
 
-                  const selected = key === selectedKey;
-
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => setSelectedKey(key)}
-                      className={`group flex w-full items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-left transition last:border-b-0 ${
-                        selected
-                          ? "bg-emerald-500/[0.09] shadow-[inset_2px_0_0_rgba(52,211,153,0.7)]"
-                          : "hover:bg-white/[0.035]"
-                      }`}
-                    >
-                      {monster.img ? (
-                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
-                          <img
-                            src={monster.img}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-sm text-zinc-600">
-                          ?
-                        </div>
-                      )}
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <h2 className="truncate text-sm font-semibold text-white">
-                            {monster.name}
-                          </h2>
-
-                          {monster.source === "campaign" ? (
-                            <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
-                              Campaign
-                            </span>
-                          ) : null}
-                        </div>
-
-                        <p className="mt-1 truncate text-xs text-zinc-500">
-                          {monster.type} · CR {monster.challengeRating} ·{" "}
-                          {monster.hp} HP · AC {monster.armorClass}
-                        </p>
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedKey(key)}
+                    className={`group flex w-full items-center gap-3 border-b border-white/[0.06] px-3 py-2.5 text-left transition last:border-b-0 ${
+                      selected
+                        ? "bg-emerald-500/[0.09] shadow-[inset_2px_0_0_rgba(52,211,153,0.7)]"
+                        : "hover:bg-white/[0.035]"
+                    }`}
+                  >
+                    {monster.img ? (
+                      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
+                        <img
+                          src={monster.img}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
                       </div>
-                    </button>
-                  );
-                })
+                    ) : (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-black/30 text-sm text-zinc-600">
+                        ?
+                      </div>
+                    )}
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h2 className="truncate text-sm font-semibold text-white">
+                          {monster.name}
+                        </h2>
+
+                        {monster.source === "campaign" ? (
+                          <span className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-300">
+                            Campaign
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <p className="mt-1 truncate text-xs text-zinc-500">
+                        {monster.type} · CR {monster.challengeRating} ·{" "}
+                        {monster.hp} HP · AC {monster.armorClass}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </section>
