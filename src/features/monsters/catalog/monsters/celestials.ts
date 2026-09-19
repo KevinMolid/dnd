@@ -1,0 +1,220 @@
+import type { MonsterDefinition } from "../monsterTypes";
+
+/**
+ * Complete Celestial catalog for the revised SRD 5.2.1 / 2024 Basic Rules.
+ *
+ * Source: D&D 2024 Basic Rules / SRD 5.2.1 creature stat blocks.
+ * Giant Eagle, Giant Elk, and Giant Owl are Celestials in the revised rules.
+ */
+export const celestials: MonsterDefinition[] = [
+  {
+    id: "couatl", name: "Couatl", type: "Celestial", size: "Medium", alignment: "Lawful Good",
+    armorClass: 19, hp: 60, hitDice: "8d8 + 24", initiative: { modifier: 5, score: 15 },
+    speed: { walk: 30, fly: 90 }, stats: { str: 16, dex: 20, con: 17, int: 18, wis: 20, cha: 18 },
+    savingThrows: { con: 5, wis: 7 }, damageResistances: ["Bludgeoning", "Piercing", "Slashing"],
+    damageImmunities: ["Psychic", "Radiant"], senses: { truesight: 120, passivePerception: 15 },
+    languages: ["All", "Telepathy 120 ft."], challengeRating: "4", xp: 1100, proficiencyBonus: 2,
+    traits: [{ name: "Shielded Mind", text: "The couatl's thoughts can't be read, and telepathic communication with it requires its permission." }],
+    actions: [
+      { name: "Bite", text: "Melee Attack Roll: +7, reach 5 ft. Hit: 11 (1d12 + 5) Piercing damage, and the target is Poisoned until the end of the couatl's next turn." },
+      { name: "Constrict", text: "Strength Saving Throw: DC 15, one Medium or smaller creature within 10 ft. Failure: 10 (2d6 + 3) Bludgeoning damage and Grappled (escape DC 15)." },
+      { name: "Spellcasting", text: "The couatl uses Charisma for its innate magic. At will: Detect Evil and Good, Detect Magic, Detect Thoughts. 1/day each: Create Food and Water, Dream, Greater Restoration, Scrying." },
+    ],
+  },
+  {
+    id: "deva", name: "Deva", type: "Celestial", subtype: "Angel", size: "Medium", alignment: "Lawful Good",
+    armorClass: 17, hp: 229, hitDice: "27d8 + 108", initiative: { modifier: 4, score: 14 },
+    speed: { walk: 30, fly: 90, hover: true }, stats: { str: 18, dex: 18, con: 18, int: 17, wis: 20, cha: 20 },
+    savingThrows: { wis: 9, cha: 9 }, skills: { Insight: 9, Perception: 9 }, damageResistances: ["Radiant"],
+    conditionImmunities: ["Charmed", "Exhaustion", "Frightened"], senses: { darkvision: 120, passivePerception: 19 },
+    languages: ["All", "Telepathy 120 ft."], challengeRating: "10", xp: 5900, proficiencyBonus: 4,
+    traits: [
+      { name: "Exalted Restoration", text: "If the deva dies outside Mount Celestia, it immediately reforms there with all its Hit Points." },
+      { name: "Magic Resistance", text: "The deva has Advantage on saving throws against spells and other magical effects." },
+    ],
+    actions: [
+      { name: "Multiattack", text: "The deva makes two Holy Mace attacks." },
+      { name: "Holy Mace", text: "Melee Attack Roll: +8, reach 5 ft. Hit: 7 (1d6 + 4) Bludgeoning damage plus 18 (4d8) Radiant damage." },
+      { name: "Healing Touch (3/Day)", text: "The deva touches a creature, restoring 30 (4d8 + 12) Hit Points and ending the Blinded, Deafened, Poisoned, or Stunned condition on it." },
+      { name: "Spellcasting", text: "The deva uses Charisma for spellcasting. At will: Detect Evil and Good. 1/day each: Commune, Raise Dead." },
+    ],
+    bonusActions: [{ name: "Shape-Shift", text: "The deva magically changes into a Humanoid or Beast form or returns to its true form; its game statistics are otherwise retained except for size and movement appropriate to the form." }],
+  },
+  {
+    id: "giant-eagle", name: "Giant Eagle", type: "Celestial", size: "Large", alignment: "Neutral Good",
+    armorClass: 13, hp: 26, hitDice: "4d10 + 4", initiative: { modifier: 3, score: 13 },
+    speed: { walk: 10, fly: 80 }, stats: { str: 16, dex: 17, con: 13, int: 8, wis: 14, cha: 10 },
+    skills: { Perception: 6 }, damageResistances: ["Necrotic", "Radiant"], senses: { passivePerception: 16 },
+    languages: ["Celestial", "Understands Common and Primordial (Auran) but can't speak them"], challengeRating: "1", xp: 200, proficiencyBonus: 2,
+    actions: [
+      { name: "Multiattack", text: "The eagle makes two Rend attacks." },
+      { name: "Rend", text: "Melee Attack Roll: +5, reach 5 ft. Hit: 5 (1d4 + 3) Slashing damage plus 3 (1d6) Radiant damage." },
+    ],
+  },
+  {
+    id: "giant-elk", name: "Giant Elk", type: "Celestial", size: "Huge", alignment: "Neutral Good",
+    armorClass: 14, hp: 42, hitDice: "5d12 + 10", initiative: { modifier: 6, score: 16 },
+    speed: { walk: 60 }, stats: { str: 19, dex: 18, con: 14, int: 7, wis: 14, cha: 10 },
+    savingThrows: { str: 6, dex: 6 }, skills: { Perception: 4 }, damageResistances: ["Necrotic", "Radiant"],
+    senses: { darkvision: 90, passivePerception: 14 }, languages: ["Celestial", "Understands Common, Elvish, and Sylvan but can't speak them"],
+    challengeRating: "2", xp: 450, proficiencyBonus: 2,
+    actions: [{ name: "Ram", text: "Melee Attack Roll: +6, reach 10 ft. Hit: 11 (2d6 + 4) Bludgeoning damage plus 5 (2d4) Radiant damage. After a 20-foot straight charge, a Huge or smaller target takes 5 (2d4) extra Bludgeoning damage and falls Prone." }],
+  },
+  {
+    id: "giant-owl", name: "Giant Owl", type: "Celestial", size: "Large", alignment: "Neutral",
+    armorClass: 12, hp: 19, hitDice: "3d10 + 3", initiative: { modifier: 2, score: 12 },
+    speed: { walk: 5, fly: 60 }, stats: { str: 13, dex: 15, con: 12, int: 10, wis: 14, cha: 10 },
+    savingThrows: { wis: 4 }, skills: { Perception: 6, Stealth: 6 }, damageResistances: ["Necrotic", "Radiant"],
+    senses: { darkvision: 120, passivePerception: 16 }, languages: ["Celestial", "Understands Common, Elvish, and Sylvan but can't speak them"],
+    challengeRating: "1/4", xp: 50, proficiencyBonus: 2,
+    traits: [{ name: "Flyby", text: "The owl doesn't provoke an Opportunity Attack when it flies out of an enemy's reach." }],
+    actions: [
+      { name: "Talons", text: "Melee Attack Roll: +4, reach 5 ft. Hit: 7 (1d10 + 2) Slashing damage." },
+      { name: "Spellcasting", text: "The owl uses Wisdom for spellcasting and requires no components. At will: Detect Evil and Good, Detect Magic. 1/day: Clairvoyance." },
+    ],
+  },
+  {
+    id: "guardian-naga", name: "Guardian Naga", type: "Celestial", size: "Large", alignment: "Lawful Good",
+    armorClass: 18, hp: 136, hitDice: "16d10 + 48", initiative: { modifier: 4, score: 14 },
+    speed: { walk: 40, climb: 40, swim: 40 }, stats: { str: 19, dex: 18, con: 16, int: 16, wis: 19, cha: 18 },
+    savingThrows: { dex: 8, con: 7, int: 7, wis: 8, cha: 8 }, skills: { Arcana: 11, History: 11, Religion: 11 },
+    damageImmunities: ["Poison"], conditionImmunities: ["Charmed", "Paralyzed", "Poisoned", "Restrained"],
+    senses: { darkvision: 60, passivePerception: 14 }, languages: ["Celestial", "Common"], challengeRating: "10", xp: 5900, proficiencyBonus: 4,
+    traits: [{ name: "Celestial Restoration", text: "If the naga dies, it returns to life in 1d6 days with all its Hit Points unless Dispel Evil and Good is cast on its remains." }],
+    actions: [
+      { name: "Multiattack", text: "The naga makes two Bite attacks and can replace either attack with Poisonous Spittle." },
+      { name: "Bite", text: "Melee Attack Roll: +8, reach 10 ft. Hit: 17 (2d12 + 4) Piercing damage plus 22 (4d10) Poison damage." },
+      { name: "Poisonous Spittle", text: "Constitution Saving Throw: DC 16, one creature within 60 ft. Failure: 31 (7d8) Poison damage and Blinded until the start of the naga's next turn. Success: Half damage." },
+      { name: "Spellcasting", text: "The naga uses Wisdom for spellcasting. At will: Thaumaturgy. 2/day each: Command, Hold Person. 1/day each: Banishment, Flame Strike." },
+    ],
+  },
+  {
+    id: "pegasus", name: "Pegasus", type: "Celestial", size: "Large", alignment: "Chaotic Good",
+    armorClass: 12, hp: 59, hitDice: "7d10 + 21", initiative: { modifier: 2, score: 12 },
+    speed: { walk: 60, fly: 90 }, stats: { str: 18, dex: 15, con: 16, int: 10, wis: 15, cha: 13 },
+    savingThrows: { dex: 4, con: 5, wis: 4, cha: 3 }, skills: { Perception: 6 }, senses: { passivePerception: 16 },
+    languages: ["Understands Celestial, Common, Elvish, and Sylvan but can't speak"], challengeRating: "2", xp: 450, proficiencyBonus: 2,
+    actions: [{ name: "Hooves", text: "Melee Attack Roll: +6, reach 5 ft. Hit: 7 (1d6 + 4) Bludgeoning damage plus 5 (2d4) Radiant damage." }],
+  },
+  {
+    id: "planetar", name: "Planetar", type: "Celestial", subtype: "Angel", size: "Large", alignment: "Lawful Good",
+    armorClass: 19, hp: 262, hitDice: "21d10 + 147", initiative: { modifier: 10, score: 20 },
+    speed: { walk: 40, fly: 120, hover: true }, stats: { str: 24, dex: 20, con: 24, int: 19, wis: 22, cha: 25 },
+    savingThrows: { str: 12, con: 12, wis: 11, cha: 12 }, skills: { Perception: 11 }, damageResistances: ["Radiant"],
+    conditionImmunities: ["Charmed", "Exhaustion", "Frightened"], senses: { truesight: 120, passivePerception: 21 },
+    languages: ["All", "Telepathy 120 ft."], challengeRating: "16", xp: 15000, proficiencyBonus: 5,
+    traits: [
+      { name: "Divine Awareness", text: "The planetar knows when it hears a lie." },
+      { name: "Exalted Restoration", text: "If it dies outside Mount Celestia, the planetar immediately reforms there with all its Hit Points." },
+      { name: "Magic Resistance", text: "The planetar has Advantage on saving throws against spells and other magical effects." },
+    ],
+    actions: [
+      { name: "Multiattack", text: "The planetar makes two Radiant Greatsword attacks." },
+      { name: "Radiant Greatsword", text: "Melee Attack Roll: +12, reach 5 ft. Hit: 21 (4d6 + 7) Slashing damage plus 22 (5d8) Radiant damage." },
+      { name: "Healing Touch (3/Day)", text: "The planetar touches a creature, restoring 40 (8d8 + 4) Hit Points and ending the Blinded, Deafened, Poisoned, or Stunned condition on it." },
+      { name: "Spellcasting", text: "The planetar uses Charisma for spellcasting. At will: Detect Evil and Good. 1/day each: Commune, Invisibility, Raise Dead." },
+    ],
+  },
+  {
+    id: "solar", name: "Solar", type: "Celestial", subtype: "Angel", size: "Large", alignment: "Lawful Good",
+    armorClass: 21, hp: 297, hitDice: "22d10 + 176", initiative: { modifier: 20, score: 30 },
+    speed: { walk: 50, fly: 150, hover: true }, stats: { str: 26, dex: 22, con: 26, int: 25, wis: 25, cha: 30 },
+    skills: { Perception: 14 }, damageImmunities: ["Poison", "Radiant"], conditionImmunities: ["Charmed", "Exhaustion", "Frightened", "Poisoned"],
+    senses: { truesight: 120, passivePerception: 24 }, languages: ["All", "Telepathy 120 ft."], challengeRating: "21", xp: 33000, proficiencyBonus: 7,
+    traits: [
+      { name: "Divine Awareness", text: "The solar knows when it hears a lie." },
+      { name: "Exalted Restoration", text: "If it dies outside Mount Celestia, the solar immediately reforms there with all its Hit Points." },
+      { name: "Legendary Resistance (4/Day)", text: "If the solar fails a saving throw, it can choose to succeed instead." },
+      { name: "Magic Resistance", text: "The solar has Advantage on saving throws against spells and other magical effects." },
+    ],
+    actions: [
+      { name: "Multiattack", text: "The solar makes two attacks using Holy Sword or Slaying Longbow in any combination." },
+      { name: "Holy Sword", text: "Melee Attack Roll: +15, reach 5 ft. Hit: 22 (4d6 + 8) Slashing damage plus 27 (6d8) Radiant damage." },
+      { name: "Slaying Longbow", text: "Ranged Attack Roll: +13, range 150/600 ft. Hit: 15 (2d8 + 6) Piercing plus 27 (6d8) Radiant damage. A creature reduced to 50 Hit Points or fewer must succeed on a Constitution save or die." },
+      { name: "Healing Touch (4/Day)", text: "The solar touches a creature, restoring 49 (8d8 + 13) Hit Points and ending the Blinded, Deafened, Poisoned, or Stunned condition on it." },
+      { name: "Spellcasting", text: "The solar uses Charisma for spellcasting. At will: Detect Evil and Good. 1/day each: Commune, Control Weather, Dispel Evil and Good, Raise Dead." },
+    ],
+    legendaryActions: [
+      { name: "Teleport", text: "The solar teleports up to 120 feet to an unoccupied space it can see." },
+      { name: "Searing Burst", text: "Creatures of the solar's choice in a 10-foot Emanation make a Dexterity save, taking Radiant damage on a failure and half on a success." },
+    ],
+  },
+  {
+    id: "sphinx-of-lore", name: "Sphinx of Lore", type: "Celestial", size: "Large", alignment: "Lawful Neutral",
+    armorClass: 17, hp: 170, hitDice: "20d10 + 60", initiative: { modifier: 10, score: 20 },
+    speed: { walk: 40, fly: 60 }, stats: { str: 18, dex: 15, con: 16, int: 18, wis: 18, cha: 18 },
+    skills: { Arcana: 12, History: 12, Perception: 8, Religion: 12 }, damageResistances: ["Necrotic", "Radiant"],
+    damageImmunities: ["Psychic"], conditionImmunities: ["Charmed", "Frightened"], senses: { truesight: 120, passivePerception: 18 },
+    languages: ["Celestial", "Common"], challengeRating: "11", xp: 7200, proficiencyBonus: 4,
+    traits: [
+      { name: "Inscrutable", text: "Magic can't remotely observe the sphinx or read its thoughts without permission; Insight checks to discern its intentions or sincerity have Disadvantage." },
+      { name: "Legendary Resistance (3/Day, 4/Day in Lair)", text: "If the sphinx fails a saving throw, it can choose to succeed instead." },
+    ],
+    actions: [
+      { name: "Multiattack", text: "The sphinx makes three Claw attacks." },
+      { name: "Claw", text: "Melee Attack Roll: +8, reach 5 ft. Hit: 14 (3d6 + 4) Slashing damage." },
+      { name: "Mind-Rending Roar (Recharge 5–6)", text: "Wisdom Saving Throw: DC 16, each enemy in a 300-foot Emanation. Failure: 35 (10d6) Psychic damage and Incapacitated until the start of the sphinx's next turn." },
+      { name: "Spellcasting", text: "The sphinx uses Intelligence for spellcasting. At will: Detect Magic, Identify, Mage Hand, Minor Illusion, Prestidigitation. 1/day each: Dispel Magic, Legend Lore, Locate Object, Plane Shift, Remove Curse, Tongues." },
+    ],
+    legendaryActions: [
+      { name: "Arcane Prowl", text: "The sphinx teleports up to 30 feet to a space it can see and makes one Claw attack." },
+      { name: "Weight of Years", text: "One creature within 120 feet makes a Constitution save; on a failure it gains 1 Exhaustion level and appears 3d10 years older while exhausted." },
+    ],
+  },
+  {
+    id: "sphinx-of-valor", name: "Sphinx of Valor", type: "Celestial", size: "Large", alignment: "Lawful Neutral",
+    armorClass: 17, hp: 199, hitDice: "19d10 + 95", initiative: { modifier: 12, score: 22 },
+    speed: { walk: 40, fly: 60 }, stats: { str: 22, dex: 10, con: 20, int: 16, wis: 23, cha: 18 },
+    savingThrows: { dex: 6, con: 11, int: 9, wis: 12 }, skills: { Arcana: 9, Perception: 12, Religion: 15 },
+    damageResistances: ["Necrotic", "Radiant"], damageImmunities: ["Psychic"], conditionImmunities: ["Charmed", "Frightened"],
+    senses: { truesight: 120, passivePerception: 22 }, languages: ["Celestial", "Common"], challengeRating: "17", xp: 18000, proficiencyBonus: 6,
+    traits: [
+      { name: "Inscrutable", text: "Magic can't remotely observe the sphinx or read its thoughts without permission; Insight checks to discern its intentions or sincerity have Disadvantage." },
+      { name: "Legendary Resistance (3/Day, 4/Day in Lair)", text: "If the sphinx fails a saving throw, it can choose to succeed instead." },
+    ],
+    actions: [
+      { name: "Multiattack", text: "The sphinx makes two Claw attacks and uses Roar." },
+      { name: "Claw", text: "Melee Attack Roll: +12, reach 5 ft. Hit: 20 (4d6 + 6) Slashing damage." },
+      { name: "Roar (3/Day)", text: "The sphinx's three roars escalate in sequence: the first can Frighten enemies, the second can Paralyze them, and the third deals severe Thunder damage and can knock creatures Prone." },
+      { name: "Spellcasting", text: "The sphinx uses Wisdom for spellcasting. It has a small suite of divine utility and restoration magic, including Detect Magic, Dispel Magic, Greater Restoration, Heroes' Feast, and Zone of Truth." },
+    ],
+    legendaryActions: [
+      { name: "Arcane Prowl", text: "The sphinx teleports up to 30 feet to a space it can see and makes one Claw attack." },
+      { name: "Weight of Years", text: "One creature within 120 feet makes a Constitution save; on a failure it gains 1 Exhaustion level and appears 3d10 years older while exhausted." },
+    ],
+  },
+  {
+    id: "sphinx-of-wonder", name: "Sphinx of Wonder", type: "Celestial", size: "Tiny", alignment: "Lawful Good",
+    armorClass: 13, hp: 24, hitDice: "7d4 + 7", initiative: { modifier: 3, score: 13 },
+    speed: { walk: 20, fly: 40 }, stats: { str: 6, dex: 17, con: 13, int: 15, wis: 12, cha: 11 },
+    skills: { Arcana: 4, Religion: 4, Stealth: 5 }, damageResistances: ["Necrotic", "Psychic", "Radiant"],
+    senses: { darkvision: 60, passivePerception: 11 }, languages: ["Celestial", "Common"], challengeRating: "1", xp: 200, proficiencyBonus: 2,
+    traits: [{ name: "Magic Resistance", text: "The sphinx has Advantage on saving throws against spells and other magical effects." }],
+    actions: [{ name: "Rend", text: "Melee Attack Roll: +5, reach 5 ft. Hit: 5 (1d4 + 3) Slashing damage plus 7 (2d6) Radiant damage." }],
+    reactions: [{ name: "Burst of Ingenuity (2/Day)", text: "When the sphinx or a creature within 30 feet makes an ability check or saving throw, the sphinx adds 2 to that roll." }],
+  },
+  {
+    id: "unicorn", name: "Unicorn", type: "Celestial", size: "Large", alignment: "Lawful Good",
+    armorClass: 12, hp: 97, hitDice: "13d10 + 26", initiative: { modifier: 8, score: 18 },
+    speed: { walk: 50 }, stats: { str: 18, dex: 14, con: 15, int: 11, wis: 17, cha: 16 },
+    damageImmunities: ["Poison"], conditionImmunities: ["Charmed", "Paralyzed", "Poisoned"],
+    senses: { darkvision: 60, passivePerception: 13 }, languages: ["Celestial", "Elvish", "Sylvan", "Telepathy 120 ft."],
+    challengeRating: "5", xp: 1800, proficiencyBonus: 3,
+    traits: [
+      { name: "Legendary Resistance (3/Day)", text: "If the unicorn fails a saving throw, it can choose to succeed instead." },
+      { name: "Magic Resistance", text: "The unicorn has Advantage on saving throws against spells and other magical effects." },
+    ],
+    actions: [
+      { name: "Multiattack", text: "The unicorn makes one Hooves attack and one Radiant Horn attack." },
+      { name: "Hooves", text: "Melee Attack Roll: +7, reach 5 ft. Hit: 11 (2d6 + 4) Bludgeoning damage." },
+      { name: "Radiant Horn", text: "Melee Attack Roll: +7, reach 5 ft. Hit: 9 (1d10 + 4) Piercing damage plus 9 (2d8) Radiant damage." },
+      { name: "Healing Touch (3/Day)", text: "The unicorn touches a creature, restoring Hit Points and ending the Blinded, Deafened, Paralyzed, or Poisoned condition on it." },
+      { name: "Spellcasting", text: "The unicorn uses Charisma for innate spellcasting. At will: Detect Evil and Good, Druidcraft. 1/day each: Calm Emotions, Dispel Evil and Good, Entangle, Pass without Trace." },
+    ],
+    legendaryActions: [
+      { name: "Hooves", text: "The unicorn makes one Hooves attack." },
+      { name: "Shimmering Shield", text: "The unicorn grants itself or a creature it can see within 60 feet a temporary defensive magical benefit." },
+      { name: "Teleport", text: "The unicorn teleports itself and willing nearby creatures it can see, along with carried equipment, to a destination it can see." },
+    ],
+  },
+];
