@@ -116,6 +116,7 @@ export type CustomCharacter = {
   abilityScores?: Record<AbilityKey, number>;
   customStats?: CustomCharacterStats;
   customProficiencies?: CustomProficiencies;
+  catalogTraitIds?: string[];
   customTraits?: CustomTrait[];
   customSpellcasting?: CustomSpellcasting;
   characterAppearance?: string;
