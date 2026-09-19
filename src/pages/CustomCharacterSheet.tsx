@@ -31,9 +31,11 @@ import type { ShortRestResult } from "../features/character-sheet/types";
 
 import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
-import type { AbilityKey, Money } from "../rulesets/dnd/dnd2024/types";
+import type { AbilityKey, Money, Trait } from "../rulesets/dnd/dnd2024/types";
 
 import { spells } from "../rulesets/dnd/dnd2024/data/spells";
+
+import { getTraitCatalogEntries } from "../rulesets/dnd/dnd2024/data/traits/traitCatalog";
 
 import { getXpProgressWithinLevel } from "../rulesets/dnd/dnd2024/xpProgression";
 
@@ -46,7 +48,6 @@ import {
 import type {
   CustomCharacter,
   CustomProficiencyLevel,
-  CustomTrait,
 } from "../types/customCharacter";
 
 type CustomCharacterSheetProps = {
@@ -90,6 +91,15 @@ type CustomCharacterSheetProps = {
   handleShortRest: (hitDiceToSpend: number) => Promise<ShortRestResult>;
 
   handleLongRest: () => Promise<void>;
+};
+
+type RenderedFeature = Trait & {
+  source?: string;
+};
+
+type FeatureGroup = {
+  source: string;
+  traits: RenderedFeature[];
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
@@ -204,10 +214,6 @@ const isCustomWeaponProficient = ({
     return true;
   }
 
-  /*
-   * Exact weapon proficiencies remain supported for custom/homebrew entries.
-   * This lets free text such as "Greataxe" or "Longbow" still work.
-   */
   const exactCandidates = [
     item?.id,
     item?.baseItemId,
@@ -228,15 +234,6 @@ const isCustomWeaponProficient = ({
   const weaponKind = normalize(String(weapon?.weaponKind ?? ""));
   const properties = getWeaponProperties(item).map(normalize);
 
-  /*
-   * The item catalog already gives every weapon a canonical WeaponKind:
-   * simple-melee, simple-ranged, martial-melee, or martial-ranged.
-   * Use that directly instead of guessing from unrelated item fields.
-   *
-   * Both canonical preset IDs ("martial-weapons") and legacy/free-text
-   * labels ("Martial Weapons") normalize to the same value, so existing
-   * custom characters continue to work without a migration.
-   */
   if (
     weaponKind.startsWith("simple-") &&
     (normalizedProficiencies.has("simple-weapons") ||
@@ -253,10 +250,6 @@ const isCustomWeaponProficient = ({
     return true;
   }
 
-  /*
-   * Support the existing rules-engine proficiency for martial weapons
-   * that have either the Finesse or Light property.
-   */
   if (
     weaponKind.startsWith("martial-") &&
     normalizedProficiencies.has("martial-finesse-or-light") &&
@@ -287,7 +280,7 @@ const getWeaponRange = (item: any) => {
   };
 };
 
-const getFeatureSummary = (trait: CustomTrait) => {
+const getFeatureSummary = (trait: RenderedFeature) => {
   if (!trait.description) {
     return "Details";
   }
@@ -446,12 +439,6 @@ const CustomCharacterSheet = ({
        ATTACKS
     ========================================================= */
 
-  /*
-   * Unarmed Strike is always available, even when no weapon is equipped.
-   *
-   * Custom characters use their manually entered Strength score and
-   * Proficiency Bonus for the standard D&D 2024 Unarmed Strike.
-   */
   const unarmedStrengthModifier = getModifier(abilityScores.str);
 
   const unarmedSaveDc = 8 + proficiencyBonus + unarmedStrengthModifier;
@@ -503,16 +490,8 @@ const CustomCharacterSheet = ({
         proficiencies: customProficiencies?.weapons ?? [],
       });
 
-      /*
-       * Attack rolls add the weapon's ability modifier and,
-       * when proficient, the character's Proficiency Bonus.
-       */
       const attackBonus = abilityModifier + (proficient ? proficiencyBonus : 0);
 
-      /*
-       * Weapon damage adds the relevant ability modifier,
-       * but never the Proficiency Bonus.
-       */
       const damageText =
         abilityModifier === 0
           ? `${damage.dice.count}d${damage.dice.die} ${damage.damageType}`
@@ -528,10 +507,6 @@ const CustomCharacterSheet = ({
 
       const wieldMode = entry.wieldMode;
 
-      /*
-       * A two-handed weapon occupies both equipment slots, but
-       * that must not cause it to be treated as an off-hand attack.
-       */
       const isTwoHanded =
         wieldMode === "two-handed" ||
         (equippedSlots.includes("main-hand") &&
@@ -604,28 +579,94 @@ const CustomCharacterSheet = ({
     }));
 
   /* =========================================================
-       FEATURES / PLAY ACTIONS
+       FEATURES
     ========================================================= */
 
   /*
-   * Custom features use the same schema as guided features:
-   * a primary activation plus optional secondary actions.
+   * Library features are stored on the character as catalog IDs rather
+   * than copied Trait objects. Resolve those IDs against the central
+   * catalog every time the sheet renders.
    *
-   * Existing traits without metadata remain passive.
+   * This means corrections to the rules data automatically appear on
+   * every character that uses the feature.
    */
-  const features = (character.customTraits ?? []).map((trait) => ({
-    id: trait.id,
+  const catalogFeatureEntries = useMemo(
+    () => getTraitCatalogEntries(character.catalogTraitIds),
+    [character.catalogTraitIds],
+  );
 
-    name: trait.name,
+  /*
+   * Keep the catalog metadata together with the trait for rendering.
+   *
+   * sourceName gives us useful groups such as:
+   *
+   *   Druid
+   *   Elf
+   *   Elf — Drow
+   *   Goliath — Stone's Endurance
+   *   Tiefling — Infernal
+   *   Tough
+   *
+   * without copying that metadata into the Trait itself.
+   */
+  const catalogFeatures = useMemo<RenderedFeature[]>(
+    () =>
+      catalogFeatureEntries.map((entry) => ({
+        ...entry.trait,
+        source: entry.sourceName,
+      })),
+    [catalogFeatureEntries],
+  );
 
-    description: trait.description,
+  /*
+   * Custom traits remain embedded directly on the character.
+   */
+  const customFeatures = useMemo<RenderedFeature[]>(
+    () =>
+      (character.customTraits ?? []).map((trait) => ({
+        ...trait,
+        source: trait.source?.trim() || "Custom",
+      })),
+    [character.customTraits],
+  );
 
-    activation: trait.activation ?? "passive",
+  /*
+   * One combined feature collection is now used by both:
+   *
+   *   - the Features tab
+   *   - Overview actions
+   *   - Overview bonus actions
+   *   - Overview reactions
+   */
+  const allFeatures = useMemo<RenderedFeature[]>(
+    () => [...catalogFeatures, ...customFeatures],
+    [catalogFeatures, customFeatures],
+  );
 
-    actions: trait.actions ?? [],
-  }));
+  /* =========================================================
+       PLAY ACTIONS
+    ========================================================= */
 
-  const collectedFeatureActions = collectFeatureActions(features);
+  const playableFeatures = useMemo(
+    () =>
+      allFeatures.map((trait) => ({
+        id: trait.id,
+
+        name: trait.name,
+
+        description: trait.description,
+
+        activation: trait.activation ?? "passive",
+
+        actions: trait.actions ?? [],
+      })),
+    [allFeatures],
+  );
+
+  const collectedFeatureActions = useMemo(
+    () => collectFeatureActions(playableFeatures),
+    [playableFeatures],
+  );
 
   const featureActions = collectedFeatureActions.actions;
 
@@ -637,10 +678,10 @@ const CustomCharacterSheet = ({
        FEATURE GROUPS
     ========================================================= */
 
-  const featureGroups = useMemo(() => {
-    const groups = new Map<string, CustomTrait[]>();
+  const featureGroups = useMemo<FeatureGroup[]>(() => {
+    const groups = new Map<string, RenderedFeature[]>();
 
-    for (const trait of character.customTraits ?? []) {
+    for (const trait of allFeatures) {
       const source = trait.source?.trim() || "Custom";
 
       const current = groups.get(source) ?? [];
@@ -652,9 +693,10 @@ const CustomCharacterSheet = ({
 
     return Array.from(groups.entries()).map(([source, traits]) => ({
       source,
+
       traits,
     }));
-  }, [character.customTraits]);
+  }, [allFeatures]);
 
   const isFeatureGroupOpen = (source: string) =>
     openFeatureGroups[source] ?? true;
@@ -710,7 +752,10 @@ const CustomCharacterSheet = ({
               {open ? (
                 <div className="border-t border-white/[0.06]">
                   {group.traits.map((trait) => (
-                    <CustomFeatureTooltip key={trait.id} trait={trait}>
+                    <CustomFeatureTooltip
+                      key={`${group.source}:${trait.id}`}
+                      trait={trait}
+                    >
                       <div className="group grid min-h-[44px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(120px,46%)] items-center gap-3 border-b border-white/[0.045] px-3 py-2 last:border-b-0 transition hover:bg-white/[0.04]">
                         <span className="truncate text-xs font-semibold text-zinc-100 transition group-hover:text-white">
                           {trait.name}
