@@ -14,6 +14,8 @@ import SpellPickerModal from "../../../components/character/SpellPickerModal";
 
 import type { CustomSpellEntry } from "../../../types/customCharacter";
 
+import CustomFeatureTooltip from "./CustomFeatureTooltip";
+
 export type OverviewAttack = {
   id: string;
 
@@ -84,6 +86,10 @@ export type OverviewAction = {
   name: string;
 
   description?: string;
+
+  source?: string;
+
+  notes?: string[];
 
   value?: string;
 };
@@ -990,11 +996,9 @@ const ActionsPanel = ({
 
 const ActionSection = ({
   title,
-
   actions,
 }: {
   title: string;
-
   actions: OverviewAction[];
 }) => (
   <section className="p-3">
@@ -1003,28 +1007,59 @@ const ActionSection = ({
     </h3>
 
     <div className="grid gap-1.5">
-      {actions.map((action) => (
-        <div
-          key={action.id}
-          className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2"
-        >
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold text-zinc-100">{action.name}</p>
+      {actions.map((action) => {
+        const hasFeatureDetails =
+          Boolean(action.description) ||
+          Boolean(action.source) ||
+          Boolean(action.notes?.length);
 
-            {action.value ? (
-              <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-xs font-semibold text-emerald-300">
-                {action.value}
-              </span>
+        const content = (
+          <div
+            className={`rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2 transition ${
+              hasFeatureDetails
+                ? "cursor-pointer hover:border-white/[0.12] hover:bg-white/[0.035]"
+                : ""
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-sm font-semibold text-zinc-100">
+                {action.name}
+              </p>
+
+              {action.value ? (
+                <span className="shrink-0 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-xs font-semibold text-emerald-300">
+                  {action.value}
+                </span>
+              ) : null}
+            </div>
+
+            {action.description ? (
+              <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-zinc-400">
+                {action.description}
+              </p>
             ) : null}
           </div>
+        );
 
-          {action.description ? (
-            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-6 text-zinc-400">
-              {action.description}
-            </p>
-          ) : null}
-        </div>
-      ))}
+        if (!hasFeatureDetails) {
+          return <div key={action.id}>{content}</div>;
+        }
+
+        return (
+          <CustomFeatureTooltip
+            key={action.id}
+            trait={{
+              id: action.id,
+              name: action.name,
+              source: action.source,
+              description: action.description,
+              notes: action.notes,
+            }}
+          >
+            {content}
+          </CustomFeatureTooltip>
+        );
+      })}
     </div>
   </section>
 );

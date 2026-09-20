@@ -287,25 +287,6 @@ const getWeaponRange = (item: any) => {
   };
 };
 
-const getFeatureSummary = (trait: RenderedFeature) => {
-  if (!trait.description) {
-    return "Details";
-  }
-
-  const cleaned = trait.description.replace(/\s+/g, " ").trim();
-
-  const firstSentenceEnd = cleaned.indexOf(".");
-
-  const firstSentence =
-    firstSentenceEnd >= 0 ? cleaned.slice(0, firstSentenceEnd + 1) : cleaned;
-
-  if (firstSentence.length <= 72) {
-    return firstSentence;
-  }
-
-  return `${firstSentence.slice(0, 69)}…`;
-};
-
 const CustomCharacterSheet = ({
   characterId,
   character,
@@ -661,13 +642,11 @@ const CustomCharacterSheet = ({
     () =>
       allFeatures.map((trait) => ({
         id: trait.id,
-
         name: trait.name,
-
         description: trait.description,
-
+        source: trait.source,
+        notes: trait.notes,
         activation: trait.activation ?? "passive",
-
         actions: trait.actions ?? [],
       })),
     [allFeatures],
@@ -777,17 +756,27 @@ const CustomCharacterSheet = ({
                         key={`${group.source}:${trait.id}`}
                         trait={trait}
                       >
-                        <div className="group grid min-h-[44px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(120px,46%)] items-center gap-3 border-b border-white/[0.045] px-3 py-2 last:border-b-0 transition hover:bg-white/[0.04]">
-                          <span className="truncate text-xs font-semibold text-zinc-100 transition group-hover:text-white">
+                        <div className="group cursor-pointer border-b border-white/[0.045] px-3 py-3 last:border-b-0 transition hover:bg-white/[0.04]">
+                          <div className="text-[13px] font-semibold leading-5 text-zinc-100 transition group-hover:text-white">
                             {trait.name}
-                          </span>
+                          </div>
 
-                          <span
-                            title={getFeatureSummary(trait)}
-                            className="block truncate text-right text-[10px] font-medium text-zinc-400"
-                          >
-                            {getFeatureSummary(trait)}
-                          </span>
+                          {trait.description ? (
+                            <div
+                              className="mt-1.5 overflow-hidden text-xs leading-[1.55] text-zinc-400"
+                              style={{
+                                display: "-webkit-box",
+                                WebkitLineClamp: 3,
+                                WebkitBoxOrient: "vertical",
+                              }}
+                            >
+                              {trait.description}
+                            </div>
+                          ) : (
+                            <div className="mt-1.5 text-xs italic text-zinc-600">
+                              No description.
+                            </div>
+                          )}
                         </div>
                       </CustomFeatureTooltip>
                     ))}

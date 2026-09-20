@@ -29,10 +29,14 @@ const CustomFeatureTooltip = ({
   const togglePinned = () => {
     setPinned((current) => {
       const next = !current;
+
       setOpen(next);
+
       return next;
     });
   };
+
+  const notes = trait.notes ?? [];
 
   return (
     <>
@@ -55,6 +59,7 @@ const CustomFeatureTooltip = ({
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
+
               togglePinned();
             }
           }}
@@ -66,6 +71,7 @@ const CustomFeatureTooltip = ({
       {open
         ? createPortal(
             <div className="fixed bottom-4 right-4 z-[140] w-[430px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
+              {/* Header */}
               <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-4 py-3">
                 <div className="min-w-0">
                   <h3 className="text-base font-bold text-white">
@@ -93,22 +99,49 @@ const CustomFeatureTooltip = ({
                 </button>
               </div>
 
-              <div className="workspace-scrollbar max-h-[440px] overflow-y-auto p-4">
-                {trait.description ? (
-                  <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
-                    {trait.description}
-                  </p>
-                ) : (
-                  <p className="text-sm text-zinc-500">
-                    No description entered.
-                  </p>
-                )}
-              </div>
+              {/* Content */}
+              <div className="workspace-scrollbar max-h-[440px] overflow-y-auto">
+                {/* Description */}
+                <div className="px-4 py-4">
+                  {trait.description ? (
+                    <p className="whitespace-pre-wrap text-sm leading-6 text-zinc-300">
+                      {trait.description}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-zinc-500">
+                      No description entered.
+                    </p>
+                  )}
+                </div>
 
-              <div className="border-t border-white/[0.06] px-4 py-2">
-                <p className="text-xs text-zinc-600">
-                  Click the feature to pin or unpin these details.
-                </p>
+                {/* Notes */}
+                {notes.length > 0 ? (
+                  <div className="border-t border-white/[0.06] px-4 py-3">
+                    <h4 className="mb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-zinc-500">
+                      Notes
+                    </h4>
+
+                    <ul className="space-y-2">
+                      {notes.map((note, index) => (
+                        <li
+                          key={`${trait.id}-note-${index}`}
+                          className="flex items-start gap-2 text-xs leading-5 text-zinc-400"
+                        >
+                          <span
+                            aria-hidden="true"
+                            className="mt-[1px] shrink-0 text-zinc-600"
+                          >
+                            •
+                          </span>
+
+                          <span className="min-w-0 whitespace-pre-wrap">
+                            {note}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
               </div>
             </div>,
             document.body,

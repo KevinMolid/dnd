@@ -22,13 +22,11 @@ export type FeatureAction = {
 
 export type FeatureWithActions = {
   id: string;
-
   name: string;
-
   description?: string;
-
-  activation?: FeatureActivation;
-
+  source?: string;
+  notes?: string[];
+  activation?: FeatureActionActivation | "passive";
   actions?: FeatureAction[];
 };
 

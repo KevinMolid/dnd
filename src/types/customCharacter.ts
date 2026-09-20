@@ -41,6 +41,7 @@ export type CustomTrait = {
   description?: string;
   activation?: FeatureActivation;
   actions?: FeatureAction[];
+  notes?: string[];
 };
 
 export type CustomProficiencies = {
