@@ -89,6 +89,7 @@ export type CharacterDoc = CharacterSheetData & {
   speciesName?: string;
   backgroundName?: string;
 
+  catalogTraitIds?: string[];
   customStats?: CustomCharacterStats;
   customTraits?: CustomCharacterTrait[];
   customSpellcasting?: CustomSpellcastingState;

@@ -76,6 +76,7 @@ const CharacterSheet = () => {
     handleAddSpell,
     handleRemoveSpell,
     handleSetPlayerNotes,
+    handleSetFeatures,
 
     handleApplyDecision,
     handleCompleteLevelUp,
@@ -151,6 +152,7 @@ const CharacterSheet = () => {
         handleAddSpell={handleAddSpell}
         handleRemoveSpell={handleRemoveSpell}
         handleSetPlayerNotes={handleSetPlayerNotes}
+        handleSetFeatures={handleSetFeatures}
         handleShortRest={handleShortRest}
         handleLongRest={handleLongRest}
       />

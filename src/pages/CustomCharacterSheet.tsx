@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
+import CharacterFeaturesEditorModal from "../components/character/CharacterFeaturesEditorModal";
 
 import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
 
@@ -48,6 +49,7 @@ import {
 import type {
   CustomCharacter,
   CustomProficiencyLevel,
+  CustomTrait,
 } from "../types/customCharacter";
 
 type CustomCharacterSheetProps = {
@@ -87,6 +89,11 @@ type CustomCharacterSheetProps = {
   }) => Promise<void>;
 
   handleRemoveSpell: (spellId: string) => Promise<void>;
+
+  handleSetFeatures: (
+    catalogTraitIds: string[],
+    customTraits: CustomTrait[],
+  ) => Promise<void>;
 
   handleShortRest: (hitDiceToSpend: number) => Promise<ShortRestResult>;
 
@@ -314,10 +321,13 @@ const CustomCharacterSheet = ({
   handleSetSpellSlotRemaining,
   handleAddSpell,
   handleRemoveSpell,
+  handleSetFeatures,
   handleShortRest,
   handleLongRest,
 }: CustomCharacterSheetProps) => {
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
+
+  const [featuresEditorOpen, setFeaturesEditorOpen] = useState(false);
 
   const [openFeatureGroups, setOpenFeatureGroups] = useState<
     Record<string, boolean>
@@ -709,76 +719,89 @@ const CustomCharacterSheet = ({
     }));
   };
 
-  const renderFeaturesTab = () =>
-    featureGroups.length > 0 ? (
-      <div className="grid gap-2 lg:grid-cols-2 lg:items-start">
-        {featureGroups.map((group) => {
-          const open = isFeatureGroupOpen(group.source);
-
-          return (
-            <section
-              key={group.source}
-              className="overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/30"
-            >
-              <button
-                type="button"
-                onClick={() => toggleFeatureGroup(group.source)}
-                aria-expanded={open}
-                className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition hover:bg-white/[0.035]"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span
-                    className={`text-[9px] text-zinc-500 transition-transform ${
-                      open ? "rotate-90" : ""
-                    }`}
-                  >
-                    ▶
-                  </span>
-
-                  <span className="truncate text-[10px] font-bold uppercase tracking-[0.11em] text-zinc-300">
-                    {group.source}
-                  </span>
-
-                  <span className="shrink-0 text-[8px] uppercase tracking-[0.08em] text-zinc-600">
-                    · Features
-                  </span>
-                </div>
-
-                <span className="text-[8px] font-medium text-zinc-600">
-                  {group.traits.length}
-                </span>
-              </button>
-
-              {open ? (
-                <div className="border-t border-white/[0.06]">
-                  {group.traits.map((trait) => (
-                    <CustomFeatureTooltip
-                      key={`${group.source}:${trait.id}`}
-                      trait={trait}
-                    >
-                      <div className="group grid min-h-[44px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(120px,46%)] items-center gap-3 border-b border-white/[0.045] px-3 py-2 last:border-b-0 transition hover:bg-white/[0.04]">
-                        <span className="truncate text-xs font-semibold text-zinc-100 transition group-hover:text-white">
-                          {trait.name}
-                        </span>
-
-                        <span
-                          title={getFeatureSummary(trait)}
-                          className="block truncate text-right text-[10px] font-medium text-zinc-400"
-                        >
-                          {getFeatureSummary(trait)}
-                        </span>
-                      </div>
-                    </CustomFeatureTooltip>
-                  ))}
-                </div>
-              ) : null}
-            </section>
-          );
-        })}
+  const renderFeaturesTab = () => (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setFeaturesEditorOpen(true)}
+          className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.1] hover:text-white"
+        >
+          Edit Features
+        </button>
       </div>
-    ) : (
-      <p className="p-3 text-xs text-zinc-600">No features added.</p>
-    );
+
+      {featureGroups.length > 0 ? (
+        <div className="grid gap-2 lg:grid-cols-2 lg:items-start">
+          {featureGroups.map((group) => {
+            const open = isFeatureGroupOpen(group.source);
+
+            return (
+              <section
+                key={group.source}
+                className="overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/30"
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleFeatureGroup(group.source)}
+                  aria-expanded={open}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition hover:bg-white/[0.035]"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span
+                      className={`text-[9px] text-zinc-500 transition-transform ${
+                        open ? "rotate-90" : ""
+                      }`}
+                    >
+                      ▶
+                    </span>
+
+                    <span className="truncate text-[10px] font-bold uppercase tracking-[0.11em] text-zinc-300">
+                      {group.source}
+                    </span>
+
+                    <span className="shrink-0 text-[8px] uppercase tracking-[0.08em] text-zinc-600">
+                      · Features
+                    </span>
+                  </div>
+
+                  <span className="text-[8px] font-medium text-zinc-600">
+                    {group.traits.length}
+                  </span>
+                </button>
+
+                {open ? (
+                  <div className="border-t border-white/[0.06]">
+                    {group.traits.map((trait) => (
+                      <CustomFeatureTooltip
+                        key={`${group.source}:${trait.id}`}
+                        trait={trait}
+                      >
+                        <div className="group grid min-h-[44px] cursor-pointer grid-cols-[minmax(0,1fr)_minmax(120px,46%)] items-center gap-3 border-b border-white/[0.045] px-3 py-2 last:border-b-0 transition hover:bg-white/[0.04]">
+                          <span className="truncate text-xs font-semibold text-zinc-100 transition group-hover:text-white">
+                            {trait.name}
+                          </span>
+
+                          <span
+                            title={getFeatureSummary(trait)}
+                            className="block truncate text-right text-[10px] font-medium text-zinc-400"
+                          >
+                            {getFeatureSummary(trait)}
+                          </span>
+                        </div>
+                      </CustomFeatureTooltip>
+                    ))}
+                  </div>
+                ) : null}
+              </section>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="p-3 text-xs text-zinc-600">No features added.</p>
+      )}
+    </div>
+  );
 
   /* =========================================================
        OTHER DETAIL TABS
@@ -948,6 +971,14 @@ const CustomCharacterSheet = ({
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
       </div>
+
+      <CharacterFeaturesEditorModal
+        open={featuresEditorOpen}
+        catalogTraitIds={character.catalogTraitIds ?? []}
+        customTraits={character.customTraits ?? []}
+        onClose={() => setFeaturesEditorOpen(false)}
+        onSave={handleSetFeatures}
+      />
     </div>
   );
 };

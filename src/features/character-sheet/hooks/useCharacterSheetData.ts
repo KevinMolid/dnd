@@ -111,6 +111,16 @@ import { getCombatFeatures } from "../utils/combatFeatureHelpers";
 
 import { getCharacterMoneyCp } from "../../../rulesets/dnd/dnd2024/money";
 
+import type { CustomTrait } from "../../../types/customCharacter";
+
+type CharacterSheetDataHookResultWithFeatureEditing =
+  CharacterSheetDataHookResult & {
+    handleSetFeatures: (
+      catalogTraitIds: string[],
+      customTraits: CustomTrait[],
+    ) => Promise<void>;
+  };
+
 const clampDeathSave = (
   value: number,
 ) =>
@@ -124,7 +134,7 @@ const clampDeathSave = (
 
 export const useCharacterSheetData = (
   characterId?: string,
-): CharacterSheetDataHookResult => {
+): CharacterSheetDataHookResultWithFeatureEditing => {
   const [
     character,
     setCharacter,
@@ -1920,6 +1930,72 @@ const handleRemoveSpell = async (
         throw err;
       }
     };
+
+  /* =========================================================
+     FEATURES
+  ========================================================= */
+
+  const handleSetFeatures = async (
+    nextCatalogTraitIds: string[],
+    nextCustomTraits: CustomTrait[],
+  ) => {
+    if (!character || !characterId || character.buildMode !== "custom") {
+      return;
+    }
+
+    const previousCatalogTraitIds = character.catalogTraitIds ?? [];
+    const previousCustomTraits = character.customTraits ?? [];
+
+    const normalizedCatalogTraitIds = Array.from(
+      new Set(nextCatalogTraitIds.filter(Boolean)),
+    );
+
+    const normalizedCustomTraits = nextCustomTraits.map((trait) => ({
+      ...trait,
+      name: trait.name.trim(),
+      source: trait.source?.trim() ?? "",
+      description: trait.description?.trim() ?? "",
+      activation: trait.activation ?? "passive",
+      actions: (trait.actions ?? []).map((action) => ({
+        ...action,
+        name: action.name.trim(),
+        description: action.description?.trim() ?? "",
+      })),
+    }));
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+            catalogTraitIds: normalizedCatalogTraitIds,
+            customTraits: normalizedCustomTraits,
+          }
+        : current,
+    );
+
+    try {
+      await updateDoc(doc(db, "characters", characterId), {
+        catalogTraitIds: normalizedCatalogTraitIds,
+        customTraits: normalizedCustomTraits,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Failed to update features:", err);
+
+      setCharacter((current) =>
+        current
+          ? {
+              ...current,
+              catalogTraitIds: previousCatalogTraitIds,
+              customTraits: previousCustomTraits,
+            }
+          : current,
+      );
+
+      setError("Failed to update features.");
+      throw err;
+    }
+  };
 
   /* =========================================================
      EQUIPMENT
@@ -3763,6 +3839,8 @@ const nonSpeciesDerivedKnownSpells = [
   handleSetDefenses,
 
   handleSetPlayerNotes,
+
+  handleSetFeatures,
 
   handleEquipmentChange,
 
