@@ -8,6 +8,7 @@ import { fighter } from "./classes/fighter";
 import { paladin } from "./classes/paladin";
 import { ranger } from "./classes/ranger";
 import { rogue } from "./classes/rogue";
+import { sorcerer } from "./classes/sorcerer";
 import { warlock } from "./classes/warlock";
 import { wizard } from "./classes/wizard";
 
@@ -20,6 +21,7 @@ export const classes: CharacterClass[] = [
   paladin,
   ranger,
   rogue,
+  sorcerer,
   warlock,
   wizard,
 ];

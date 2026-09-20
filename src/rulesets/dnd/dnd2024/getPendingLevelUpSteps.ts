@@ -20,6 +20,7 @@ import {
   paladinWeaponMasteryChoices,
 } from "./data/classes/paladin";
 import { barbarianWeaponMasteryChoicesByLevel } from "./data/classes/barbarian";
+import { sorcererMetamagicChoicesByLevel } from "./data/classes/sorcerer/sorcererChoices";
 
 export type PendingLevelUpStepType =
   | "feature"
@@ -35,7 +36,8 @@ export type PendingLevelUpStepType =
   | "cantrip-replacement"
   | "spell-replacement"
   | "class-feature-choice"
-  | "skill-choice";
+  | "skill-choice"
+  | "metamagic-choice";
 
 export type PendingLevelUpStep = {
   level: number;
@@ -941,6 +943,34 @@ const getBarbarianPendingChoiceSteps = (
   return steps;
 };
 
+const getSorcererPendingChoiceSteps = (
+  character: CharacterSheetData,
+  level: LevelNumber,
+): PendingLevelUpStep[] => {
+  if (character.classId !== "sorcerer") return [];
+
+  const definition = sorcererMetamagicChoicesByLevel[level]?.[0];
+  if (!definition) return [];
+
+  const decisions = character.choices?.levelUpDecisions?.[level];
+  const requiredCount = definition.choose;
+
+  if ((decisions?.metamagicChoices?.length ?? 0) >= requiredCount) {
+    return [];
+  }
+
+  return [
+    {
+      level,
+      type: "metamagic-choice",
+      id: `sorcerer-metamagic-${level}`,
+      title: definition.name,
+      description: definition.description,
+      choice: definition as ChoiceDefinition<string>,
+    },
+  ];
+};
+
 const getWizardPendingChoiceSteps = (
   character: CharacterSheetData,
   level: LevelNumber,
@@ -1196,6 +1226,7 @@ export const getPendingLevelUpSteps = (
     steps.push(...getDruidPendingChoiceSteps(character, level, activeSubclass));
     steps.push(...getBarbarianPendingChoiceSteps(character, level));
     steps.push(...getWizardPendingChoiceSteps(character, level));
+    steps.push(...getSorcererPendingChoiceSteps(character, level));
   }
 
   return uniqueById(steps).sort((a, b) => {

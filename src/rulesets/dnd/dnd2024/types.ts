@@ -867,6 +867,7 @@ export type ChoiceSource =
   | "equipment"
   | "subclass"
   | "class-feature"
+  | "metamagic"
   | "other";
 
 export type ChoiceDefinition<TOption extends string = string> = {
@@ -1379,6 +1380,9 @@ export type LevelUpDecision = {
   circleOfTheLandType?: "arid" | "polar" | "temperate" | "tropical";
   primalOrder?: "magician" | "warden";
   elementalFuryOption?: "potent-spellcasting" | "primal-strike";
+
+  // Sorcerer
+  metamagicChoices?: string[];
 
   // Wizard
   scholarSkill?: SkillId;

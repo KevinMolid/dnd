@@ -325,6 +325,49 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
     updateDecision(level, { expertise: next });
   };
 
+  const getMetamagicChoicesBeforeLevel = (level: number): string[] => {
+    const selected = new Set<string>();
+
+    const savedDecisions = character.choices?.levelUpDecisions ?? {};
+    for (const [levelKey, savedDecision] of Object.entries(savedDecisions)) {
+      if (Number(levelKey) >= level) continue;
+
+      for (const option of (savedDecision as LevelUpDecision)
+        ?.metamagicChoices ?? []) {
+        selected.add(option);
+      }
+    }
+
+    for (const [levelKey, localDecision] of Object.entries(decisionsByLevel)) {
+      if (Number(levelKey) >= level) continue;
+
+      for (const option of localDecision.metamagicChoices ?? []) {
+        selected.add(option);
+      }
+    }
+
+    return Array.from(selected);
+  };
+
+  const toggleMetamagicChoice = (
+    level: number,
+    value: string,
+    maxChoices: number,
+  ) => {
+    const current = (
+      getEffectiveDecisionForLevel(level).metamagicChoices ?? []
+    ).slice();
+    const exists = current.includes(value);
+
+    const next = exists
+      ? current.filter((item) => item !== value)
+      : current.length < maxChoices
+        ? [...current, value]
+        : current;
+
+    updateDecision(level, { metamagicChoices: next });
+  };
+
   const toggleWeaponMastery = (
     level: number,
     value: WeaponMasteryChoiceId,
@@ -721,6 +764,16 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
       return isWizardScholarStep
         ? !!decision?.scholarSkill
         : !!decision?.primalKnowledgeSkill;
+    }
+
+    if (step.type === "metamagic-choice") {
+      const requiredCount =
+        typeof step.choice?.choose === "number" ? step.choice.choose : 1;
+
+      return (
+        Array.isArray(decision?.metamagicChoices) &&
+        decision.metamagicChoices.length >= requiredCount
+      );
     }
 
     if (step.type === "class-feature-choice") {
@@ -1312,6 +1365,65 @@ const LevelUpModal = ({ character, onClose, onConfirm }: Props) => {
                             </button>
                           );
                         })}
+                      </div>
+                    </div>
+                  )}
+
+                  {step.type === "metamagic-choice" && (
+                    <div>
+                      <p className="mb-2 text-sm text-zinc-400">
+                        Choose {step.choice?.choose ?? 1} Metamagic option
+                        {(step.choice?.choose ?? 1) > 1 ? "s" : ""}.
+                      </p>
+
+                      {getMetamagicChoicesBeforeLevel(step.level).length >
+                        0 && (
+                        <div className="mb-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                          <p className="mb-2 text-xs uppercase tracking-[0.18em] text-zinc-500">
+                            Already Known
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {getMetamagicChoicesBeforeLevel(step.level).map(
+                              (option) => (
+                                <span
+                                  key={option}
+                                  className="rounded-full border border-white/10 bg-zinc-900 px-2.5 py-1 text-xs text-zinc-300"
+                                >
+                                  {formatLabel(option)}
+                                </span>
+                              ),
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {((step.choice?.options as string[]) ?? [])
+                          .filter(
+                            (option) =>
+                              !getMetamagicChoicesBeforeLevel(
+                                step.level,
+                              ).includes(option),
+                          )
+                          .map((option) => (
+                            <button
+                              key={option}
+                              onClick={() =>
+                                toggleMetamagicChoice(
+                                  step.level,
+                                  option,
+                                  step.choice?.choose ?? 1,
+                                )
+                              }
+                              className={choiceButtonClass(
+                                (decision.metamagicChoices ?? []).includes(
+                                  option,
+                                ),
+                              )}
+                            >
+                              {formatLabel(option)}
+                            </button>
+                          ))}
                       </div>
                     </div>
                   )}
