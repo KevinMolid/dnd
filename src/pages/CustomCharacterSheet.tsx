@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
+import CharacterInventoryEditorModal from "../components/character/CharacterInventoryEditorModal";
+
 import CharacterFeaturesEditorModal from "../components/character/CharacterFeaturesEditorModal";
 
 import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
@@ -32,7 +34,12 @@ import type { ShortRestResult } from "../features/character-sheet/types";
 
 import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
-import type { AbilityKey, Money, Trait } from "../rulesets/dnd/dnd2024/types";
+import type {
+  AbilityKey,
+  CharacterEquipmentEntry,
+  Money,
+  Trait,
+} from "../rulesets/dnd/dnd2024/types";
 
 import { spells } from "../rulesets/dnd/dnd2024/data/spells";
 
@@ -71,7 +78,14 @@ type CustomCharacterSheetProps = {
 
   handleSetDefenses: (defenses: string[]) => Promise<void>;
 
-  handleEquipmentChange: (equipment: any[]) => void | Promise<void>;
+  handleEquipmentChange: (
+    equipment: CharacterEquipmentEntry[],
+  ) => void | Promise<void>;
+
+  handleSetInventory: (
+    equipment: CharacterEquipmentEntry[],
+    money: Money,
+  ) => Promise<void>;
 
   handleSetHeroicInspiration: (value: boolean) => Promise<void>;
 
@@ -294,6 +308,7 @@ const CustomCharacterSheet = ({
   campaignItemsById,
   handleSetPlayerNotes,
   handleEquipmentChange,
+  handleSetInventory,
   handleSetCurrentHp,
   handleSetConditions,
   handleSetDefenses,
@@ -309,6 +324,8 @@ const CustomCharacterSheet = ({
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
 
   const [featuresEditorOpen, setFeaturesEditorOpen] = useState(false);
+
+  const [inventoryEditorOpen, setInventoryEditorOpen] = useState(false);
 
   const [openFeatureGroups, setOpenFeatureGroups] = useState<
     Record<string, boolean>
@@ -797,12 +814,24 @@ const CustomCharacterSheet = ({
     ========================================================= */
 
   const renderInventoryTab = () => (
-    <CharacterInventoryEquipment
-      equipment={character.equipment ?? []}
-      onChange={handleEquipmentChange}
-      campaignItemsById={campaignItemsById}
-      money={money}
-    />
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setInventoryEditorOpen(true)}
+          className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.1] hover:text-white"
+        >
+          Edit Inventory
+        </button>
+      </div>
+
+      <CharacterInventoryEquipment
+        equipment={character.equipment ?? []}
+        onChange={handleEquipmentChange}
+        campaignItemsById={campaignItemsById}
+        money={money}
+      />
+    </div>
   );
 
   const renderCharacterTab = () => (
@@ -960,6 +989,15 @@ const CustomCharacterSheet = ({
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
       </div>
+
+      <CharacterInventoryEditorModal
+        open={inventoryEditorOpen}
+        equipment={character.equipment ?? []}
+        money={money}
+        campaignItemsById={campaignItemsById}
+        onClose={() => setInventoryEditorOpen(false)}
+        onSave={handleSetInventory}
+      />
 
       <CharacterFeaturesEditorModal
         open={featuresEditorOpen}

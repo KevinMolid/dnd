@@ -41,6 +41,7 @@ import type {
   SpellId,
   CampaignItem,
   CharacterEquipmentEntry,
+  Money,
 } from "../../../rulesets/dnd/dnd2024/types";
 
 import {
@@ -118,6 +119,11 @@ type CharacterSheetDataHookResultWithFeatureEditing =
     handleSetFeatures: (
       catalogTraitIds: string[],
       customTraits: CustomTrait[],
+    ) => Promise<void>;
+
+    handleSetInventory: (
+      equipment: CharacterEquipmentEntry[],
+      money: Money,
     ) => Promise<void>;
   };
 
@@ -1997,6 +2003,73 @@ const handleRemoveSpell = async (
     }
   };
 
+  const handleSetInventory = async (
+    nextEquipment: CharacterEquipmentEntry[],
+    nextMoney: Money,
+  ) => {
+    if (!character || !characterId || character.buildMode !== "custom") {
+      return;
+    }
+
+    const previousEquipment = character.equipment ?? [];
+    const previousMoney = character.money ?? {
+      cp: 0,
+      sp: 0,
+      ep: 0,
+      gp: 0,
+      pp: 0,
+    };
+
+    const normalizedMoney: Money = {
+      cp: Math.max(0, Math.floor(nextMoney.cp ?? 0)),
+      sp: Math.max(0, Math.floor(nextMoney.sp ?? 0)),
+      ep: Math.max(0, Math.floor(nextMoney.ep ?? 0)),
+      gp: Math.max(0, Math.floor(nextMoney.gp ?? 0)),
+      pp: Math.max(0, Math.floor(nextMoney.pp ?? 0)),
+    };
+
+    const normalizedEquipment = nextEquipment.map((entry) => ({
+      ...entry,
+      quantity: Math.max(1, Math.floor(entry.quantity ?? 1)),
+      equipped: (entry.equippedSlots?.length ?? 0) > 0,
+      equippedSlots: entry.equippedSlots ?? [],
+    }));
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+            equipment: normalizedEquipment,
+            money: normalizedMoney,
+          }
+        : current,
+    );
+
+    try {
+      await updateDoc(doc(db, "characters", characterId), {
+        equipment: normalizedEquipment,
+        money: normalizedMoney,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Failed to update inventory:", err);
+
+      setCharacter((current) =>
+        current
+          ? {
+              ...current,
+              equipment: previousEquipment,
+              money: previousMoney,
+            }
+          : current,
+      );
+
+      setError("Failed to update inventory.");
+      throw err;
+    }
+  };
+
+
   /* =========================================================
      EQUIPMENT
   ========================================================= */
@@ -3843,6 +3916,8 @@ const nonSpeciesDerivedKnownSpells = [
   handleSetFeatures,
 
   handleEquipmentChange,
+
+  handleSetInventory,
 
   handleSetHeroicInspiration,
 

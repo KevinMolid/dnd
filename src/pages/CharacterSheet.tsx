@@ -67,6 +67,7 @@ const CharacterSheet = () => {
     campaignItemsById,
 
     handleEquipmentChange,
+    handleSetInventory,
     handleSetHeroicInspiration,
     handleSetDeathSaves,
     handleSetCurrentHp,
@@ -143,6 +144,7 @@ const CharacterSheet = () => {
         backLabel="Back"
         campaignItemsById={campaignItemsById}
         handleEquipmentChange={handleEquipmentChange}
+        handleSetInventory={handleSetInventory}
         handleSetCurrentHp={handleSetCurrentHp}
         handleSetConditions={handleSetConditions}
         handleSetDefenses={handleSetDefenses}
