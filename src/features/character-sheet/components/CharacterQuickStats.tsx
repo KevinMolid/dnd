@@ -5,6 +5,13 @@ import { useParams } from "react-router-dom";
 
 import DefensesControl from "./DefensesControl";
 
+import ConditionTooltip from "./ConditionTooltip";
+
+import {
+  conditions as conditionCatalog,
+  getConditionDefinition,
+} from "../../../rulesets/dnd/dnd2024/data/conditions";
+
 import type { AbilityKey } from "../../../rulesets/dnd/dnd2024/types";
 
 type AbilityScores = Record<AbilityKey, number>;
@@ -880,24 +887,6 @@ const InteractiveCoreStat = ({
   </button>
 );
 
-const ALL_CONDITIONS = [
-  "Blinded",
-  "Charmed",
-  "Deafened",
-  "Frightened",
-  "Grappled",
-  "Incapacitated",
-  "Invisible",
-  "Paralyzed",
-  "Petrified",
-  "Poisoned",
-  "Prone",
-  "Restrained",
-  "Stunned",
-  "Unconscious",
-  "Exhaustion",
-] as const;
-
 const ConditionsControl = ({
   conditions,
   onChange,
@@ -950,11 +939,23 @@ const ConditionsControl = ({
         <div className="min-w-0">
           {conditions.length > 0 ? (
             <div className="flex flex-wrap gap-1">
-              {conditions.map((condition) => (
-                <StatePill key={condition} tone="danger">
-                  {condition}
-                </StatePill>
-              ))}
+              {conditions.map((condition) => {
+                const definition = getConditionDefinition(condition);
+
+                if (!definition) {
+                  return (
+                    <StatePill key={condition} tone="danger">
+                      {condition}
+                    </StatePill>
+                  );
+                }
+
+                return (
+                  <ConditionTooltip key={condition} condition={definition}>
+                    <StatePill tone="danger">{condition}</StatePill>
+                  </ConditionTooltip>
+                );
+              })}
             </div>
           ) : (
             <EmptyValue />
@@ -1002,16 +1003,16 @@ const ConditionsControl = ({
 
               <div className="p-3">
                 <div className="grid grid-cols-2 gap-1.5">
-                  {ALL_CONDITIONS.map((condition) => {
+                  {conditionCatalog.map((definition) => {
+                    const condition = definition.name;
                     const active = conditions.includes(condition);
 
                     return (
                       <button
-                        key={condition}
                         type="button"
                         disabled={!onChange || saving}
                         onClick={() => void toggleCondition(condition)}
-                        className={`flex min-h-[36px] items-center justify-between rounded-md border px-2 py-1.5 text-left text-[9px] font-medium transition ${
+                        className={`flex min-h-[36px] w-full items-center justify-between rounded-md border px-2 py-1.5 text-left text-[9px] font-medium transition ${
                           active
                             ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
                             : "border-white/[0.06] bg-white/[0.025] text-zinc-500 hover:border-white/10 hover:bg-white/[0.055] hover:text-zinc-300"
@@ -1032,10 +1033,6 @@ const ConditionsControl = ({
                 </div>
 
                 <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-2">
-                  <span className="text-[9px] text-zinc-500">
-                    Changes save immediately
-                  </span>
-
                   <button
                     type="button"
                     disabled={!onChange || saving || conditions.length === 0}
