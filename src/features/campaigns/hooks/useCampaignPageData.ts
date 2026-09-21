@@ -54,6 +54,7 @@ import type {
   CharacterChoices,
   CharacterEquipmentEntry,
   CharacterSheetData,
+  CampaignItem,
   LevelUpDecisionsByLevel,
   LevelUpDecision,
   Money,
@@ -679,8 +680,6 @@ type RewardCampaignItemInput = {
 
   campaignItemId: string;
 
-  baseItemId: string;
-
   quantity: number;
 };
 
@@ -738,6 +737,7 @@ const getRewardItemInstanceBaseId = (
 
 const getRewardItemDisplayName = (
   item: RewardItemInput,
+  campaignItemsById: Record<string, CampaignItem> = {},
 ) => {
   if (
     item.source === "base"
@@ -750,10 +750,26 @@ const getRewardItemDisplayName = (
     );
   }
 
+  const campaignItem =
+    campaignItemsById[
+      item.campaignItemId
+    ];
+
+  if (!campaignItem) {
+    return item.campaignItemId;
+  }
+
+  const baseItem =
+    campaignItem.baseItemId
+      ? itemsById[
+          campaignItem.baseItemId
+        ]
+      : undefined;
+
   return (
-    itemsById[
-      item.baseItemId
-    ]?.name ??
+    campaignItem.name ??
+    campaignItem.customItem?.name ??
+    baseItem?.name ??
     item.campaignItemId
   );
 };
@@ -815,6 +831,8 @@ const mergeEquipmentItems = (
   current: CharacterEquipmentEntry[],
 
   incoming: RewardItemInput[],
+
+  campaignItemsById: Record<string, CampaignItem>,
 ): CharacterEquipmentEntry[] => {
   const result:
     CharacterEquipmentEntry[] = [
@@ -837,27 +855,45 @@ const mergeEquipmentItems = (
         return;
       }
 
+      const campaignItem =
+        incomingItem.source ===
+        "campaign"
+          ? campaignItemsById[
+              incomingItem.campaignItemId
+            ]
+          : undefined;
+
       const baseItemId =
         incomingItem.source ===
         "base"
           ? incomingItem.itemId
-          : incomingItem.baseItemId;
+          : campaignItem?.baseItemId;
 
       const baseItemDef =
-        itemsById[
-          baseItemId
-        ];
+        baseItemId
+          ? itemsById[
+              baseItemId
+            ]
+          : undefined;
+
+      const resolvedItemDef =
+        incomingItem.source ===
+        "campaign"
+          ? campaignItem?.customItem ??
+            baseItemDef
+          : baseItemDef;
 
       const itemName =
         incomingItem.source ===
         "base"
-          ? baseItemDef?.name ??
+          ? resolvedItemDef?.name ??
             incomingItem.itemId
-          : baseItemDef?.name ??
+          : campaignItem?.name ??
+            resolvedItemDef?.name ??
             incomingItem.campaignItemId;
 
       const isStackable =
-        baseItemDef?.stackable ===
+        resolvedItemDef?.stackable ===
         true;
 
       if (isStackable) {
@@ -920,8 +956,11 @@ const mergeEquipmentItems = (
             campaignItemId:
               incomingItem.campaignItemId,
 
-            baseItemId:
-              incomingItem.baseItemId,
+            ...(baseItemId
+              ? {
+                  baseItemId,
+                }
+              : {}),
 
             name: itemName,
 
@@ -979,8 +1018,11 @@ const mergeEquipmentItems = (
             campaignItemId:
               incomingItem.campaignItemId,
 
-            baseItemId:
-              incomingItem.baseItemId,
+            ...(baseItemId
+              ? {
+                  baseItemId,
+                }
+              : {}),
 
             name: itemName,
 
@@ -1877,6 +1919,65 @@ export const useCampaignPageData = (
     usersById,
   ]);
 
+  const [
+    campaignItemsById,
+    setCampaignItemsById,
+  ] = useState<
+    Record<string, CampaignItem>
+  >({});
+
+  useEffect(() => {
+    if (
+      pageState !== "ready" ||
+      !campaignId
+    ) {
+      setCampaignItemsById({});
+      return;
+    }
+
+    const unsubscribe =
+      onSnapshot(
+        collection(
+          db,
+          "campaigns",
+          campaignId,
+          "items",
+        ),
+        (snapshot) => {
+          const next: Record<
+            string,
+            CampaignItem
+          > = {};
+
+          snapshot.docs.forEach(
+            (itemSnap) => {
+              next[itemSnap.id] = {
+                id: itemSnap.id,
+                ...(itemSnap.data() as Omit<
+                  CampaignItem,
+                  "id"
+                >),
+              };
+            },
+          );
+
+          setCampaignItemsById(next);
+        },
+        (error) => {
+          console.error(
+            "Failed to load campaign items for rewards:",
+            error,
+          );
+          setCampaignItemsById({});
+        },
+      );
+
+    return unsubscribe;
+  }, [
+    campaignId,
+    pageState,
+  ]);
+
   const queuedCharacterUpdatesRef = useRef<
     Map<string, Record<string, unknown>>
   >(new Map());
@@ -2442,9 +2543,6 @@ export const useCampaignPageData = (
                       campaignItemId:
                         item.campaignItemId,
 
-                      baseItemId:
-                        item.baseItemId,
-
                       quantity:
                         Math.max(
                           0,
@@ -2467,7 +2565,9 @@ export const useCampaignPageData = (
                       item.campaignItemId,
                     ) &&
                     Boolean(
-                      item.baseItemId,
+                      campaignItemsById[
+                        item.campaignItemId
+                      ],
                     ) &&
                     item.quantity >
                       0,
@@ -2563,6 +2663,8 @@ export const useCampaignPageData = (
                             [],
 
                           normalizedItems,
+
+                          campaignItemsById,
                         );
 
                       /*
@@ -2629,7 +2731,9 @@ export const useCampaignPageData = (
                                       item.campaignItemId,
 
                                     baseItemId:
-                                      item.baseItemId,
+                                      campaignItemsById[
+                                        item.campaignItemId
+                                      ]?.baseItemId,
 
                                     quantity:
                                       item.quantity,
@@ -2637,6 +2741,7 @@ export const useCampaignPageData = (
                                     displayName:
                                       getRewardItemDisplayName(
                                         item,
+                                        campaignItemsById,
                                       ),
                                   },
                           ),
@@ -2799,6 +2904,7 @@ export const useCampaignPageData = (
         campaignId,
         isGm,
         user,
+        campaignItemsById,
       ],
     );
 
@@ -2847,7 +2953,13 @@ export const useCampaignPageData = (
 
     handleRewardCharacters,
 
-    getRewardItemDisplayName,
+    getRewardItemDisplayName: (
+      item: RewardItemInput,
+    ) =>
+      getRewardItemDisplayName(
+        item,
+        campaignItemsById,
+      ),
 
     getRewardItemInstanceBaseId,
   };

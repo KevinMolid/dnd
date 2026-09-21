@@ -26,6 +26,7 @@ import useCampaignPageData, {
 import type {
   CampaignItem,
   CampaignItemOverride,
+  Item,
 } from "../rulesets/dnd/dnd2024/types";
 
 const CampaignPage = () => {
@@ -111,7 +112,8 @@ const CampaignPage = () => {
   );
 
   const handleCreateCampaignItem = async (payload: {
-    baseItemId: string;
+    baseItemId?: string;
+    customItem?: Item;
     name?: string;
     shortDescription?: string;
     description?: string;
@@ -126,10 +128,17 @@ const CampaignPage = () => {
     setCreateCustomItemError("");
     setCreatingCustomItem(true);
 
+    if (!payload.baseItemId && !payload.customItem) {
+      throw new Error(
+        "An item must have either a base item or custom item data.",
+      );
+    }
+
     try {
       await addDoc(collection(db, "campaigns", campaignId, "items"), {
         campaignId,
-        baseItemId: payload.baseItemId,
+        ...(payload.baseItemId ? { baseItemId: payload.baseItemId } : {}),
+        ...(payload.customItem ? { customItem: payload.customItem } : {}),
         ...(payload.name ? { name: payload.name } : {}),
         ...(payload.shortDescription
           ? { shortDescription: payload.shortDescription }

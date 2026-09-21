@@ -28,6 +28,7 @@ import HandoutsPage from "./pages/HandoutsPage";
 import ProfileSettingsPage from "./pages/ProfileSettingsPage";
 import NPCsPage from "./pages/NPCsPage";
 import NpcDetailPage from "./pages/NpcDetailPage";
+import ItemsPage from "./pages/ItemsPage";
 import MonstersPage from "./pages/MonstersPage";
 import EditCharacter from "./pages/EditCharacter";
 import DMWorkspacePage from "./pages/DMWorkspacePage";
@@ -179,6 +180,8 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
         path="/campaigns/:campaignId/monsters"
         element={<MonstersPage />}
       />
+
+      <Route path="/campaigns/:campaignId/items" element={<ItemsPage />} />
 
       <Route
         path="/campaigns/:campaignId/workspace"

@@ -282,6 +282,14 @@ const CampaignHeader = ({
                       Monsters
                       <i className="fa-solid fa-arrow-up-right-from-square text-[10px] text-zinc-500" />
                     </Link>
+
+                    <Link
+                      to={`/campaigns/${campaign.id}/items`}
+                      className={gmToolClass}
+                    >
+                      Items
+                      <i className="fa-solid fa-arrow-up-right-from-square text-[10px] text-zinc-500" />
+                    </Link>
                   </div>
                 </>
               ) : null}

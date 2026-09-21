@@ -18,7 +18,6 @@ type SelectedRewardItem =
   | {
       source: "campaign";
       campaignItemId: string;
-      baseItemId: string;
       quantity: number;
     };
 
@@ -45,7 +44,6 @@ type RewardItemsModalProps = {
       | {
           source: "campaign";
           campaignItemId: string;
-          baseItemId: string;
           quantity: number;
         }
     )[];
@@ -70,7 +68,7 @@ type SearchableRewardItem =
       category: string;
       stackable?: boolean;
       magical?: boolean;
-      baseItemId: string;
+      baseItemId?: string;
       campaignItemId: string;
       shortDescription?: string;
     };
@@ -132,20 +130,27 @@ const RewardItemsModal = ({
     const campaignItems: SearchableRewardItem[] = Object.values(
       campaignItemsById,
     ).flatMap((campaignItem) => {
-      const baseItem = itemsById[campaignItem.baseItemId];
-      if (!baseItem) return [];
+      const baseItem = campaignItem.baseItemId
+        ? itemsById[campaignItem.baseItemId]
+        : undefined;
+
+      const resolvedItem = campaignItem.customItem ?? baseItem;
+      if (!resolvedItem) return [];
 
       return [
         {
           source: "campaign" as const,
           id: campaignItem.id,
           campaignItemId: campaignItem.id,
-          baseItemId: campaignItem.baseItemId,
-          name: campaignItem.name ?? baseItem.name,
-          category: baseItem.category,
-          stackable: baseItem.stackable,
-          magical: campaignItem.overrides?.magical ?? baseItem.magical,
-          shortDescription: campaignItem.shortDescription,
+          ...(campaignItem.baseItemId
+            ? { baseItemId: campaignItem.baseItemId }
+            : {}),
+          name: campaignItem.name ?? resolvedItem.name,
+          category: resolvedItem.category,
+          stackable: resolvedItem.stackable,
+          magical: campaignItem.overrides?.magical ?? resolvedItem.magical,
+          shortDescription:
+            campaignItem.shortDescription ?? resolvedItem.description,
         },
       ];
     });
@@ -167,7 +172,8 @@ const RewardItemsModal = ({
         const idMatch = item.id.toLowerCase().includes(query);
         const nameMatch = item.name.toLowerCase().includes(query);
         const categoryMatch = item.category.toLowerCase().includes(query);
-        const baseItemMatch = item.baseItemId.toLowerCase().includes(query);
+        const baseItemMatch =
+          item.baseItemId?.toLowerCase().includes(query) ?? false;
 
         return idMatch || nameMatch || categoryMatch || baseItemMatch;
       })
@@ -202,7 +208,7 @@ const RewardItemsModal = ({
     });
   };
 
-  const addCampaignItem = (campaignItemId: string, baseItemId: string) => {
+  const addCampaignItem = (campaignItemId: string) => {
     setSelectedItems((current) => {
       const existing = current.find(
         (item) =>
@@ -222,7 +228,6 @@ const RewardItemsModal = ({
         {
           source: "campaign",
           campaignItemId,
-          baseItemId,
           quantity: 1,
         },
       ];
@@ -315,7 +320,6 @@ const RewardItemsModal = ({
           : {
               source: "campaign" as const,
               campaignItemId: item.campaignItemId,
-              baseItemId: item.baseItemId,
               quantity: Math.max(1, Math.floor(item.quantity) || 1),
             },
       )
@@ -366,11 +370,11 @@ const RewardItemsModal = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 text-zinc-100 shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 text-zinc-100 shadow-2xl">
+        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
           <div>
-            <h2 className="text-xl font-semibold text-white">Reward items</h2>
-            <p className="mt-1 text-sm text-zinc-400">
+            <h2 className="text-lg font-bold text-white">Reward items</h2>
+            <p className="mt-0.5 text-xs text-zinc-500">
               Search for base items or campaign items, choose quantities, and
               reward currency and items to players in this campaign.
             </p>
@@ -386,12 +390,12 @@ const RewardItemsModal = ({
 
         <div className="grid min-h-0 flex-1 gap-0 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="flex min-h-0 flex-col border-b border-white/10 lg:border-b-0 lg:border-r lg:border-white/10">
-            <div className="border-b border-white/10 px-6 py-4">
-              <label className="block text-sm font-semibold text-white">
+            <div className="border-b border-white/10 px-5 py-4">
+              <label className="block text-xs font-semibold text-zinc-300">
                 Search items
               </label>
 
-              <div className="mt-3 flex items-center gap-3 rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3">
+              <div className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-zinc-950 px-3">
                 <span className="text-sm text-zinc-500">⌕</span>
                 <input
                   value={search}
@@ -402,7 +406,7 @@ const RewardItemsModal = ({
               </div>
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+            <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4">
               <div className="grid gap-3">
                 {filteredItems.map((item) => {
                   const alreadySelected = selectedItems.find((entry) =>
@@ -415,7 +419,7 @@ const RewardItemsModal = ({
                   return (
                     <div
                       key={`${item.source}-${item.id}`}
-                      className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/5 p-4"
+                      className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 p-4"
                     >
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-white">
@@ -443,7 +447,7 @@ const RewardItemsModal = ({
                             </span>
                           )}
 
-                          {item.source === "campaign" && (
+                          {item.source === "campaign" && item.baseItemId && (
                             <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1">
                               Base: {item.baseItemId}
                             </span>
@@ -462,10 +466,7 @@ const RewardItemsModal = ({
                         onClick={() =>
                           item.source === "base"
                             ? addBaseItem(item.id)
-                            : addCampaignItem(
-                                item.campaignItemId,
-                                item.baseItemId,
-                              )
+                            : addCampaignItem(item.campaignItemId)
                         }
                         className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
                       >
@@ -477,7 +478,7 @@ const RewardItemsModal = ({
                 })}
 
                 {filteredItems.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-sm text-zinc-400">
+                  <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-8 text-center text-sm text-zinc-400">
                     No items matched your search.
                   </div>
                 ) : null}
@@ -486,7 +487,7 @@ const RewardItemsModal = ({
           </div>
 
           <div className="flex min-h-0 flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto px-5 py-4">
               <section>
                 <h3 className="text-sm font-semibold text-white">Players</h3>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -500,7 +501,7 @@ const RewardItemsModal = ({
                         key={character.id}
                         type="button"
                         onClick={() => toggleCharacter(character.id)}
-                        className={`rounded-2xl border px-4 py-3 text-left transition ${
+                        className={`rounded-xl border px-4 py-3 text-left transition ${
                           selected
                             ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
                             : "border-white/10 bg-white/5 text-zinc-200 hover:bg-white/10"
@@ -527,8 +528,10 @@ const RewardItemsModal = ({
                       type="number"
                       min={0}
                       value={money.gp}
-                      onChange={(event) => updateMoney("gp", event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
+                      onChange={(event) =>
+                        updateMoney("gp", event.target.value)
+                      }
+                      className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
                     />
                   </label>
 
@@ -540,8 +543,10 @@ const RewardItemsModal = ({
                       type="number"
                       min={0}
                       value={money.sp}
-                      onChange={(event) => updateMoney("sp", event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
+                      onChange={(event) =>
+                        updateMoney("sp", event.target.value)
+                      }
+                      className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
                     />
                   </label>
 
@@ -553,8 +558,10 @@ const RewardItemsModal = ({
                       type="number"
                       min={0}
                       value={money.cp}
-                      onChange={(event) => updateMoney("cp", event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
+                      onChange={(event) =>
+                        updateMoney("cp", event.target.value)
+                      }
+                      className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
                     />
                   </label>
                 </div>
@@ -572,32 +579,37 @@ const RewardItemsModal = ({
 
                 <div className="mt-3 space-y-3">
                   {selectedItems.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-white/10 bg-white/5 p-6 text-sm text-zinc-400">
+                    <div className="rounded-xl border border-dashed border-white/10 bg-white/5 p-6 text-sm text-zinc-400">
                       No items selected yet.
                     </div>
                   ) : null}
 
                   {selectedItems.map((entry) => {
-                    const baseItem =
-                      entry.source === "base"
-                        ? itemsById[entry.itemId]
-                        : itemsById[entry.baseItemId];
-
                     const campaignItem =
                       entry.source === "campaign"
                         ? campaignItemsById[entry.campaignItemId]
-                        : null;
+                        : undefined;
+
+                    const baseItem =
+                      entry.source === "base"
+                        ? itemsById[entry.itemId]
+                        : campaignItem?.baseItemId
+                          ? itemsById[campaignItem.baseItemId]
+                          : undefined;
+
+                    const resolvedItem =
+                      entry.source === "campaign"
+                        ? (campaignItem?.customItem ?? baseItem)
+                        : baseItem;
 
                     const itemName =
                       entry.source === "base"
-                        ? (baseItem?.name ?? entry.itemId)
-                        : ((campaignItem?.name ?? baseItem?.name) ??
+                        ? (resolvedItem?.name ?? entry.itemId)
+                        : (campaignItem?.name ??
+                          resolvedItem?.name ??
                           entry.campaignItemId);
 
-                    const category =
-                      entry.source === "base"
-                        ? (baseItem?.category ?? "unknown")
-                        : (baseItem?.category ?? "unknown");
+                    const category = resolvedItem?.category ?? "unknown";
 
                     const rowKey =
                       entry.source === "base"
@@ -607,7 +619,7 @@ const RewardItemsModal = ({
                     return (
                       <div
                         key={rowKey}
-                        className="grid gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:grid-cols-[1fr_110px_auto]"
+                        className="grid gap-3 rounded-xl border border-white/10 bg-white/5 p-4 sm:grid-cols-[1fr_110px_auto]"
                       >
                         <div className="min-w-0">
                           <p className="truncate text-sm font-semibold text-white">
@@ -623,7 +635,10 @@ const RewardItemsModal = ({
 
                           {entry.source === "campaign" && (
                             <p className="mt-1 text-xs text-violet-300">
-                              Campaign item · Base: {entry.baseItemId}
+                              Campaign item
+                              {campaignItem?.baseItemId
+                                ? ` · Base: ${campaignItem.baseItemId}`
+                                : " · Custom"}
                             </p>
                           )}
                         </div>
@@ -675,8 +690,8 @@ const RewardItemsModal = ({
               </section>
             </div>
 
-            <div className="border-t border-white/10 px-6 py-4">
-              <div className="mb-4 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-300">
+            <div className="shrink-0 border-t border-white/10 px-5 py-4">
+              <div className="mb-4 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-300">
                 <p>
                   <span className="font-semibold text-white">Players:</span>{" "}
                   {selectedCharacterIds.length}
@@ -695,7 +710,7 @@ const RewardItemsModal = ({
               <div className="flex justify-end gap-3">
                 <button
                   onClick={onClose}
-                  className="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-zinc-300 transition hover:bg-white/[0.08]"
                 >
                   Cancel
                 </button>
@@ -703,7 +718,7 @@ const RewardItemsModal = ({
                 <button
                   onClick={handleSubmit}
                   disabled={!canSubmit}
-                  className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   {submitting ? "Giving rewards..." : "Give rewards"}
                 </button>

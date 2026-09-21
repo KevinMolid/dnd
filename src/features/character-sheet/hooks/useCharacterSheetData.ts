@@ -2007,7 +2007,7 @@ const handleRemoveSpell = async (
     nextEquipment: CharacterEquipmentEntry[],
     nextMoney: Money,
   ) => {
-    if (!character || !characterId || character.buildMode !== "custom") {
+    if (!character || !characterId) {
       return;
     }
 
@@ -2019,28 +2019,52 @@ const handleRemoveSpell = async (
       gp: 0,
       pp: 0,
     };
+    const previousMoneyCp = character.moneyCp ?? getCharacterMoneyCp(character);
+
+    const normalizedCp = Math.max(0, Math.floor(nextMoney.cp ?? 0));
+    const normalizedSp = Math.max(0, Math.floor(nextMoney.sp ?? 0));
+    const normalizedEp = Math.max(0, Math.floor(nextMoney.ep ?? 0));
+    const normalizedGp = Math.max(0, Math.floor(nextMoney.gp ?? 0));
+    const normalizedPp = Math.max(0, Math.floor(nextMoney.pp ?? 0));
 
     const normalizedMoney: Money = {
-      cp: Math.max(0, Math.floor(nextMoney.cp ?? 0)),
-      sp: Math.max(0, Math.floor(nextMoney.sp ?? 0)),
-      ep: Math.max(0, Math.floor(nextMoney.ep ?? 0)),
-      gp: Math.max(0, Math.floor(nextMoney.gp ?? 0)),
-      pp: Math.max(0, Math.floor(nextMoney.pp ?? 0)),
+      cp: normalizedCp,
+      sp: normalizedSp,
+      ep: normalizedEp,
+      gp: normalizedGp,
+      pp: normalizedPp,
     };
 
-    const normalizedEquipment = nextEquipment.map((entry) => ({
-      ...entry,
-      quantity: Math.max(1, Math.floor(entry.quantity ?? 1)),
-      equipped: (entry.equippedSlots?.length ?? 0) > 0,
-      equippedSlots: entry.equippedSlots ?? [],
-    }));
+    const normalizedMoneyCp =
+      normalizedCp +
+      normalizedSp * 10 +
+      normalizedEp * 50 +
+      normalizedGp * 100 +
+      normalizedPp * 1000;
+
+    const normalizedEquipment: CharacterEquipmentEntry[] =
+      nextEquipment.map((entry) => ({
+        ...entry,
+        quantity: Math.max(1, Math.floor(entry.quantity ?? 1)),
+        equipped: (entry.equippedSlots?.length ?? 0) > 0,
+        equippedSlots: entry.equippedSlots ?? [],
+      }));
+
+    const isCustom = character.buildMode === "custom";
 
     setCharacter((current) =>
       current
         ? {
             ...current,
             equipment: normalizedEquipment,
-            money: normalizedMoney,
+            ...(isCustom
+              ? {
+                  money: normalizedMoney,
+                }
+              : {
+                  moneyCp: normalizedMoneyCp,
+                  money: normalizedMoney,
+                }),
           }
         : current,
     );
@@ -2048,7 +2072,14 @@ const handleRemoveSpell = async (
     try {
       await updateDoc(doc(db, "characters", characterId), {
         equipment: normalizedEquipment,
-        money: normalizedMoney,
+        ...(isCustom
+          ? {
+              money: normalizedMoney,
+            }
+          : {
+              moneyCp: normalizedMoneyCp,
+              money: normalizedMoney,
+            }),
         updatedAt: serverTimestamp(),
       });
     } catch (err) {
@@ -2060,6 +2091,11 @@ const handleRemoveSpell = async (
               ...current,
               equipment: previousEquipment,
               money: previousMoney,
+              ...(!isCustom
+                ? {
+                    moneyCp: previousMoneyCp,
+                  }
+                : {}),
             }
           : current,
       );
@@ -2477,6 +2513,13 @@ const handleRemoveSpell = async (
                 equipment
                   .map(
                     getRulesItemIdFromEquipmentEntry,
+                  )
+                  .filter(
+                    (
+                      itemId,
+                    ): itemId is string =>
+                      typeof itemId === "string" &&
+                      itemId.length > 0,
                   )
                   .filter(
                     (

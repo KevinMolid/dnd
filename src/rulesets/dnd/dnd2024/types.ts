@@ -1142,7 +1142,7 @@ export type CharacterEquipmentEntry =
       source: "campaign";
       itemId?: never;
       campaignItemId: string;
-      baseItemId: string;
+      baseItemId?: string;
       name: string;
       quantity: number;
       equipped?: boolean;
@@ -1180,23 +1180,25 @@ export type CampaignItemOverride = Partial<
 export type CampaignItem = {
   id: string;
   campaignId: string;
-  baseItemId: string;
 
   /**
-   * Optional custom display name. Falls back to the base item name.
+   * Copied campaign items reference an existing rules item.
+   * Completely custom items store their full Item definition in customItem.
+   */
+  baseItemId?: string;
+  customItem?: Item;
+
+  /**
+   * Optional campaign-specific display/flavor fields.
    */
   name?: string;
-
-  /**
-   * Extra campaign-specific flavor text shown before/alongside base item info.
-   */
   shortDescription?: string;
   description?: string;
   gmNotes?: string;
   imageUrl?: string;
 
   /**
-   * Only store fields that differ from the base item.
+   * Only used for items based on an existing rules item.
    */
   overrides?: CampaignItemOverride;
 

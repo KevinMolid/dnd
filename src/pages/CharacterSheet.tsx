@@ -6,6 +6,8 @@ import CustomCharacterSheet from "./CustomCharacterSheet";
 
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
 
+import CharacterInventoryEditorModal from "../components/character/CharacterInventoryEditorModal";
+
 import { classesById } from "../rulesets/dnd/dnd2024/helpers";
 
 import type { AbilityKey } from "../rulesets/dnd/dnd2024/types";
@@ -47,6 +49,8 @@ const CharacterSheet = () => {
   const location = useLocation();
 
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
+
+  const [inventoryEditorOpen, setInventoryEditorOpen] = useState(false);
 
   const [openTraitGroups, setOpenTraitGroups] = useState<
     Record<TraitGroupKey, boolean>
@@ -546,12 +550,24 @@ const CharacterSheet = () => {
     const moneyCp = derived.moneyCp ?? character.moneyCp ?? 0;
 
     return (
-      <CharacterInventoryEquipment
-        equipment={character.equipment ?? []}
-        onChange={handleEquipmentChange}
-        campaignItemsById={campaignItemsById}
-        moneyCp={moneyCp}
-      />
+      <div className="space-y-2">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => setInventoryEditorOpen(true)}
+            className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.1] hover:text-white"
+          >
+            Edit Inventory
+          </button>
+        </div>
+
+        <CharacterInventoryEquipment
+          equipment={character.equipment ?? []}
+          onChange={handleEquipmentChange}
+          campaignItemsById={campaignItemsById}
+          moneyCp={moneyCp}
+        />
+      </div>
     );
   };
 
@@ -718,6 +734,15 @@ const CharacterSheet = () => {
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
       </div>
+
+      <CharacterInventoryEditorModal
+        open={inventoryEditorOpen}
+        equipment={character.equipment ?? []}
+        money={derived.money}
+        campaignItemsById={campaignItemsById}
+        onClose={() => setInventoryEditorOpen(false)}
+        onSave={handleSetInventory}
+      />
     </div>
   );
 };
