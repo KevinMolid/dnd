@@ -1,21 +1,36 @@
 import { itemsById } from "./data/items";
-import type { CharacterEquipmentEntry } from "./types";
+import { resolveItemFromEquipmentEntry } from "./resolveItem";
+import type {
+  CampaignItem,
+  CharacterEquipmentEntry,
+  Item,
+} from "./types";
 
 const getAbilityModifier = (score: number) => Math.floor((score - 10) / 2);
 
-const getRulesItemIdFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
-  entry.source === "campaign" ? entry.baseItemId : entry.itemId;
+const resolveEquipmentItem = (
+  entry: CharacterEquipmentEntry,
+  campaignItemsById: Record<string, CampaignItem>,
+): Item | null => {
+  if (entry.source === "campaign") {
+    return resolveItemFromEquipmentEntry(entry, campaignItemsById);
+  }
+
+  return itemsById[entry.itemId] ?? null;
+};
 
 export const getCharacterArmorClassFromEquipment = ({
   dexterityScore,
   constitutionScore,
   classId,
   equipment,
+  campaignItemsById = {},
 }: {
   dexterityScore: number;
   constitutionScore?: number;
   classId?: string | null;
   equipment: CharacterEquipmentEntry[];
+  campaignItemsById?: Record<string, CampaignItem>;
 }): number => {
   const dexMod = getAbilityModifier(dexterityScore);
   const conMod = getAbilityModifier(constitutionScore ?? 10);
@@ -25,12 +40,12 @@ export const getCharacterArmorClassFromEquipment = ({
   );
 
   const armorEntry = equippedItems.find((entry) => {
-    const item = itemsById[getRulesItemIdFromEquipmentEntry(entry)];
+    const item = resolveEquipmentItem(entry, campaignItemsById);
     return !!item?.armor;
   });
 
   const shieldEntries = equippedItems.filter((entry) => {
-    const item = itemsById[getRulesItemIdFromEquipmentEntry(entry)];
+    const item = resolveEquipmentItem(entry, campaignItemsById);
     return !!item?.shield;
   });
 
@@ -42,7 +57,7 @@ export const getCharacterArmorClassFromEquipment = ({
   if (isBarbarian && isUnarmored) {
     ac = 10 + dexMod + conMod;
   } else if (armorEntry) {
-    const armorItem = itemsById[getRulesItemIdFromEquipmentEntry(armorEntry)];
+    const armorItem = resolveEquipmentItem(armorEntry, campaignItemsById);
     const armor = armorItem?.armor;
 
     if (armor) {
@@ -59,7 +74,10 @@ export const getCharacterArmorClassFromEquipment = ({
   }
 
   for (const shieldEntry of shieldEntries) {
-    const shieldItem = itemsById[getRulesItemIdFromEquipmentEntry(shieldEntry)];
+    const shieldItem = resolveEquipmentItem(
+      shieldEntry,
+      campaignItemsById,
+    );
     const shield = shieldItem?.shield;
 
     if (shield) {

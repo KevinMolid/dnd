@@ -3,8 +3,9 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import RichTextEditor from "../features/richText/RichTextEditor";
 import useMonsterLibrary from "../hooks/useMonsterLibrary";
-import { allItems, itemsById } from "../rulesets/dnd/dnd2024/data/items";
+import { allItems } from "../rulesets/dnd/dnd2024/data/items";
 import type { CampaignItem } from "../rulesets/dnd/dnd2024/types";
+import { resolveCampaignItem } from "../rulesets/dnd/dnd2024/resolveItem";
 import {
   deleteCampaignMap,
   updateCampaignMap,
@@ -828,12 +829,16 @@ const MapEditorModal = ({
 
   const itemOptions = useMemo(() => {
     const campaign = Object.values(campaignItemsById).flatMap((item) => {
-      const base = itemsById[item.baseItemId];
-      if (!base) return [];
+      const resolved = resolveCampaignItem(item);
+
+      if (!resolved) {
+        return [];
+      }
+
       return [
         {
           key: `campaign:${item.id}`,
-          name: item.name ?? item.overrides?.name ?? base.name,
+          name: resolved.name,
           source: "Campaign",
         },
       ];

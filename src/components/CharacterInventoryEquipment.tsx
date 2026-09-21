@@ -155,7 +155,9 @@ const CharacterInventoryEquipment = ({
       }
 
       const rulesItemId = getRulesItemId(entry);
-      const isEquippable = isItemEquippable(rulesItemId);
+      const isEquippable =
+        Boolean(resolvedItem?.equippable) ||
+        (rulesItemId ? isItemEquippable(rulesItemId) : false);
       const canGroup = Boolean(resolvedItem?.stackable && !isEquippable);
 
       if (!canGroup) {
@@ -500,9 +502,11 @@ const InventoryRow = ({
 
   const displayId = getEntryDisplayId(entry);
 
-  const isEquippable = isItemEquippable(rulesItemId);
+  const isEquippable =
+    Boolean(resolvedItem?.equippable) ||
+    (rulesItemId ? isItemEquippable(rulesItemId) : false);
 
-  const actions = getEquipActionsForItem(rulesItemId);
+  const actions = rulesItemId ? getEquipActionsForItem(rulesItemId) : [];
 
   const itemName = resolvedItem?.name ?? entry.name ?? formatLabel(displayId);
 
@@ -592,9 +596,11 @@ const InventoryRow = ({
               <button
                 key={`${entry.instanceId}-${action.label}`}
                 type="button"
-                onClick={() =>
-                  onEquip(entry.instanceId, rulesItemId, action.mode)
-                }
+                onClick={() => {
+                  if (rulesItemId) {
+                    onEquip(entry.instanceId, rulesItemId, action.mode);
+                  }
+                }}
                 className="rounded-md border border-white/[0.08] bg-black/20 px-2 py-1 text-[9px] font-semibold text-zinc-300 transition hover:border-white/15 hover:text-zinc-200"
               >
                 {getCompactActionLabel(action.label)}

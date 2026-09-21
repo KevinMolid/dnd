@@ -1,6 +1,7 @@
-import { itemsById } from "./data/items";
+import { resolveItemFromEquipmentEntry } from "./resolveItem";
 import type {
   AbilityKey,
+  CampaignItem,
   CharacterEquipmentEntry,
   EquipmentSlotId,
   WeaponData,
@@ -20,11 +21,10 @@ const formatSignedModifier = (value: number) => {
   return value > 0 ? ` + ${value}` : ` - ${Math.abs(value)}`;
 };
 
-const getSelectedDamageData = (weapon: WeaponData, twoHanded: boolean) => {
-  return twoHanded && weapon.versatileDamage
+const getSelectedDamageData = (weapon: WeaponData, twoHanded: boolean) =>
+  twoHanded && weapon.versatileDamage
     ? weapon.versatileDamage
     : weapon.damage;
-};
 
 const formatDamageString = ({
   weapon,
@@ -49,14 +49,13 @@ const isRangedWeapon = (weapon: WeaponData) =>
 const hasProperty = (weapon: WeaponData, property: string) =>
   weapon.properties.includes(property as (typeof weapon.properties)[number]);
 
-const getRulesItemIdFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
+const getRulesItemIdFromEquipmentEntry = (
+  entry: CharacterEquipmentEntry,
+): string | undefined =>
   entry.source === "campaign" ? entry.baseItemId : entry.itemId;
 
 const getDisplayItemIdFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
   entry.source === "campaign" ? entry.campaignItemId : entry.itemId;
-
-const getDisplayNameFromEquipmentEntry = (entry: CharacterEquipmentEntry) =>
-  entry.name;
 
 const isWeaponEquipped = (entry: CharacterEquipmentEntry) => {
   const equippedSlots = entry.equippedSlots ?? [];
@@ -92,9 +91,7 @@ const getAttackAbility = ({
   weapon: WeaponData;
   abilityScores: Record<AbilityKey, number>;
 }): AbilityKey => {
-  const ranged = isRangedWeapon(weapon);
-
-  if (ranged) {
+  if (isRangedWeapon(weapon)) {
     return "dex";
   }
 
@@ -172,25 +169,41 @@ export const getEquippedWeaponAttacks = ({
   abilityScores,
   proficientWeaponIds,
   proficiencyBonus,
+  campaignItemsById = {},
 }: {
   equipment: CharacterEquipmentEntry[];
   abilityScores: Record<AbilityKey, number>;
   proficientWeaponIds?: string[];
   proficiencyBonus: number;
+  campaignItemsById?: Record<string, CampaignItem>;
 }): EquippedWeaponAttack[] => {
   const attacks: EquippedWeaponAttack[] = [];
 
   for (const entry of equipment) {
-    if (!isWeaponEquipped(entry)) continue;
+    if (!isWeaponEquipped(entry)) {
+      continue;
+    }
 
+    const item = resolveItemFromEquipmentEntry(entry, campaignItemsById);
+
+    if (!item?.weapon) {
+      continue;
+    }
+
+    const weapon = item.weapon;
     const rulesItemId = getRulesItemIdFromEquipmentEntry(entry);
     const displayItemId = getDisplayItemIdFromEquipmentEntry(entry);
 
-    const item = itemsById[rulesItemId];
-    if (!item?.weapon) continue;
-
-    const weapon = item.weapon;
-    const proficient = proficientWeaponIds?.includes(rulesItemId) ?? true;
+    /*
+     * Existing official/copy-based weapons use their base item ID for
+     * proficiency matching. Fully custom campaign weapons have no official
+     * rules ID, so they cannot appear in proficientWeaponIds. Treat them as
+     * proficient by default rather than silently removing proficiency bonus.
+     */
+    const proficient =
+      rulesItemId === undefined
+        ? true
+        : (proficientWeaponIds?.includes(rulesItemId) ?? true);
 
     const isOffHand =
       isOffHandEquipped(entry) &&
@@ -230,7 +243,7 @@ export const getEquippedWeaponAttacks = ({
             ? `${entry.instanceId}-thrown`
             : `${entry.instanceId}-melee`,
         itemId: displayItemId,
-        name: getDisplayNameFromEquipmentEntry(entry) || item.name,
+        name: entry.name || item.name,
         ability,
         attackBonus,
         damage: formatDamageString({
