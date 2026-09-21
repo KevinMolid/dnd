@@ -224,9 +224,10 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
 
   const contents = item.contents ?? [];
 
-  const baseItem = isResolvedCampaignItem(item)
-    ? itemsById[item.baseItemId]
-    : null;
+  const baseItem =
+    isResolvedCampaignItem(item) && item.baseItemId
+      ? itemsById[item.baseItemId]
+      : null;
 
   const hasAnyDetails =
     !!item.description ||
