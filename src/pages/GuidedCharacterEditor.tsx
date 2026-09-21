@@ -1757,6 +1757,7 @@ const GuidedDndCharacterEditor = () => {
               <textarea
                 id="notes"
                 value={notes}
+                spellCheck={false}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Appearance, personality, backstory, goals..."
                 rows={6}

@@ -203,6 +203,7 @@ export default function CreateHandoutModal({
             </label>
             <textarea
               value={content}
+              spellCheck={false}
               onChange={(e) => setContent(e.target.value)}
               placeholder="Write the handout text here..."
               rows={10}

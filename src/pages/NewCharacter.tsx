@@ -2762,6 +2762,7 @@ const GuidedDndCharacterCreator = ({
                     <textarea
                       id="characterAppearance"
                       value={characterAppearance}
+                      spellCheck={false}
                       onChange={(e) => setCharacterAppearance(e.target.value)}
                       rows={5}
                       placeholder="Describe how the character looks..."
@@ -2779,6 +2780,7 @@ const GuidedDndCharacterCreator = ({
                     <textarea
                       id="alliesAndOrganizations"
                       value={alliesAndOrganizations}
+                      spellCheck={false}
                       onChange={(e) =>
                         setAlliesAndOrganizations(e.target.value)
                       }
@@ -2798,6 +2800,7 @@ const GuidedDndCharacterCreator = ({
                     <textarea
                       id="characterBackstory"
                       value={characterBackstory}
+                      spellCheck={false}
                       onChange={(e) => setCharacterBackstory(e.target.value)}
                       rows={7}
                       placeholder="Where did the character come from, and what brought them here?"
@@ -2827,6 +2830,7 @@ const GuidedDndCharacterCreator = ({
                         <textarea
                           id={id as string}
                           value={value as string}
+                          spellCheck={false}
                           onChange={(e) =>
                             (setter as (value: string) => void)(e.target.value)
                           }
@@ -2878,6 +2882,7 @@ const GuidedDndCharacterCreator = ({
                   <textarea
                     id="notes"
                     value={notes}
+                    spellCheck={false}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Appearance, personality, backstory, goals..."
                     rows={6}

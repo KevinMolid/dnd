@@ -409,6 +409,7 @@ const CampaignSettingsPage = () => {
                   id="campaign-description"
                   rows={6}
                   value={description}
+                  spellCheck={false}
                   onChange={(e) => setDescription(e.target.value)}
                   maxLength={1000}
                   placeholder="Write a short summary of the campaign, tone, world, or current situation."

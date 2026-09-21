@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { allItems } from "../../../rulesets/dnd/dnd2024/data/items";
-import type { CampaignItemOverride, Item } from "../../../rulesets/dnd/dnd2024/types";
+import type {
+  CampaignItemOverride,
+  Item,
+} from "../../../rulesets/dnd/dnd2024/types";
 import ItemTooltip from "../../../components/ItemTooltip";
 
 type CreateCampaignItemModalProps = {
@@ -135,8 +138,8 @@ const CreateCampaignItemModal = ({
               Create custom item
             </h2>
             <p className="mt-1 text-sm text-zinc-400">
-              Choose a base item, then customize its name, flavor text, and notes
-              for this campaign.
+              Choose a base item, then customize its name, flavor text, and
+              notes for this campaign.
             </p>
           </div>
 
@@ -289,7 +292,9 @@ const CreateCampaignItemModal = ({
                     </span>
                     <input
                       value={shortDescription}
-                      onChange={(event) => setShortDescription(event.target.value)}
+                      onChange={(event) =>
+                        setShortDescription(event.target.value)
+                      }
                       placeholder="A short flavor line shown in inventory/tooltips..."
                       className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
                     />
@@ -301,6 +306,7 @@ const CreateCampaignItemModal = ({
                     </span>
                     <textarea
                       value={description}
+                      spellCheck={false}
                       onChange={(event) => setDescription(event.target.value)}
                       rows={5}
                       placeholder="Describe the custom lore, appearance, history, or special feel of the item..."
@@ -314,6 +320,7 @@ const CreateCampaignItemModal = ({
                     </span>
                     <textarea
                       value={gmNotes}
+                      spellCheck={false}
                       onChange={(event) => setGmNotes(event.target.value)}
                       rows={4}
                       placeholder="Private notes for the GM, such as where the item is found or hidden details..."
@@ -350,7 +357,8 @@ const CreateCampaignItemModal = ({
                   </div>
 
                   <p className="mt-1 text-xs text-zinc-400">
-                    Based on: {selectedBaseItem?.name ?? "No base item selected"}
+                    Based on:{" "}
+                    {selectedBaseItem?.name ?? "No base item selected"}
                   </p>
 
                   {shortDescription.trim() && (

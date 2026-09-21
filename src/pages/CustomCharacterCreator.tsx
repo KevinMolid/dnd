@@ -2180,6 +2180,7 @@ const Textarea = ({
     <textarea
       rows={rows}
       value={value}
+      spellCheck={false}
       onChange={(event) => onChange(event.target.value)}
       className="workspace-scrollbar mt-1.5 w-full resize-none overflow-y-auto rounded-lg border border-white/10 bg-zinc-950/70 px-2.5 py-2 text-sm text-white outline-none transition focus:border-white/25"
     />

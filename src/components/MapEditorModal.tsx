@@ -396,6 +396,7 @@ const CreatureEditor = ({
 
             <textarea
               value={entry.notes ?? ""}
+              spellCheck={false}
               onChange={(e) =>
                 onChange(
                   value.map((v, i) =>
@@ -494,6 +495,7 @@ const EncounterEntryEditor = ({
             </div>
             <textarea
               value={entry.description ?? ""}
+              spellCheck={false}
               onChange={(e) =>
                 onChange(
                   value.map((candidate, i) =>
@@ -700,7 +702,6 @@ const editableToRoom = (
   if (original?.environment) {
     room.environment = original.environment;
   }
-
 
   const experience = editable.experience.trim();
 
@@ -936,8 +937,8 @@ const MapEditorModal = ({
 
     setSelectedRoomEditorId(
       initialSelectedRoomId !== null
-        ? nextRooms.find((room) => room.id === initialSelectedRoomId)
-            ?.editorId ?? null
+        ? (nextRooms.find((room) => room.id === initialSelectedRoomId)
+            ?.editorId ?? null)
         : null,
     );
 
@@ -945,8 +946,7 @@ const MapEditorModal = ({
   }, [map, initialSelectedRoomId]);
 
   const selectedRoom = useMemo(
-    () =>
-      rooms.find((room) => room.editorId === selectedRoomEditorId) ?? null,
+    () => rooms.find((room) => room.editorId === selectedRoomEditorId) ?? null,
     [rooms, selectedRoomEditorId],
   );
 
@@ -1257,7 +1257,9 @@ const MapEditorModal = ({
       const fromIndex = prev.findIndex(
         (room) => room.editorId === draggedEditorId,
       );
-      const toIndex = prev.findIndex((room) => room.editorId === targetEditorId);
+      const toIndex = prev.findIndex(
+        (room) => room.editorId === targetEditorId,
+      );
 
       if (fromIndex < 0 || toIndex < 0) {
         return prev;
@@ -1571,10 +1573,8 @@ const MapEditorModal = ({
                 </div>
               ) : (
                 rooms.map((room) => {
-                  const isSelected =
-                    selectedRoomEditorId === room.editorId;
-                  const isDragging =
-                    draggedRoomEditorId === room.editorId;
+                  const isSelected = selectedRoomEditorId === room.editorId;
+                  const isDragging = draggedRoomEditorId === room.editorId;
 
                   return (
                     <button
@@ -1585,10 +1585,7 @@ const MapEditorModal = ({
                       onDragStart={(event) => {
                         setDraggedRoomEditorId(room.editorId);
                         event.dataTransfer.effectAllowed = "move";
-                        event.dataTransfer.setData(
-                          "text/plain",
-                          room.editorId,
-                        );
+                        event.dataTransfer.setData("text/plain", room.editorId);
                       }}
                       onDragEnd={() => setDraggedRoomEditorId(null)}
                       onDragOver={(event) => {
@@ -1884,7 +1881,9 @@ const MapEditorModal = ({
 
                                 <div className="grid grid-cols-2 gap-2">
                                   <div>
-                                    <label className={labelClass}>Die sides</label>
+                                    <label className={labelClass}>
+                                      Die sides
+                                    </label>
                                     <input
                                       type="number"
                                       min={2}
@@ -2293,7 +2292,10 @@ const MapEditorModal = ({
                   />
                 </CollapsibleSection>
 
-                <CollapsibleSection title="Clues" count={selectedRoom.clues.length}>
+                <CollapsibleSection
+                  title="Clues"
+                  count={selectedRoom.clues.length}
+                >
                   <EncounterEntryEditor
                     title="Clues"
                     description="Discoveries that reveal information or point somewhere."
@@ -2330,6 +2332,7 @@ const MapEditorModal = ({
                       <label className={labelClass}>Experience</label>
                       <textarea
                         value={selectedRoom.experience}
+                        spellCheck={false}
                         onChange={(e) =>
                           updateSelectedRoom({
                             experience: e.target.value,
@@ -2344,8 +2347,8 @@ const MapEditorModal = ({
             )}
           </aside>
         </div>
-        </div>
       </div>
+    </div>
   );
 };
 

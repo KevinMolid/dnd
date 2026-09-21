@@ -247,6 +247,7 @@ const NewCampaign = () => {
                 <textarea
                   id="campaign-description"
                   value={description}
+                  spellCheck={false}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={5}
                   maxLength={500}

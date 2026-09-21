@@ -410,6 +410,7 @@ export default function NPCsPage() {
                 </span>
                 <textarea
                   value={form.publicDescription}
+                  spellCheck={false}
                   onChange={(e) =>
                     updateField("publicDescription", e.target.value)
                   }
@@ -428,6 +429,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.personality}
+                    spellCheck={false}
                     onChange={(e) => updateField("personality", e.target.value)}
                     rows={4}
                     className={textAreaClass}
@@ -444,6 +446,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.voice}
+                    spellCheck={false}
                     onChange={(e) => updateField("voice", e.target.value)}
                     rows={4}
                     className={textAreaClass}
@@ -457,6 +460,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.mannerisms}
+                    spellCheck={false}
                     onChange={(e) => updateField("mannerisms", e.target.value)}
                     rows={4}
                     className={textAreaClass}
@@ -474,6 +478,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.wants}
+                    spellCheck={false}
                     onChange={(e) => updateField("wants", e.target.value)}
                     rows={4}
                     className={textAreaClass}
@@ -487,6 +492,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.fears}
+                    spellCheck={false}
                     onChange={(e) => updateField("fears", e.target.value)}
                     rows={4}
                     className={textAreaClass}
@@ -504,6 +510,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.knows}
+                    spellCheck={false}
                     onChange={(e) => updateField("knows", e.target.value)}
                     rows={5}
                     className={textAreaClass}
@@ -516,6 +523,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.doesntKnow}
+                    spellCheck={false}
                     onChange={(e) => updateField("doesntKnow", e.target.value)}
                     rows={5}
                     className={textAreaClass}
@@ -532,6 +540,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.claims}
+                    spellCheck={false}
                     onChange={(e) => updateField("claims", e.target.value)}
                     rows={5}
                     className={textAreaClass}
@@ -545,6 +554,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.secretTruth}
+                    spellCheck={false}
                     onChange={(e) => updateField("secretTruth", e.target.value)}
                     rows={5}
                     className={textAreaClass}
@@ -561,6 +571,7 @@ export default function NPCsPage() {
                 </span>
                 <textarea
                   value={form.reactions}
+                  spellCheck={false}
                   onChange={(e) => updateField("reactions", e.target.value)}
                   rows={6}
                   className={textAreaClass}
@@ -590,6 +601,7 @@ export default function NPCsPage() {
                     </span>
                     <textarea
                       value={form.relationships}
+                      spellCheck={false}
                       onChange={(e) =>
                         updateField("relationships", e.target.value)
                       }
@@ -604,6 +616,7 @@ export default function NPCsPage() {
                     </span>
                     <textarea
                       value={form.clues}
+                      spellCheck={false}
                       onChange={(e) => updateField("clues", e.target.value)}
                       rows={5}
                       className={textAreaClass}
@@ -616,6 +629,7 @@ export default function NPCsPage() {
                     </span>
                     <textarea
                       value={form.statBlock}
+                      spellCheck={false}
                       onChange={(e) => updateField("statBlock", e.target.value)}
                       rows={5}
                       className={textAreaClass}
@@ -628,6 +642,7 @@ export default function NPCsPage() {
                     </span>
                     <textarea
                       value={form.itemsLoot}
+                      spellCheck={false}
                       onChange={(e) => updateField("itemsLoot", e.target.value)}
                       rows={5}
                       className={textAreaClass}
@@ -646,6 +661,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.quickReference}
+                    spellCheck={false}
                     onChange={(e) =>
                       updateField("quickReference", e.target.value)
                     }
@@ -660,6 +676,7 @@ export default function NPCsPage() {
                   </span>
                   <textarea
                     value={form.notes}
+                    spellCheck={false}
                     onChange={(e) => updateField("notes", e.target.value)}
                     rows={6}
                     className={textAreaClass}

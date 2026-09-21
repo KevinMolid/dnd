@@ -229,6 +229,7 @@ const EditStringField = ({
     <span className="text-sm font-medium text-zinc-300">{label}</span>
     <textarea
       value={value}
+      spellCheck={false}
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       className={textAreaClass}
@@ -251,6 +252,7 @@ const EditListField = ({
     <span className="text-sm font-medium text-zinc-300">{label}</span>
     <textarea
       value={value}
+      spellCheck={false}
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       className={textAreaClass}

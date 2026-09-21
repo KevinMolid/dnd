@@ -385,6 +385,7 @@ const LongField = ({
     {editing ? (
       <textarea
         value={value ?? ""}
+        spellCheck={false}
         onChange={(event) => onChange(event.target.value)}
         rows={label === "Backstory" ? 5 : 3}
         className="workspace-scrollbar mt-2 w-full resize-none rounded-lg border border-white/[0.09] bg-black/25 px-3 py-2.5 text-sm leading-6 text-white outline-none transition focus:border-emerald-500/35"

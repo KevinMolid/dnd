@@ -393,6 +393,7 @@ const CharacterFeaturesEditor = ({
 
                           <textarea
                             value={action.description ?? ""}
+                            spellCheck={false}
                             onChange={(event) =>
                               updateCustomTraitAction(trait.id, action.id, {
                                 description: event.target.value,
@@ -473,6 +474,7 @@ const Textarea = ({
     <span className="text-sm text-zinc-300">{label}</span>
     <textarea
       value={value}
+      spellCheck={false}
       onChange={(event) => onChange(event.target.value)}
       rows={4}
       className="workspace-scrollbar mt-1.5 w-full resize-y rounded-lg border border-white/10 bg-zinc-950/70 px-2.5 py-2 text-sm text-white outline-none transition focus:border-white/25"

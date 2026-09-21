@@ -2007,6 +2007,7 @@ export default function MonstersPage() {
 
                     <textarea
                       value={form[key]}
+                      spellCheck={false}
                       onChange={(e) => updateField(key, e.target.value)}
                       rows={7}
                       className={textAreaClass}
