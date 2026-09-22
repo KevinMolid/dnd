@@ -1,21 +1,20 @@
 import { itemsById } from "./data/items";
 import type {
   CharacterEquipmentEntry,
+  EquippableConfig,
   EquipmentSlotId,
+  Item,
   WieldMode,
 } from "./types";
 
-const getHandSlotsForItem = (
-  itemId: string,
+const getHandSlotsForEquippable = (
+  equippable: EquippableConfig,
 ): {
   main: EquipmentSlotId;
   off: EquipmentSlotId;
   twoHanded: EquipmentSlotId[];
 } => {
-  const item = itemsById[itemId];
-  const slotProfile = item?.equippable?.slotProfile ?? "default";
-
-  if (slotProfile === "ranged-weapon") {
+  if (equippable.slotProfile === "ranged-weapon") {
     return {
       main: "ranged-main-hand",
       off: "ranged-off-hand",
@@ -30,23 +29,24 @@ const getHandSlotsForItem = (
   };
 };
 
-export const isItemEquippable = (itemId: string): boolean => {
-  return !!itemsById[itemId]?.equippable;
+export const isItemEquippable = (item: Pick<Item, "equippable"> | null | undefined): boolean => {
+  return Boolean(item?.equippable);
 };
 
 export const getOccupiedSlotsForEquip = (
-  itemId: string,
+  item: Pick<Item, "equippable"> | null | undefined,
   mode?: WieldMode,
 ): EquipmentSlotId[] => {
-  const item = itemsById[itemId];
   const equippable = item?.equippable;
 
   if (!equippable) return [];
 
   const allowedModes = equippable.allowedWieldModes ?? [];
-  const handSlots = getHandSlotsForItem(itemId);
+  const handSlots = getHandSlotsForEquippable(equippable);
 
   if (allowedModes.length > 0) {
+    if (!mode || !allowedModes.includes(mode)) return [];
+
     if (mode === "two-handed") return handSlots.twoHanded;
     if (mode === "main-hand") return [handSlots.main];
     if (mode === "off-hand") return [handSlots.off];
@@ -56,9 +56,8 @@ export const getOccupiedSlotsForEquip = (
 };
 
 export const getEquipActionsForItem = (
-  itemId: string,
+  item: Pick<Item, "equippable"> | null | undefined,
 ): Array<{ label: string; mode?: WieldMode }> => {
-  const item = itemsById[itemId];
   const equippable = item?.equippable;
 
   if (!equippable) return [];
@@ -90,6 +89,10 @@ export const getEquipActionsForItem = (
 /**
  * Migrates old saved "body" slots without making "body" visible as a new slot.
  * Armor becomes "armor"; clothing becomes "clothing".
+ *
+ * Campaign entries that reference a base rules item can still be normalized
+ * here without needing campaign item data. Fully custom campaign items should
+ * already be saved using current slot IDs.
  */
 export const normalizeLegacyBodySlot = (
   entry: CharacterEquipmentEntry,
@@ -98,11 +101,7 @@ export const normalizeLegacyBodySlot = (
     return entry;
   }
 
-  const itemId =
-    entry.source === "campaign"
-      ? entry.baseItemId
-      : entry.itemId;
-
+  const itemId = entry.source === "campaign" ? entry.baseItemId : entry.itemId;
   const item = itemId ? itemsById[itemId] : undefined;
 
   const replacement: EquipmentSlotId =

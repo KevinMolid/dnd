@@ -56,9 +56,6 @@ const formatLabel = (value: string) =>
 const getEntryDisplayId = (entry: CharacterEquipmentEntry) =>
   entry.source === "campaign" ? entry.campaignItemId : entry.itemId;
 
-const getRulesItemId = (entry: CharacterEquipmentEntry) =>
-  entry.source === "campaign" ? entry.baseItemId : entry.itemId;
-
 const normalizeEntry = (
   entry: CharacterEquipmentEntry,
 ): CharacterEquipmentEntry => {
@@ -154,10 +151,7 @@ const CharacterInventoryEquipment = ({
         continue;
       }
 
-      const rulesItemId = getRulesItemId(entry);
-      const isEquippable =
-        Boolean(resolvedItem?.equippable) ||
-        (rulesItemId ? isItemEquippable(rulesItemId) : false);
+      const isEquippable = isItemEquippable(resolvedItem);
       const canGroup = Boolean(resolvedItem?.stackable && !isEquippable);
 
       if (!canGroup) {
@@ -220,26 +214,16 @@ const CharacterInventoryEquipment = ({
 
   const handleEquip = (
     instanceId: string,
-    rulesItemId: string,
+    item: NonNullable<ResolvedEquipmentRow["resolvedItem"]>,
     mode?: WieldMode,
   ) => {
-    const slotsToOccupy = getOccupiedSlotsForEquip(rulesItemId, mode);
+    const slotsToOccupy = getOccupiedSlotsForEquip(item, mode);
 
     if (slotsToOccupy.length === 0) {
       return;
     }
 
     const next = normalizedEquipment.map((entry) => ({ ...entry }));
-
-    for (let i = 0; i < next.length; i += 1) {
-      const entry = next[i];
-      const occupied = entry.equippedSlots ?? [];
-      const conflicts = occupied.some((slot) => slotsToOccupy.includes(slot));
-
-      if (conflicts) {
-        next[i] = unequipEntry(entry);
-      }
-    }
 
     const targetIndex = next.findIndex(
       (entry) => entry.instanceId === instanceId,
@@ -249,8 +233,62 @@ const CharacterInventoryEquipment = ({
       return;
     }
 
-    next[targetIndex] = {
-      ...next[targetIndex],
+    /*
+     * Equipping always represents one physical item.
+     *
+     * Older/imported inventories can still contain an equippable entry with a
+     * quantity greater than 1 (for example 2× Longsword). Split that stack
+     * before equipping so one sword can be in Main Hand while the other remains
+     * available to equip in Off Hand.
+     */
+    const targetQuantity = Math.max(1, next[targetIndex].quantity ?? 1);
+
+    if (targetQuantity > 1) {
+      const remainder: CharacterEquipmentEntry = {
+        ...unequipEntry(next[targetIndex]),
+        instanceId: crypto.randomUUID(),
+        quantity: targetQuantity - 1,
+      };
+
+      next[targetIndex] = {
+        ...next[targetIndex],
+        quantity: 1,
+      };
+
+      next.splice(targetIndex + 1, 0, remainder);
+    }
+
+    /*
+     * Unequip any other item that currently occupies one of the requested
+     * slots. The target itself is skipped so changing its wield mode does not
+     * unnecessarily clear it first.
+     */
+    for (let i = 0; i < next.length; i += 1) {
+      const entry = next[i];
+
+      if (entry.instanceId === instanceId) {
+        continue;
+      }
+
+      const occupied = entry.equippedSlots ?? [];
+      const conflicts = occupied.some((slot) => slotsToOccupy.includes(slot));
+
+      if (conflicts) {
+        next[i] = unequipEntry(entry);
+      }
+    }
+
+    const finalTargetIndex = next.findIndex(
+      (entry) => entry.instanceId === instanceId,
+    );
+
+    if (finalTargetIndex < 0) {
+      return;
+    }
+
+    next[finalTargetIndex] = {
+      ...next[finalTargetIndex],
+      quantity: 1,
       equipped: true,
       equippedSlots: slotsToOccupy,
       ...(mode ? { wieldMode: mode } : {}),
@@ -490,7 +528,11 @@ const InventoryRow = ({
 }: {
   row: InventoryDisplayRow;
 
-  onEquip: (instanceId: string, rulesItemId: string, mode?: WieldMode) => void;
+  onEquip: (
+    instanceId: string,
+    item: NonNullable<InventoryDisplayRow["resolvedItem"]>,
+    mode?: WieldMode,
+  ) => void;
 
   onAdjustQuantity: (row: InventoryDisplayRow, delta: number) => void;
 
@@ -498,15 +540,11 @@ const InventoryRow = ({
 }) => {
   const { entry, resolvedItem, totalQuantity } = row;
 
-  const rulesItemId = getRulesItemId(entry);
-
   const displayId = getEntryDisplayId(entry);
 
-  const isEquippable =
-    Boolean(resolvedItem?.equippable) ||
-    (rulesItemId ? isItemEquippable(rulesItemId) : false);
+  const isEquippable = isItemEquippable(resolvedItem);
 
-  const actions = rulesItemId ? getEquipActionsForItem(rulesItemId) : [];
+  const actions = getEquipActionsForItem(resolvedItem);
 
   const itemName = resolvedItem?.name ?? entry.name ?? formatLabel(displayId);
 
@@ -597,8 +635,8 @@ const InventoryRow = ({
                 key={`${entry.instanceId}-${action.label}`}
                 type="button"
                 onClick={() => {
-                  if (rulesItemId) {
-                    onEquip(entry.instanceId, rulesItemId, action.mode);
+                  if (resolvedItem) {
+                    onEquip(entry.instanceId, resolvedItem, action.mode);
                   }
                 }}
                 className="rounded-md border border-white/[0.08] bg-black/20 px-2 py-1 text-[9px] font-semibold text-zinc-300 transition hover:border-white/15 hover:text-zinc-200"

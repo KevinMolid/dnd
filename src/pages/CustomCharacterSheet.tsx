@@ -482,7 +482,21 @@ const CustomCharacterSheet = ({
         return null;
       }
 
-      const damage = item.weapon.damage;
+      const equippedSlots = entry.equippedSlots ?? [];
+
+      const wieldMode = entry.wieldMode;
+
+      const isTwoHanded =
+        wieldMode === "two-handed" ||
+        (equippedSlots.includes("main-hand") &&
+          equippedSlots.includes("off-hand")) ||
+        (equippedSlots.includes("ranged-main-hand") &&
+          equippedSlots.includes("ranged-off-hand"));
+
+      const damage =
+        isTwoHanded && item.weapon.versatileDamage
+          ? item.weapon.versatileDamage
+          : item.weapon.damage;
 
       const ability = getWeaponAttackAbility({
         item,
@@ -498,27 +512,39 @@ const CustomCharacterSheet = ({
         proficiencies: customProficiencies?.weapons ?? [],
       });
 
-      const attackBonus = abilityModifier + (proficient ? proficiencyBonus : 0);
+      /*
+       * Resolved items can carry bonuses from both the item definition and the
+       * individual equipment entry. Include both so +1/+2/+3 and custom magic
+       * weapons affect attack and damage correctly.
+       */
+      const weaponAttackBonus =
+        (item.attackBonus ?? 0) + (entry.attackBonus ?? 0);
+
+      const weaponDamageBonus =
+        (item.damageBonus ?? 0) + (entry.damageBonus ?? 0);
+
+      const attackBonus =
+        abilityModifier +
+        (proficient ? proficiencyBonus : 0) +
+        weaponAttackBonus;
+
+      /*
+       * This is the weapon's ordinary attack profile. Being equipped in the
+       * Off Hand slot does not itself turn an attack into the special extra
+       * attack granted by the Light property.
+       */
+      const damageModifier = abilityModifier + weaponDamageBonus;
 
       const damageText =
-        abilityModifier === 0
+        damageModifier === 0
           ? `${damage.dice.count}d${damage.dice.die} ${damage.damageType}`
           : `${damage.dice.count}d${damage.dice.die}${
-              abilityModifier > 0 ? "+" : ""
-            }${abilityModifier} ${damage.damageType}`;
+              damageModifier > 0 ? "+" : ""
+            }${damageModifier} ${damage.damageType}`;
 
       const properties = getWeaponProperties(item);
 
       const normalizedProperties = properties.map(normalize);
-
-      const equippedSlots = entry.equippedSlots ?? [];
-
-      const wieldMode = entry.wieldMode;
-
-      const isTwoHanded =
-        wieldMode === "two-handed" ||
-        (equippedSlots.includes("main-hand") &&
-          equippedSlots.includes("off-hand"));
 
       const isOffHand =
         !isTwoHanded &&

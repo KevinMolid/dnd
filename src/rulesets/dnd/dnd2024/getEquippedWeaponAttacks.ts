@@ -62,27 +62,11 @@ const isWeaponEquipped = (entry: CharacterEquipmentEntry) => {
   return equippedSlots.some((slot) => WEAPON_EQUIP_SLOTS.includes(slot));
 };
 
-const isOffHandEquipped = (entry: CharacterEquipmentEntry) => {
-  const equippedSlots = entry.equippedSlots ?? [];
+const isOffHandEquipped = (entry: CharacterEquipmentEntry) =>
+  entry.wieldMode === "off-hand";
 
-  return (
-    entry.wieldMode === "off-hand" ||
-    equippedSlots.includes("off-hand") ||
-    equippedSlots.includes("ranged-off-hand")
-  );
-};
-
-const isTwoHandedEquipped = (entry: CharacterEquipmentEntry) => {
-  const equippedSlots = entry.equippedSlots ?? [];
-
-  return (
-    entry.wieldMode === "two-handed" ||
-    (equippedSlots.includes("main-hand") &&
-      equippedSlots.includes("off-hand")) ||
-    (equippedSlots.includes("ranged-main-hand") &&
-      equippedSlots.includes("ranged-off-hand"))
-  );
-};
+const isTwoHandedEquipped = (entry: CharacterEquipmentEntry) =>
+  entry.wieldMode === "two-handed";
 
 const getAttackAbility = ({
   weapon,
@@ -205,9 +189,7 @@ export const getEquippedWeaponAttacks = ({
         ? true
         : (proficientWeaponIds?.includes(rulesItemId) ?? true);
 
-    const isOffHand =
-      isOffHandEquipped(entry) &&
-      (hasProperty(weapon, "light") || entry.wieldMode === "off-hand");
+    const isOffHand = isOffHandEquipped(entry);
 
     const magicAttackBonus =
       (item.attackBonus ?? 0) + (entry.attackBonus ?? 0);
@@ -229,10 +211,12 @@ export const getEquippedWeaponAttacks = ({
         (proficient ? proficiencyBonus : 0) +
         magicAttackBonus;
 
-      const includeAbilityModInDamage = !isOffHand;
-
-      const damageModifier =
-        (includeAbilityModInDamage ? abilityMod : 0) + magicDamageBonus;
+      /*
+       * Wielding a weapon in the off hand does not by itself remove the
+       * ability modifier from its damage. Rules for bonus attacks / Light
+       * weapons should be applied by the action system, not by equipment state.
+       */
+      const damageModifier = abilityMod + magicDamageBonus;
 
       const isThrownAttack = mode.key === "thrown";
       const isRangedAttack = isRangedWeapon(weapon);
