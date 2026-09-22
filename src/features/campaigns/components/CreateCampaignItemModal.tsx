@@ -4,6 +4,7 @@ import type {
   AbilityKey,
   AmmunitionType,
   ArmorCategory,
+  CampaignItem,
   CampaignItemOverride,
   Currency,
   DamageType,
@@ -30,6 +31,10 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (payload: CreateCampaignItemPayload) => Promise<void> | void;
+  editItem?: {
+    campaignItem: CampaignItem;
+    resolvedItem: Item;
+  } | null;
 };
 
 const categories: ItemCategory[] = [
@@ -160,7 +165,12 @@ const Toggle = ({
   </button>
 );
 
-const CreateCampaignItemModal = ({ isOpen, onClose, onConfirm }: Props) => {
+const CreateCampaignItemModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  editItem = null,
+}: Props) => {
   const [mode, setMode] = useState<"new" | "copy">("new");
   const [search, setSearch] = useState("");
   const [baseId, setBaseId] = useState("");
@@ -227,30 +237,114 @@ const CreateCampaignItemModal = ({ isOpen, onClose, onConfirm }: Props) => {
 
   useEffect(() => {
     if (!isOpen) return;
-    setMode("new");
+
+    const item = editItem?.resolvedItem ?? null;
+    const campaignItem = editItem?.campaignItem ?? null;
+
+    setMode(campaignItem?.baseItemId ? "copy" : "new");
     setSearch("");
-    setBaseId("");
-    setName("");
-    setCategory("gear");
-    setDescription("");
-    setShortDescription("");
-    setGmNotes("");
-    setImageUrl("");
-    setWeight("");
-    setCost("");
-    setStackable(false);
-    setMagical(false);
-    setEquippable(false);
-    setSelectedSlots([]);
-    setSelectedWieldModes([]);
-    setAttackBonus("");
-    setDamageBonus("");
-    setAcBonus("");
+    setBaseId(campaignItem?.baseItemId ?? "");
+
+    setName(item?.name ?? "");
+    setCategory(item?.category ?? "gear");
+    setDescription(item?.description ?? "");
+    setShortDescription(campaignItem?.shortDescription ?? "");
+    setGmNotes(campaignItem?.gmNotes ?? "");
+    setImageUrl(campaignItem?.imageUrl ?? "");
+
+    setWeight(item?.weight?.toString() ?? "");
+
+    const firstCost = Object.entries(item?.cost ?? {})[0];
+    if (firstCost) {
+      setCostCurrency(firstCost[0] as Currency);
+      setCost(String(firstCost[1]));
+    } else {
+      setCostCurrency("gp");
+      setCost("");
+    }
+
+    setStackable(item?.stackable ?? false);
+    setMagical(item?.magical ?? false);
+    setEquippable(Boolean(item?.equippable));
+    setSelectedSlots(item?.equippable?.slots ?? []);
+    setSelectedWieldModes(item?.equippable?.allowedWieldModes ?? []);
+
+    setAttackBonus(
+      typeof item?.attackBonus === "number" ? String(item.attackBonus) : "",
+    );
+    setDamageBonus(
+      typeof item?.damageBonus === "number" ? String(item.damageBonus) : "",
+    );
+    setAcBonus(typeof item?.acBonus === "number" ? String(item.acBonus) : "");
+
+    setWeaponKind(item?.weapon?.weaponKind ?? "simple-melee");
+    setDamageCount(
+      item?.weapon?.damage?.dice?.count
+        ? String(item.weapon.damage.dice.count)
+        : "1",
+    );
+    setDamageDie(
+      (item?.weapon?.damage?.dice?.die ?? 6) as 1 | 4 | 6 | 8 | 10 | 12,
+    );
+    setDamageType(item?.weapon?.damage?.damageType ?? "slashing");
+    setProperties(item?.weapon?.properties ?? []);
+    setRangeNormal(
+      typeof item?.weapon?.range?.normal === "number"
+        ? String(item.weapon.range.normal)
+        : "",
+    );
+    setRangeLong(
+      typeof item?.weapon?.range?.long === "number"
+        ? String(item.weapon.range.long)
+        : "",
+    );
+    setVersatileDie(
+      (item?.weapon?.versatileDamage?.dice?.die ?? 8) as
+        | 1
+        | 4
+        | 6
+        | 8
+        | 10
+        | 12,
+    );
+    setMastery(item?.weapon?.mastery ?? "");
+    setAmmunitionType(item?.weapon?.ammunitionType ?? "");
+
+    setArmorCategory(item?.armor?.armorCategory ?? "light");
+    setBaseAc(
+      typeof item?.armor?.baseAc === "number"
+        ? String(item.armor.baseAc)
+        : "11",
+    );
+    setDexCap(
+      typeof item?.armor?.dexCap === "number" ? String(item.armor.dexCap) : "",
+    );
+    setStealthDisadvantage(item?.armor?.stealthDisadvantage ?? false);
+    setStrengthRequirement(
+      typeof item?.armor?.strengthRequirement === "number"
+        ? String(item.armor.strengthRequirement)
+        : "",
+    );
+
+    setToolAbility(item?.tool?.ability ?? "dex");
+    setContainerWeight(
+      typeof item?.container?.capacityWeight === "number"
+        ? String(item.container.capacityWeight)
+        : "",
+    );
+    setContainerVolume(item?.container?.capacityVolume ?? "");
+    setBundleSize(
+      typeof item?.ammunition?.bundleSize === "number"
+        ? String(item.ammunition.bundleSize)
+        : "1",
+    );
+    setStorageItemId(item?.ammunition?.storageItemId ?? "");
+
     setSubmitting(false);
-  }, [isOpen]);
+  }, [isOpen, editItem]);
 
   useEffect(() => {
-    if (mode !== "copy" || !selectedBase) return;
+    if (editItem || mode !== "copy" || !selectedBase) return;
     setName(selectedBase.name);
     setCategory(selectedBase.category);
     setDescription(selectedBase.description ?? "");
@@ -264,7 +358,7 @@ const CreateCampaignItemModal = ({ isOpen, onClose, onConfirm }: Props) => {
     } else {
       setCost("");
     }
-  }, [mode, selectedBase]);
+  }, [editItem, mode, selectedBase]);
 
   if (!isOpen) return null;
 
@@ -281,7 +375,9 @@ const CreateCampaignItemModal = ({ isOpen, onClose, onConfirm }: Props) => {
 
   const buildItem = (): Item => {
     const item: Item = {
-      id: slugify(name) || `custom-item-${Date.now()}`,
+      id:
+        editItem?.campaignItem.customItem?.id ??
+        (slugify(name) || `custom-item-${Date.now()}`),
       name: name.trim(),
       category,
       ...(description.trim() ? { description: description.trim() } : {}),
@@ -696,9 +792,13 @@ const CreateCampaignItemModal = ({ isOpen, onClose, onConfirm }: Props) => {
       <div className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 text-zinc-100 shadow-2xl">
         <header className="flex shrink-0 items-center justify-between border-b border-white/10 px-5 py-4">
           <div>
-            <h2 className="text-lg font-bold text-white">Create item</h2>
+            <h2 className="text-lg font-bold text-white">
+              {editItem ? "Edit item" : "Create item"}
+            </h2>
             <p className="mt-0.5 text-xs text-zinc-500">
-              Create from scratch or use an existing item as a starting point.
+              {editItem
+                ? "Update this campaign item."
+                : "Create from scratch or use an existing item as a starting point."}
             </p>
           </div>
           <button
@@ -710,27 +810,29 @@ const CreateCampaignItemModal = ({ isOpen, onClose, onConfirm }: Props) => {
           </button>
         </header>
 
-        <div className="shrink-0 border-b border-white/10 px-5 py-3">
-          <div className="inline-flex rounded-xl border border-white/10 bg-zinc-950 p-1">
-            {(["new", "copy"] as const).map((value) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setMode(value)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                  mode === value
-                    ? "bg-white/10 text-white"
-                    : "text-zinc-500 hover:text-zinc-300"
-                }`}
-              >
-                {value === "new" ? "Create new" : "Copy existing"}
-              </button>
-            ))}
+        {!editItem && (
+          <div className="shrink-0 border-b border-white/10 px-5 py-3">
+            <div className="inline-flex rounded-xl border border-white/10 bg-zinc-950 p-1">
+              {(["new", "copy"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMode(value)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    mode === value
+                      ? "bg-white/10 text-white"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  {value === "new" ? "Create new" : "Copy existing"}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
-          {mode === "copy" && (
+          {mode === "copy" && !editItem && (
             <section className="border-b border-white/10 p-5">
               <SectionTitle>Base item</SectionTitle>
               <input
@@ -958,11 +1060,13 @@ const CreateCampaignItemModal = ({ isOpen, onClose, onConfirm }: Props) => {
 
         <footer className="flex shrink-0 items-center justify-between gap-3 border-t border-white/10 px-5 py-4">
           <p className="text-xs text-zinc-600">
-            {mode === "copy"
-              ? selectedBase
-                ? `Based on ${selectedBase.name}`
-                : "Choose a base item"
-              : "New campaign item"}
+            {editItem
+              ? "Editing campaign item"
+              : mode === "copy"
+                ? selectedBase
+                  ? `Based on ${selectedBase.name}`
+                  : "Choose a base item"
+                : "New campaign item"}
           </p>
           <div className="flex gap-2">
             <button
@@ -980,7 +1084,13 @@ const CreateCampaignItemModal = ({ isOpen, onClose, onConfirm }: Props) => {
               }
               className="rounded-xl bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {submitting ? "Creating..." : "Create item"}
+              {submitting
+                ? editItem
+                  ? "Saving..."
+                  : "Creating..."
+                : editItem
+                  ? "Save changes"
+                  : "Create item"}
             </button>
           </div>
         </footer>

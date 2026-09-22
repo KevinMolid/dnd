@@ -3,10 +3,13 @@ import { Link, useParams } from "react-router-dom";
 import {
   addDoc,
   collection,
+  deleteField,
+  doc,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
 } from "firebase/firestore";
 
 import { db } from "../firebase";
@@ -276,6 +279,7 @@ const ItemsPage = () => {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<ItemListEntry | null>(null);
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
@@ -437,6 +441,60 @@ const ItemsPage = () => {
 
   const selectedEntry =
     filteredEntries.find((entry) => entry.key === selectedKey) ?? null;
+
+  const handleUpdateCampaignItem = async (payload: {
+    baseItemId?: string;
+    customItem?: Item;
+    name?: string;
+    shortDescription?: string;
+    description?: string;
+    gmNotes?: string;
+    imageUrl?: string;
+    overrides?: CampaignItemOverride;
+  }) => {
+    if (!campaignId || !editingEntry?.campaignItem) {
+      throw new Error("Missing campaign item.");
+    }
+
+    if (!payload.baseItemId && !payload.customItem) {
+      throw new Error(
+        "An item must have either a base item or custom item data.",
+      );
+    }
+
+    setCreateError("");
+    setCreating(true);
+
+    try {
+      const campaignItemRef = doc(
+        db,
+        "campaigns",
+        campaignId,
+        "items",
+        editingEntry.campaignItem.id,
+      );
+
+      await updateDoc(campaignItemRef, {
+        baseItemId: payload.baseItemId ?? deleteField(),
+        customItem: payload.customItem ?? deleteField(),
+        name: payload.name ?? deleteField(),
+        shortDescription: payload.shortDescription ?? deleteField(),
+        description: payload.description ?? deleteField(),
+        gmNotes: payload.gmNotes ?? deleteField(),
+        imageUrl: payload.imageUrl ?? deleteField(),
+        overrides: payload.overrides ?? deleteField(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setEditingEntry(null);
+    } catch (error: any) {
+      console.error("Failed to update custom item:", error);
+      setCreateError(error?.message || "Failed to update custom item.");
+      throw error;
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const handleCreateCampaignItem = async (payload: {
     baseItemId?: string;
@@ -692,7 +750,17 @@ const ItemsPage = () => {
 
             <main className="min-w-0">
               {selectedEntry ? (
-                <ItemDetails entry={selectedEntry} />
+                <ItemDetails
+                  entry={selectedEntry}
+                  onEdit={
+                    selectedEntry.source === "campaign"
+                      ? () => {
+                          setCreateError("");
+                          setEditingEntry(selectedEntry);
+                        }
+                      : undefined
+                  }
+                />
               ) : (
                 <div className="flex min-h-[500px] items-center justify-center p-8 text-center">
                   <div>
@@ -717,11 +785,33 @@ const ItemsPage = () => {
         }}
         onConfirm={handleCreateCampaignItem}
       />
+
+      <CreateCampaignItemModal
+        isOpen={Boolean(editingEntry)}
+        editItem={
+          editingEntry?.campaignItem
+            ? {
+                campaignItem: editingEntry.campaignItem,
+                resolvedItem: editingEntry.item,
+              }
+            : null
+        }
+        onClose={() => {
+          if (!creating) setEditingEntry(null);
+        }}
+        onConfirm={handleUpdateCampaignItem}
+      />
     </>
   );
 };
 
-const ItemDetails = ({ entry }: { entry: ItemListEntry }) => {
+const ItemDetails = ({
+  entry,
+  onEdit,
+}: {
+  entry: ItemListEntry;
+  onEdit?: () => void;
+}) => {
   const itemRecord = entry.item as unknown as Record<string, unknown>;
   const campaignRecord = entry.campaignItem as
     | (CampaignItem & Record<string, unknown>)
@@ -755,6 +845,17 @@ const ItemDetails = ({ entry }: { entry: ItemListEntry }) => {
               <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
                 Campaign
               </span>
+            )}
+
+            {onEdit && (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="ml-auto inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-zinc-300 transition hover:border-white/15 hover:bg-white/[0.08] hover:text-white"
+              >
+                <i className="fa-solid fa-pen" />
+                Edit
+              </button>
             )}
           </div>
 
