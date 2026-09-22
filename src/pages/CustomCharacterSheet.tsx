@@ -47,6 +47,8 @@ import { getTraitCatalogEntries } from "../rulesets/dnd/dnd2024/data/traits/trai
 
 import { getXpProgressWithinLevel } from "../rulesets/dnd/dnd2024/xpProgression";
 
+import { getTwoWeaponCombatActions } from "../rulesets/dnd/dnd2024/getTwoWeaponCombatActions";
+
 import {
   createEmptyCustomSkills,
   createEmptySpellSlots,
@@ -555,6 +557,10 @@ const CustomCharacterSheet = ({
       return {
         id: entry.instanceId,
 
+        itemId:
+          item.id ??
+          (entry.source === "campaign" ? entry.campaignItemId : entry.itemId),
+
         name: item.name ?? entry.name ?? "Weapon",
 
         attackBonus,
@@ -562,6 +568,8 @@ const CustomCharacterSheet = ({
         damage: damageText,
 
         properties,
+
+        mastery: item.weapon.mastery,
 
         ability,
 
@@ -576,6 +584,13 @@ const CustomCharacterSheet = ({
     })
     .filter((attack): attack is NonNullable<typeof attack> => Boolean(attack));
 
+  /*
+   * Every held weapon remains an ordinary Attack-action option. "Off Hand"
+   * describes where the weapon is held; it does not reduce an ordinary
+   * attack's attack or damage modifiers.
+   *
+   * Light/Nick/Dual Wielder EXTRA attacks are generated separately below.
+   */
   const customAttacks = [unarmedAttack, ...weaponAttacks];
 
   /* =========================================================
@@ -705,6 +720,40 @@ const CustomCharacterSheet = ({
   const featureBonusActions = collectedFeatureActions.bonusActions;
 
   const featureReactions = collectedFeatureActions.reactions;
+
+  const twoWeaponCombatActions = useMemo(
+    () =>
+      getTwoWeaponCombatActions({
+        attacks: weaponAttacks,
+        abilityScores,
+        featureNames: allFeatures.map((feature) => feature.name),
+      }),
+    [weaponAttacks, abilityScores, allFeatures],
+  );
+
+  const characterActions = [
+    ...featureActions,
+    ...twoWeaponCombatActions.actions,
+  ];
+
+  const characterBonusActions = [
+    ...featureBonusActions,
+    ...twoWeaponCombatActions.bonusActions,
+  ];
+
+  const equippedMeleeWeaponsForNotice = weaponAttacks.filter(
+    (attack) => !attack.isThrown && !attack.isTwoHanded,
+  );
+
+  const twoWeaponNotice =
+    twoWeaponCombatActions.notice ??
+    (equippedMeleeWeaponsForNotice.length >= 2
+      ? {
+          title: "Two weapons equipped",
+          description:
+            "Either equipped weapon can be used for an ordinary attack with its full attack and damage modifiers. The OFF HAND label only describes where the weapon is held; it does not reduce a normal attack. An additional attack is available only when a rule such as Light, Nick, or Dual Wielder grants one.",
+        }
+      : undefined);
 
   /* =========================================================
        FEATURE GROUPS
@@ -982,6 +1031,7 @@ const CustomCharacterSheet = ({
           playPanel={
             <OverviewDashboard
               attacks={customAttacks}
+              twoWeaponNotice={twoWeaponNotice}
               spells={spellcasting.enabled ? quickSpells : []}
               spellcasting={
                 spellcasting.enabled
@@ -1000,8 +1050,8 @@ const CustomCharacterSheet = ({
               onRemoveSpell={
                 spellcasting.enabled ? handleRemoveSpell : undefined
               }
-              actions={featureActions}
-              bonusActions={featureBonusActions}
+              actions={characterActions}
+              bonusActions={characterBonusActions}
               reactions={featureReactions}
             />
           }

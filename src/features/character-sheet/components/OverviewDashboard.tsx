@@ -119,6 +119,11 @@ type OverviewDashboardProps = {
   reactions?: OverviewAction[];
 
   combatOptions?: OverviewAction[];
+
+  twoWeaponNotice?: {
+    title: string;
+    description: string;
+  };
 };
 
 type AttackType = "melee" | "thrown" | "ranged" | "special";
@@ -273,6 +278,8 @@ const OverviewDashboard = ({
   reactions = [],
 
   combatOptions = [],
+
+  twoWeaponNotice,
 }: OverviewDashboardProps) => {
   const { characterId } = useParams();
   const [activePlayTab, setActivePlayTab] = useState<PlayTab>("attacks");
@@ -349,7 +356,7 @@ const OverviewDashboard = ({
 
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
         {activePlayTab === "attacks" ? (
-          <AttacksPanel attacks={attacks} />
+          <AttacksPanel attacks={attacks} twoWeaponNotice={twoWeaponNotice} />
         ) : null}
 
         {activePlayTab === "spells" ? (
@@ -379,7 +386,16 @@ const OverviewDashboard = ({
    ATTACKS
 ========================================================= */
 
-const AttacksPanel = ({ attacks }: { attacks: OverviewAttack[] }) => {
+const AttacksPanel = ({
+  attacks,
+  twoWeaponNotice,
+}: {
+  attacks: OverviewAttack[];
+  twoWeaponNotice?: {
+    title: string;
+    description: string;
+  };
+}) => {
   const sortedAttacks = useMemo(
     () =>
       attacks
@@ -411,6 +427,26 @@ const AttacksPanel = ({ attacks }: { attacks: OverviewAttack[] }) => {
       ) : (
         <EmptyText>No attacks available.</EmptyText>
       )}
+
+      {twoWeaponNotice ? (
+        <div className="mt-4 rounded-lg border border-sky-400/15 bg-sky-400/[0.05] px-3 py-2.5">
+          <div className="flex gap-2.5">
+            <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-sky-300/40 text-[9px] font-bold text-sky-300">
+              i
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold text-sky-200">
+                {twoWeaponNotice.title}
+              </p>
+
+              <p className="mt-1 text-[10px] leading-4 text-zinc-400">
+                {twoWeaponNotice.description}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </PanelSection>
   );
 };

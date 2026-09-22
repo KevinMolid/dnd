@@ -43,6 +43,8 @@ import { abilityFullLabels } from "../features/character-sheet/utils/characterSh
 
 import { formatLabel } from "../features/character-sheet/utils/characterSheetHelpers";
 
+import { getTwoWeaponCombatActions } from "../rulesets/dnd/dnd2024/getTwoWeaponCombatActions";
+
 const CharacterSheet = () => {
   const { characterId } = useParams();
 
@@ -241,6 +243,8 @@ const CharacterSheet = () => {
   const weaponAttacks = derived.equippedWeaponAttacks.map((attack) => ({
     id: attack.instanceId,
 
+    itemId: attack.itemId,
+
     name: attack.name,
 
     attackBonus: attack.attackBonus,
@@ -331,6 +335,13 @@ const CharacterSheet = () => {
         ]
       : [];
 
+  /*
+   * Every held weapon remains an ordinary Attack-action option. "Off Hand"
+   * describes where the weapon is held; it does not reduce an ordinary
+   * attack's attack or damage modifiers.
+   *
+   * Light/Nick/Dual Wielder EXTRA attacks are generated separately below.
+   */
   const attacks = [unarmedAttack, ...weaponAttacks, ...specialAttacks];
 
   const derivedDefenses = derived.resistances.map(
@@ -398,9 +409,37 @@ const CharacterSheet = () => {
 
   const characterReactions = collectedFeatureActions.reactions;
 
+  const twoWeaponCombatActions = getTwoWeaponCombatActions({
+    attacks: weaponAttacks,
+    abilityScores: derived.finalAbilityScores,
+    featureNames: features.map((feature) => feature.name),
+    masteredWeaponIds: character.derived?.weaponMasteries ?? [],
+  });
+
+  const playActions = [...characterActions, ...twoWeaponCombatActions.actions];
+
+  const playBonusActions = [
+    ...characterBonusActions,
+    ...twoWeaponCombatActions.bonusActions,
+  ];
+
+  const equippedMeleeWeaponsForNotice = weaponAttacks.filter(
+    (attack) => !attack.isThrown && !attack.isTwoHanded,
+  );
+
+  const twoWeaponNotice =
+    twoWeaponCombatActions.notice ??
+    (equippedMeleeWeaponsForNotice.length >= 2
+      ? {
+          title: "Two weapons equipped",
+          description:
+            "Either equipped weapon can be used for an ordinary attack with its full attack and damage modifiers. The OFF HAND label only describes where the weapon is held; it does not reduce a normal attack. An additional attack is available only when a rule such as Light, Nick, or Dual Wielder grants one.",
+        }
+      : undefined);
+
   const activatedFeatureNames = new Set(
-    [...characterActions, ...characterBonusActions, ...characterReactions].map(
-      (item) => item.name.toLowerCase(),
+    [...playActions, ...playBonusActions, ...characterReactions].map((item) =>
+      item.name.toLowerCase(),
     ),
   );
 
@@ -703,6 +742,7 @@ const CharacterSheet = () => {
           playPanel={
             <OverviewDashboard
               attacks={attacks}
+              twoWeaponNotice={twoWeaponNotice}
               spells={quickSpells}
               spellcasting={{
                 abilityLabel: derived.spellcastingAbility
@@ -718,8 +758,8 @@ const CharacterSheet = () => {
               onSpellSlotChange={handleSetSpellSlotRemaining}
               onAddSpell={handleAddSpell}
               onRemoveSpell={handleRemoveSpell}
-              actions={characterActions}
-              bonusActions={characterBonusActions}
+              actions={playActions}
+              bonusActions={playBonusActions}
               reactions={characterReactions}
               combatOptions={combatOptions}
             />
