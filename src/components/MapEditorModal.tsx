@@ -188,7 +188,7 @@ const EntityPicker = ({
         {label.replace(/^Add /, "")}
       </button>
       {open ? (
-        <div className="absolute right-0 top-full z-50 mt-2 w-[340px] max-w-[70vw] rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
+        <div className="relative z-50 mt-2 w-full rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
           <input
             autoFocus
             value={search}
@@ -530,7 +530,7 @@ const CollapsibleSection = ({
 }) => (
   <details
     open={defaultOpen}
-    className="group overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
+    className="group overflow-visible rounded-xl border border-white/10 bg-white/[0.03]"
   >
     <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/[0.04] [&::-webkit-details-marker]:hidden">
       <i className="fa-solid fa-chevron-right text-[10px] text-zinc-500 transition-transform group-open:rotate-90" />
