@@ -351,6 +351,7 @@ export function NotesWorkspaceModule({
     editorProps: {
       attributes: {
         class: "workspace-note-editor",
+        spellcheck: "false",
       },
     },
     onUpdate: ({ editor: currentEditor }) => {

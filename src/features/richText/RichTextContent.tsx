@@ -36,6 +36,7 @@ export default function RichTextContent({ value }: RichTextContentProps) {
     editorProps: {
       attributes: {
         class: "workspace-note-editor outline-none",
+        spellcheck: "false",
       },
     },
   });

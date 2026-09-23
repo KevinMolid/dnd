@@ -121,6 +121,7 @@ const PlayerNotesPanel = ({
     editorProps: {
       attributes: {
         class: "workspace-note-editor min-h-full",
+        spellcheck: "false",
       },
     },
 

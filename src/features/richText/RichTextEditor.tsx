@@ -69,6 +69,7 @@ export default function RichTextEditor({
       attributes: {
         class: `workspace-note-editor ${minHeightClassName} outline-none`,
         "data-placeholder": placeholder,
+        spellcheck: "false",
       },
     },
     onUpdate: ({ editor: currentEditor }) => {
