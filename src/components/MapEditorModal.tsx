@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import RichTextEditor from "../features/richText/RichTextEditor";
+import NumberStepper from "./NumberStepper";
 import useMonsterLibrary from "../hooks/useMonsterLibrary";
 import { allItems } from "../rulesets/dnd/dnd2024/data/items";
 import type { CampaignItem } from "../rulesets/dnd/dnd2024/types";
@@ -145,14 +146,12 @@ const QuantityInput = ({
   value: number;
   onChange: (value: number) => void;
 }) => (
-  <input
-    type="number"
-    min={1}
+  <NumberStepper
     value={value}
-    onChange={(event) =>
-      onChange(Math.max(1, Math.floor(Number(event.target.value) || 1)))
-    }
-    className="w-16 rounded-lg border border-white/10 bg-black/25 px-2 py-1.5 text-center text-sm text-white outline-none focus:border-emerald-500/40"
+    min={1}
+    onChange={onChange}
+    ariaLabel="Quantity"
+    size="default"
   />
 );
 
@@ -568,17 +567,18 @@ const EncounterWeightsEditor = ({
       ).map(([key, label]) => (
         <label key={key}>
           <span className="mb-1 block text-xs text-white/50">{label}</span>
-          <input
-            type="number"
-            min={0}
+          <NumberStepper
             value={value[key]}
-            onChange={(e) =>
+            min={0}
+            onChange={(nextValue) =>
               onChange({
                 ...value,
-                [key]: Math.max(0, Number(e.target.value) || 0),
+                [key]: nextValue,
               })
             }
-            className="w-full rounded-lg border border-white/10 bg-zinc-900 px-2.5 py-2 text-sm text-white outline-none"
+            ariaLabel={`${label} encounter weight`}
+            width="full"
+            size="default"
           />
         </label>
       ))}
@@ -1889,19 +1889,17 @@ const MapEditorModal = ({
                                     <label className={labelClass}>
                                       Die sides
                                     </label>
-                                    <input
-                                      type="number"
-                                      min={2}
+                                    <NumberStepper
                                       value={effect.diceSides}
-                                      onChange={(e) =>
+                                      min={2}
+                                      onChange={(diceSides) =>
                                         updateEnvironmentEffect(effect.id, {
-                                          diceSides: Math.max(
-                                            2,
-                                            Number(e.target.value) || 2,
-                                          ),
+                                          diceSides,
                                         })
                                       }
-                                      className={inputClass}
+                                      ariaLabel="Die sides"
+                                      width="full"
+                                      size="default"
                                     />
                                   </div>
 
@@ -1909,19 +1907,17 @@ const MapEditorModal = ({
                                     <label className={labelClass}>
                                       Max change / roll
                                     </label>
-                                    <input
-                                      type="number"
-                                      min={0}
+                                    <NumberStepper
                                       value={effect.maxChangePerRoll}
-                                      onChange={(e) =>
+                                      min={0}
+                                      onChange={(maxChangePerRoll) =>
                                         updateEnvironmentEffect(effect.id, {
-                                          maxChangePerRoll: Math.max(
-                                            0,
-                                            Number(e.target.value) || 0,
-                                          ),
+                                          maxChangePerRoll,
                                         })
                                       }
-                                      className={inputClass}
+                                      ariaLabel="Max change per roll"
+                                      width="full"
+                                      size="default"
                                     />
                                   </div>
                                 </div>
@@ -2007,29 +2003,20 @@ const MapEditorModal = ({
                                                 <label className="mb-1 block text-xs text-white/50">
                                                   Roll min
                                                 </label>
-                                                <input
-                                                  type="number"
+                                                <NumberStepper
+                                                  value={range?.min ?? 1}
                                                   min={1}
                                                   max={effect.diceSides}
-                                                  value={range?.min ?? 1}
-                                                  onChange={(e) =>
+                                                  onChange={(min) =>
                                                     updateRollRange(
                                                       effect.id,
                                                       level.value,
-                                                      {
-                                                        min: Math.max(
-                                                          1,
-                                                          Math.min(
-                                                            effect.diceSides,
-                                                            Number(
-                                                              e.target.value,
-                                                            ) || 1,
-                                                          ),
-                                                        ),
-                                                      },
+                                                      { min },
                                                     )
                                                   }
-                                                  className={inputClass}
+                                                  ariaLabel="Roll minimum"
+                                                  width="full"
+                                                  size="default"
                                                 />
                                               </div>
 
@@ -2037,32 +2024,23 @@ const MapEditorModal = ({
                                                 <label className="mb-1 block text-xs text-white/50">
                                                   Roll max
                                                 </label>
-                                                <input
-                                                  type="number"
-                                                  min={1}
-                                                  max={effect.diceSides}
+                                                <NumberStepper
                                                   value={
                                                     range?.max ??
                                                     effect.diceSides
                                                   }
-                                                  onChange={(e) =>
+                                                  min={1}
+                                                  max={effect.diceSides}
+                                                  onChange={(max) =>
                                                     updateRollRange(
                                                       effect.id,
                                                       level.value,
-                                                      {
-                                                        max: Math.max(
-                                                          1,
-                                                          Math.min(
-                                                            effect.diceSides,
-                                                            Number(
-                                                              e.target.value,
-                                                            ) || 1,
-                                                          ),
-                                                        ),
-                                                      },
+                                                      { max },
                                                     )
                                                   }
-                                                  className={inputClass}
+                                                  ariaLabel="Roll maximum"
+                                                  width="full"
+                                                  size="default"
                                                 />
                                               </div>
                                             </div>
