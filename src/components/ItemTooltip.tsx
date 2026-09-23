@@ -19,6 +19,7 @@ type ItemTooltipProps = {
 };
 
 const HIDE_DELAY_MS = 140;
+const DESKTOP_MEDIA_QUERY = "(min-width: 640px)";
 
 const formatLabel = (value: string) =>
   value
@@ -112,6 +113,12 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
 
   const [pinned, setPinned] = useState(false);
 
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+      : true,
+  );
+
   const rootRef = useRef<HTMLDivElement | null>(null);
 
   const tooltipRef = useRef<HTMLDivElement | null>(null);
@@ -129,12 +136,20 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
   };
 
   const showTooltip = () => {
+    if (!isDesktop) {
+      return;
+    }
+
     clearHideTimer();
 
     setOpen(true);
   };
 
   const scheduleHide = () => {
+    if (!isDesktop) {
+      return;
+    }
+
     clearHideTimer();
 
     if (pinned) {
@@ -154,8 +169,14 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
     setOpen(false);
   };
 
-  const togglePinned = () => {
+  const handleTriggerClick = () => {
     clearHideTimer();
+
+    if (!isDesktop) {
+      setPinned(true);
+      setOpen(true);
+      return;
+    }
 
     setPinned((current) => {
       const next = !current;
@@ -167,14 +188,40 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
   };
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+      clearHideTimer();
+      setPinned(false);
+      setOpen(false);
+    };
+
+    setIsDesktop(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
     return () => {
+      mediaQuery.removeEventListener("change", handleChange);
       clearHideTimer();
     };
   }, []);
 
   useEffect(() => {
+    if (!open || isDesktop) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open, isDesktop]);
+
+  useEffect(() => {
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!open) {
+      if (!open || !isDesktop) {
         return;
       }
 
@@ -212,7 +259,7 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
 
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [open]);
+  }, [open, isDesktop]);
 
   const costLabel = useMemo(() => formatCost(item.cost), [item.cost]);
 
@@ -253,230 +300,245 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
         <div
           ref={tooltipRef}
           className="
-              workspace-scrollbar
-              fixed bottom-3 left-3 right-3 z-[100]
-              max-h-[55vh]
-              overflow-y-auto
-              rounded-2xl
-              border border-white/10
-              bg-zinc-950/95
-              p-3.5
-              text-left
-              shadow-2xl
-              backdrop-blur
-              sm:bottom-4
-              sm:left-auto
-              sm:right-4
-              sm:w-[330px]
-            "
-          role="tooltip"
-          onMouseEnter={showTooltip}
-          onMouseLeave={scheduleHide}
-        >
-          <div className="space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <h4 className="text-sm font-semibold text-white">
-                    {item.name}
-                  </h4>
+            workspace-scrollbar
+            fixed inset-0 z-[100]
+            overflow-y-auto
+            bg-zinc-950
+            text-left
 
-                  {isResolvedCampaignItem(item) && (
-                    <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-violet-300">
-                      Campaign Item
-                    </span>
+            sm:inset-auto
+            sm:bottom-4
+            sm:right-4
+            sm:max-h-[55vh]
+            sm:w-[330px]
+            sm:rounded-2xl
+            sm:border
+            sm:border-white/10
+            sm:bg-zinc-900/95
+            sm:shadow-2xl
+            sm:backdrop-blur
+          "
+          role={isDesktop ? "tooltip" : "dialog"}
+          aria-modal={!isDesktop ? true : undefined}
+          aria-label={!isDesktop ? `${item.name} item details` : undefined}
+          onMouseEnter={isDesktop ? showTooltip : undefined}
+          onMouseLeave={isDesktop ? scheduleHide : undefined}
+        >
+          <div className="mx-auto min-h-full w-full max-w-2xl p-4 sm:min-h-0 sm:max-w-none sm:p-3.5">
+            <div className="space-y-4 sm:space-y-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <h4 className="text-sm font-semibold text-white">
+                      {item.name}
+                    </h4>
+
+                    {isResolvedCampaignItem(item) && (
+                      <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-violet-300">
+                        Campaign Item
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                    {formatLabel(item.category)}
+                  </p>
+
+                  {isResolvedCampaignItem(item) && baseItem && (
+                    <p className="mt-1.5 text-[10px] text-zinc-500">
+                      Based on: {baseItem.name}
+                    </p>
                   )}
                 </div>
 
-                <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
-                  {formatLabel(item.category)}
-                </p>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {item.weapon?.mastery && (
+                    <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-violet-300">
+                      {formatLabel(item.weapon.mastery)}
+                    </span>
+                  )}
 
-                {isResolvedCampaignItem(item) && baseItem && (
-                  <p className="mt-1.5 text-[10px] text-zinc-500">
-                    Based on: {baseItem.name}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex shrink-0 items-center gap-1.5">
-                {item.weapon?.mastery && (
-                  <span className="rounded-full border border-violet-500/20 bg-violet-500/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-violet-300">
-                    {formatLabel(item.weapon.mastery)}
-                  </span>
-                )}
-
-                {pinned && (
-                  <span
-                    title="Pinned"
-                    className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-1 text-[9px] text-amber-300"
-                  >
-                    <i className="fa-solid fa-thumbtack" />
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {"shortDescription" in item && item.shortDescription && (
-              <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-2.5">
-                <p className="text-xs leading-5 text-violet-100">
-                  {item.shortDescription}
-                </p>
-              </div>
-            )}
-
-            {item.description && (
-              <p className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
-                {item.description}
-              </p>
-            )}
-
-            {"gmNotes" in item && item.gmNotes && (
-              <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5">
-                <p className="text-[9px] uppercase tracking-[0.14em] text-amber-400">
-                  GM Notes
-                </p>
-
-                <p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-amber-100">
-                  {item.gmNotes}
-                </p>
-              </div>
-            )}
-
-            <div className="flex flex-wrap gap-1.5">
-              {costLabel && (
-                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300">
-                  Cost: {costLabel}
-                </span>
-              )}
-
-              {typeof item.weight === "number" && (
-                <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300">
-                  {item.weight} lb.
-                </span>
-              )}
-
-              {item.magical && (
-                <span className="rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-2 py-1 text-[10px] text-fuchsia-300">
-                  Magical
-                </span>
-              )}
-
-              {typeof item.attackBonus === "number" &&
-                item.attackBonus !== 0 && (
-                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-300">
-                    Attack {item.attackBonus > 0 ? "+" : ""}
-                    {item.attackBonus}
-                  </span>
-                )}
-
-              {typeof item.damageBonus === "number" &&
-                item.damageBonus !== 0 && (
-                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-300">
-                    Damage {item.damageBonus > 0 ? "+" : ""}
-                    {item.damageBonus}
-                  </span>
-                )}
-
-              {typeof item.acBonus === "number" && item.acBonus !== 0 && (
-                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-300">
-                  AC {item.acBonus > 0 ? "+" : ""}
-                  {item.acBonus}
-                </span>
-              )}
-
-              {item.weapon && (
-                <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-300">
-                  {formatLabel(item.weapon.weaponKind)}
-                </span>
-              )}
-
-              {item.weapon?.properties?.map((property) => (
-                <span
-                  key={property}
-                  className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300"
-                >
-                  {formatLabel(property)}
-                </span>
-              ))}
-            </div>
-
-            {(damageLabel || rangeLabel || acLabel) && (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {damageLabel && (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
-                    <p className="text-[9px] uppercase tracking-[0.14em] text-zinc-500">
-                      Damage
-                    </p>
-
-                    <p className="mt-1 text-xs font-medium text-white">
-                      {damageLabel}
-                    </p>
-                  </div>
-                )}
-
-                {rangeLabel && (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
-                    <p className="text-[9px] uppercase tracking-[0.14em] text-zinc-500">
-                      Range
-                    </p>
-
-                    <p className="mt-1 text-xs font-medium text-white">
-                      {rangeLabel}
-                    </p>
-                  </div>
-                )}
-
-                {acLabel && (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 sm:col-span-2">
-                    <p className="text-[9px] uppercase tracking-[0.14em] text-zinc-500">
-                      Defense
-                    </p>
-
-                    <p className="mt-1 text-xs font-medium text-white">
-                      {acLabel}
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {contents.length > 0 && (
-              <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
-                <p className="mb-2 text-[9px] uppercase tracking-[0.14em] text-zinc-500">
-                  Contents
-                </p>
-
-                <div className="space-y-1">
-                  {contents.map((entry, index) => {
-                    const resolvedItem = entry.itemId
-                      ? itemsById[entry.itemId]
-                      : null;
-
-                    return (
-                      <div
-                        key={`${entry.itemId ?? entry.name}-${index}`}
-                        className="text-xs leading-5 text-zinc-300"
-                      >
-                        <span className="font-medium text-white">
-                          {entry.quantity} × {resolvedItem?.name ?? entry.name}
-                        </span>
-
-                        {entry.notes ? (
-                          <span className="text-zinc-500">
-                            {" "}
-                            • {entry.notes}
-                          </span>
-                        ) : null}
-                      </div>
-                    );
-                  })}
+                  {(!isDesktop || pinned) && (
+                    <button
+                      type="button"
+                      title="Close"
+                      aria-label={`Close ${item.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        closeTooltip();
+                      }}
+                      className="
+                      flex h-9 w-9 shrink-0 items-center justify-center
+                      rounded-lg border border-white/10 bg-white/[0.05]
+                      text-sm text-zinc-300 transition
+                      hover:border-white/20 hover:bg-white/10 hover:text-white
+                      sm:h-7 sm:w-7 sm:rounded-md sm:text-xs
+                    "
+                    >
+                      <i className="fa-solid fa-xmark" />
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
 
-            <div className="border-t border-white/10 pt-2 text-[9px] text-zinc-600">
-              Click the item to {pinned ? "unpin" : "pin"} this card.
+              {"shortDescription" in item && item.shortDescription && (
+                <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-2.5">
+                  <p className="text-xs leading-5 text-violet-100">
+                    {item.shortDescription}
+                  </p>
+                </div>
+              )}
+
+              {item.description && (
+                <p className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
+                  {item.description}
+                </p>
+              )}
+
+              {"gmNotes" in item && item.gmNotes && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-2.5">
+                  <p className="text-[9px] uppercase tracking-[0.14em] text-amber-400">
+                    GM Notes
+                  </p>
+
+                  <p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-amber-100">
+                    {item.gmNotes}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-1.5">
+                {costLabel && (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300">
+                    Cost: {costLabel}
+                  </span>
+                )}
+
+                {typeof item.weight === "number" && (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300">
+                    {item.weight} lb.
+                  </span>
+                )}
+
+                {item.magical && (
+                  <span className="rounded-full border border-fuchsia-500/20 bg-fuchsia-500/10 px-2 py-1 text-[10px] text-fuchsia-300">
+                    Magical
+                  </span>
+                )}
+
+                {typeof item.attackBonus === "number" &&
+                  item.attackBonus !== 0 && (
+                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-300">
+                      Attack {item.attackBonus > 0 ? "+" : ""}
+                      {item.attackBonus}
+                    </span>
+                  )}
+
+                {typeof item.damageBonus === "number" &&
+                  item.damageBonus !== 0 && (
+                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] text-emerald-300">
+                      Damage {item.damageBonus > 0 ? "+" : ""}
+                      {item.damageBonus}
+                    </span>
+                  )}
+
+                {typeof item.acBonus === "number" && item.acBonus !== 0 && (
+                  <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-300">
+                    AC {item.acBonus > 0 ? "+" : ""}
+                    {item.acBonus}
+                  </span>
+                )}
+
+                {item.weapon && (
+                  <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-2 py-1 text-[10px] text-sky-300">
+                    {formatLabel(item.weapon.weaponKind)}
+                  </span>
+                )}
+
+                {item.weapon?.properties?.map((property) => (
+                  <span
+                    key={property}
+                    className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-zinc-300"
+                  >
+                    {formatLabel(property)}
+                  </span>
+                ))}
+              </div>
+
+              {(damageLabel || rangeLabel || acLabel) && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {damageLabel && (
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
+                      <p className="text-[9px] uppercase tracking-[0.14em] text-zinc-500">
+                        Damage
+                      </p>
+
+                      <p className="mt-1 text-xs font-medium text-white">
+                        {damageLabel}
+                      </p>
+                    </div>
+                  )}
+
+                  {rangeLabel && (
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
+                      <p className="text-[9px] uppercase tracking-[0.14em] text-zinc-500">
+                        Range
+                      </p>
+
+                      <p className="mt-1 text-xs font-medium text-white">
+                        {rangeLabel}
+                      </p>
+                    </div>
+                  )}
+
+                  {acLabel && (
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-2.5 sm:col-span-2">
+                      <p className="text-[9px] uppercase tracking-[0.14em] text-zinc-500">
+                        Defense
+                      </p>
+
+                      <p className="mt-1 text-xs font-medium text-white">
+                        {acLabel}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {contents.length > 0 && (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-2.5">
+                  <p className="mb-2 text-[9px] uppercase tracking-[0.14em] text-zinc-500">
+                    Contents
+                  </p>
+
+                  <div className="space-y-1">
+                    {contents.map((entry, index) => {
+                      const resolvedItem = entry.itemId
+                        ? itemsById[entry.itemId]
+                        : null;
+
+                      return (
+                        <div
+                          key={`${entry.itemId ?? entry.name}-${index}`}
+                          className="text-xs leading-5 text-zinc-300"
+                        >
+                          <span className="font-medium text-white">
+                            {entry.quantity} ×{" "}
+                            {resolvedItem?.name ?? entry.name}
+                          </span>
+
+                          {entry.notes ? (
+                            <span className="text-zinc-500">
+                              {" "}
+                              • {entry.notes}
+                            </span>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>,
@@ -488,13 +550,13 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
     <div
       ref={rootRef}
       className={`inline-flex ${className}`}
-      onMouseEnter={showTooltip}
-      onMouseLeave={scheduleHide}
-      onFocus={showTooltip}
-      onBlur={scheduleHide}
+      onMouseEnter={isDesktop ? showTooltip : undefined}
+      onMouseLeave={isDesktop ? scheduleHide : undefined}
+      onFocus={isDesktop ? showTooltip : undefined}
+      onBlur={isDesktop ? scheduleHide : undefined}
     >
       <div
-        onClick={togglePinned}
+        onClick={handleTriggerClick}
         className="inline-flex items-center text-left"
         role="button"
         tabIndex={0}
@@ -503,7 +565,7 @@ const ItemTooltip = ({ item, children, className = "" }: ItemTooltipProps) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
 
-            togglePinned();
+            handleTriggerClick();
           }
 
           if (event.key === "Escape") {
