@@ -194,7 +194,7 @@ const inputClass =
   "rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
 
 const textAreaClass =
-  "rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
+  "workspace-scrollbar rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
 
 const sectionClass =
   "rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl";
