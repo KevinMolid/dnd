@@ -315,19 +315,6 @@ const CustomCharacterCreator = ({
     ...(initialCharacter?.abilityScores ?? {}),
   });
 
-  const [abilityScoreInputs, setAbilityScoreInputs] = useState<
-    Record<AbilityKey, string>
-  >(() => {
-    const initialScores = {
-      ...defaultAbilityScores,
-      ...(initialCharacter?.abilityScores ?? {}),
-    };
-
-    return Object.fromEntries(
-      abilityKeys.map((key) => [key, String(initialScores[key])]),
-    ) as Record<AbilityKey, string>;
-  });
-
   const [armorClassMode, setArmorClassMode] = useState<ArmorClassMode>(
     initialStats.armorClassMode ?? "automatic",
   );
@@ -496,39 +483,6 @@ const CustomCharacterCreator = ({
   );
 
   const resolvedArmorClass = armorClassResult.value;
-
-  const handleAbilityChange = (key: AbilityKey, value: string) => {
-    setAbilityScoreInputs((current) => ({
-      ...current,
-      [key]: value,
-    }));
-
-    if (value.trim() === "") {
-      return;
-    }
-
-    const parsed = Number(value);
-
-    if (Number.isNaN(parsed)) {
-      return;
-    }
-
-    setAbilityScores((current) => ({
-      ...current,
-      [key]: parsed,
-    }));
-  };
-
-  const handleAbilityBlur = (key: AbilityKey) => {
-    if (abilityScoreInputs[key].trim() !== "") {
-      return;
-    }
-
-    setAbilityScoreInputs((current) => ({
-      ...current,
-      [key]: String(abilityScores[key]),
-    }));
-  };
 
   const toggleSavingThrow = (ability: AbilityKey) => {
     setSavingThrowProficiencies((current) =>
@@ -1249,11 +1203,6 @@ const CustomCharacterCreator = ({
                                 setAbilityScores((current) => ({
                                   ...current,
                                   [key]: value,
-                                }));
-
-                                setAbilityScoreInputs((current) => ({
-                                  ...current,
-                                  [key]: String(value),
                                 }));
                               }}
                               ariaLabel={`${abilityLabels[key]} score`}
