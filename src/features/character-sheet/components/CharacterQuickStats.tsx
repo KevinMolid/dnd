@@ -645,9 +645,47 @@ const HpStat = ({
   const [draft, setDraft] = useState(String(currentHp));
   const [saving, setSaving] = useState(false);
 
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     setDraft(String(currentHp));
   }, [currentHp]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+
+      if (!target) {
+        return;
+      }
+
+      if (modalRef.current?.contains(target)) {
+        return;
+      }
+
+      setOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
 
   const clampHp = (value: number) =>
     Math.max(0, Math.min(maxHp, Math.floor(value)));
@@ -712,7 +750,10 @@ const HpStat = ({
 
       {open
         ? createPortal(
-            <div className="fixed bottom-4 right-4 z-[140] w-[280px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
+            <div
+              ref={modalRef}
+              className="fixed bottom-4 right-4 z-[140] w-[280px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur"
+            >
               <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-3 py-2.5">
                 <div>
                   <p className="text-xs font-semibold text-white">Hit Points</p>
@@ -897,6 +938,58 @@ const ConditionsControl = ({
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const modalRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+
+      if (!target) {
+        return;
+      }
+
+      if (modalRef.current?.contains(target)) {
+        return;
+      }
+
+      setOpen(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("touchstart", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("touchstart", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [open]);
+
+  const clearConditions = async () => {
+    if (!onChange || saving || conditions.length === 0) {
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      await onChange([]);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const toggleCondition = async (condition: string) => {
     if (!onChange || saving) {
       return;
@@ -912,20 +1005,6 @@ const ConditionsControl = ({
 
     try {
       await onChange(next);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const clearConditions = async () => {
-    if (!onChange || saving || conditions.length === 0) {
-      return;
-    }
-
-    setSaving(true);
-
-    try {
-      await onChange([]);
     } finally {
       setSaving(false);
     }
@@ -966,7 +1045,7 @@ const ConditionsControl = ({
           type="button"
           disabled={!onChange}
           onClick={() => setOpen(true)}
-          className={`rounded-md border px-1.5 py-1 text-[7px] font-semibold transition ${
+          className={`h-6 w-10 rounded-md border text-[10px] font-semibold transition ${
             onChange
               ? "border-white/[0.08] bg-white/[0.03] text-zinc-500 hover:border-white/15 hover:bg-white/[0.07] hover:text-zinc-200"
               : "cursor-default border-transparent text-zinc-600"
@@ -978,27 +1057,33 @@ const ConditionsControl = ({
 
       {open
         ? createPortal(
-            <div className="fixed bottom-4 right-4 z-[140] w-[320px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur">
-              <div className="flex items-start justify-between gap-3 border-b border-white/[0.07] px-3 py-2.5">
-                <div>
-                  <p className="text-xs font-semibold text-white">Conditions</p>
+            <div
+              ref={modalRef}
+              className="fixed bottom-4 right-4 z-[140] w-[320px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-white/10 bg-zinc-950/95 shadow-2xl backdrop-blur"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-white/[0.07] px-3 py-2.5">
+                <p className="text-xs font-semibold text-white">Conditions</p>
 
-                  <p className="mt-0.5 text-[10px] text-zinc-500">
-                    {conditions.length === 0
-                      ? "No active conditions"
-                      : `${conditions.length} active`}
-                  </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={!onChange || saving || conditions.length === 0}
+                    onClick={() => void clearConditions()}
+                    className="h-7 rounded-md border border-rose-500/15 bg-rose-500/[0.05] px-2 py-1 text-sm text-rose-300/75 transition hover:bg-rose-500/10 disabled:cursor-default disabled:opacity-30"
+                  >
+                    Clear all
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOpen(false)}
+                    aria-label="Close condition controls"
+                    title="Close"
+                    className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-sm text-zinc-500 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white"
+                  >
+                    ×
+                  </button>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  aria-label="Close condition controls"
-                  title="Close"
-                  className="flex h-7 w-7 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.03] text-sm text-zinc-500 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white"
-                >
-                  ×
-                </button>
               </div>
 
               <div className="p-3">
@@ -1012,7 +1097,7 @@ const ConditionsControl = ({
                         type="button"
                         disabled={!onChange || saving}
                         onClick={() => void toggleCondition(condition)}
-                        className={`flex min-h-[36px] w-full items-center justify-between rounded-md border px-2 py-1.5 text-left text-[9px] font-medium transition ${
+                        className={`flex min-h-[36px] w-full items-center justify-between rounded-md border px-2 py-1.5 text-left text-[10px] font-medium transition ${
                           active
                             ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
                             : "border-white/[0.06] bg-white/[0.025] text-zinc-500 hover:border-white/10 hover:bg-white/[0.055] hover:text-zinc-300"
@@ -1030,17 +1115,6 @@ const ConditionsControl = ({
                       </button>
                     );
                   })}
-                </div>
-
-                <div className="mt-3 flex items-center justify-between border-t border-white/[0.06] pt-2">
-                  <button
-                    type="button"
-                    disabled={!onChange || saving || conditions.length === 0}
-                    onClick={() => void clearConditions()}
-                    className="rounded-md border border-rose-500/15 bg-rose-500/[0.05] px-2 py-1 text-[8px] font-semibold text-rose-300/75 transition hover:bg-rose-500/10 disabled:cursor-default disabled:opacity-30"
-                  >
-                    Clear all
-                  </button>
                 </div>
               </div>
             </div>,
