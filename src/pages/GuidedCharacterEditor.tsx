@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
+import NumberStepper from "../components/NumberStepper";
 import { backgrounds, classes, species } from "../rulesets/dnd/dnd2024/data";
 import { buildDerivedCharacterData } from "../rulesets/dnd/dnd2024/buildDerivedCharacterData";
 import { getSpeciesChoices } from "../rulesets/dnd/dnd2024/getSpeciesChoices";
@@ -723,12 +724,10 @@ const GuidedDndCharacterEditor = () => {
     });
   }, [speciesChoices]);
 
-  const handleAbilityChange = (key: AbilityKey, value: string) => {
-    const parsed = Number(value);
-
+  const handleAbilityChange = (key: AbilityKey, value: number) => {
     setAbilityScores((prev) => ({
       ...prev,
-      [key]: Number.isNaN(parsed) ? 0 : parsed,
+      [key]: value,
     }));
   };
 
@@ -1734,13 +1733,14 @@ const GuidedDndCharacterEditor = () => {
                     >
                       {abilityLabels[key]}
                     </label>
-                    <input
-                      id={key}
-                      type="number"
-                      inputMode="numeric"
+                    <NumberStepper
                       value={abilityScores[key]}
-                      onChange={(e) => handleAbilityChange(key, e.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                      min={1}
+                      max={30}
+                      onChange={(value) => handleAbilityChange(key, value)}
+                      ariaLabel={`${abilityLabels[key]} ability score`}
+                      size="default"
+                      width="full"
                     />
                   </div>
                 ))}

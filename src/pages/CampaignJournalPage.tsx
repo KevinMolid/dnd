@@ -40,6 +40,8 @@ import {
   type JournalEntryType,
 } from "../features/journal/types";
 
+import NumberStepper from "../components/NumberStepper";
+
 type CampaignJournalPageState =
   | "loading"
   | "ready"
@@ -743,63 +745,87 @@ function InlineJournalEditor({
       />
 
       <div className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Select<JournalEntryType>
-          value={form.type}
-          onChange={(type) =>
-            setForm((previous) => ({
-              ...previous,
-              type,
-            }))
-          }
-          ariaLabel="Journal entry type"
-          options={JOURNAL_ENTRY_TYPES.map((type) => ({
-            value: type,
-            label: getJournalTypeLabel(type),
-          }))}
-        />
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-400">
+            Type
+          </span>
 
-        <Select<JournalEntry["visibility"]>
-          value={form.visibility}
-          onChange={(visibility) =>
-            setForm((previous) => ({
-              ...previous,
-              visibility,
-            }))
-          }
-          ariaLabel="Journal entry visibility"
-          options={[
-            { value: "dm", label: "DM only" },
-            { value: "allPlayers", label: "All players" },
-            { value: "selectedPlayers", label: "Selected players" },
-          ]}
-        />
+          <Select<JournalEntryType>
+            value={form.type}
+            onChange={(type) =>
+              setForm((previous) => ({
+                ...previous,
+                type,
+              }))
+            }
+            ariaLabel="Journal entry type"
+            options={JOURNAL_ENTRY_TYPES.map((type) => ({
+              value: type,
+              label: getJournalTypeLabel(type),
+            }))}
+          />
+        </label>
 
-        <input
-          type="number"
-          min={0}
-          value={form.sessionNumber ?? ""}
-          onChange={(event) =>
-            setForm((previous) => ({
-              ...previous,
-              sessionNumber: event.target.value
-                ? Number(event.target.value)
-                : null,
-            }))
-          }
-          placeholder="Session"
-          className={inputClass}
-        />
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-400">
+            Visibility
+          </span>
 
-        <DatePicker
-          value={form.sessionDate}
-          onChange={(sessionDate) =>
-            setForm((previous) => ({
-              ...previous,
-              sessionDate,
-            }))
-          }
-          ariaLabel="Session date"
-        />
+          <Select<JournalEntry["visibility"]>
+            value={form.visibility}
+            onChange={(visibility) =>
+              setForm((previous) => ({
+                ...previous,
+                visibility,
+              }))
+            }
+            ariaLabel="Journal entry visibility"
+            options={[
+              { value: "dm", label: "DM only" },
+              { value: "allPlayers", label: "All players" },
+              { value: "selectedPlayers", label: "Selected players" },
+            ]}
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-400">
+            Session
+          </span>
+
+          <NumberStepper
+            value={form.sessionNumber}
+            min={0}
+            allowEmpty
+            emptyLabel="None"
+            onChange={(sessionNumber) =>
+              setForm((previous) => ({
+                ...previous,
+                sessionNumber,
+              }))
+            }
+            ariaLabel="Session number"
+            size="default"
+            width="full"
+          />
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-400">
+            Session Date
+          </span>
+
+          <DatePicker
+            value={form.sessionDate}
+            onChange={(sessionDate) =>
+              setForm((previous) => ({
+                ...previous,
+                sessionDate,
+              }))
+            }
+            ariaLabel="Session date"
+          />
+        </label>
       </div>
 
       {form.visibility === "selectedPlayers" ? (

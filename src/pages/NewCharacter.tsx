@@ -42,6 +42,8 @@ import { dragonbornAncestries } from "../rulesets/dnd/dnd2024/data/species/drago
 
 import CustomCharacterCreator from "./CustomCharacterCreator";
 
+import NumberStepper from "../components/NumberStepper";
+
 type CharacterCreationStep =
   | "details"
   | "class"
@@ -1837,12 +1839,10 @@ const GuidedDndCharacterCreator = ({
     });
   }, [speciesChoices]);
 
-  const handleAbilityChange = (key: AbilityKey, value: string) => {
-    const parsed = Number(value);
-
+  const handleAbilityChange = (key: AbilityKey, value: number) => {
     setAbilityScores((prev) => ({
       ...prev,
-      [key]: Number.isNaN(parsed) ? 0 : parsed,
+      [key]: value,
     }));
   };
 
@@ -2857,15 +2857,12 @@ const GuidedDndCharacterCreator = ({
                         >
                           {abilityLabels[key]}
                         </label>
-                        <input
-                          id={key}
-                          type="number"
-                          inputMode="numeric"
+                        <NumberStepper
                           value={abilityScores[key]}
-                          onChange={(e) =>
-                            handleAbilityChange(key, e.target.value)
-                          }
-                          className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                          onChange={(value) => handleAbilityChange(key, value)}
+                          ariaLabel={`${abilityLabels[key]} score`}
+                          size="default"
+                          width="full"
                         />
                       </div>
                     ))}

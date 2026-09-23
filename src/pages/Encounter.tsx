@@ -12,6 +12,7 @@ import {
 } from "firebase/firestore";
 
 import Avatar from "../components/Avatar";
+import NumberStepper from "../components/NumberStepper";
 import AwardXpModal from "../components/awardXpModal";
 import Container from "../components/Container";
 import H1 from "../components/H1";
@@ -94,6 +95,28 @@ const getLiveCharacterHp = (character?: CampaignCharacter) => {
     return {
       currentHp: 0,
       maxHp: 1,
+    };
+  }
+
+  const workspaceCharacter = character as CampaignCharacter & {
+    buildMode?: string;
+    customStats?: {
+      currentHp?: number;
+      maxHp?: number;
+    };
+  };
+
+  if (workspaceCharacter.buildMode === "custom") {
+    const maxHp =
+      workspaceCharacter.customStats?.maxHp ?? workspaceCharacter.maxHp ?? 1;
+    const currentHp =
+      workspaceCharacter.customStats?.currentHp ??
+      workspaceCharacter.currentHp ??
+      maxHp;
+
+    return {
+      currentHp: Math.max(0, currentHp),
+      maxHp: Math.max(1, maxHp),
     };
   }
 
@@ -553,6 +576,24 @@ const Encounter = () => {
     const liveHp = getLiveCharacterHp(campaignCharacter);
     const nextCharacterHp = Math.min(liveHp.maxHp, clampedHp);
 
+    const workspaceCharacter = campaignCharacter as CampaignCharacter & {
+      buildMode?: string;
+      customStats?: {
+        currentHp?: number;
+        maxHp?: number;
+      };
+    };
+
+    if (workspaceCharacter.buildMode === "custom") {
+      await updateCharacter(campaignCharacter.id, {
+        customStats: {
+          ...(workspaceCharacter.customStats ?? {}),
+          currentHp: nextCharacterHp,
+        },
+      } as Partial<CampaignCharacter>);
+      return;
+    }
+
     await updateCharacter(campaignCharacter.id, {
       currentHp: nextCharacterHp,
     });
@@ -959,17 +1000,22 @@ const Encounter = () => {
                         }`}
                       >
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
                           value={entry.initiative}
                           onChange={(e) => {
                             const value = e.target.value;
-                            updateEntityInitiative(
-                              entry.id,
-                              value === "" ? "" : Number(value),
-                            );
+
+                            if (value === "" || /^-?\\d*$/.test(value)) {
+                              updateEntityInitiative(
+                                entry.id,
+                                value === "" ? "" : Number(value),
+                              );
+                            }
                           }}
-                          className="w-20 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-sm font-semibold text-white outline-none transition focus:border-yellow-600"
+                          className="w-20 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-center text-sm font-semibold text-white outline-none transition focus:border-yellow-600"
                           placeholder="—"
+                          aria-label={`${entry.displayName} initiative`}
                         />
 
                         <div className="flex justify-center">
@@ -995,17 +1041,20 @@ const Encounter = () => {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <input
-                            type="number"
+                          <NumberStepper
                             value={entry.currentHp}
-                            onChange={(e) =>
-                              handleTurnOrderHpChange(
+                            min={0}
+                            max={displayMaxHp}
+                            onChange={(value) =>
+                              void handleTurnOrderHpChange(
                                 entry.id,
-                                Number(e.target.value),
+                                value,
                                 entry,
                               )
                             }
-                            className="w-16 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-1 text-right text-sm text-white"
+                            ariaLabel={`${entry.displayName} hit points`}
+                            size="compact"
+                            buttonTone="hp"
                           />
                           <span className="text-sm text-neutral-500">
                             / {displayMaxHp}
@@ -1173,46 +1222,20 @@ const Encounter = () => {
                                     </p>
 
                                     <div className="mt-3 flex items-center gap-2">
-                                      <button
-                                        onClick={() =>
-                                          setHpAdjustments((prev) => ({
-                                            ...prev,
-                                            [campaignCharacter.id]:
-                                              (prev[campaignCharacter.id] ??
-                                                0) - 1,
-                                          }))
-                                        }
-                                        className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-sm text-white transition hover:bg-white/10"
-                                      >
-                                        −
-                                      </button>
-
-                                      <input
-                                        type="number"
+                                      <NumberStepper
                                         value={pendingHpDelta}
-                                        onChange={(e) =>
+                                        min={-maxHp}
+                                        max={maxHp}
+                                        onChange={(value) =>
                                           setHpAdjustments((prev) => ({
                                             ...prev,
-                                            [campaignCharacter.id]:
-                                              Number(e.target.value) || 0,
+                                            [campaignCharacter.id]: value,
                                           }))
                                         }
-                                        className="h-9 w-20 rounded-lg border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none"
+                                        ariaLabel={`${campaignCharacter.name} HP adjustment`}
+                                        size="compact"
+                                        buttonTone="hp"
                                       />
-
-                                      <button
-                                        onClick={() =>
-                                          setHpAdjustments((prev) => ({
-                                            ...prev,
-                                            [campaignCharacter.id]:
-                                              (prev[campaignCharacter.id] ??
-                                                0) + 1,
-                                          }))
-                                        }
-                                        className="h-9 w-9 rounded-lg border border-white/10 bg-white/5 text-sm text-white transition hover:bg-white/10"
-                                      >
-                                        +
-                                      </button>
 
                                       <button
                                         onClick={async () => {
@@ -1224,14 +1247,11 @@ const Encounter = () => {
                                             ),
                                           );
 
-                                          await updateCharacter(
-                                            campaignCharacter.id,
-                                            {
-                                              currentHp: nextHp,
-                                            },
+                                          await handleTurnOrderHpChange(
+                                            entry.id,
+                                            nextHp,
+                                            entry,
                                           );
-
-                                          updateEntityHp(entry.id, nextHp);
 
                                           setHpAdjustments((prev) => ({
                                             ...prev,
@@ -1251,18 +1271,17 @@ const Encounter = () => {
                                     </p>
 
                                     <div className="mt-3 flex items-center gap-2">
-                                      <input
-                                        type="number"
+                                      <NumberStepper
                                         value={pendingXpDelta}
-                                        onChange={(e) =>
+                                        min={-(campaignCharacter.xp ?? 0)}
+                                        onChange={(value) =>
                                           setXpAdjustments((prev) => ({
                                             ...prev,
-                                            [campaignCharacter.id]:
-                                              Number(e.target.value) || 0,
+                                            [campaignCharacter.id]: value,
                                           }))
                                         }
-                                        className="h-9 w-24 rounded-lg border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none"
-                                        placeholder="0"
+                                        ariaLabel={`${campaignCharacter.name} XP adjustment`}
+                                        size="compact"
                                       />
 
                                       <button
@@ -1399,7 +1418,8 @@ const Encounter = () => {
               {encounter
                 .filter((entry) => entry.entityKind === "player")
                 .map((entry, index) => {
-                  const campaignCharacter = findCampaignCharacterForEntry(entry);
+                  const campaignCharacter =
+                    findCampaignCharacterForEntry(entry);
                   const initiativeBonus = campaignCharacter
                     ? getEncounterInitiativeBonus(campaignCharacter)
                     : (entry.playerSnapshot?.initiativeBonus ?? 0);
@@ -1431,9 +1451,8 @@ const Encounter = () => {
                         <div className="flex items-center gap-3">
                           <input
                             ref={index === 0 ? firstInitiativeInputRef : null}
-                            type="number"
-                            min={1}
-                            max={20}
+                            type="text"
+                            inputMode="numeric"
                             value={rawRoll}
                             onChange={(e) =>
                               setPlayerInitiativeRolls((prev) => ({

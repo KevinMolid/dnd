@@ -40,6 +40,8 @@ import SpellPreviewCard, {
 
 import { dragonbornAncestries } from "../rulesets/dnd/dnd2024/data/species/dragonbornAncestries";
 
+import NumberStepper from "../components/NumberStepper";
+
 type CharacterCreationStep =
   | "details"
   | "class"
@@ -2693,15 +2695,14 @@ const NewCharacter = () => {
                         >
                           {abilityLabels[key]}
                         </label>
-                        <input
-                          id={key}
-                          type="number"
-                          inputMode="numeric"
+                        <NumberStepper
                           value={abilityScores[key]}
-                          onChange={(e) =>
-                            handleAbilityChange(key, e.target.value)
+                          onChange={(value) =>
+                            handleAbilityChange(key, String(value))
                           }
-                          className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-sm text-white outline-none transition focus:border-zinc-400"
+                          ariaLabel={`${abilityLabels[key]} score`}
+                          size="default"
+                          width="full"
                         />
                       </div>
                     ))}
