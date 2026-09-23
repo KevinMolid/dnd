@@ -24,6 +24,7 @@ type SectionProps = {
 };
 
 const HIDE_DELAY_MS = 140;
+const DESKTOP_MEDIA_QUERY = "(min-width: 640px)";
 
 const InfoRow = ({ label, value }: SectionProps) => {
   if (!value) {
@@ -75,11 +76,14 @@ export default function SpellTooltip({
   className = "",
 }: SpellTooltipProps) {
   const [open, setOpen] = useState(false);
-
   const [pinned, setPinned] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+      : true,
+  );
 
   const wrapperRef = useRef<HTMLDivElement | null>(null);
-
   const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
@@ -89,18 +93,24 @@ export default function SpellTooltip({
   const clearHideTimer = () => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
-
       hideTimerRef.current = undefined;
     }
   };
 
   const showTooltip = () => {
-    clearHideTimer();
+    if (!isDesktop) {
+      return;
+    }
 
+    clearHideTimer();
     setOpen(true);
   };
 
   const scheduleHide = () => {
+    if (!isDesktop) {
+      return;
+    }
+
     clearHideTimer();
 
     if (pinned) {
@@ -114,33 +124,79 @@ export default function SpellTooltip({
 
   const closeTooltip = () => {
     clearHideTimer();
-
     setPinned(false);
-
     setOpen(false);
   };
 
-  const togglePinned = () => {
+  const handleTriggerClick = () => {
     clearHideTimer();
 
+    /*
+     * Mobile:
+     * A tap immediately opens the full-screen spell view.
+     * There is no separate hover/preview state.
+     */
+    if (!isDesktop) {
+      setPinned(true);
+      setOpen(true);
+      return;
+    }
+
+    /*
+     * Desktop:
+     * Keep the existing hover-preview / click-to-pin behaviour.
+     */
     setPinned((current) => {
       const next = !current;
-
       setOpen(next);
-
       return next;
     });
   };
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia(DESKTOP_MEDIA_QUERY);
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+
+      /*
+       * Close an existing tooltip when crossing between
+       * the mobile and desktop layouts.
+       */
+      clearHideTimer();
+      setPinned(false);
+      setOpen(false);
+    };
+
+    setIsDesktop(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleChange);
+
     return () => {
+      mediaQuery.removeEventListener("change", handleChange);
       clearHideTimer();
     };
   }, []);
 
+  /*
+   * The mobile spell view is effectively a modal.
+   * Prevent the character sheet behind it from scrolling.
+   */
+  useEffect(() => {
+    if (!open || isDesktop) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open, isDesktop]);
+
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!open) {
+      if (!open || !isDesktop) {
         return;
       }
 
@@ -151,7 +207,6 @@ export default function SpellTooltip({
       }
 
       const insideTrigger = wrapperRef.current?.contains(target);
-
       const insideTooltip = tooltipRef.current?.contains(target);
 
       if (!insideTrigger && !insideTooltip) {
@@ -166,161 +221,174 @@ export default function SpellTooltip({
     };
 
     document.addEventListener("mousedown", handlePointerDown);
-
     document.addEventListener("touchstart", handlePointerDown);
-
     document.addEventListener("keydown", handleEscape);
 
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
-
       document.removeEventListener("touchstart", handlePointerDown);
-
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [open]);
+  }, [open, isDesktop]);
 
   const tooltipContent = open
     ? createPortal(
         <div
           ref={tooltipRef}
           className="
-              workspace-scrollbar
-              fixed bottom-3 left-3 right-3 z-[100]
-              max-h-[55vh]
-              overflow-y-auto
-              rounded-2xl
-              border border-white/10
-              bg-zinc-900/95
-              p-3.5
-              text-left
-              shadow-2xl
-              backdrop-blur
-              sm:bottom-4
-              sm:left-auto
-              sm:right-4
-              sm:w-[330px]
-            "
-          role="tooltip"
-          onMouseEnter={showTooltip}
-          onMouseLeave={scheduleHide}
+            workspace-scrollbar
+            fixed inset-0 z-[100]
+            overflow-y-auto
+            bg-zinc-950
+            text-left
+
+            sm:inset-auto
+            sm:bottom-4
+            sm:right-4
+            sm:max-h-[55vh]
+            sm:w-[330px]
+            sm:rounded-2xl
+            sm:border
+            sm:border-white/10
+            sm:bg-zinc-900/95
+            sm:shadow-2xl
+            sm:backdrop-blur
+          "
+          role={isDesktop ? "tooltip" : "dialog"}
+          aria-modal={!isDesktop ? true : undefined}
+          aria-label={!isDesktop ? `${spell.name} spell details` : undefined}
+          onMouseEnter={isDesktop ? showTooltip : undefined}
+          onMouseLeave={isDesktop ? scheduleHide : undefined}
         >
-          <div className="space-y-3">
-            <div className="border-b border-white/10 pb-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <h3 className="text-base font-bold text-white">
-                      {spell.name}
-                    </h3>
+          <div className="mx-auto min-h-full w-full max-w-2xl p-4 sm:min-h-0 sm:max-w-none sm:p-3.5">
+            <div className="space-y-4 sm:space-y-3">
+              <div className="border-b border-white/10 pb-4 sm:pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <h3 className="text-lg font-bold text-white sm:text-base">
+                        {spell.name}
+                      </h3>
 
-                    {spell.ritual && (
-                      <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[10px] font-medium text-sky-300">
-                        Ritual
-                      </span>
-                    )}
+                      {spell.ritual && (
+                        <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2 py-0.5 text-[10px] font-medium text-sky-300">
+                          Ritual
+                        </span>
+                      )}
 
-                    {spell.concentration && (
-                      <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-400/10 px-2 py-0.5 text-[10px] font-medium text-fuchsia-300">
-                        Concentration
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-1 text-xs text-slate-400">
-                    {formatSpellLevel(spell.level)}
-
-                    {spell.school ? ` • ${spell.school}` : ""}
-                  </div>
-                </div>
-
-                {pinned && (
-                  <button
-                    type="button"
-                    title="Unpin spell"
-                    aria-label={`Unpin ${spell.name}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      closeTooltip();
-                    }}
-                    className="shrink-0 rounded-md border border-amber-500/20 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-300 transition hover:border-amber-400/35 hover:bg-amber-500/15 hover:text-amber-200"
-                  >
-                    <i className="fa-solid fa-thumbtack" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <InfoRow label="Casting Time" value={spell.castingTime} />
-
-              <InfoRow label="Range" value={spell.range} />
-
-              <InfoRow label="Components" value={spell.components} />
-
-              <InfoRow label="Duration" value={spell.duration} />
-            </div>
-
-            <div className="space-y-3">
-              <TextSection label="Description" value={spell.description} />
-
-              <TextSection label="Effects" value={spell.effects} />
-
-              <TextSection label="Details" value={spell.details} />
-
-              <TextSection label="Control" value={spell.control} />
-
-              <TextSection label="Interaction" value={spell.interaction} />
-
-              <TextSection label="Penalties" value={spell.penalties} />
-
-              <TextSection label="Benefits" value={spell.benefits} />
-
-              <TextSection label="Conditions" value={spell.conditions} />
-
-              <TextSection label="Behavior" value={spell.behavior} />
-
-              <TextSection label="Duration Rule" value={spell.durationRule} />
-
-              <TextSection label="Saving Throws" value={spell.savingThrows} />
-
-              <TextSection label="Special" value={spell.special} />
-
-              <TextSection label="Triggers" value={spell.triggers} />
-
-              <TextSection label="Detection" value={spell.detection} />
-
-              <TextSection label="Limitations" value={spell.limitations} />
-
-              <TextSection label="End Conditions" value={spell.endConditions} />
-
-              <TextSection label="Higher Level" value={spell.higherLevel} />
-            </div>
-
-            {spell.options && spell.options.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                  Options
-                </div>
-
-                <div className="space-y-2">
-                  {spell.options.map((option) => (
-                    <div
-                      key={option.name}
-                      className="rounded-xl border border-white/10 bg-white/5 p-2.5"
-                    >
-                      <div className="text-xs font-semibold text-white">
-                        {option.name}
-                      </div>
-
-                      <p className="mt-1 text-xs leading-5 text-slate-300">
-                        {option.text}
-                      </p>
+                      {spell.concentration && (
+                        <span className="rounded-full border border-fuchsia-400/30 bg-fuchsia-400/10 px-2 py-0.5 text-[10px] font-medium text-fuchsia-300">
+                          Concentration
+                        </span>
+                      )}
                     </div>
-                  ))}
+
+                    <div className="mt-1 text-xs text-slate-400">
+                      {formatSpellLevel(spell.level)}
+                      {spell.school ? ` • ${spell.school}` : ""}
+                    </div>
+                  </div>
+
+                  {(!isDesktop || pinned) && (
+                    <button
+                      type="button"
+                      title="Close spell"
+                      aria-label={`Close ${spell.name}`}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        closeTooltip();
+                      }}
+                      className="
+      flex h-9 w-9 shrink-0 items-center justify-center
+      rounded-lg border border-white/10 bg-white/[0.05]
+      text-sm text-zinc-300 transition
+      hover:border-white/20 hover:bg-white/10 hover:text-white
+
+      sm:h-7 sm:w-7
+      sm:rounded-md
+      sm:text-xs
+    "
+                    >
+                      <i className="fa-solid fa-xmark" />
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
+
+              <div className="space-y-2 sm:space-y-1.5">
+                <InfoRow label="Casting Time" value={spell.castingTime} />
+
+                <InfoRow label="Range" value={spell.range} />
+
+                <InfoRow label="Components" value={spell.components} />
+
+                <InfoRow label="Duration" value={spell.duration} />
+              </div>
+
+              <div className="space-y-4 sm:space-y-3">
+                <TextSection label="Description" value={spell.description} />
+
+                <TextSection label="Effects" value={spell.effects} />
+
+                <TextSection label="Details" value={spell.details} />
+
+                <TextSection label="Control" value={spell.control} />
+
+                <TextSection label="Interaction" value={spell.interaction} />
+
+                <TextSection label="Penalties" value={spell.penalties} />
+
+                <TextSection label="Benefits" value={spell.benefits} />
+
+                <TextSection label="Conditions" value={spell.conditions} />
+
+                <TextSection label="Behavior" value={spell.behavior} />
+
+                <TextSection label="Duration Rule" value={spell.durationRule} />
+
+                <TextSection label="Saving Throws" value={spell.savingThrows} />
+
+                <TextSection label="Special" value={spell.special} />
+
+                <TextSection label="Triggers" value={spell.triggers} />
+
+                <TextSection label="Detection" value={spell.detection} />
+
+                <TextSection label="Limitations" value={spell.limitations} />
+
+                <TextSection
+                  label="End Conditions"
+                  value={spell.endConditions}
+                />
+
+                <TextSection label="Higher Level" value={spell.higherLevel} />
+              </div>
+
+              {spell.options && spell.options.length > 0 && (
+                <div className="space-y-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                    Options
+                  </div>
+
+                  <div className="space-y-2">
+                    {spell.options.map((option) => (
+                      <div
+                        key={option.name}
+                        className="rounded-xl border border-white/10 bg-white/5 p-2.5"
+                      >
+                        <div className="text-xs font-semibold text-white">
+                          {option.name}
+                        </div>
+
+                        <p className="mt-1 text-xs leading-5 text-slate-300">
+                          {option.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>,
         document.body,
@@ -331,13 +399,13 @@ export default function SpellTooltip({
     <div
       ref={wrapperRef}
       className={`inline-flex ${className}`}
-      onMouseEnter={showTooltip}
-      onMouseLeave={scheduleHide}
-      onFocus={showTooltip}
-      onBlur={scheduleHide}
+      onMouseEnter={isDesktop ? showTooltip : undefined}
+      onMouseLeave={isDesktop ? scheduleHide : undefined}
+      onFocus={isDesktop ? showTooltip : undefined}
+      onBlur={isDesktop ? scheduleHide : undefined}
     >
       <div
-        onClick={togglePinned}
+        onClick={handleTriggerClick}
         className="inline-flex items-center text-left"
         aria-expanded={open}
         role="button"
@@ -345,8 +413,7 @@ export default function SpellTooltip({
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-
-            togglePinned();
+            handleTriggerClick();
           }
 
           if (event.key === "Escape") {
