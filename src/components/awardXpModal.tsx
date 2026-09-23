@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { awardExperienceToMultipleCharacters } from "../rulesets/dnd/dnd2024/awardExperience";
 import { db } from "../firebase";
+import NumberStepper from "./NumberStepper";
 
 type CharacterOption = {
   id: string;
@@ -86,10 +87,10 @@ const AwardXpModal = ({ isOpen, onClose, characters }: Props) => {
     setSelected(characters.map((char) => char.id));
   };
 
-  const handleManualAmountChange = (id: string, value: string) => {
+  const handleManualAmountChange = (id: string, value: number) => {
     setManualAmounts((prev) => ({
       ...prev,
-      [id]: Math.max(0, Math.floor(Number(value) || 0)),
+      [id]: Math.max(0, Math.floor(value)),
     }));
   };
 
@@ -180,14 +181,13 @@ const AwardXpModal = ({ isOpen, onClose, characters }: Props) => {
 
               {splitEvenly ? (
                 <div className="mt-3">
-                  <input
-                    type="number"
+                  <NumberStepper
                     value={xp}
-                    onChange={(e) =>
-                      setXp(Math.max(0, Number(e.target.value) || 0))
-                    }
-                    className="h-11 w-full rounded-xl border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none"
-                    placeholder="0"
+                    min={0}
+                    onChange={setXp}
+                    ariaLabel="Total XP"
+                    size="default"
+                    width="full"
                   />
                 </div>
               ) : (
@@ -308,17 +308,15 @@ const AwardXpModal = ({ isOpen, onClose, characters }: Props) => {
                                 <label className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-zinc-500">
                                   XP amount
                                 </label>
-                                <input
-                                  type="number"
+                                <NumberStepper
                                   value={manualAmounts[char.id] ?? 0}
-                                  onChange={(e) =>
-                                    handleManualAmountChange(
-                                      char.id,
-                                      e.target.value,
-                                    )
+                                  min={0}
+                                  onChange={(value) =>
+                                    handleManualAmountChange(char.id, value)
                                   }
-                                  className="h-9 w-full rounded-lg border border-white/10 bg-zinc-950 px-3 text-sm text-white outline-none"
-                                  placeholder="0"
+                                  ariaLabel={`${char.name} XP amount`}
+                                  size="default"
+                                  width="full"
                                 />
                                 <p className="mt-2 text-xs text-zinc-500">
                                   Preview: {preview} XP

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createInvite } from "../lib/invites";
 import { useAuth } from "../context/AuthContext";
+import NumberStepper from "./NumberStepper";
 
 type Props = {
   campaignId: string;
@@ -20,8 +21,8 @@ const InvitePlayersModal = ({
   const [submitting, setSubmitting] = useState(false);
   const [inviteUrl, setInviteUrl] = useState("");
   const [error, setError] = useState("");
-  const [maxUses, setMaxUses] = useState<string>("");
-  const [daysUntilExpire, setDaysUntilExpire] = useState<string>("");
+  const [maxUses, setMaxUses] = useState<number | null>(null);
+  const [daysUntilExpire, setDaysUntilExpire] = useState<number | null>(null);
 
   if (!isOpen) return null;
 
@@ -32,26 +33,17 @@ const InvitePlayersModal = ({
     setError("");
 
     try {
-      const parsedMaxUses =
-        maxUses.trim() === "" ? null : Math.max(1, Number(maxUses));
-      const parsedDays =
-        daysUntilExpire.trim() === ""
-          ? null
-          : Math.max(1, Number(daysUntilExpire));
-
       const expiresAt =
-        parsedDays === null
+        daysUntilExpire === null
           ? null
-          : new Date(Date.now() + parsedDays * 24 * 60 * 60 * 1000);
+          : new Date(Date.now() + daysUntilExpire * 24 * 60 * 60 * 1000);
 
       const result = await createInvite({
         campaignId,
         campaignName,
         createdByUid: user.uid,
         createdByName: appUser?.displayName ?? user.displayName ?? "",
-        maxUses: Number.isFinite(parsedMaxUses as number)
-          ? parsedMaxUses
-          : null,
+        maxUses,
         expiresAt,
       });
 
@@ -98,13 +90,16 @@ const InvitePlayersModal = ({
             <label className="mb-2 block text-sm font-medium text-zinc-200">
               Max uses
             </label>
-            <input
-              type="number"
-              min={1}
+
+            <NumberStepper
               value={maxUses}
-              onChange={(e) => setMaxUses(e.target.value)}
-              placeholder="Unlimited"
-              className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
+              min={1}
+              allowEmpty
+              emptyLabel="Unlimited"
+              onChange={setMaxUses}
+              ariaLabel="Maximum invite uses"
+              size="default"
+              width="full"
             />
           </div>
 
@@ -112,13 +107,16 @@ const InvitePlayersModal = ({
             <label className="mb-2 block text-sm font-medium text-zinc-200">
               Expires in days
             </label>
-            <input
-              type="number"
-              min={1}
+
+            <NumberStepper
               value={daysUntilExpire}
-              onChange={(e) => setDaysUntilExpire(e.target.value)}
-              placeholder="Never"
-              className="w-full rounded-2xl border border-white/10 bg-zinc-900/80 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-white/20"
+              min={1}
+              allowEmpty
+              emptyLabel="Never"
+              onChange={setDaysUntilExpire}
+              ariaLabel="Days until invite expires"
+              size="default"
+              width="full"
             />
           </div>
         </div>

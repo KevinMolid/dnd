@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import Avatar from "./Avatar";
 import H3 from "./H3";
+import NumberStepper from "./NumberStepper";
 import {
   monsters,
   MonsterDefinition,
@@ -201,7 +202,7 @@ const EncounterTemplateBuilder = ({
           </div>
         </div>
 
-        <div className="max-h-[640px] space-y-2 overflow-y-auto pr-1">
+        <div className="workspace-scrollbar max-h-[640px] space-y-2 overflow-y-auto pr-1">
           {filteredMonsters.length === 0 ? (
             <p className="text-sm text-zinc-500">No monsters found.</p>
           ) : (
@@ -295,16 +296,15 @@ const EncounterTemplateBuilder = ({
                       <label className="mb-1 block text-xs text-zinc-400">
                         Quantity
                       </label>
-                      <input
-                        type="number"
-                        min={1}
+                      <NumberStepper
                         value={row.quantity}
-                        onChange={(e) =>
-                          updateRow(row.id, {
-                            quantity: Math.max(1, Number(e.target.value) || 1),
-                          })
+                        min={1}
+                        onChange={(value) =>
+                          updateRow(row.id, { quantity: value })
                         }
-                        className="w-full rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white outline-none"
+                        ariaLabel={`${monster.name} quantity`}
+                        size="default"
+                        className="w-full"
                       />
                     </div>
 
