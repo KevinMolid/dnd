@@ -31,6 +31,8 @@ import {
   customSkillDefinitions,
 } from "../types/customCharacter";
 
+import NumberStepper from "../components/NumberStepper";
+
 import type {
   CustomCharacter,
   CustomProficiencyLevel,
@@ -1230,7 +1232,7 @@ const CustomCharacterCreator = ({
                   {/* ABILITIES */}
 
                   <Card title="Ability Scores">
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-6">
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
                       {abilityKeys.map((key) => (
                         <div
                           key={key}
@@ -1240,15 +1242,24 @@ const CustomCharacterCreator = ({
                             {abilityShortLabels[key]}
                           </label>
 
-                          <input
-                            type="number"
-                            value={abilityScoreInputs[key]}
-                            onChange={(event) =>
-                              handleAbilityChange(key, event.target.value)
-                            }
-                            onBlur={() => handleAbilityBlur(key)}
-                            className="mt-2 w-full rounded-lg bg-zinc-950 p-2 text-center text-xl font-bold"
-                          />
+                          <div className="mt-2 flex justify-center">
+                            <NumberStepper
+                              value={abilityScores[key]}
+                              onChange={(value) => {
+                                setAbilityScores((current) => ({
+                                  ...current,
+                                  [key]: value,
+                                }));
+
+                                setAbilityScoreInputs((current) => ({
+                                  ...current,
+                                  [key]: String(value),
+                                }));
+                              }}
+                              ariaLabel={`${abilityLabels[key]} score`}
+                              size="default"
+                            />
+                          </div>
 
                           <p className="mt-1 text-xs text-zinc-400">
                             {formatModifier(getModifier(abilityScores[key]))}
@@ -1645,7 +1656,7 @@ const CustomCharacterCreator = ({
                         {equipment.map((entry) => (
                           <div
                             key={entry.instanceId}
-                            className="grid gap-2.5 rounded-lg border border-white/10 bg-zinc-900 p-2.5 sm:grid-cols-[1fr_100px_auto]"
+                            className="grid gap-2.5 rounded-lg border border-white/10 bg-zinc-900 p-2.5 sm:grid-cols-[minmax(0,1fr)_140px_auto]"
                           >
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-white">
@@ -1661,18 +1672,15 @@ const CustomCharacterCreator = ({
                               </p>
                             </div>
 
-                            <input
-                              type="number"
-                              min={1}
+                            <NumberStepper
                               value={entry.quantity}
-                              onChange={(event) =>
-                                updateEquipmentQuantity(
-                                  entry.instanceId,
-
-                                  Number(event.target.value),
-                                )
+                              min={1}
+                              onChange={(value) =>
+                                updateEquipmentQuantity(entry.instanceId, value)
                               }
-                              className="rounded-lg border border-white/10 bg-zinc-950 p-2"
+                              ariaLabel={`${entry.name} quantity`}
+                              size="default"
+                              width="full"
                             />
 
                             <button
@@ -2114,51 +2122,25 @@ const NumberInput = ({
   min,
 }: {
   label: string;
-
   value: number;
-
   onChange: (value: number) => void;
-
   min?: number;
-}) => {
-  const [inputValue, setInputValue] = useState(String(value));
+}) => (
+  <label className="block">
+    <span className="text-sm text-zinc-300">{label}</span>
 
-  useEffect(() => {
-    setInputValue(String(value));
-  }, [value]);
-
-  return (
-    <label className="block">
-      <span className="text-sm text-zinc-300">{label}</span>
-
-      <input
-        type="number"
+    <div className="mt-1.5">
+      <NumberStepper
+        value={value}
         min={min}
-        value={inputValue}
-        onChange={(event) => {
-          const nextValue = event.target.value;
-          setInputValue(nextValue);
-
-          if (nextValue === "" || nextValue === "-") {
-            return;
-          }
-
-          const parsed = Number(nextValue);
-
-          if (!Number.isNaN(parsed)) {
-            onChange(parsed);
-          }
-        }}
-        onBlur={() => {
-          if (inputValue === "" || inputValue === "-") {
-            setInputValue(String(value));
-          }
-        }}
-        className="mt-1.5 w-full rounded-lg border border-white/10 bg-zinc-950/70 px-2.5 py-2 text-sm text-white outline-none transition focus:border-white/25"
+        onChange={onChange}
+        ariaLabel={label}
+        size="default"
+        width="full"
       />
-    </label>
-  );
-};
+    </div>
+  </label>
+);
 
 const Textarea = ({
   label,
