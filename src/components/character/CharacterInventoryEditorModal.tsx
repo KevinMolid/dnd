@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import ItemPickerModal from "./ItemPickerModal";
+import NumberStepper from "../NumberStepper";
 
 import { itemsById } from "../../rulesets/dnd/dnd2024/data/items";
 import { resolveItemFromEquipmentEntry } from "../../rulesets/dnd/dnd2024/resolveItem";
@@ -306,24 +307,14 @@ const CharacterInventoryEditorModal = ({
                           </div>
 
                           <div className="flex shrink-0 items-center gap-1.5">
-                            <label className="flex h-8 items-center overflow-hidden rounded-md border border-white/[0.08] bg-black/20">
-                              <span className="border-r border-white/[0.06] px-2 text-[9px] font-semibold uppercase tracking-[0.06em] text-zinc-600">
-                                Qty
-                              </span>
-
-                              <input
-                                type="number"
-                                min={1}
-                                value={Math.max(1, entry.quantity ?? 1)}
-                                onChange={(event) =>
-                                  updateQuantity(
-                                    entry.instanceId,
-                                    Number(event.target.value),
-                                  )
-                                }
-                                className="h-full w-14 bg-transparent px-2 text-center text-[10px] font-semibold text-zinc-200 outline-none"
-                              />
-                            </label>
+                            <NumberStepper
+                              value={Math.max(1, entry.quantity ?? 1)}
+                              min={1}
+                              onChange={(value) =>
+                                updateQuantity(entry.instanceId, value)
+                              }
+                              ariaLabel={`${name} quantity`}
+                            />
 
                             <button
                               type="button"
@@ -356,22 +347,17 @@ const CharacterInventoryEditorModal = ({
                         {label}
                       </span>
 
-                      <input
-                        type="number"
-                        min={0}
+                      <NumberStepper
                         value={draftMoney[key]}
-                        onChange={(event) => {
-                          const value = Math.max(
-                            0,
-                            Math.floor(Number(event.target.value) || 0),
-                          );
-
+                        min={0}
+                        onChange={(value) =>
                           setDraftMoney((current) => ({
                             ...current,
                             [key]: value,
-                          }));
-                        }}
-                        className="mt-1 w-full rounded-lg border border-white/[0.08] bg-zinc-950/70 px-2.5 py-2 text-sm font-semibold tabular-nums text-zinc-100 outline-none transition focus:border-white/20"
+                          }))
+                        }
+                        ariaLabel={`${label} amount`}
+                        className="mt-1 w-full"
                       />
                     </label>
                   ))}

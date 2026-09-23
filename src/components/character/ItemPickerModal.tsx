@@ -8,6 +8,8 @@ import {
 
 import { allItems } from "../../rulesets/dnd/dnd2024/data/items";
 
+import NumberStepper from "../NumberStepper";
+
 type ItemPickerModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -96,10 +98,6 @@ const ItemPickerModal = ({
       return next;
     });
 
-    /*
-     * Keep the picker open for rapid equipment entry.
-     * Clear the old query and return keyboard focus to search.
-     */
     setSearch("");
 
     requestAnimationFrame(() => {
@@ -113,7 +111,6 @@ const ItemPickerModal = ({
     }
 
     event.preventDefault();
-
     addItem(filteredItems[0].id);
   };
 
@@ -166,7 +163,7 @@ const ItemPickerModal = ({
           </p>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:px-6">
+        <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-4 sm:px-6">
           {filteredItems.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-8 text-center">
               <p className="text-sm text-zinc-400">No matching items.</p>
@@ -204,44 +201,22 @@ const ItemPickerModal = ({
                     </div>
 
                     <div className="flex shrink-0 items-center gap-2">
-                      <div className="flex items-center overflow-hidden rounded-xl border border-white/10 bg-zinc-950">
-                        <button
-                          type="button"
-                          onClick={() => setQuantity(item.id, quantity - 1)}
-                          disabled={quantity <= 1}
-                          className="h-10 w-9 text-zinc-400 transition hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-                          aria-label={`Decrease ${item.name} quantity`}
-                        >
-                          −
-                        </button>
-
-                        <input
-                          type="number"
-                          min={1}
-                          value={quantity}
-                          onChange={(event) =>
-                            setQuantity(item.id, Number(event.target.value))
-                          }
-                          className="h-10 w-16 border-x border-white/10 bg-transparent px-1 text-center text-sm font-semibold text-white outline-none"
-                          aria-label={`${item.name} quantity`}
-                        />
-
-                        <button
-                          type="button"
-                          onClick={() => setQuantity(item.id, quantity + 1)}
-                          className="h-10 w-9 text-zinc-400 transition hover:bg-white/5 hover:text-white"
-                          aria-label={`Increase ${item.name} quantity`}
-                        >
-                          +
-                        </button>
-                      </div>
+                      <NumberStepper
+                        value={quantity}
+                        min={1}
+                        onChange={(value) => setQuantity(item.id, value)}
+                        ariaLabel={`${item.name} quantity`}
+                        size="default"
+                      />
 
                       <button
                         type="button"
                         onClick={() => addItem(item.id)}
-                        className="h-10 rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                        className="h-10 w-[72px] shrink-0 rounded-xl bg-white px-4 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200"
+                        aria-label={`Add ${quantity} ${item.name}`}
+                        title={`Add ${quantity}`}
                       >
-                        Add {quantity > 1 ? `×${quantity}` : ""}
+                        Add
                       </button>
                     </div>
                   </div>
