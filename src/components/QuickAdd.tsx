@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import Avatar from "./Avatar";
 import H3 from "./H3";
+import NumberStepper from "./NumberStepper";
 import { useEncounter } from "../context/EncounterContext";
 import {
   monsters,
@@ -78,7 +79,7 @@ const QuickAdd = () => {
           className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-600"
         />
 
-        <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+        <div className="workspace-scrollbar max-h-72 space-y-2 overflow-y-auto pr-1">
           {filteredMonsters.length === 0 ? (
             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-sm text-neutral-400">
               No monsters found.
@@ -152,14 +153,12 @@ const QuickAdd = () => {
                   <label className="mb-1 block text-xs font-medium text-neutral-400">
                     Quantity
                   </label>
-                  <input
-                    type="number"
-                    min={1}
+                  <NumberStepper
                     value={quantity}
-                    onChange={(e) =>
-                      setQuantity(Math.max(1, Number(e.target.value) || 1))
-                    }
-                    className="w-24 rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white outline-none transition focus:border-yellow-600"
+                    min={1}
+                    onChange={setQuantity}
+                    ariaLabel={`${selectedMonster.name} quantity`}
+                    size="default"
                   />
                 </div>
 
