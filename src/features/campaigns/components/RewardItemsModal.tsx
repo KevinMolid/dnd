@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import NumberStepper from "../../../components/NumberStepper";
 import { allItems, itemsById } from "../../../rulesets/dnd/dnd2024/data/items";
 import { moneyBreakdownToCopper } from "../../../rulesets/dnd/dnd2024/money";
 import type { CampaignItem } from "../../../rulesets/dnd/dnd2024/types";
@@ -90,14 +91,10 @@ const RewardItemsModal = ({
   const [selectedCharacterIds, setSelectedCharacterIds] = useState<string[]>(
     [],
   );
-  const [money, setMoney] = useState<{
-    cp: string;
-    sp: string;
-    gp: string;
-  }>({
-    cp: "0",
-    sp: "0",
-    gp: "0",
+  const [money, setMoney] = useState<RewardMoney>({
+    cp: 0,
+    sp: 0,
+    gp: 0,
   });
   const [selectedItems, setSelectedItems] = useState<SelectedRewardItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -108,9 +105,9 @@ const RewardItemsModal = ({
     setSearch("");
     setSelectedCharacterIds([]);
     setMoney({
-      cp: "0",
-      sp: "0",
-      gp: "0",
+      cp: 0,
+      sp: 0,
+      gp: 0,
     });
     setSelectedItems([]);
     setSubmitting(false);
@@ -293,17 +290,17 @@ const RewardItemsModal = ({
     );
   };
 
-  const updateMoney = (currency: keyof RewardMoney, value: string) => {
+  const updateMoney = (currency: keyof RewardMoney, value: number) => {
     setMoney((current) => ({
       ...current,
-      [currency]: value,
+      [currency]: Math.max(0, Math.floor(value)),
     }));
   };
 
   const normalizeMoney = (): RewardMoney => ({
-    cp: Math.max(0, Math.floor(Number(money.cp) || 0)),
-    sp: Math.max(0, Math.floor(Number(money.sp) || 0)),
-    gp: Math.max(0, Math.floor(Number(money.gp) || 0)),
+    cp: Math.max(0, Math.floor(money.cp)),
+    sp: Math.max(0, Math.floor(money.sp)),
+    gp: Math.max(0, Math.floor(money.gp)),
   });
 
   const handleSubmit = async () => {
@@ -349,9 +346,9 @@ const RewardItemsModal = ({
       setSearch("");
       setSelectedCharacterIds([]);
       setMoney({
-        cp: "0",
-        sp: "0",
-        gp: "0",
+        cp: 0,
+        sp: 0,
+        gp: 0,
       });
       setSelectedItems([]);
     } finally {
@@ -524,14 +521,13 @@ const RewardItemsModal = ({
                     <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400">
                       GP
                     </span>
-                    <input
-                      type="number"
-                      min={0}
+                    <NumberStepper
                       value={money.gp}
-                      onChange={(event) =>
-                        updateMoney("gp", event.target.value)
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
+                      min={0}
+                      onChange={(value) => updateMoney("gp", value)}
+                      ariaLabel="GP reward amount"
+                      width="full"
+                      size="default"
                     />
                   </label>
 
@@ -539,14 +535,13 @@ const RewardItemsModal = ({
                     <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400">
                       SP
                     </span>
-                    <input
-                      type="number"
-                      min={0}
+                    <NumberStepper
                       value={money.sp}
-                      onChange={(event) =>
-                        updateMoney("sp", event.target.value)
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
+                      min={0}
+                      onChange={(value) => updateMoney("sp", value)}
+                      ariaLabel="SP reward amount"
+                      width="full"
+                      size="default"
                     />
                   </label>
 
@@ -554,14 +549,13 @@ const RewardItemsModal = ({
                     <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-zinc-400">
                       CP
                     </span>
-                    <input
-                      type="number"
-                      min={0}
+                    <NumberStepper
                       value={money.cp}
-                      onChange={(event) =>
-                        updateMoney("cp", event.target.value)
-                      }
-                      className="w-full rounded-xl border border-white/10 bg-zinc-950 px-4 py-3 text-white outline-none transition focus:border-emerald-400/40"
+                      min={0}
+                      onChange={(value) => updateMoney("cp", value)}
+                      ariaLabel="CP reward amount"
+                      width="full"
+                      size="default"
                     />
                   </label>
                 </div>
@@ -643,11 +637,10 @@ const RewardItemsModal = ({
                           )}
                         </div>
 
-                        <input
-                          type="number"
-                          min={1}
+                        <NumberStepper
                           value={entry.quantity}
-                          onChange={(event) =>
+                          min={1}
+                          onChange={(value) =>
                             updateItemQuantity(
                               entry.source === "base"
                                 ? {
@@ -658,10 +651,12 @@ const RewardItemsModal = ({
                                     source: "campaign",
                                     campaignItemId: entry.campaignItemId,
                                   },
-                              Number(event.target.value),
+                              value,
                             )
                           }
-                          className="rounded-xl border border-white/10 bg-zinc-950 px-3 py-3 text-white outline-none transition focus:border-emerald-400/40"
+                          ariaLabel={`${itemName} quantity`}
+                          width="full"
+                          size="default"
                         />
 
                         <button

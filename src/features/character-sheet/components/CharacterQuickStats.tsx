@@ -1,5 +1,7 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import NumberStepper from "../../../components/NumberStepper";
+
 import { createPortal } from "react-dom";
 import { useParams } from "react-router-dom";
 
@@ -642,14 +644,9 @@ const HpStat = ({
   onChange?: (value: number) => void | Promise<void>;
 }) => {
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(String(currentHp));
   const [saving, setSaving] = useState(false);
 
   const modalRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setDraft(String(currentHp));
-  }, [currentHp]);
 
   useEffect(() => {
     if (!open) {
@@ -694,7 +691,6 @@ const HpStat = ({
     if (!onChange) return;
 
     const normalized = clampHp(value);
-    setDraft(String(normalized));
     setSaving(true);
 
     try {
@@ -702,21 +698,6 @@ const HpStat = ({
     } finally {
       setSaving(false);
     }
-  };
-
-  const adjustHp = (amount: number) => {
-    void setHp(currentHp + amount);
-  };
-
-  const submitDraft = () => {
-    const parsed = Number(draft);
-
-    if (Number.isNaN(parsed)) {
-      setDraft(String(currentHp));
-      return;
-    }
-
-    void setHp(parsed);
   };
 
   const classes = coreToneClasses[tone];
@@ -782,60 +763,22 @@ const HpStat = ({
               </div>
 
               <div className="space-y-3 p-3">
-                <div className="grid grid-cols-4 gap-1.5">
-                  <HpAdjustButton
-                    label="−5"
-                    onClick={() => adjustHp(-5)}
-                    disabled={saving}
-                  />
-
-                  <HpAdjustButton
-                    label="−1"
-                    onClick={() => adjustHp(-1)}
-                    disabled={saving}
-                  />
-
-                  <HpAdjustButton
-                    label="+1"
-                    onClick={() => adjustHp(1)}
-                    disabled={saving}
-                  />
-
-                  <HpAdjustButton
-                    label="+5"
-                    onClick={() => adjustHp(5)}
-                    disabled={saving}
-                  />
-                </div>
-
                 <div>
                   <label className="text-[9px] font-semibold uppercase tracking-[0.09em] text-zinc-500">
                     Set Current HP
                   </label>
 
-                  <div className="mt-1.5 flex gap-2">
-                    <input
-                      type="number"
+                  <div className="mt-1.5">
+                    <NumberStepper
+                      value={currentHp}
                       min={0}
                       max={maxHp}
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          submitDraft();
-                        }
-                      }}
-                      className="min-w-0 flex-1 rounded-lg border border-white/[0.08] bg-black/30 px-2.5 py-2 text-sm font-semibold text-white outline-none focus:border-white/20"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={submitDraft}
+                      onChange={(value) => void setHp(value)}
+                      ariaLabel="Current hit points"
+                      width="full"
+                      size="default"
                       disabled={saving}
-                      className="rounded-lg bg-white px-3 py-2 text-[11px] font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Set
-                    </button>
+                    />
                   </div>
                 </div>
 
@@ -851,25 +794,6 @@ const HpStat = ({
     </div>
   );
 };
-
-const HpAdjustButton = ({
-  label,
-  onClick,
-  disabled = false,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className="rounded-lg border border-white/[0.08] bg-white/[0.035] py-2 text-xs font-bold text-zinc-200 transition hover:border-white/15 hover:bg-white/[0.07] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
-  >
-    {label}
-  </button>
-);
 
 const InteractiveCoreStat = ({
   label,

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import Avatar from "../../../components/Avatar";
+import NumberStepper from "../../../components/NumberStepper";
 import { getXpProgressWithinLevel } from "../../../rulesets/dnd/dnd2024/xpProgression";
 
 import {
@@ -255,41 +256,19 @@ const PartyControlSection = ({
                         </p>
 
                         <div className="mt-2 flex items-center gap-1.5">
-                          <button
-                            onClick={() =>
-                              setHpAdjustments((prev) => ({
-                                ...prev,
-                                [character.id]: (prev[character.id] ?? 0) - 1,
-                              }))
-                            }
-                            className="h-8 w-8 rounded-md border border-white/[0.08] bg-black/20 text-sm text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
-                          >
-                            −
-                          </button>
-
-                          <input
-                            type="number"
+                          <NumberStepper
                             value={pendingHpDelta}
-                            onChange={(e) =>
+                            min={-maxHp}
+                            max={maxHp}
+                            onChange={(value) =>
                               setHpAdjustments((prev) => ({
                                 ...prev,
-                                [character.id]: Number(e.target.value) || 0,
+                                [character.id]: value,
                               }))
                             }
-                            className="h-8 w-16 rounded-md border border-white/[0.08] bg-black/25 px-2 text-xs font-semibold text-white outline-none focus:border-white/20"
+                            ariaLabel={`${character.name} HP adjustment`}
+                            size="compact"
                           />
-
-                          <button
-                            onClick={() =>
-                              setHpAdjustments((prev) => ({
-                                ...prev,
-                                [character.id]: (prev[character.id] ?? 0) + 1,
-                              }))
-                            }
-                            className="h-8 w-8 rounded-md border border-white/[0.08] bg-black/20 text-sm text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
-                          >
-                            +
-                          </button>
 
                           <button
                             onClick={async () => {
@@ -320,17 +299,17 @@ const PartyControlSection = ({
                         </p>
 
                         <div className="mt-2 flex items-center gap-1.5">
-                          <input
-                            type="number"
+                          <NumberStepper
                             value={pendingXpDelta}
-                            onChange={(e) =>
+                            min={-(character.xp ?? 0)}
+                            onChange={(value) =>
                               setXpAdjustments((prev) => ({
                                 ...prev,
-                                [character.id]: Number(e.target.value) || 0,
+                                [character.id]: value,
                               }))
                             }
-                            className="h-8 w-20 rounded-md border border-white/[0.08] bg-black/25 px-2 text-xs font-semibold text-white outline-none focus:border-white/20"
-                            placeholder="0"
+                            ariaLabel={`${character.name} XP adjustment`}
+                            size="compact"
                           />
 
                           <button
@@ -369,7 +348,7 @@ const PartyControlSection = ({
                         </button>
 
                         {openConditionMenuId === character.id && (
-                          <div className="absolute left-3 right-3 top-[76px] z-20 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
+                          <div className="workspace-scrollbar absolute left-3 right-3 top-[76px] z-20 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">
                             <div className="grid gap-1">
                               {ALL_CONDITIONS.map((condition) => {
                                 const active = (
