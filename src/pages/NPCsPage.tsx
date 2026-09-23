@@ -731,18 +731,18 @@ export default function NPCsPage() {
                 to={`/campaigns/${campaignId}/npcs/${npc.id}`}
                 className="block overflow-hidden rounded-2xl border border-white/10 bg-black/10 transition hover:bg-black/20"
               >
-                {npc.imageUrl ? (
-                  <div className="aspect-[16/9] w-full overflow-hidden border-b border-white/10 bg-black/20">
-                    <img
-                      src={npc.imageUrl}
-                      alt={npc.name || "NPC portrait"}
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`,
-                      }}
-                    />
-                  </div>
-                ) : null}
+                <div className="aspect-[16/9] w-full overflow-hidden border-b border-white/10 bg-black/20">
+                  <img
+                    src={npc.imageUrl || "/images/DefaultNPC.png"}
+                    alt={npc.name || "NPC portrait"}
+                    className="h-full w-full object-cover"
+                    style={{
+                      objectPosition: npc.imageUrl
+                        ? `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`
+                        : "50% 50%",
+                    }}
+                  />
+                </div>
 
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">

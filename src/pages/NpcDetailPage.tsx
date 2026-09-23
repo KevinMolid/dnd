@@ -1004,18 +1004,18 @@ export default function NpcDetailPage() {
         <div className="mx-auto max-w-5xl">
           <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-xl">
             <div className="grid md:grid-cols-[42%_58%]">
-              {npc?.imageUrl ? (
-                <div className="min-h-[360px] bg-black">
-                  <img
-                    src={npc.imageUrl}
-                    alt={npc.name || "NPC portrait"}
-                    className="h-full w-full object-cover"
-                    style={{
-                      objectPosition: `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`,
-                    }}
-                  />
-                </div>
-              ) : null}
+              <div className="min-h-[360px] bg-black">
+                <img
+                  src={npc?.imageUrl || "/images/DefaultNPC.png"}
+                  alt={npc?.name || "NPC portrait"}
+                  className="h-full w-full object-cover"
+                  style={{
+                    objectPosition: npc?.imageUrl
+                      ? `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`
+                      : "50% 50%",
+                  }}
+                />
+              </div>
 
               <div className="flex flex-col justify-center p-7 sm:p-10">
                 <h1 className="text-4xl font-bold tracking-tight text-white">
@@ -1041,18 +1041,18 @@ export default function NpcDetailPage() {
         <div className="mx-auto max-w-6xl">
           <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-xl">
             <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
-              {npc?.imageUrl ? (
-                <div className="bg-black">
-                  <img
-                    src={npc.imageUrl}
-                    alt={npc.name || "NPC portrait"}
-                    className="h-full min-h-[360px] w-full object-cover"
-                    style={{
-                      objectPosition: `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`,
-                    }}
-                  />
-                </div>
-              ) : null}
+              <div className="bg-black">
+                <img
+                  src={npc?.imageUrl || "/images/DefaultNPC.png"}
+                  alt={npc?.name || "NPC portrait"}
+                  className="h-full min-h-[360px] w-full object-cover"
+                  style={{
+                    objectPosition: npc?.imageUrl
+                      ? `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`
+                      : "50% 50%",
+                  }}
+                />
+              </div>
 
               <div className="p-6 sm:p-7">
                 <div className="border-b border-white/10 pb-5">
