@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Avatar from "../../../components/Avatar";
+import NumberStepper from "../../../components/NumberStepper";
 
 import {
   useEncounter,
@@ -88,18 +89,38 @@ const getArmorClass = (character: CampaignCharacter) => {
 };
 
 const getLiveHp = (character: CampaignCharacter) => {
+  const workspaceCharacter = character as CampaignCharacter & {
+    buildMode?: string;
+    customStats?: {
+      currentHp?: number;
+      maxHp?: number;
+    };
+  };
+
+  if (workspaceCharacter.buildMode === "custom") {
+    const maxHp =
+      workspaceCharacter.customStats?.maxHp ?? workspaceCharacter.maxHp ?? 1;
+    const currentHp =
+      workspaceCharacter.customStats?.currentHp ??
+      workspaceCharacter.currentHp ??
+      maxHp;
+
+    return {
+      currentHp: Math.max(0, currentHp),
+      maxHp: Math.max(1, maxHp),
+    };
+  }
+
   try {
     const hp = getCharacterHp(character as never);
 
     return {
       currentHp: hp.currentHp,
-
       maxHp: hp.maxHp,
     };
   } catch {
     return {
       currentHp: character.currentHp ?? 0,
-
       maxHp: character.maxHp ?? 1,
     };
   }
@@ -499,38 +520,6 @@ export default function EncounterWorkspaceModule({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTurnIndex, initiativeOrderKey, campaignCharacters]);
 
-  const updateHp = async (
-    entry: EncounterEntry,
-
-    delta: number,
-  ) => {
-    const nextHp = Math.max(
-      0,
-
-      Math.min(
-        entry.maxHp,
-
-        entry.currentHp + delta,
-      ),
-    );
-
-    updateEntityHp(entry.id, nextHp);
-
-    if (entry.entityKind !== "player") {
-      return;
-    }
-
-    const character = getCharacterForEntry(entry);
-
-    if (!character) {
-      return;
-    }
-
-    await updateCharacter(character.id, {
-      currentHp: nextHp,
-    });
-  };
-
   const setHp = async (
     entry: EncounterEntry,
 
@@ -555,6 +544,24 @@ export default function EncounterWorkspaceModule({
     const character = getCharacterForEntry(entry);
 
     if (!character) {
+      return;
+    }
+
+    const workspaceCharacter = character as CampaignCharacter & {
+      buildMode?: string;
+      customStats?: {
+        currentHp?: number;
+        maxHp?: number;
+      };
+    };
+
+    if (workspaceCharacter.buildMode === "custom") {
+      await updateCharacter(character.id, {
+        customStats: {
+          ...(workspaceCharacter.customStats ?? {}),
+          currentHp: nextHp,
+        },
+      } as Partial<CampaignCharacter>);
       return;
     }
 
@@ -1029,20 +1036,23 @@ export default function EncounterWorkspaceModule({
 
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={entry.initiative}
                       onChange={(event) => {
                         const value = event.target.value;
 
-                        updateEntityInitiative(
-                          entry.id,
-
-                          value === "" ? "" : Number(value),
-                        );
+                        if (value === "" || /^-?\d*$/.test(value)) {
+                          updateEntityInitiative(
+                            entry.id,
+                            value === "" ? "" : Number(value),
+                          );
+                        }
                       }}
                       onClick={(event) => event.stopPropagation()}
                       placeholder="—"
                       title="Initiative"
+                      aria-label={`${entry.displayName} initiative`}
                       className="workspace-no-drag h-9 w-10 shrink-0 rounded-lg border border-white/10 bg-black/30 px-1 text-center text-xs font-bold text-white outline-none focus:border-amber-400/50"
                     />
 
@@ -1094,32 +1104,15 @@ export default function EncounterWorkspaceModule({
                       className="workspace-no-drag flex shrink-0 items-center gap-1"
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <button
-                        type="button"
-                        onClick={() => updateHp(entry, -1)}
-                        title="-1 HP"
-                        className="h-7 min-w-7 rounded-md border border-white/10 bg-black/20 px-1 text-xs text-rose-300 transition hover:bg-rose-500/10"
-                      >
-                        −
-                      </button>
-
-                      <input
-                        type="number"
+                      <NumberStepper
                         value={entry.currentHp}
-                        onChange={(event) =>
-                          setHp(entry, Number(event.target.value))
-                        }
-                        className="h-7 w-10 rounded-md border border-white/10 bg-black/30 px-1 text-center text-xs font-semibold text-white outline-none"
+                        min={0}
+                        max={entry.maxHp}
+                        onChange={(value) => void setHp(entry, value)}
+                        ariaLabel={`${entry.displayName} hit points`}
+                        size="compact"
+                        buttonTone="hp"
                       />
-
-                      <button
-                        type="button"
-                        onClick={() => updateHp(entry, 1)}
-                        title="+1 HP"
-                        className="h-7 min-w-7 rounded-md border border-white/10 bg-black/20 px-1 text-xs text-emerald-300 transition hover:bg-emerald-500/10"
-                      >
-                        +
-                      </button>
 
                       <button
                         type="button"

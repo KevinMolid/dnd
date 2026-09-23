@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import Avatar from "../../../components/Avatar";
+import NumberStepper from "../../../components/NumberStepper";
 
 import {
   ALL_CONDITIONS,
@@ -1038,32 +1039,16 @@ export default function CharacterWorkspaceModule({
             />
           </div>
 
-          <div className="workspace-no-drag mt-2 flex items-center justify-center gap-1">
-            <button
-              type="button"
-              onClick={() => setHp(hp.currentHp - 1)}
-              aria-label="Decrease hit points by 1"
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/20 text-xs text-rose-300 hover:bg-rose-500/10"
-            >
-              −
-            </button>
-
-            <input
-              type="number"
+          <div className="workspace-no-drag mt-2 flex justify-center">
+            <NumberStepper
               value={hp.currentHp}
-              aria-label="Current hit points"
-              onChange={(event) => setHp(Number(event.target.value))}
-              className="h-7 w-14 rounded-md border border-white/10 bg-black/30 text-center text-xs font-semibold text-white outline-none"
+              min={0}
+              max={hp.maxHp}
+              onChange={setHp}
+              ariaLabel="Current hit points"
+              size="compact"
+              buttonTone="hp"
             />
-
-            <button
-              type="button"
-              onClick={() => setHp(hp.currentHp + 1)}
-              aria-label="Increase hit points by 1"
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/20 text-xs text-emerald-300 hover:bg-emerald-500/10"
-            >
-              +
-            </button>
           </div>
         </section>
 

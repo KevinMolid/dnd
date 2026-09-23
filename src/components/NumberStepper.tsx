@@ -14,6 +14,7 @@ type CommonProps = {
   ariaLabel?: string;
   size?: "compact" | "default";
   width?: "fixed" | "full";
+  buttonTone?: "default" | "hp";
   className?: string;
 };
 
@@ -52,6 +53,7 @@ const NumberStepper = (props: NumberStepperProps) => {
     ariaLabel = "Number",
     size = "compact",
     width = "fixed",
+    buttonTone = "default",
     className = "",
   } = props;
 
@@ -302,7 +304,11 @@ const NumberStepper = (props: NumberStepperProps) => {
         onContextMenu={(event) => event.preventDefault()}
         disabled={decreaseDisabled}
         aria-label={`Decrease ${ariaLabel}`}
-        className={`flex ${buttonWidthClass} shrink-0 select-none items-center justify-center ${textClass} font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200 disabled:cursor-default disabled:opacity-30`}
+        className={`flex ${buttonWidthClass} shrink-0 select-none items-center justify-center ${textClass} font-semibold ${
+          buttonTone === "hp"
+            ? "text-rose-300 transition hover:bg-rose-500/10"
+            : "text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+        } disabled:cursor-default disabled:opacity-30`}
       >
         −
       </button>
@@ -347,7 +353,11 @@ const NumberStepper = (props: NumberStepperProps) => {
         onContextMenu={(event) => event.preventDefault()}
         disabled={increaseDisabled}
         aria-label={`Increase ${ariaLabel}`}
-        className={`flex ${buttonWidthClass} shrink-0 select-none items-center justify-center ${textClass} font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200 disabled:cursor-default disabled:opacity-30`}
+        className={`flex ${buttonWidthClass} shrink-0 select-none items-center justify-center ${textClass} font-semibold ${
+          buttonTone === "hp"
+            ? "text-emerald-300 transition hover:bg-emerald-500/10"
+            : "text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+        } disabled:cursor-default disabled:opacity-30`}
       >
         +
       </button>
