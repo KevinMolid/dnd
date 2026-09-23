@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import NumberStepper from "../../../components/NumberStepper";
 import { allItems } from "../../../rulesets/dnd/dnd2024/data/items";
 import type {
   AbilityKey,
@@ -180,39 +181,41 @@ const CreateCampaignItemModal = ({
   const [shortDescription, setShortDescription] = useState("");
   const [gmNotes, setGmNotes] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [weight, setWeight] = useState("");
+  const [weight, setWeight] = useState<number | null>(null);
   const [costCurrency, setCostCurrency] = useState<Currency>("gp");
-  const [cost, setCost] = useState("");
+  const [cost, setCost] = useState<number | null>(null);
   const [stackable, setStackable] = useState(false);
   const [magical, setMagical] = useState(false);
   const [equippable, setEquippable] = useState(false);
   const [selectedSlots, setSelectedSlots] = useState<EquipmentSlotId[]>([]);
   const [selectedWieldModes, setSelectedWieldModes] = useState<WieldMode[]>([]);
-  const [attackBonus, setAttackBonus] = useState("");
-  const [damageBonus, setDamageBonus] = useState("");
-  const [acBonus, setAcBonus] = useState("");
+  const [attackBonus, setAttackBonus] = useState<number | null>(null);
+  const [damageBonus, setDamageBonus] = useState<number | null>(null);
+  const [acBonus, setAcBonus] = useState<number | null>(null);
 
   const [weaponKind, setWeaponKind] = useState<WeaponKind>("simple-melee");
-  const [damageCount, setDamageCount] = useState("1");
+  const [damageCount, setDamageCount] = useState<number>(1);
   const [damageDie, setDamageDie] = useState<1 | 4 | 6 | 8 | 10 | 12>(6);
   const [damageType, setDamageType] = useState<DamageType>("slashing");
   const [properties, setProperties] = useState<WeaponProperty[]>([]);
-  const [rangeNormal, setRangeNormal] = useState("");
-  const [rangeLong, setRangeLong] = useState("");
+  const [rangeNormal, setRangeNormal] = useState<number | null>(null);
+  const [rangeLong, setRangeLong] = useState<number | null>(null);
   const [versatileDie, setVersatileDie] = useState<1 | 4 | 6 | 8 | 10 | 12>(8);
   const [mastery, setMastery] = useState("");
   const [ammunitionType, setAmmunitionType] = useState<AmmunitionType | "">("");
 
   const [armorCategory, setArmorCategory] = useState<ArmorCategory>("light");
-  const [baseAc, setBaseAc] = useState("11");
-  const [dexCap, setDexCap] = useState("");
+  const [baseAc, setBaseAc] = useState<number>(11);
+  const [dexCap, setDexCap] = useState<number | null>(null);
   const [stealthDisadvantage, setStealthDisadvantage] = useState(false);
-  const [strengthRequirement, setStrengthRequirement] = useState("");
+  const [strengthRequirement, setStrengthRequirement] = useState<number | null>(
+    null,
+  );
 
   const [toolAbility, setToolAbility] = useState<AbilityKey>("dex");
-  const [containerWeight, setContainerWeight] = useState("");
+  const [containerWeight, setContainerWeight] = useState<number | null>(null);
   const [containerVolume, setContainerVolume] = useState("");
-  const [bundleSize, setBundleSize] = useState("1");
+  const [bundleSize, setBundleSize] = useState<number>(1);
   const [storageItemId, setStorageItemId] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -252,15 +255,15 @@ const CreateCampaignItemModal = ({
     setGmNotes(campaignItem?.gmNotes ?? "");
     setImageUrl(campaignItem?.imageUrl ?? "");
 
-    setWeight(item?.weight?.toString() ?? "");
+    setWeight(item?.weight ?? null);
 
     const firstCost = Object.entries(item?.cost ?? {})[0];
     if (firstCost) {
       setCostCurrency(firstCost[0] as Currency);
-      setCost(String(firstCost[1]));
+      setCost(Number(firstCost[1]));
     } else {
       setCostCurrency("gp");
-      setCost("");
+      setCost(null);
     }
 
     setStackable(item?.stackable ?? false);
@@ -270,19 +273,15 @@ const CreateCampaignItemModal = ({
     setSelectedWieldModes(item?.equippable?.allowedWieldModes ?? []);
 
     setAttackBonus(
-      typeof item?.attackBonus === "number" ? String(item.attackBonus) : "",
+      typeof item?.attackBonus === "number" ? item.attackBonus : null,
     );
     setDamageBonus(
-      typeof item?.damageBonus === "number" ? String(item.damageBonus) : "",
+      typeof item?.damageBonus === "number" ? item.damageBonus : null,
     );
-    setAcBonus(typeof item?.acBonus === "number" ? String(item.acBonus) : "");
+    setAcBonus(typeof item?.acBonus === "number" ? item.acBonus : null);
 
     setWeaponKind(item?.weapon?.weaponKind ?? "simple-melee");
-    setDamageCount(
-      item?.weapon?.damage?.dice?.count
-        ? String(item.weapon.damage.dice.count)
-        : "1",
-    );
+    setDamageCount(item?.weapon?.damage?.dice?.count ?? 1);
     setDamageDie(
       (item?.weapon?.damage?.dice?.die ?? 6) as 1 | 4 | 6 | 8 | 10 | 12,
     );
@@ -290,13 +289,13 @@ const CreateCampaignItemModal = ({
     setProperties(item?.weapon?.properties ?? []);
     setRangeNormal(
       typeof item?.weapon?.range?.normal === "number"
-        ? String(item.weapon.range.normal)
-        : "",
+        ? item.weapon.range.normal
+        : null,
     );
     setRangeLong(
       typeof item?.weapon?.range?.long === "number"
-        ? String(item.weapon.range.long)
-        : "",
+        ? item.weapon.range.long
+        : null,
     );
     setVersatileDie(
       (item?.weapon?.versatileDamage?.dice?.die ?? 8) as
@@ -311,33 +310,25 @@ const CreateCampaignItemModal = ({
     setAmmunitionType(item?.weapon?.ammunitionType ?? "");
 
     setArmorCategory(item?.armor?.armorCategory ?? "light");
-    setBaseAc(
-      typeof item?.armor?.baseAc === "number"
-        ? String(item.armor.baseAc)
-        : "11",
-    );
+    setBaseAc(typeof item?.armor?.baseAc === "number" ? item.armor.baseAc : 11);
     setDexCap(
-      typeof item?.armor?.dexCap === "number" ? String(item.armor.dexCap) : "",
+      typeof item?.armor?.dexCap === "number" ? item.armor.dexCap : null,
     );
     setStealthDisadvantage(item?.armor?.stealthDisadvantage ?? false);
     setStrengthRequirement(
       typeof item?.armor?.strengthRequirement === "number"
-        ? String(item.armor.strengthRequirement)
-        : "",
+        ? item.armor.strengthRequirement
+        : null,
     );
 
     setToolAbility(item?.tool?.ability ?? "dex");
     setContainerWeight(
       typeof item?.container?.capacityWeight === "number"
-        ? String(item.container.capacityWeight)
-        : "",
+        ? item.container.capacityWeight
+        : null,
     );
     setContainerVolume(item?.container?.capacityVolume ?? "");
-    setBundleSize(
-      typeof item?.ammunition?.bundleSize === "number"
-        ? String(item.ammunition.bundleSize)
-        : "1",
-    );
+    setBundleSize(item?.ammunition?.bundleSize ?? 1);
     setStorageItemId(item?.ammunition?.storageItemId ?? "");
 
     setSubmitting(false);
@@ -348,15 +339,15 @@ const CreateCampaignItemModal = ({
     setName(selectedBase.name);
     setCategory(selectedBase.category);
     setDescription(selectedBase.description ?? "");
-    setWeight(selectedBase.weight?.toString() ?? "");
+    setWeight(selectedBase.weight ?? null);
     setStackable(selectedBase.stackable ?? false);
     setMagical(selectedBase.magical ?? false);
     const firstCost = Object.entries(selectedBase.cost ?? {})[0];
     if (firstCost) {
       setCostCurrency(firstCost[0] as Currency);
-      setCost(String(firstCost[1]));
+      setCost(Number(firstCost[1]));
     } else {
-      setCost("");
+      setCost(null);
     }
   }, [editItem, mode, selectedBase]);
 
@@ -381,13 +372,13 @@ const CreateCampaignItemModal = ({
       name: name.trim(),
       category,
       ...(description.trim() ? { description: description.trim() } : {}),
-      ...(weight !== "" ? { weight: Number(weight) } : {}),
-      ...(cost !== "" ? { cost: { [costCurrency]: Number(cost) } } : {}),
+      ...(weight !== null ? { weight } : {}),
+      ...(cost !== null ? { cost: { [costCurrency]: cost } } : {}),
       ...(stackable ? { stackable: true } : {}),
       ...(magical ? { magical: true } : {}),
-      ...(attackBonus !== "" ? { attackBonus: Number(attackBonus) } : {}),
-      ...(damageBonus !== "" ? { damageBonus: Number(damageBonus) } : {}),
-      ...(acBonus !== "" ? { acBonus: Number(acBonus) } : {}),
+      ...(attackBonus !== null ? { attackBonus } : {}),
+      ...(damageBonus !== null ? { damageBonus } : {}),
+      ...(acBonus !== null ? { acBonus } : {}),
     };
 
     if (equippable) {
@@ -403,7 +394,7 @@ const CreateCampaignItemModal = ({
       item.weapon = {
         weaponKind,
         damage: {
-          dice: { count: Number(damageCount) || 1, die: damageDie },
+          dice: { count: damageCount || 1, die: damageDie },
           damageType,
         },
         properties,
@@ -415,11 +406,11 @@ const CreateCampaignItemModal = ({
               },
             }
           : {}),
-        ...(rangeNormal !== ""
+        ...(rangeNormal !== null
           ? {
               range: {
-                normal: Number(rangeNormal),
-                ...(rangeLong !== "" ? { long: Number(rangeLong) } : {}),
+                normal: rangeNormal,
+                ...(rangeLong !== null ? { long: rangeLong } : {}),
               },
             }
           : {}),
@@ -431,17 +422,15 @@ const CreateCampaignItemModal = ({
     if (category === "armor") {
       item.armor = {
         armorCategory,
-        baseAc: Number(baseAc) || 10,
-        ...(dexCap !== "" ? { dexCap: Number(dexCap) } : {}),
+        baseAc: baseAc || 10,
+        ...(dexCap !== null ? { dexCap } : {}),
         ...(stealthDisadvantage ? { stealthDisadvantage: true } : {}),
-        ...(strengthRequirement !== ""
-          ? { strengthRequirement: Number(strengthRequirement) }
-          : {}),
+        ...(strengthRequirement !== null ? { strengthRequirement } : {}),
       };
     }
 
     if (category === "shield") {
-      item.shield = { acBonus: Number(acBonus) || 2 };
+      item.shield = { acBonus: acBonus ?? 2 };
     }
 
     if (category === "tool") {
@@ -450,8 +439,8 @@ const CreateCampaignItemModal = ({
 
     if (category === "container") {
       item.container = {
-        ...(containerWeight !== ""
-          ? { capacityWeight: Number(containerWeight) }
+        ...(containerWeight !== null
+          ? { capacityWeight: containerWeight }
           : {}),
         ...(containerVolume.trim()
           ? { capacityVolume: containerVolume.trim() }
@@ -461,7 +450,7 @@ const CreateCampaignItemModal = ({
 
     if (category === "ammunition") {
       item.ammunition = {
-        bundleSize: Number(bundleSize) || 1,
+        bundleSize: bundleSize || 1,
         ...(storageItemId.trim()
           ? { storageItemId: storageItemId.trim() }
           : {}),
@@ -540,12 +529,13 @@ const CreateCampaignItemModal = ({
             </Field>
             <Field title="Damage dice">
               <div className="grid grid-cols-2 gap-2">
-                <input
-                  className={inputClass}
-                  type="number"
-                  min="1"
+                <NumberStepper
                   value={damageCount}
-                  onChange={(e) => setDamageCount(e.target.value)}
+                  min={1}
+                  onChange={setDamageCount}
+                  ariaLabel="Damage dice count"
+                  width="full"
+                  size="default"
                 />
                 <select
                   className={selectClass}
@@ -598,19 +588,27 @@ const CreateCampaignItemModal = ({
 
           <div className="grid gap-3 sm:grid-cols-4">
             <Field title="Normal range">
-              <input
-                className={inputClass}
-                type="number"
+              <NumberStepper
                 value={rangeNormal}
-                onChange={(e) => setRangeNormal(e.target.value)}
+                min={0}
+                allowEmpty
+                onChange={setRangeNormal}
+                emptyLabel="None"
+                ariaLabel="Normal range"
+                width="full"
+                size="default"
               />
             </Field>
             <Field title="Long range">
-              <input
-                className={inputClass}
-                type="number"
+              <NumberStepper
                 value={rangeLong}
-                onChange={(e) => setRangeLong(e.target.value)}
+                min={0}
+                allowEmpty
+                onChange={setRangeLong}
+                emptyLabel="None"
+                ariaLabel="Long range"
+                width="full"
+                size="default"
               />
             </Field>
             <Field title="Mastery">
@@ -681,28 +679,37 @@ const CreateCampaignItemModal = ({
               </select>
             </Field>
             <Field title="Base AC">
-              <input
-                className={inputClass}
-                type="number"
+              <NumberStepper
                 value={baseAc}
-                onChange={(e) => setBaseAc(e.target.value)}
+                min={0}
+                onChange={setBaseAc}
+                ariaLabel="Base AC"
+                width="full"
+                size="default"
               />
             </Field>
             <Field title="DEX cap">
-              <input
-                className={inputClass}
-                type="number"
+              <NumberStepper
                 value={dexCap}
-                onChange={(e) => setDexCap(e.target.value)}
-                placeholder="No cap"
+                min={0}
+                allowEmpty
+                onChange={setDexCap}
+                emptyLabel="No cap"
+                ariaLabel="DEX cap"
+                width="full"
+                size="default"
               />
             </Field>
             <Field title="STR requirement">
-              <input
-                className={inputClass}
-                type="number"
+              <NumberStepper
                 value={strengthRequirement}
-                onChange={(e) => setStrengthRequirement(e.target.value)}
+                min={0}
+                allowEmpty
+                onChange={setStrengthRequirement}
+                emptyLabel="None"
+                ariaLabel="Strength requirement"
+                width="full"
+                size="default"
               />
             </Field>
           </div>
@@ -741,11 +748,16 @@ const CreateCampaignItemModal = ({
           <SectionTitle>Container</SectionTitle>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Field title="Capacity weight">
-              <input
-                className={inputClass}
-                type="number"
+              <NumberStepper
                 value={containerWeight}
-                onChange={(e) => setContainerWeight(e.target.value)}
+                min={0}
+                step={0.1}
+                allowEmpty
+                onChange={setContainerWeight}
+                emptyLabel="None"
+                ariaLabel="Capacity weight"
+                width="full"
+                size="default"
               />
             </Field>
             <Field title="Capacity volume">
@@ -765,12 +777,13 @@ const CreateCampaignItemModal = ({
           <SectionTitle>Ammunition</SectionTitle>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Field title="Bundle size">
-              <input
-                className={inputClass}
-                type="number"
-                min="1"
+              <NumberStepper
                 value={bundleSize}
-                onChange={(e) => setBundleSize(e.target.value)}
+                min={1}
+                onChange={setBundleSize}
+                ariaLabel="Bundle size"
+                width="full"
+                size="default"
               />
             </Field>
             <Field title="Storage item ID">
@@ -916,23 +929,29 @@ const CreateCampaignItemModal = ({
               <SectionTitle>Properties</SectionTitle>
               <div className="grid gap-3 sm:grid-cols-4">
                 <Field title="Weight (lb.)">
-                  <input
-                    className={inputClass}
-                    type="number"
-                    min="0"
-                    step="0.1"
+                  <NumberStepper
                     value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
+                    min={0}
+                    step={0.1}
+                    allowEmpty
+                    onChange={setWeight}
+                    emptyLabel="None"
+                    ariaLabel="Weight"
+                    width="full"
+                    size="default"
                   />
                 </Field>
                 <Field title="Value">
                   <div className="grid grid-cols-[1fr_72px] gap-2">
-                    <input
-                      className={inputClass}
-                      type="number"
-                      min="0"
+                    <NumberStepper
                       value={cost}
-                      onChange={(e) => setCost(e.target.value)}
+                      min={0}
+                      allowEmpty
+                      onChange={setCost}
+                      emptyLabel="None"
+                      ariaLabel="Value"
+                      width="full"
+                      size="default"
                     />
                     <select
                       className={selectClass}
@@ -950,28 +969,38 @@ const CreateCampaignItemModal = ({
                   </div>
                 </Field>
                 <Field title="Attack bonus">
-                  <input
-                    className={inputClass}
-                    type="number"
+                  <NumberStepper
                     value={attackBonus}
-                    onChange={(e) => setAttackBonus(e.target.value)}
+                    min={Number.MIN_SAFE_INTEGER}
+                    allowEmpty
+                    onChange={setAttackBonus}
+                    emptyLabel="None"
+                    ariaLabel="Attack bonus"
+                    width="full"
+                    size="default"
                   />
                 </Field>
                 <Field title="Damage / AC bonus">
                   <div className="grid grid-cols-2 gap-2">
-                    <input
-                      className={inputClass}
-                      type="number"
+                    <NumberStepper
                       value={damageBonus}
-                      onChange={(e) => setDamageBonus(e.target.value)}
-                      placeholder="DMG"
+                      min={Number.MIN_SAFE_INTEGER}
+                      allowEmpty
+                      onChange={setDamageBonus}
+                      emptyLabel="None"
+                      ariaLabel="Damage bonus"
+                      width="full"
+                      size="default"
                     />
-                    <input
-                      className={inputClass}
-                      type="number"
+                    <NumberStepper
                       value={acBonus}
-                      onChange={(e) => setAcBonus(e.target.value)}
-                      placeholder="AC"
+                      min={Number.MIN_SAFE_INTEGER}
+                      allowEmpty
+                      onChange={setAcBonus}
+                      emptyLabel="None"
+                      ariaLabel="AC bonus"
+                      width="full"
+                      size="default"
                     />
                   </div>
                 </Field>

@@ -60,7 +60,9 @@ const NumberStepper = (props: NumberStepperProps) => {
     props.allowEmpty === true ? (props.emptyLabel ?? "None") : "None";
 
   const normalizedValue =
-    value === null ? null : clamp(Math.floor(value) || 0, min, max);
+    value === null
+      ? null
+      : clamp(Number.isFinite(value) ? value : min, min, max);
 
   const [draft, setDraft] = useState(
     normalizedValue === null ? "" : String(normalizedValue),
@@ -127,7 +129,12 @@ const NumberStepper = (props: NumberStepperProps) => {
       return;
     }
 
-    const next = clamp(Math.floor(nextValue), min, max);
+    const precision = Math.max(0, (String(step).split(".")[1] ?? "").length);
+    const rounded =
+      precision > 0
+        ? Number(nextValue.toFixed(precision))
+        : Math.round(nextValue);
+    const next = clamp(rounded, min, max);
     latestValueRef.current = next;
     setDraft(String(next));
     emitChange(next);
@@ -139,7 +146,9 @@ const NumberStepper = (props: NumberStepperProps) => {
     const current = latestValueRef.current;
 
     if (current === null) {
-      if (delta > 0) applyValue(min);
+      if (delta > 0) {
+        applyValue(clamp(Math.max(min, step), min, max));
+      }
       return;
     }
 
@@ -196,7 +205,7 @@ const NumberStepper = (props: NumberStepperProps) => {
 
         if (current === null) {
           if (delta > 0) {
-            applyValue(min);
+            applyValue(clamp(Math.max(min, step), min, max));
           } else {
             stopHold();
           }
@@ -239,7 +248,23 @@ const NumberStepper = (props: NumberStepperProps) => {
       return;
     }
 
-    if (!/^\d+$/.test(nextDraft)) return;
+    const allowsNegative = min < 0;
+    const decimalPattern = allowsNegative
+      ? /^-?\d*(?:\.\d*)?$/
+      : /^\d*(?:\.\d*)?$/;
+
+    if (!decimalPattern.test(nextDraft)) return;
+
+    // Keep incomplete-but-valid editing states without committing yet.
+    if (
+      nextDraft === "-" ||
+      nextDraft === "." ||
+      nextDraft === "-." ||
+      nextDraft.endsWith(".")
+    ) {
+      setDraft(nextDraft);
+      return;
+    }
 
     setDraft(nextDraft);
 
@@ -284,8 +309,8 @@ const NumberStepper = (props: NumberStepperProps) => {
 
       <input
         type="text"
-        inputMode="numeric"
-        pattern="[0-9]*"
+        inputMode={step % 1 === 0 ? "numeric" : "decimal"}
+        pattern={min < 0 ? "-?[0-9]*[.]?[0-9]*" : "[0-9]*[.]?[0-9]*"}
         value={draft}
         placeholder={displayPlaceholder}
         disabled={disabled}
