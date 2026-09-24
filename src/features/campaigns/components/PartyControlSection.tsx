@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import Avatar from "../../../components/Avatar";
@@ -28,6 +28,7 @@ type PartyControlSectionProps = {
     character: CampaignCharacter,
     condition: string,
   ) => Promise<void>;
+  onClearConditions: (character: CampaignCharacter) => Promise<void>;
 };
 
 const PartyControlSection = ({
@@ -39,6 +40,7 @@ const PartyControlSection = ({
   onUpdateCharacter,
   onUpdateCharacterXp,
   onToggleCondition,
+  onClearConditions,
 }: PartyControlSectionProps) => {
   const location = useLocation();
   const [expandedCharacterId, setExpandedCharacterId] = useState<string | null>(
@@ -53,6 +55,29 @@ const PartyControlSection = ({
   const [openConditionMenuId, setOpenConditionMenuId] = useState<string | null>(
     null,
   );
+  const conditionMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!openConditionMenuId) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+
+      if (
+        target instanceof Node &&
+        conditionMenuRef.current &&
+        !conditionMenuRef.current.contains(target)
+      ) {
+        setOpenConditionMenuId(null);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [openConditionMenuId]);
   const [portraitCharacter, setPortraitCharacter] =
     useState<CampaignCharacter | null>(null);
 
@@ -374,28 +399,50 @@ const PartyControlSection = ({
                                 [character.id]: 0,
                               }));
                             }}
-                            className="rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
+                            className="ml-auto rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
                           >
                             Apply
                           </button>
                         </div>
                       </div>
 
-                      <div className="relative rounded-xl border border-white/10 bg-white/5 p-3">
+                      <div
+                        ref={
+                          openConditionMenuId === character.id
+                            ? conditionMenuRef
+                            : undefined
+                        }
+                        className="relative rounded-xl border border-white/10 bg-white/5 p-3"
+                      >
                         <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                           Conditions
                         </p>
 
-                        <button
-                          onClick={() =>
-                            setOpenConditionMenuId((prev) =>
-                              prev === character.id ? null : character.id,
-                            )
-                          }
-                          className="mt-2 inline-flex h-8 items-center rounded-md border border-white/[0.08] bg-black/25 px-2.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.06] hover:text-white"
-                        >
-                          Edit conditions
-                        </button>
+                        <div className="mt-2 flex items-center gap-2">
+                          <button
+                            onClick={() =>
+                              setOpenConditionMenuId((prev) =>
+                                prev === character.id ? null : character.id,
+                              )
+                            }
+                            className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+                          >
+                            Edit
+                          </button>
+
+                          {(character.conditions ?? []).length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setOpenConditionMenuId(null);
+                                await onClearConditions(character);
+                              }}
+                              className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-rose-400/20 hover:bg-rose-500/10 hover:text-rose-300"
+                            >
+                              Clear
+                            </button>
+                          ) : null}
+                        </div>
 
                         {openConditionMenuId === character.id && (
                           <div className="workspace-scrollbar absolute left-3 right-3 top-[76px] z-20 max-h-64 overflow-y-auto rounded-xl border border-white/10 bg-zinc-950 p-2 shadow-2xl">

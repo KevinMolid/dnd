@@ -309,6 +309,11 @@ const CampaignPage = () => {
             onUpdateCharacter={updateCharacter}
             onUpdateCharacterXp={updateCharacterXp}
             onToggleCondition={toggleCondition}
+            onClearConditions={(character) =>
+              updateCharacter(character.id, {
+                conditions: [],
+              })
+            }
           />
 
           {myInactiveCampaignCharacters.length > 0 && (
