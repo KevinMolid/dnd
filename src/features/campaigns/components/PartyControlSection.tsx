@@ -31,6 +31,35 @@ type PartyControlSectionProps = {
   onClearConditions: (character: CampaignCharacter) => Promise<void>;
 };
 
+type PartyCharacter = CampaignCharacter & {
+  buildMode?: string;
+  customStats?: {
+    currentHp?: number;
+    maxHp?: number;
+  };
+};
+
+const isCustomCharacter = (character: PartyCharacter) =>
+  character.buildMode === "custom";
+
+const getLiveHp = (character: PartyCharacter) => {
+  if (isCustomCharacter(character)) {
+    const maxHp = character.customStats?.maxHp ?? character.maxHp ?? 0;
+    const currentHp =
+      character.customStats?.currentHp ?? character.currentHp ?? maxHp;
+
+    return {
+      currentHp: Math.max(0, currentHp),
+      maxHp: Math.max(1, maxHp),
+    };
+  }
+
+  return {
+    currentHp: character.currentHp ?? 0,
+    maxHp: Math.max(1, character.maxHp ?? 1),
+  };
+};
+
 const PartyControlSection = ({
   characters,
   isGm,
@@ -118,8 +147,9 @@ const PartyControlSection = ({
           </div>
         ) : (
           characters.map((character) => {
-            const hp = character.currentHp ?? 0;
-            const maxHp = Math.max(1, character.maxHp ?? 1);
+            const liveHp = getLiveHp(character);
+            const hp = liveHp.currentHp;
+            const maxHp = liveHp.maxHp;
             const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
             const xpData = getXpProgressWithinLevel(character.xp ?? 0);
             const isExpanded = expandedCharacterId === character.id;
@@ -352,9 +382,18 @@ const PartyControlSection = ({
                                 Math.min(maxHp, hp + pendingHpDelta),
                               );
 
-                              await onUpdateCharacter(character.id, {
-                                currentHp: nextHp,
-                              });
+                              if (isCustomCharacter(character)) {
+                                await onUpdateCharacter(character.id, {
+                                  customStats: {
+                                    ...(character.customStats ?? {}),
+                                    currentHp: nextHp,
+                                  },
+                                });
+                              } else {
+                                await onUpdateCharacter(character.id, {
+                                  currentHp: nextHp,
+                                });
+                              }
 
                               setHpAdjustments((prev) => ({
                                 ...prev,
