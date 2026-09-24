@@ -62,33 +62,33 @@ const InactiveOwnedCharactersSection = ({
                     <Avatar
                       src={character.imageUrl}
                       name={character.name}
-                      className="h-10 w-10 shrink-0 rounded-lg"
+                      className="h-12 w-12 shrink-0 rounded-lg"
                     />
 
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <h3 className="truncate text-xs font-semibold text-white">
+                        <h3 className="truncate text-sm font-semibold text-white">
                           {character.name}
                         </h3>
 
-                        <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-medium text-zinc-500">
+                        <span className="rounded-md border border-white/10 bg-white/[0.03] px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
                           Inactive
                         </span>
                       </div>
 
-                      <p className="mt-0.5 truncate text-[10px] text-zinc-500">
+                      <p className="mt-0.5 truncate text-xs text-zinc-400">
                         {getCharacterSummary(character) || "Character"}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
+                  <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                     <Link
                       to={`/characters/${character.id}`}
                       state={{
                         from: `${location.pathname}${location.search}`,
                       }}
-                      className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                      className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
                     >
                       Open
                     </Link>
@@ -97,7 +97,7 @@ const InactiveOwnedCharactersSection = ({
                       type="button"
                       onClick={() => onActivateCharacter(character.id)}
                       disabled={isBusy}
-                      className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-emerald-300 transition hover:border-emerald-500/40 hover:bg-emerald-500/15 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-semibold text-emerald-300 transition hover:border-emerald-500/40 hover:bg-emerald-500/15 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {isBusy ? "Activating…" : "Set active"}
                     </button>

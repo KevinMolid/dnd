@@ -327,7 +327,7 @@ const CampaignPage = () => {
             latestJournalEntry={latestJournalEntry}
           />
 
-          <CampaignRecentActivitySection campaignId={campaignId} />
+          <CampaignRecentActivitySection campaignId={campaignId} isGm={isGm} />
 
           <CampaignMembersSection
             members={members}

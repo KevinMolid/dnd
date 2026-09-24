@@ -109,13 +109,21 @@ const PartyControlSection = ({
                 character.claimMode === "assigned" &&
                 currentUserId === character.claimableByUid);
 
-            const xpProgressLabel =
+            const xpWithinLevel = Math.max(
+              0,
+              (character.xp ?? 0) - xpData.currentLevelXp,
+            );
+            const xpNeededWithinLevel =
               xpData.nextLevelXp !== null
-                ? `XP ${Math.max(
+                ? Math.max(1, xpData.nextLevelXp - xpData.currentLevelXp)
+                : null;
+            const xpPercent =
+              xpNeededWithinLevel !== null
+                ? Math.max(
                     0,
-                    (character.xp ?? 0) - xpData.currentLevelXp,
-                  )}/${xpData.nextLevelXp - xpData.currentLevelXp}`
-                : "XP Max level";
+                    Math.min(100, (xpWithinLevel / xpNeededWithinLevel) * 100),
+                  )
+                : 100;
 
             return (
               <div
@@ -189,39 +197,77 @@ const PartyControlSection = ({
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
-                      <span
-                        className={`rounded-full border px-2 py-0.5 ${
-                          hpPercent <= 25
-                            ? "border-red-500/20 bg-red-500/10 text-red-300"
-                            : hpPercent <= 50
-                              ? "border-amber-500/20 bg-amber-500/10 text-amber-300"
-                              : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
-                        }`}
-                      >
-                        <i className="fa-solid fa-heart"></i> {hp}/{maxHp}
-                      </span>
+                  <div className="flex items-center gap-2 md:justify-end">
+                    <div className="w-[236px] shrink-0">
+                      <div className="flex items-center gap-3">
+                        <div className="w-28">
+                          <div className="mb-1 flex items-center justify-between gap-2 text-[10px] leading-none">
+                            <span
+                              className={`font-semibold ${
+                                hpPercent <= 25
+                                  ? "text-red-300"
+                                  : hpPercent <= 50
+                                    ? "text-amber-300"
+                                    : "text-emerald-300"
+                              }`}
+                            >
+                              HP
+                            </span>
+                            <span className="tabular-nums text-zinc-400">
+                              {hp}/{maxHp}
+                            </span>
+                          </div>
 
-                      <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-blue-300">
-                        {xpProgressLabel}
-                      </span>
+                          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+                            <div
+                              className={`h-full rounded-full transition-[width] ${
+                                hpPercent <= 25
+                                  ? "bg-red-500"
+                                  : hpPercent <= 50
+                                    ? "bg-amber-500"
+                                    : "bg-emerald-500"
+                              }`}
+                              style={{ width: `${hpPercent}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="w-28">
+                          <div className="mb-1 flex items-center justify-between gap-2 text-[10px] leading-none">
+                            <span className="font-semibold text-blue-300">
+                              XP
+                            </span>
+                            <span className="tabular-nums text-zinc-400">
+                              {xpNeededWithinLevel !== null
+                                ? `${xpWithinLevel}/${xpNeededWithinLevel}`
+                                : "Max level"}
+                            </span>
+                          </div>
+
+                          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+                            <div
+                              className="h-full rounded-full bg-blue-500 transition-[width]"
+                              style={{ width: `${xpPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {(character.conditions ?? []).length > 0 ? (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {(character.conditions ?? []).map((condition) => (
+                            <span
+                              key={condition}
+                              className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] leading-4 text-amber-300"
+                            >
+                              {condition}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
 
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      {(character.conditions ?? []).length > 0 ? (
-                        (character.conditions ?? []).map((condition) => (
-                          <span
-                            key={condition}
-                            className="rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-300"
-                          >
-                            {condition}
-                          </span>
-                        ))
-                      ) : (
-                        <></>
-                      )}
-
+                    <div className="flex shrink-0 items-center justify-end gap-2">
                       {isGm && (
                         <button
                           onClick={() =>

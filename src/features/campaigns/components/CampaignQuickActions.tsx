@@ -9,8 +9,7 @@ type CampaignQuickActionsProps = {
 };
 
 const actionClass =
-  "inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white";
-
+  "inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white";
 const CampaignQuickActions = ({
   campaignId,
   isGm,
@@ -26,7 +25,7 @@ const CampaignQuickActions = ({
       {isGm ? (
         <>
           <button type="button" onClick={onRewardItems} className={actionClass}>
-            <i className="fa-solid fa-trophy text-[9px]" />
+            <i className="fa-solid fa-trophy text-[10px]" />
             Award items
           </button>
 
@@ -35,7 +34,7 @@ const CampaignQuickActions = ({
             onClick={onCreateCustomItem}
             className={actionClass}
           >
-            <i className="fa-solid fa-plus text-[9px]" />
+            <i className="fa-solid fa-plus text-[10px]" />
             Create item
           </button>
         </>

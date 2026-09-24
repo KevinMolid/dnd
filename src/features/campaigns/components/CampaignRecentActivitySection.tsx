@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   collection,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
+  writeBatch,
   type Timestamp,
 } from "firebase/firestore";
 
@@ -13,6 +15,7 @@ import type { CampaignLogEntry } from "../utils/campaignLog";
 
 type Props = {
   campaignId?: string;
+  isGm: boolean;
 };
 
 type StoredCampaignLogEntry = Omit<CampaignLogEntry, "createdAt"> & {
@@ -319,9 +322,9 @@ const ActivityRow = ({ entry }: { entry: ActivityEntry }) => {
   );
 };
 
-const CampaignRecentActivitySection = ({ campaignId }: Props) => {
+const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
-
+  const [clearing, setClearing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -369,12 +372,55 @@ const CampaignRecentActivitySection = ({ campaignId }: Props) => {
     [entries],
   );
 
+  const handleClearActivity = async () => {
+    if (!campaignId || clearing) return;
+
+    const confirmed = window.confirm(
+      "Clear the entire activity log? This cannot be undone.",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setClearing(true);
+
+      const snapshot = await getDocs(
+        collection(db, "campaigns", campaignId, "logEntries"),
+      );
+
+      const batch = writeBatch(db);
+
+      snapshot.docs.forEach((docSnap) => {
+        batch.delete(docSnap.ref);
+      });
+
+      await batch.commit();
+    } catch (error) {
+      console.error("Failed to clear campaign activity:", error);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <section className="rounded-2xl border border-white/10 bg-white/[0.025]">
-      <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3">
-        <i className="fa-solid fa-clock-rotate-left text-xs text-zinc-500" />
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <i className="fa-solid fa-clock-rotate-left text-xs text-zinc-500" />
 
-        <h2 className="text-sm font-semibold text-white">Recent Activity</h2>
+          <h2 className="text-sm font-semibold text-white">Recent Activity</h2>
+        </div>
+
+        {isGm && entries.length > 0 ? (
+          <button
+            type="button"
+            onClick={handleClearActivity}
+            disabled={clearing}
+            className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-zinc-400 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {clearing ? "Clearing…" : "Clear"}
+          </button>
+        ) : null}
       </div>
 
       <div className="px-4 py-2.5">
@@ -389,10 +435,12 @@ const CampaignRecentActivitySection = ({ campaignId }: Props) => {
             <p className="text-sm text-zinc-500">No campaign activity yet.</p>
           </div>
         ) : (
-          <div className="divide-y divide-white/[0.06]">
-            {visibleEntries.map((entry) => (
-              <ActivityRow key={entry.id} entry={entry} />
-            ))}
+          <div className="workspace-scrollbar max-h-[410px] overflow-y-auto pr-3">
+            <div className="divide-y divide-white/[0.06]">
+              {visibleEntries.map((entry) => (
+                <ActivityRow key={entry.id} entry={entry} />
+              ))}
+            </div>
           </div>
         )}
       </div>
