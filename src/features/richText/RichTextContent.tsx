@@ -43,10 +43,28 @@ export default function RichTextContent({ value }: RichTextContentProps) {
 
   useEffect(() => {
     if (!editor) return;
+
     const normalized = normalizeRichTextContent(value);
-    if (editor.getHTML() !== normalized) {
-      editor.commands.setContent(normalized, { emitUpdate: false });
+
+    if (editor.getHTML() === normalized) {
+      return;
     }
+
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled || editor.isDestroyed) {
+        return;
+      }
+
+      editor.commands.setContent(normalized, {
+        emitUpdate: false,
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [editor, value]);
 
   return (
