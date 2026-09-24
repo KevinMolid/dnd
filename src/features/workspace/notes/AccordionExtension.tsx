@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import { Fragment, Slice } from "@tiptap/pm/model";
 import { Plugin, TextSelection } from "@tiptap/pm/state";
 import {
   NodeViewContent,
@@ -18,27 +19,49 @@ function AccordionNodeView({
 }: NodeViewProps) {
   const storedOpen = node.attrs.open !== false;
   const [localOpen, setLocalOpen] = useState(storedOpen);
+  const [, refresh] = useState(0);
 
-  useEffect(() => {
-    setLocalOpen(storedOpen);
-  }, [storedOpen]);
+  useEffect(() => setLocalOpen(storedOpen), [storedOpen]);
+
+useEffect(() => {
+  const update = () => {
+    refresh((value) => value + 1);
+  };
+
+  editor.on("transaction", update);
+
+  return () => {
+    editor.off("transaction", update);
+  };
+}, [editor]);
 
   const open = editor.isEditable ? storedOpen : localOpen;
 
   const toggleOpen = () => {
-    if (editor.isEditable) {
-      updateAttributes({ open: !storedOpen });
-    } else {
-      setLocalOpen((current) => !current);
-    }
+    if (editor.isEditable) updateAttributes({ open: !storedOpen });
+    else setLocalOpen((current) => !current);
   };
+
+  const getAccordionDepth = () => {
+    const pos = getPos();
+    if (typeof pos !== "number") return 0;
+
+    const $pos = editor.state.doc.resolve(pos);
+    let depth = 0;
+
+    for (let d = 0; d <= $pos.depth; d += 1) {
+      if ($pos.node(d).type.name === "accordion") depth += 1;
+    }
+
+    return depth;
+  };
+
+  const accordionDepth = getAccordionDepth();
+  const isNested = accordionDepth > 0;
 
   const insertParagraphBefore = () => {
     const pos = getPos();
-
-    if (typeof pos !== "number") {
-      return;
-    }
+    if (typeof pos !== "number") return;
 
     editor
       .chain()
@@ -50,10 +73,7 @@ function AccordionNodeView({
 
   const insertParagraphAfter = () => {
     const pos = getPos();
-
-    if (typeof pos !== "number") {
-      return;
-    }
+    if (typeof pos !== "number") return;
 
     const insertPos = pos + node.nodeSize;
 
@@ -65,16 +85,15 @@ function AccordionNodeView({
       .run();
   };
 
-  const removeAccordion = () => {
-    deleteNode();
-  };
-
   return (
     <NodeViewWrapper
       className={`note-accordion group/accordion relative my-1 overflow-visible border-b border-white/[0.07] pb-1 ${
+        isNested ? "ml-3" : ""
+      } ${
         selected && editor.isEditable ? "rounded-md bg-white/[0.015]" : ""
       }`}
       data-accordion="true"
+      data-accordion-depth={accordionDepth}
     >
       <div
         className="group/title flex min-h-7 items-center gap-1.5 rounded-md transition hover:bg-white/[0.025]"
@@ -97,9 +116,7 @@ function AccordionNodeView({
           <input
             value={(node.attrs.title as string) || ""}
             onChange={(event) =>
-              updateAttributes({
-                title: event.target.value,
-              })
+              updateAttributes({ title: event.target.value })
             }
             spellCheck={false}
             placeholder="Section title"
@@ -141,7 +158,7 @@ function AccordionNodeView({
 
             <button
               type="button"
-              onClick={removeAccordion}
+              onClick={deleteNode}
               title="Delete section"
               className="flex h-6 w-6 items-center justify-center rounded-md text-[9px] text-zinc-600 transition hover:bg-rose-500/10 hover:text-rose-300"
             >
@@ -152,7 +169,7 @@ function AccordionNodeView({
       </div>
 
       <div className={open ? "block" : "hidden"}>
-        <NodeViewContent className="note-accordion-content min-h-6 [&>.note-accordion]:ml-3" />
+        <NodeViewContent className="note-accordion-content min-h-6" />
       </div>
     </NodeViewWrapper>
   );
@@ -161,9 +178,8 @@ function AccordionNodeView({
 export const AccordionExtension = Node.create({
   name: "accordion",
   priority: 1000,
-
   group: "block",
-  content: "block*",
+  content: "block+",
   defining: true,
   isolating: true,
 
@@ -173,11 +189,8 @@ export const AccordionExtension = Node.create({
         default: "New section",
         parseHTML: (element) =>
           element.getAttribute("data-title") || "New section",
-        renderHTML: (attributes) => ({
-          "data-title": attributes.title,
-        }),
+        renderHTML: (attributes) => ({ "data-title": attributes.title }),
       },
-
       open: {
         default: true,
         parseHTML: (element) => element.getAttribute("data-open") !== "false",
@@ -206,9 +219,7 @@ export const AccordionExtension = Node.create({
   renderHTML({ HTMLAttributes }) {
     return [
       "div",
-      mergeAttributes(HTMLAttributes, {
-        "data-note-accordion": "true",
-      }),
+      mergeAttributes(HTMLAttributes, { "data-note-accordion": "true" }),
       ["div", { "data-note-accordion-content": "true" }, 0],
     ];
   },
@@ -224,10 +235,7 @@ export const AccordionExtension = Node.create({
         ({ commands }) =>
           commands.insertContent({
             type: this.name,
-            attrs: {
-              title,
-              open: true,
-            },
+            attrs: { title, open: true },
             content: [{ type: "paragraph" }],
           }),
     };
@@ -235,146 +243,90 @@ export const AccordionExtension = Node.create({
 
   addKeyboardShortcuts() {
     return {
-      "Mod-Alt-a": () => this.editor.commands.insertAccordion("New section"),
+      "Mod-Alt-a": () =>
+        this.editor.commands.insertAccordion("New section"),
     };
   },
 
   addProseMirrorPlugins() {
     const accordionTypeName = this.name;
 
-    const findContainingAccordionDepth = ($pos: any) => {
-      for (let depth = $pos.depth - 1; depth > 0; depth -= 1) {
-        if ($pos.node(depth).type.name === accordionTypeName) {
-          return depth;
+    const unwrapAccordions = (fragment: Fragment): Fragment => {
+      const nodes: any[] = [];
+
+      fragment.forEach((node) => {
+        if (node.type.name === accordionTypeName) {
+          unwrapAccordions(node.content).forEach((child) => nodes.push(child));
+        } else if (node.content.size > 0) {
+          nodes.push(node.copy(unwrapAccordions(node.content)));
+        } else {
+          nodes.push(node);
         }
-      }
+      });
 
-      return null;
-    };
-
-    const paragraphIsLastChildOfAccordion = (
-      $pos: any,
-      accordionDepth: number,
-    ) => {
-      const accordion = $pos.node(accordionDepth);
-      return $pos.index(accordionDepth) === accordion.childCount - 1;
+      return Fragment.fromArray(nodes);
     };
 
     return [
       new Plugin({
         props: {
+          transformCopied: (slice) =>
+            new Slice(unwrapAccordions(slice.content), 0, 0),
+
           handleKeyDown: (view, event) => {
             const { state } = view;
             const { selection } = state;
             const { $from } = selection;
 
-            if (!selection.empty || $from.parent.type.name !== "paragraph") {
+            if (
+              event.key !== "Backspace" ||
+              !selection.empty ||
+              $from.parent.type.name !== "paragraph" ||
+              $from.parent.content.size !== 0 ||
+              $from.parentOffset !== 0
+            ) {
               return false;
             }
 
-            /*
-             * Remove an empty paragraph immediately before an accordion.
-             * This is the working special case for both root-level and
-             * nested accordions.
-             */
-            if (event.key === "Backspace") {
-              if ($from.parent.content.size !== 0 || $from.parentOffset !== 0) {
-                return false;
-              }
+            const paragraphDepth = $from.depth;
+            if (paragraphDepth < 1) return false;
 
-              const paragraphDepth = $from.depth;
+            const containerDepth = paragraphDepth - 1;
+            const container = $from.node(containerDepth);
+            const paragraphIndex = $from.index(containerDepth);
 
-              if (paragraphDepth < 1) {
-                return false;
-              }
-
-              const containerDepth = paragraphDepth - 1;
-              const container = $from.node(containerDepth);
-              const paragraphIndex = $from.index(containerDepth);
-
-              if (paragraphIndex >= container.childCount - 1) {
-                return false;
-              }
-
-              const nextNode = container.child(paragraphIndex + 1);
-
-              if (nextNode.type.name !== accordionTypeName) {
-                return false;
-              }
-
-              const paragraphFrom = $from.before(paragraphDepth);
-              const paragraphTo = $from.after(paragraphDepth);
-              const tr = state.tr.delete(paragraphFrom, paragraphTo);
-
-              const mappedPosition = tr.mapping.map(paragraphFrom);
-              const nextSelection = TextSelection.findFrom(
-                tr.doc.resolve(mappedPosition),
-                1,
-                true,
-              );
-
-              if (nextSelection) {
-                tr.setSelection(nextSelection);
-              }
-
-              view.dispatch(tr.scrollIntoView());
+            // An accordion must always retain at least one block.
+            if (
+              container.type.name === accordionTypeName &&
+              container.childCount === 1
+            ) {
               event.preventDefault();
-
               return true;
             }
 
-            /*
-             * Pressing Enter on an empty final paragraph exits the current
-             * accordion and creates a normal paragraph after it.
-             */
-            if (event.key === "Enter") {
-              const accordionDepth = findContainingAccordionDepth($from);
+            // Preserve the special case for an empty paragraph directly
+            // before an accordion, at root level or inside another accordion.
+            if (paragraphIndex >= container.childCount - 1) return false;
 
-              if (
-                accordionDepth === null ||
-                $from.parent.content.size !== 0 ||
-                !paragraphIsLastChildOfAccordion($from, accordionDepth)
-              ) {
-                return false;
-              }
+            const nextNode = container.child(paragraphIndex + 1);
+            if (nextNode.type.name !== accordionTypeName) return false;
 
-              const paragraphDepth = $from.depth;
-              const paragraphFrom = $from.before(paragraphDepth);
-              const paragraphTo = $from.after(paragraphDepth);
+            const paragraphFrom = $from.before(paragraphDepth);
+            const paragraphTo = $from.after(paragraphDepth);
+            const tr = state.tr.delete(paragraphFrom, paragraphTo);
 
-              let tr = state.tr.delete(paragraphFrom, paragraphTo);
+            const mappedPosition = tr.mapping.map(paragraphFrom);
+            const nextSelection = TextSelection.findFrom(
+              tr.doc.resolve(mappedPosition),
+              1,
+              true,
+            );
 
-              const mappedAccordionStart = tr.mapping.map(
-                $from.before(accordionDepth),
-              );
-              const mappedAccordion = tr.doc.nodeAt(mappedAccordionStart);
+            if (nextSelection) tr.setSelection(nextSelection);
 
-              if (
-                !mappedAccordion ||
-                mappedAccordion.type.name !== accordionTypeName
-              ) {
-                return false;
-              }
-
-              const insertPos = mappedAccordionStart + mappedAccordion.nodeSize;
-              const paragraph = state.schema.nodes.paragraph?.create();
-
-              if (!paragraph) {
-                return false;
-              }
-
-              tr = tr.insert(insertPos, paragraph);
-              tr.setSelection(
-                TextSelection.near(tr.doc.resolve(insertPos + 1), 1),
-              );
-
-              view.dispatch(tr.scrollIntoView());
-              event.preventDefault();
-
-              return true;
-            }
-
-            return false;
+            view.dispatch(tr.scrollIntoView());
+            event.preventDefault();
+            return true;
           },
         },
       }),
