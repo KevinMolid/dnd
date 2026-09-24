@@ -2019,7 +2019,6 @@ const handleRemoveSpell = async (
       gp: 0,
       pp: 0,
     };
-    const previousMoneyCp = character.moneyCp ?? getCharacterMoneyCp(character);
 
     const normalizedCp = Math.max(0, Math.floor(nextMoney.cp ?? 0));
     const normalizedSp = Math.max(0, Math.floor(nextMoney.sp ?? 0));
@@ -2035,13 +2034,6 @@ const handleRemoveSpell = async (
       pp: normalizedPp,
     };
 
-    const normalizedMoneyCp =
-      normalizedCp +
-      normalizedSp * 10 +
-      normalizedEp * 50 +
-      normalizedGp * 100 +
-      normalizedPp * 1000;
-
     const normalizedEquipment: CharacterEquipmentEntry[] =
       nextEquipment.map((entry) => ({
         ...entry,
@@ -2050,21 +2042,14 @@ const handleRemoveSpell = async (
         equippedSlots: entry.equippedSlots ?? [],
       }));
 
-    const isCustom = character.buildMode === "custom";
-
     setCharacter((current) =>
       current
         ? {
             ...current,
-            equipment: normalizedEquipment,
-            ...(isCustom
-              ? {
-                  money: normalizedMoney,
-                }
-              : {
-                  moneyCp: normalizedMoneyCp,
-                  money: normalizedMoney,
-                }),
+            equipment:
+              normalizedEquipment,
+            money:
+              normalizedMoney,
           }
         : current,
     );
@@ -2072,14 +2057,7 @@ const handleRemoveSpell = async (
     try {
       await updateDoc(doc(db, "characters", characterId), {
         equipment: normalizedEquipment,
-        ...(isCustom
-          ? {
-              money: normalizedMoney,
-            }
-          : {
-              moneyCp: normalizedMoneyCp,
-              money: normalizedMoney,
-            }),
+        money: normalizedMoney,
         updatedAt: serverTimestamp(),
       });
     } catch (err) {
@@ -2091,11 +2069,6 @@ const handleRemoveSpell = async (
               ...current,
               equipment: previousEquipment,
               money: previousMoney,
-              ...(!isCustom
-                ? {
-                    moneyCp: previousMoneyCp,
-                  }
-                : {}),
             }
           : current,
       );
@@ -3689,10 +3662,27 @@ const nonSpeciesDerivedKnownSpells = [
               ),
           );
 
-        const moneyCp =
-          getCharacterMoneyCp(
-            character,
-          );
+        const money: Money =
+          character.money
+            ? {
+                cp: character.money.cp ?? 0,
+                sp: character.money.sp ?? 0,
+                ep: character.money.ep ?? 0,
+                gp: character.money.gp ?? 0,
+                pp: character.money.pp ?? 0,
+              }
+            : {
+                cp: getCharacterMoneyCp(character) % 10,
+                sp:
+                  Math.floor(
+                    getCharacterMoneyCp(character) / 10,
+                  ) % 10,
+                ep: 0,
+                gp: Math.floor(
+                  getCharacterMoneyCp(character) / 100,
+                ),
+                pp: 0,
+              };
 
         if (
           otherTraits.length >
@@ -3883,35 +3873,7 @@ const nonSpeciesDerivedKnownSpells = [
 
           groupedTieflingLegacySpells,
 
-          money:
-            {
-              cp:
-                character.money
-                  ?.cp ??
-                0,
-
-              sp:
-                character.money
-                  ?.sp ??
-                0,
-
-              ep:
-                character.money
-                  ?.ep ??
-                0,
-
-              gp:
-                character.money
-                  ?.gp ??
-                0,
-
-              pp:
-                character.money
-                  ?.pp ??
-                0,
-            },
-
-          moneyCp,
+          money,
 
           dragonbornAncestryId,
 

@@ -11,8 +11,6 @@ import {
   isItemEquippable,
 } from "../rulesets/dnd/dnd2024/getEquipmentRules";
 
-import { copperToMoneyBreakdown } from "../rulesets/dnd/dnd2024/money";
-
 import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
 import type {
@@ -29,7 +27,6 @@ type Props = {
   equipment: CharacterEquipmentEntry[];
   onChange: (nextEquipment: CharacterEquipmentEntry[]) => void | Promise<void>;
   campaignItemsById?: Record<string, CampaignItem>;
-  moneyCp?: number;
   money?: Money;
 };
 
@@ -102,16 +99,9 @@ const CharacterInventoryEquipment = ({
   equipment,
   onChange,
   campaignItemsById = {},
-  moneyCp = 0,
   money: suppliedMoney,
 }: Props) => {
-  const money = useMemo(() => {
-    if (suppliedMoney) {
-      return normalizeMoney(suppliedMoney);
-    }
-
-    return normalizeMoney(copperToMoneyBreakdown(moneyCp));
-  }, [suppliedMoney, moneyCp]);
+  const money = useMemo(() => normalizeMoney(suppliedMoney), [suppliedMoney]);
 
   const normalizedEquipment = useMemo(
     () => equipment.map(normalizeEntry),
@@ -391,6 +381,7 @@ const CharacterInventoryEquipment = ({
                 key={row.key}
                 row={row}
                 onEquip={handleEquip}
+                onAdjustQuantity={handleAdjustQuantity}
                 onUseItem={handleUseItem}
               />
             ))}
@@ -522,6 +513,7 @@ const CharacterInventoryEquipment = ({
 const InventoryRow = ({
   row,
   onEquip,
+  onAdjustQuantity,
   onUseItem,
 }: {
   row: InventoryDisplayRow;
@@ -531,6 +523,8 @@ const InventoryRow = ({
     item: NonNullable<InventoryDisplayRow["resolvedItem"]>,
     mode?: WieldMode,
   ) => void;
+
+  onAdjustQuantity: (row: InventoryDisplayRow, delta: number) => void;
 
   onUseItem: (row: InventoryDisplayRow) => void;
 }) => {
@@ -552,6 +546,12 @@ const InventoryRow = ({
 
   const isConsumable =
     normalizedCategory === "consumable" || normalizedCategory === "ammunition";
+
+  /*
+   * Weapons, armor and other equippable objects remain individual instances.
+   * Quantity controls belong to backpack-style inventory rows.
+   */
+  const canAdjustQuantity = !isEquippable;
 
   const itemContent = (
     <div className="min-w-0">
@@ -598,7 +598,7 @@ const InventoryRow = ({
       )}
 
       <div className="flex shrink-0 items-center justify-end gap-1">
-        {isConsumable ? (
+        {isConsumable && canAdjustQuantity ? (
           <button
             type="button"
             onClick={() => onUseItem(row)}
@@ -608,6 +608,14 @@ const InventoryRow = ({
           >
             Use
           </button>
+        ) : null}
+
+        {canAdjustQuantity ? (
+          <QuantityControl
+            quantity={totalQuantity}
+            onDecrease={() => onAdjustQuantity(row, -1)}
+            onIncrease={() => onAdjustQuantity(row, 1)}
+          />
         ) : null}
 
         {isEquippable ? (
@@ -632,6 +640,45 @@ const InventoryRow = ({
     </div>
   );
 };
+
+const QuantityControl = ({
+  quantity,
+  onDecrease,
+  onIncrease,
+}: {
+  quantity: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) => (
+  <div
+    className="flex h-7 items-center overflow-hidden rounded-md border border-white/[0.08] bg-black/20"
+    aria-label="Item quantity controls"
+  >
+    <button
+      type="button"
+      onClick={onDecrease}
+      title={quantity <= 1 ? "Remove item" : "Decrease quantity"}
+      aria-label={quantity <= 1 ? "Remove item" : "Decrease quantity"}
+      className="flex h-full w-7 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+    >
+      −
+    </button>
+
+    <span className="min-w-[30px] border-x border-white/[0.06] px-1 text-center text-[9px] font-semibold tabular-nums text-zinc-300">
+      {quantity}
+    </span>
+
+    <button
+      type="button"
+      onClick={onIncrease}
+      title="Increase quantity"
+      aria-label="Increase quantity"
+      className="flex h-full w-7 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
+    >
+      +
+    </button>
+  </div>
+);
 
 /* =========================================================
    MONEY

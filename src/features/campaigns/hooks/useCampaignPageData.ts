@@ -34,7 +34,6 @@ import { getLevelFromXp } from "../../../rulesets/dnd/dnd2024/xpProgression";
 import {
   getCharacterMoneyCp,
   moneyBreakdownToCopper,
-  normalizeCopper,
 } from "../../../rulesets/dnd/dnd2024/money";
 
 import { subscribeToJournalEntries } from "../../journal/journalService";
@@ -2666,24 +2665,53 @@ export const useCampaignPageData = (
                        * Calculate existing funds correctly regardless
                        * of whether the character is Custom or Guided.
                        */
-                      const currentMoneyCp =
-                        data.buildMode ===
-                          "custom" &&
+                      const existingMoney =
                         data.money
-                          ? moneyToCopper(
-                              normalizeMoneyObject(
-                                data.money,
-                              ),
+                          ? normalizeMoneyObject(
+                              data.money,
                             )
+                          : null;
+
+                      const legacyMoneyCp =
+                        existingMoney
+                          ? 0
                           : getCharacterMoneyCp(
                               data,
                             );
 
-                      const nextMoneyCp =
-                        normalizeCopper(
-                          currentMoneyCp +
-                            rewardMoneyCp,
-                        );
+                      const currentMoney: Money = existingMoney ?? {
+                        cp: legacyMoneyCp % 10,
+                        sp:
+                          Math.floor(
+                            legacyMoneyCp / 10,
+                          ) % 10,
+                        ep: 0,
+                        gp:
+                          Math.floor(
+                            legacyMoneyCp / 100,
+                          ),
+                        pp: 0,
+                      };
+
+                      const nextMoney: Money = {
+                        cp:
+                          (currentMoney.cp ?? 0) +
+                          (normalizedMoney.cp ?? 0),
+
+                        sp:
+                          (currentMoney.sp ?? 0) +
+                          (normalizedMoney.sp ?? 0),
+
+                        ep:
+                          currentMoney.ep ?? 0,
+
+                        gp:
+                          (currentMoney.gp ?? 0) +
+                          (normalizedMoney.gp ?? 0),
+
+                        pp:
+                          currentMoney.pp ?? 0,
+                      };
 
                       const nextEquipment =
                         mergeEquipmentItems(
@@ -2704,26 +2732,21 @@ export const useCampaignPageData = (
                        * full custom money object when present.
                        */
                       transaction.update(
-                        characterRef,
-                        {
-                          moneyCp:
-                            nextMoneyCp,
+  characterRef,
+  {
+    money:
+      nextMoney,
 
-                          equipment:
-                            nextEquipment,
-                        },
-                      );
+    equipment:
+      nextEquipment,
+  },
+);
 
                       return {
                         characterId,
 
                         characterName:
                           data.name,
-
-                        previousMoneyCp:
-                          currentMoneyCp,
-
-                        nextMoneyCp,
 
                         rewardedMoney:
                           normalizedMoney,
@@ -2825,12 +2848,6 @@ export const useCampaignPageData = (
 
                         amountCp:
                           result.rewardedMoneyCp,
-
-                        previousMoneyCp:
-                          result.previousMoneyCp,
-
-                        nextMoneyCp:
-                          result.nextMoneyCp,
                       },
                     }),
                   );

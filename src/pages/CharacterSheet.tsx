@@ -585,30 +585,26 @@ const CharacterSheet = () => {
     </div>
   );
 
-  const renderInventoryTab = () => {
-    const moneyCp = derived.moneyCp ?? character.moneyCp ?? 0;
-
-    return (
-      <div className="space-y-2">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => setInventoryEditorOpen(true)}
-            className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.1] hover:text-white"
-          >
-            Edit Inventory
-          </button>
-        </div>
-
-        <CharacterInventoryEquipment
-          equipment={character.equipment ?? []}
-          onChange={handleEquipmentChange}
-          campaignItemsById={campaignItemsById}
-          moneyCp={moneyCp}
-        />
+  const renderInventoryTab = () => (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setInventoryEditorOpen(true)}
+          className="rounded-lg border border-white/10 bg-white/[0.05] px-3 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.1] hover:text-white"
+        >
+          Edit Inventory
+        </button>
       </div>
-    );
-  };
+
+      <CharacterInventoryEquipment
+        equipment={character.equipment ?? []}
+        onChange={handleEquipmentChange}
+        campaignItemsById={campaignItemsById}
+        money={derived.money ?? character.money}
+      />
+    </div>
+  );
 
   const renderCharacterTab = () => (
     <CharacterProfilePanel

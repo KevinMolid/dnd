@@ -285,7 +285,6 @@ export type CharacterSheetDerived = {
   }>;
 
   money: Money;
-  moneyCp: any;
 
   dragonbornAncestryId: string | null;
   dragonbornAncestryName: string | null;
