@@ -4,11 +4,15 @@ import { db } from "../../../firebase";
 export type CampaignLogEntryType =
   | "xp_awarded"
   | "level_up"
+  | "inspiration_gained"
+  | "inspiration_used"
   | "item_received"
   | "gold_received"
-  | "condition_applied"
-  | "condition_removed"
-  | "hp_changed";
+  | "character_activated"
+  | "character_deactivated"
+  | "enemy_defeated"
+  | "character_died"
+  | "milestone";
 
 export type CampaignLogEntry = {
   type: CampaignLogEntryType;

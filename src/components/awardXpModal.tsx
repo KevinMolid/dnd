@@ -3,6 +3,9 @@ import { awardExperienceToMultipleCharacters } from "../rulesets/dnd/dnd2024/awa
 import { db } from "../firebase";
 import NumberStepper from "./NumberStepper";
 
+import { useAuth } from "../context/AuthContext";
+import { addLogEntry } from "../features/campaigns/utils/campaignLog";
+
 type CharacterOption = {
   id: string;
   name: string;
@@ -19,10 +22,12 @@ type AwardXpResult = {
 type Props = {
   isOpen: boolean;
   onClose: () => void;
+  campaignId?: string;
   characters: CharacterOption[];
 };
 
-const AwardXpModal = ({ isOpen, onClose, characters }: Props) => {
+const AwardXpModal = ({ isOpen, onClose, campaignId, characters }: Props) => {
+  const { user } = useAuth();
   const [xp, setXp] = useState<number>(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [splitEvenly, setSplitEvenly] = useState(true);
@@ -112,12 +117,28 @@ const AwardXpModal = ({ isOpen, onClose, characters }: Props) => {
           evenSplitAmount,
         );
 
+        if (campaignId) {
+          await addLogEntry({
+            campaignId,
+            type: "xp_awarded",
+            createdByUid: user?.uid ?? null,
+            characterId: null,
+            characterName: null,
+            payload: {
+              amount: evenSplitAmount,
+              recipientCount: res.length,
+            },
+          });
+        }
+
         setResults(res as AwardXpResult[]);
       } else {
         const allResults: AwardXpResult[] = [];
+        let totalAwarded = 0;
 
         for (const char of selectedCharacters) {
           const amount = previewAmounts[char.id] ?? 0;
+
           if (amount <= 0) continue;
 
           const res = await awardExperienceToMultipleCharacters(
@@ -125,7 +146,24 @@ const AwardXpModal = ({ isOpen, onClose, characters }: Props) => {
             [char.id],
             amount,
           );
+
+          totalAwarded += amount;
           allResults.push(...(res as AwardXpResult[]));
+        }
+
+        if (campaignId && allResults.length > 0) {
+          await addLogEntry({
+            campaignId,
+            type: "xp_awarded",
+            createdByUid: user?.uid ?? null,
+            characterId: null,
+            characterName: null,
+            payload: {
+              totalAmount: totalAwarded,
+              recipientCount: allResults.length,
+              mixedAmounts: true,
+            },
+          });
         }
 
         setResults(allResults);

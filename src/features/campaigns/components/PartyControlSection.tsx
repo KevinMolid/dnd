@@ -61,9 +61,13 @@ const PartyControlSection = ({
       <div className="mb-3 flex items-center justify-between">
         <div className="w-full">
           <div className="flex w-full justify-between">
-            <h2 className="text-base font-semibold text-white">
-              Party overview
-            </h2>
+            <div className="flex items-center gap-2">
+              <i className="fa-solid fa-shield-halved text-xs text-zinc-500" />
+
+              <h2 className="text-base font-semibold text-white">
+                Party overview
+              </h2>
+            </div>
 
             {isGm && (
               <button

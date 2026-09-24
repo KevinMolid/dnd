@@ -2128,61 +2128,74 @@ export const useCampaignPageData = (
   );
 
   const updateCharacterXp =
-    useCallback(
-      async (
-        character: CampaignCharacter,
+  useCallback(
+    async (
+      character: CampaignCharacter,
+      nextXp: number,
+    ) => {
+      const safeXp = Math.max(0, nextXp);
+      const currentXp = character.xp ?? 0;
+      const awardedXp = safeXp - currentXp;
 
-        nextXp: number,
-      ) => {
-        const safeXp =
-          Math.max(
-            0,
-            nextXp,
-          );
+      /*
+       * Custom characters can still store XP,
+       * but XP should not invoke the guided
+       * level-up workflow.
+       */
+      if (character.buildMode === "custom") {
+        await updateCharacter(character.id, {
+          xp: safeXp,
+        });
 
-        /*
-         * Custom characters can still store XP,
-         * but XP should not invoke the guided
-         * level-up workflow.
-         */
-        if (
-          character.buildMode ===
-          "custom"
-        ) {
-          await updateCharacter(
-            character.id,
-            {
-              xp: safeXp,
+        if (campaignId && awardedXp > 0) {
+          await addLogEntry({
+            campaignId,
+            type: "xp_awarded",
+            createdByUid: user?.uid ?? null,
+            characterId: character.id,
+            characterName: character.name,
+            payload: {
+              amount: awardedXp,
+              previousXp: currentXp,
+              nextXp: safeXp,
             },
-          );
-
-          return;
+          });
         }
 
-        const currentLevel =
-          character.level ??
-          1;
+        return;
+      }
 
-        const pendingLevelUp =
-          buildPendingLevelUp(
-            currentLevel,
-            safeXp,
-            character.pendingLevelUp ??
-              null,
-          );
+      const currentLevel = character.level ?? 1;
 
-        await updateCharacter(
-          character.id,
-          {
-            xp: safeXp,
+      const pendingLevelUp = buildPendingLevelUp(
+        currentLevel,
+        safeXp,
+        character.pendingLevelUp ?? null,
+      );
 
-            pendingLevelUp,
+      await updateCharacter(character.id, {
+        xp: safeXp,
+        pendingLevelUp,
+      });
+
+      if (campaignId && awardedXp > 0) {
+        await addLogEntry({
+          campaignId,
+          type: "xp_awarded",
+          createdByUid: user?.uid ?? null,
+          characterId: character.id,
+          characterName: character.name,
+          payload: {
+            amount: awardedXp,
+            previousXp: currentXp,
+            nextXp: safeXp,
           },
-        );
-      },
+        });
+      }
+    },
 
-      [updateCharacter],
-    );
+    [campaignId, updateCharacter, user?.uid],
+  );
 
   const toggleCondition =
     useCallback(
@@ -2371,6 +2384,21 @@ export const useCampaignPageData = (
             character.id,
             payload as Record<string, unknown>,
           );
+
+          if (campaignId) {
+            await addLogEntry({
+              campaignId,
+              type: "level_up",
+              createdByUid: user?.uid ?? null,
+              characterId: character.id,
+              characterName: character.name,
+              payload: {
+                fromLevel: character.level ?? 1,
+                toLevel: nextLevel,
+                level: nextLevel,
+              },
+            });
+          }
         } catch (
           error
         ) {
@@ -2381,7 +2409,7 @@ export const useCampaignPageData = (
         }
       },
 
-      [updateCharacter],
+      [campaignId, updateCharacter, user?.uid],
     );
 
   const handleApplyXp =

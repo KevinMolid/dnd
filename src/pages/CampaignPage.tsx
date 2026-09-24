@@ -18,6 +18,7 @@ import CreateCampaignItemModal from "../features/campaigns/components/CreateCamp
 import CampaignMembersSection from "../features/campaigns/components/CampaignMembersSection";
 import CampaignQuickActions from "../features/campaigns/components/CampaignQuickActions";
 import PartyControlSection from "../features/campaigns/components/PartyControlSection";
+import CampaignLatestJournalSection from "../features/campaigns/components/CampaignLatestJournalSection";
 import CampaignRecentActivitySection from "../features/campaigns/components/CampaignRecentActivitySection";
 import InactiveOwnedCharactersSection from "../features/campaigns/components/InactiveOwnedCharactersSection";
 import useCampaignPageData, {
@@ -320,11 +321,13 @@ const CampaignPage = () => {
         </div>
 
         <aside className="space-y-3">
-          <CampaignRecentActivitySection
+          <CampaignLatestJournalSection
             campaignId={campaign.id}
             loading={latestJournalEntryLoading}
             latestJournalEntry={latestJournalEntry}
           />
+
+          <CampaignRecentActivitySection campaignId={campaignId} />
 
           <CampaignMembersSection
             members={members}
@@ -359,6 +362,7 @@ const CampaignPage = () => {
         <AwardXpModal
           isOpen={xpModalOpen}
           onClose={() => setXpModalOpen(false)}
+          campaignId={campaignId}
           characters={awardXpCharacters}
         />
       )}
