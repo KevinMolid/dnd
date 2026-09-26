@@ -1703,12 +1703,9 @@ const CustomCharacterCreator = ({
                             Spell Slots
                           </h3>
 
-                          <div className="grid grid-cols-3 gap-2 sm:grid-cols-9">
+                          <div className="grid grid-cols-3 gap-2 md:grid-cols-5">
                             {Array.from(
-                              {
-                                length: 9,
-                              },
-
+                              { length: 9 },
                               (_, index) => index + 1,
                             ).map((level) => (
                               <NumberInput
@@ -1720,11 +1717,7 @@ const CustomCharacterCreator = ({
                                 }
                                 min={0}
                                 onChange={(value) =>
-                                  updateSpellSlot(
-                                    level,
-
-                                    value,
-                                  )
+                                  updateSpellSlot(level, value)
                                 }
                               />
                             ))}
