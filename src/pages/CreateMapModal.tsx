@@ -61,26 +61,25 @@ const CreateMapModal = ({ onClose, onCreate, defaultImageUrl = "" }: Props) => {
             </p>
           </div>
 
-          <div className="flex gap-2">
-            {/* Actions */}
-            <div className="flex flex-wrap justify-end gap-2 pt-2">
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-50"
-              >
-                {isSaving ? "Creating..." : "Create map"}
-              </button>
+          {/* Actions */}
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button
+              type="submit"
+              form="create-map-form"
+              disabled={isSaving}
+              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:opacity-50"
+            >
+              {isSaving ? "Creating..." : "Create map"}
+            </button>
 
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isSaving}
-                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-50"
+            >
+              Cancel
+            </button>
           </div>
         </div>
 
@@ -93,6 +92,7 @@ const CreateMapModal = ({ onClose, onCreate, defaultImageUrl = "" }: Props) => {
 
         {/* Scrollable content */}
         <form
+          id="create-map-form"
           onSubmit={handleSubmit}
           className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5 md:px-6 workspace-scrollbar"
         >
