@@ -363,7 +363,7 @@ const PartyControlSection = ({
                               prev === character.id ? null : character.id,
                             )
                           }
-                          className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
+                          className="w-[66px] rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-center text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
                         >
                           {isExpanded ? "Close" : "Manage"}
                         </button>
@@ -388,7 +388,7 @@ const PartyControlSection = ({
 
                 {isGm && isExpanded && (
                   <div className="mt-2 border-t border-white/[0.06] pt-2.5">
-                    <div className="grid gap-2 md:grid-cols-3">
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                       <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
                           Adjust HP
@@ -482,6 +482,71 @@ const PartyControlSection = ({
                             className="ml-auto rounded-md border border-white/10 bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.1] hover:text-white"
                           >
                             Apply
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
+                          Inspiration
+                        </p>
+
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <div className="relative flex h-7 w-7 shrink-0 items-center justify-center">
+                              <i
+                                className={`fa-solid fa-dice-d20 text-2xl ${
+                                  character.heroicInspiration
+                                    ? "text-neutral-600"
+                                    : "text-neutral-800"
+                                }`}
+                                aria-hidden="true"
+                              />
+
+                              {character.heroicInspiration && (
+                                <>
+                                  <span
+                                    className="absolute inset-0 flex items-center justify-center font-serif text-xl font-black leading-none text-black"
+                                    aria-hidden="true"
+                                  >
+                                    I
+                                  </span>
+
+                                  <span
+                                    className="absolute inset-0 flex items-center justify-center font-serif text-md font-bold leading-none text-amber-200"
+                                    aria-hidden="true"
+                                  >
+                                    I
+                                  </span>
+                                </>
+                              )}
+                            </div>
+
+                            <span
+                              className={`text-xs ${
+                                character.heroicInspiration
+                                  ? "font-medium text-amber-200"
+                                  : "text-zinc-500"
+                              }`}
+                            >
+                              {character.heroicInspiration ? "Active" : "None"}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onUpdateCharacter(character.id, {
+                                heroicInspiration: !character.heroicInspiration,
+                              })
+                            }
+                            className={`rounded-md border px-2.5 py-1.5 text-xs font-semibold transition ${
+                              character.heroicInspiration
+                                ? "border-amber-400/20 bg-amber-400/10 text-amber-200 hover:bg-amber-400/15"
+                                : "border-white/10 bg-white/[0.06] text-zinc-200 hover:bg-white/[0.1] hover:text-white"
+                            }`}
+                          >
+                            {character.heroicInspiration ? "Remove" : "Grant"}
                           </button>
                         </div>
                       </div>
