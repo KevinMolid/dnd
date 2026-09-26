@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 
 import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
+
 import CharacterInventoryEditorModal from "../components/character/CharacterInventoryEditorModal";
+
+import CustomQuickStatsEditorModal from "../components/character/CustomQuickStatsEditorModal";
 
 import CharacterFeaturesEditorModal from "../components/character/CharacterFeaturesEditorModal";
 
@@ -57,6 +60,8 @@ import {
 
 import type {
   CustomCharacter,
+  CustomCharacterStats,
+  CustomProficiencies,
   CustomProficiencyLevel,
   CustomTrait,
 } from "../types/customCharacter";
@@ -86,6 +91,7 @@ type CustomCharacterSheetProps = {
 
   handleSetInventory: (
     equipment: CharacterEquipmentEntry[],
+
     money: Money,
   ) => Promise<void>;
 
@@ -95,12 +101,15 @@ type CustomCharacterSheetProps = {
 
   handleSetSpellSlotRemaining: (
     level: number,
+
     remaining: number,
   ) => Promise<void>;
 
   handleAddSpell: (spell: {
     spellId: string;
+
     name: string;
+
     level: number;
   }) => Promise<void>;
 
@@ -108,7 +117,18 @@ type CustomCharacterSheetProps = {
 
   handleSetFeatures: (
     catalogTraitIds: string[],
+
     customTraits: CustomTrait[],
+  ) => Promise<void>;
+
+  handleSetCustomCombat: (
+    abilityScores: Record<AbilityKey, number>,
+
+    customStats: CustomCharacterStats,
+  ) => Promise<void>;
+
+  handleSetCustomProficiencies: (
+    customProficiencies: CustomProficiencies,
   ) => Promise<void>;
 
   handleShortRest: (hitDiceToSpend: number) => Promise<ShortRestResult>;
@@ -122,32 +142,47 @@ type RenderedFeature = Trait & {
 
 type FeatureGroup = {
   source: string;
+
   traits: RenderedFeature[];
 };
 
 const abilityLabels: Record<AbilityKey, string> = {
   str: "Strength",
+
   dex: "Dexterity",
+
   con: "Constitution",
+
   int: "Intelligence",
+
   wis: "Wisdom",
+
   cha: "Charisma",
 };
 
 const defaultAbilityScores: Record<AbilityKey, number> = {
   str: 10,
+
   dex: 10,
+
   con: 10,
+
   int: 10,
+
   wis: 10,
+
   cha: 10,
 };
 
 const defaultMoney: Money = {
   cp: 0,
+
   sp: 0,
+
   ep: 0,
+
   gp: 0,
+
   pp: 0,
 };
 
@@ -158,19 +193,30 @@ const getProficiencyMultiplier = (level: CustomProficiencyLevel) =>
 
 const normalize = (value: string) =>
   value
+
     .trim()
+
     .toLowerCase()
+
     .replace(/[^a-z0-9]+/g, "-")
+
     .replace(/^-+|-+$/g, "");
 
 const proficiencyDisplayLabels: Record<string, string> = {
   "light-armor": "Light Armor",
+
   "medium-armor": "Medium Armor",
+
   "heavy-armor": "Heavy Armor",
+
   shields: "Shields",
+
   "simple-weapons": "Simple Weapons",
+
   "martial-weapons": "Martial Weapons",
+
   "unarmed-strikes": "Unarmed Strikes",
+
   "martial-finesse-or-light": "Martial Weapons with Finesse or Light",
 };
 
@@ -185,6 +231,7 @@ const getWeaponProperties = (item: any) => {
 
 const getWeaponAttackAbility = ({
   item,
+
   abilityScores,
 }: {
   item: any;
@@ -217,6 +264,7 @@ const getWeaponAttackAbility = ({
 
 const isCustomWeaponProficient = ({
   item,
+
   proficiencies,
 }: {
   item: any;
@@ -239,12 +287,18 @@ const isCustomWeaponProficient = ({
 
   const exactCandidates = [
     item?.id,
+
     item?.baseItemId,
+
     item?.name,
+
     item?.weapon?.id,
+
     item?.weapon?.name,
   ]
+
     .filter(Boolean)
+
     .map((value) => normalize(String(value)));
 
   if (
@@ -254,7 +308,9 @@ const isCustomWeaponProficient = ({
   }
 
   const weapon = item?.weapon as any;
+
   const weaponKind = normalize(String(weapon?.weaponKind ?? ""));
+
   const properties = getWeaponProperties(item).map(normalize);
 
   if (
@@ -288,6 +344,7 @@ const getWeaponRange = (item: any) => {
   const range = item?.weapon?.range as
     | {
         normal?: number;
+
         long?: number | null;
       }
     | undefined;
@@ -305,22 +362,43 @@ const getWeaponRange = (item: any) => {
 
 const CustomCharacterSheet = ({
   characterId,
+
   character,
+
   backTo,
+
   campaignItemsById,
+
   handleSetPlayerNotes,
+
   handleEquipmentChange,
+
   handleSetInventory,
+
   handleSetCurrentHp,
+
   handleSetConditions,
+
   handleSetDefenses,
+
   handleSetHeroicInspiration,
+
   handleSetDeathSaves,
+
   handleSetSpellSlotRemaining,
+
   handleAddSpell,
+
   handleRemoveSpell,
+
   handleSetFeatures,
+
+  handleSetCustomCombat,
+
+  handleSetCustomProficiencies,
+
   handleShortRest,
+
   handleLongRest,
 }: CustomCharacterSheetProps) => {
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
@@ -328,6 +406,10 @@ const CustomCharacterSheet = ({
   const [featuresEditorOpen, setFeaturesEditorOpen] = useState(false);
 
   const [inventoryEditorOpen, setInventoryEditorOpen] = useState(false);
+
+  const [quickStatsEditor, setQuickStatsEditor] = useState<
+    "combat" | "saving-throws" | "skills" | "proficiencies" | null
+  >(null);
 
   const [openFeatureGroups, setOpenFeatureGroups] = useState<
     Record<string, boolean>
@@ -349,12 +431,18 @@ const CustomCharacterSheet = ({
 
   const armorClassResult = calculateArmorClass({
     abilityScores,
+
     className: character.className ?? "",
+
     equipment: character.equipment ?? [],
+
     resolveItem: (entry) =>
       resolveItemFromEquipmentEntry(entry, campaignItemsById),
+
     mode: stats.armorClassMode ?? "automatic",
+
     manualArmorClass: stats.manualArmorClass ?? stats.armorClass ?? 10,
+
     extraModifier: stats.armorClassBonus ?? 0,
   });
 
@@ -376,7 +464,16 @@ const CustomCharacterSheet = ({
     ...(customProficiencies?.skills ?? {}),
   };
 
-  const savingThrows = customProficiencies?.savingThrows ?? [];
+  const normalizedCustomProficiencies: CustomProficiencies = {
+    savingThrows: customProficiencies?.savingThrows ?? [],
+    skills,
+    armor: customProficiencies?.armor ?? [],
+    weapons: customProficiencies?.weapons ?? [],
+    tools: customProficiencies?.tools ?? [],
+    languages: customProficiencies?.languages ?? [],
+  };
+
+  const savingThrows = normalizedCustomProficiencies.savingThrows;
 
   const dexModifier = getModifier(abilityScores.dex);
 
@@ -420,6 +517,7 @@ const CustomCharacterSheet = ({
 
   const spellsById = useMemo(
     () => Object.fromEntries(spells.map((spell) => [spell.id, spell])),
+
     [],
   );
 
@@ -446,7 +544,9 @@ const CustomCharacterSheet = ({
   const constitutionModifier = getModifier(abilityScores.con);
 
   /* =========================================================
+
        ATTACKS
+
     ========================================================= */
 
   const unarmedStrengthModifier = getModifier(abilityScores.str);
@@ -476,7 +576,9 @@ const CustomCharacterSheet = ({
   };
 
   const weaponAttacks = (character.equipment ?? [])
+
     .filter((entry) => entry.equipped || (entry.equippedSlots?.length ?? 0) > 0)
+
     .map((entry) => {
       const item = resolveItemFromEquipmentEntry(entry, campaignItemsById);
 
@@ -515,10 +617,15 @@ const CustomCharacterSheet = ({
       });
 
       /*
+
        * Resolved items can carry bonuses from both the item definition and the
+
        * individual equipment entry. Include both so +1/+2/+3 and custom magic
+
        * weapons affect attack and damage correctly.
+
        */
+
       const weaponAttackBonus =
         (item.attackBonus ?? 0) + (entry.attackBonus ?? 0);
 
@@ -531,10 +638,15 @@ const CustomCharacterSheet = ({
         weaponAttackBonus;
 
       /*
+
        * This is the weapon's ordinary attack profile. Being equipped in the
+
        * Off Hand slot does not itself turn an attack into the special extra
+
        * attack granted by the Light property.
+
        */
+
       const damageModifier = abilityModifier + weaponDamageBonus;
 
       const damageText =
@@ -582,22 +694,33 @@ const CustomCharacterSheet = ({
         range: getWeaponRange(item),
       };
     })
+
     .filter((attack): attack is NonNullable<typeof attack> => Boolean(attack));
 
   /*
+
    * Every held weapon remains an ordinary Attack-action option. "Off Hand"
+
    * describes where the weapon is held; it does not reduce an ordinary
+
    * attack's attack or damage modifiers.
+
    *
+
    * Light/Nick/Dual Wielder EXTRA attacks are generated separately below.
+
    */
+
   const customAttacks = [unarmedAttack, ...weaponAttacks];
 
   /* =========================================================
+
        SPELLS
+
     ========================================================= */
 
   const quickSpells = spellcasting.spells
+
     .map((savedSpell) => {
       const resolved = spellsById[savedSpell.spellId];
 
@@ -613,12 +736,15 @@ const CustomCharacterSheet = ({
         }
       );
     })
+
     .sort(
       (a, b) => (a.level ?? 0) - (b.level ?? 0) || a.name.localeCompare(b.name),
     );
 
   const customSpellSlots = Object.entries(spellcasting.spellSlots)
+
     .filter(([, slot]) => slot.max > 0)
+
     .map(([spellLevel, slot]) => ({
       level: Number(spellLevel),
 
@@ -628,90 +754,141 @@ const CustomCharacterSheet = ({
     }));
 
   /* =========================================================
+
        FEATURES
+
     ========================================================= */
 
   /*
+
    * Library features are stored on the character as catalog IDs rather
+
    * than copied Trait objects. Resolve those IDs against the central
+
    * catalog every time the sheet renders.
+
    *
+
    * This means corrections to the rules data automatically appear on
+
    * every character that uses the feature.
+
    */
+
   const catalogFeatureEntries = useMemo(
     () => getTraitCatalogEntries(character.catalogTraitIds),
+
     [character.catalogTraitIds],
   );
 
   /*
+
    * Keep the catalog metadata together with the trait for rendering.
+
    *
+
    * sourceName gives us useful groups such as:
+
    *
+
    *   Druid
+
    *   Elf
+
    *   Elf — Drow
+
    *   Goliath — Stone's Endurance
+
    *   Tiefling — Infernal
+
    *   Tough
+
    *
+
    * without copying that metadata into the Trait itself.
+
    */
+
   const catalogFeatures = useMemo<RenderedFeature[]>(
     () =>
       catalogFeatureEntries.map((entry) => ({
         ...entry.trait,
+
         source: entry.sourceName,
       })),
+
     [catalogFeatureEntries],
   );
 
   /*
+
    * Custom traits remain embedded directly on the character.
+
    */
+
   const customFeatures = useMemo<RenderedFeature[]>(
     () =>
       (character.customTraits ?? []).map((trait) => ({
         ...trait,
+
         source: trait.source?.trim() || "Custom",
       })),
+
     [character.customTraits],
   );
 
   /*
+
    * One combined feature collection is now used by both:
+
    *
+
    *   - the Features tab
+
    *   - Overview actions
+
    *   - Overview bonus actions
+
    *   - Overview reactions
+
    */
+
   const allFeatures = useMemo<RenderedFeature[]>(
     () => [...catalogFeatures, ...customFeatures],
+
     [catalogFeatures, customFeatures],
   );
 
   /* =========================================================
+
        PLAY ACTIONS
+
     ========================================================= */
 
   const playableFeatures = useMemo(
     () =>
       allFeatures.map((trait) => ({
         id: trait.id,
+
         name: trait.name,
+
         description: trait.description,
+
         source: trait.source,
+
         notes: trait.notes,
+
         activation: trait.activation ?? "passive",
+
         actions: trait.actions ?? [],
       })),
+
     [allFeatures],
   );
 
   const collectedFeatureActions = useMemo(
     () => collectFeatureActions(playableFeatures),
+
     [playableFeatures],
   );
 
@@ -725,19 +902,24 @@ const CustomCharacterSheet = ({
     () =>
       getTwoWeaponCombatActions({
         attacks: weaponAttacks,
+
         abilityScores,
+
         featureNames: allFeatures.map((feature) => feature.name),
       }),
+
     [weaponAttacks, abilityScores, allFeatures],
   );
 
   const characterActions = [
     ...featureActions,
+
     ...twoWeaponCombatActions.actions,
   ];
 
   const characterBonusActions = [
     ...featureBonusActions,
+
     ...twoWeaponCombatActions.bonusActions,
   ];
 
@@ -750,13 +932,16 @@ const CustomCharacterSheet = ({
     (equippedMeleeWeaponsForNotice.length >= 2
       ? {
           title: "Two weapons equipped",
+
           description:
             "Either equipped weapon can be used for an ordinary attack with its full attack and damage modifiers. The OFF HAND label only describes where the weapon is held; it does not reduce a normal attack. An additional attack is available only when a rule such as Light, Nick, or Dual Wielder grants one.",
         }
       : undefined);
 
   /* =========================================================
+
        FEATURE GROUPS
+
     ========================================================= */
 
   const featureGroups = useMemo<FeatureGroup[]>(() => {
@@ -858,7 +1043,9 @@ const CustomCharacterSheet = ({
                               className="mt-1.5 overflow-hidden text-xs leading-[1.55] text-zinc-400"
                               style={{
                                 display: "-webkit-box",
+
                                 WebkitLineClamp: 3,
+
                                 WebkitBoxOrient: "vertical",
                               }}
                             >
@@ -885,7 +1072,9 @@ const CustomCharacterSheet = ({
   );
 
   /* =========================================================
+
        OTHER DETAIL TABS
+
     ========================================================= */
 
   const renderInventoryTab = () => (
@@ -957,10 +1146,15 @@ const CustomCharacterSheet = ({
           maxHp={maxHp}
           rest={{
             hitDieSize: customHitDieSize,
+
             hitDiceRemaining: stats.hitDiceRemaining ?? level,
+
             hitDiceMax: level,
+
             constitutionModifier,
+
             onShortRest: handleShortRest,
+
             onLongRest: handleLongRest,
           }}
         />
@@ -1011,8 +1205,11 @@ const CustomCharacterSheet = ({
           hitDiceLabel={hitDiceLabel}
           progress={{
             level: xpProgress.level,
+
             xp,
+
             nextLevelXp: xpProgress.nextLevelXp,
+
             progressPercent: xpProgress.progressPercent,
           }}
           languages={customProficiencies?.languages ?? []}
@@ -1023,6 +1220,10 @@ const CustomCharacterSheet = ({
             formatCustomProficiency,
           )}
           toolProficiencies={customProficiencies?.tools ?? []}
+          onEditCombat={() => setQuickStatsEditor("combat")}
+          onEditSavingThrows={() => setQuickStatsEditor("saving-throws")}
+          onEditSkills={() => setQuickStatsEditor("skills")}
+          onEditProficiencies={() => setQuickStatsEditor("proficiencies")}
         />
 
         <CharacterSheetWorkspace
@@ -1039,8 +1240,11 @@ const CustomCharacterSheet = ({
                       abilityLabel: spellcasting.ability
                         ? abilityLabels[spellcasting.ability]
                         : undefined,
+
                       saveDc: spellSaveDc,
+
                       attackBonus: spellAttackBonus,
+
                       slots: customSpellSlots,
                     }
                   : undefined
@@ -1065,6 +1269,35 @@ const CustomCharacterSheet = ({
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
       </div>
+
+      <CustomQuickStatsEditorModal
+        open={quickStatsEditor !== null}
+        mode={quickStatsEditor ?? "combat"}
+        abilityScores={abilityScores}
+        customStats={stats}
+        customProficiencies={normalizedCustomProficiencies}
+        calculatedArmorClass={armorClass}
+        onClose={() => setQuickStatsEditor(null)}
+        onSaveCombat={async (nextAbilityScores, nextStats) => {
+          const nextArmorClass = calculateArmorClass({
+            abilityScores: nextAbilityScores,
+            className: character.className ?? "",
+            equipment: character.equipment ?? [],
+            resolveItem: (entry) =>
+              resolveItemFromEquipmentEntry(entry, campaignItemsById),
+            mode: nextStats.armorClassMode ?? "automatic",
+            manualArmorClass:
+              nextStats.manualArmorClass ?? nextStats.armorClass ?? 10,
+            extraModifier: nextStats.armorClassBonus ?? 0,
+          }).value;
+
+          await handleSetCustomCombat(nextAbilityScores, {
+            ...nextStats,
+            armorClass: nextArmorClass,
+          });
+        }}
+        onSaveProficiencies={handleSetCustomProficiencies}
+      />
 
       <CharacterInventoryEditorModal
         open={inventoryEditorOpen}

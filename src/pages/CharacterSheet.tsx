@@ -58,43 +58,70 @@ const CharacterSheet = () => {
     Record<TraitGroupKey, boolean>
   >({
     species: true,
+
     class: true,
+
     subclass: true,
+
     background: true,
+
     feats: true,
+
     other: false,
   });
 
   const {
     character,
+
     derived,
+
     loading,
+
     error,
+
     campaignItemsById,
 
     handleEquipmentChange,
+
     handleSetInventory,
+
     handleSetHeroicInspiration,
+
     handleSetDeathSaves,
+
     handleSetCurrentHp,
+
     handleSetConditions,
+
     handleSetDefenses,
+
     handleSetSpellSlotRemaining,
+
     handleAddSpell,
+
     handleRemoveSpell,
+
     handleSetPlayerNotes,
+
     handleSetFeatures,
 
+    handleSetCustomCombat,
+
+    handleSetCustomProficiencies,
+
     handleApplyDecision,
+
     handleCompleteLevelUp,
 
     handleShortRest,
+
     handleLongRest,
   } = useCharacterSheetData(characterId);
 
   const navigationState = location.state as
     | {
         from?: string;
+
         label?: string;
       }
     | undefined;
@@ -108,6 +135,7 @@ const CharacterSheet = () => {
   const toggleTraitGroup = (key: TraitGroupKey) => {
     setOpenTraitGroups((current) => ({
       ...current,
+
       [key]: !current[key],
     }));
   };
@@ -161,6 +189,8 @@ const CharacterSheet = () => {
         handleRemoveSpell={handleRemoveSpell}
         handleSetPlayerNotes={handleSetPlayerNotes}
         handleSetFeatures={handleSetFeatures}
+        handleSetCustomCombat={handleSetCustomCombat}
+        handleSetCustomProficiencies={handleSetCustomProficiencies}
         handleShortRest={handleShortRest}
         handleLongRest={handleLongRest}
       />
@@ -220,6 +250,7 @@ const CharacterSheet = () => {
     : undefined;
 
   const guidedSpellSlots = Object.entries(derived.spellSlots)
+
     .map(([spellLevel, slotCount]) => {
       const level = Number(spellLevel);
 
@@ -234,10 +265,13 @@ const CharacterSheet = () => {
 
       return {
         level,
+
         max,
+
         remaining,
       };
     })
+
     .filter((slot) => slot.max > 0);
 
   const weaponAttacks = derived.equippedWeaponAttacks.map((attack) => ({
@@ -273,15 +307,25 @@ const CharacterSheet = () => {
   }));
 
   /*
+
    * D&D 2024 characters can always make an Unarmed Strike.
+
    *
+
    * Base damage is 1 + Strength modifier bludgeoning damage.
+
    * The attack roll uses Strength + Proficiency Bonus.
+
    *
+
    * Grapple and Shove use the same Unarmed Strike but force a
+
    * Strength or Dexterity saving throw against:
+
    * 8 + Strength modifier + Proficiency Bonus.
+
    */
+
   const unarmedStrengthModifier = Math.floor(
     (derived.finalAbilityScores.str - 10) / 2,
   );
@@ -336,12 +380,19 @@ const CharacterSheet = () => {
       : [];
 
   /*
+
    * Every held weapon remains an ordinary Attack-action option. "Off Hand"
+
    * describes where the weapon is held; it does not reduce an ordinary
+
    * attack's attack or damage modifiers.
+
    *
+
    * Light/Nick/Dual Wielder EXTRA attacks are generated separately below.
+
    */
+
   const attacks = [unarmedAttack, ...weaponAttacks, ...specialAttacks];
 
   const derivedDefenses = derived.resistances.map(
@@ -373,14 +424,23 @@ const CharacterSheet = () => {
   });
 
   /*
+
    * Play-panel actions are now entirely metadata-driven.
+
    *
+
    * A trait may have:
+
    * - one primary activation via trait.activation
+
    * - zero or more secondary playable actions via trait.actions
+
    *
+
    * Rules prose is never parsed to decide where something belongs.
+
    */
+
   const features = derived.traitGroups.flatMap((group) =>
     group.traits.map((trait) => ({
       id: trait.id ?? `${group.key}-${trait.name}`,
@@ -411,8 +471,11 @@ const CharacterSheet = () => {
 
   const twoWeaponCombatActions = getTwoWeaponCombatActions({
     attacks: weaponAttacks,
+
     abilityScores: derived.finalAbilityScores,
+
     featureNames: features.map((feature) => feature.name),
+
     masteredWeaponIds: character.derived?.weaponMasteries ?? [],
   });
 
@@ -420,6 +483,7 @@ const CharacterSheet = () => {
 
   const playBonusActions = [
     ...characterBonusActions,
+
     ...twoWeaponCombatActions.bonusActions,
   ];
 
@@ -432,6 +496,7 @@ const CharacterSheet = () => {
     (equippedMeleeWeaponsForNotice.length >= 2
       ? {
           title: "Two weapons equipped",
+
           description:
             "Either equipped weapon can be used for an ordinary attack with its full attack and damage modifiers. The OFF HAND label only describes where the weapon is held; it does not reduce a normal attack. An additional attack is available only when a rule such as Light, Nick, or Dual Wielder grants one.",
         }
@@ -444,7 +509,9 @@ const CharacterSheet = () => {
   );
 
   const combatOptions = derived.combatFeatures
+
     .filter((feature) => !activatedFeatureNames.has(feature.name.toLowerCase()))
+
     .map((feature) => ({
       id: `combat-option-${feature.id}`,
 
@@ -658,12 +725,17 @@ const CharacterSheet = () => {
               typeof classDefinition?.hitDie === "number"
                 ? classDefinition.hitDie
                 : Number(classDefinition?.hitDie) || undefined,
+
             hitDiceRemaining: character.hitDiceRemaining ?? character.level,
+
             hitDiceMax: character.level,
+
             constitutionModifier: Math.floor(
               (derived.finalAbilityScores.con - 10) / 2,
             ),
+
             onShortRest: handleShortRest,
+
             onLongRest: handleLongRest,
           }}
         />

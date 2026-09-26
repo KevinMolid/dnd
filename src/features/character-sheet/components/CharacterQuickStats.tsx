@@ -3,6 +3,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import NumberStepper from "../../../components/NumberStepper";
 
 import { createPortal } from "react-dom";
+
 import { useParams } from "react-router-dom";
 
 import DefensesControl from "./DefensesControl";
@@ -20,74 +21,128 @@ type AbilityScores = Record<AbilityKey, number>;
 
 export type CharacterQuickSkill = {
   id: string;
+
   name: string;
+
   ability: string;
+
   bonus: number;
+
   proficient?: boolean;
+
   expertise?: boolean;
 };
 
 export type DeathSaves = {
   successes: number;
+
   failures: number;
 };
 
 type CharacterProgress = {
   level: number;
+
   xp: number;
+
   nextLevelXp: number | null;
+
   progressPercent: number;
 };
 
 type CharacterQuickStatsProps = {
   currentHp: number;
+
   maxHp: number;
+
   onCurrentHpChange?: (currentHp: number) => void | Promise<void>;
+
   armorClass: number;
+
   initiative: number;
+
   initiativeSubValue?: string;
+
   speed: number;
+
   proficiencyBonus: number;
+
   passivePerception: number;
+
   passiveInsight?: number;
+
   passiveInvestigation?: number;
+
   abilityScores: AbilityScores;
+
   savingThrowProficiencies?: AbilityKey[];
+
   skills?: CharacterQuickSkill[];
+
   conditions?: string[];
+
   onConditionsChange?: (conditions: string[]) => void | Promise<void>;
+
   defenses?: string[];
+
   lockedDefenses?: string[];
+
   onDefensesChange?: (defenses: string[]) => void | Promise<void>;
+
   heroicInspiration?: boolean;
+
   onHeroicInspirationChange?: (value: boolean) => void | Promise<void>;
+
   deathSaves?: DeathSaves;
+
   onDeathSavesChange?: (value: DeathSaves) => void | Promise<void>;
+
   hitDiceLabel?: string;
+
   progress?: CharacterProgress | null;
+
   languages?: string[];
+
   armorProficiencies?: string[];
+
   weaponProficiencies?: string[];
+
   toolProficiencies?: string[];
+
+  onEditCombat?: () => void;
+
+  onEditSavingThrows?: () => void;
+
+  onEditSkills?: () => void;
+
+  onEditProficiencies?: () => void;
 };
 
 const abilities: Array<{ id: AbilityKey; label: string }> = [
   { id: "str", label: "STR" },
+
   { id: "dex", label: "DEX" },
+
   { id: "con", label: "CON" },
+
   { id: "int", label: "INT" },
+
   { id: "wis", label: "WIS" },
+
   { id: "cha", label: "CHA" },
 ];
 
 const formatModifier = (value: number) =>
   value >= 0 ? `+${value}` : `${value}`;
+
 const getModifier = (score: number) => Math.floor((score - 10) / 2);
 
 const formatLabel = (value: string) =>
   value
+
     .split("-")
+
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+
     .join(" ");
 
 const clamp = (value: number, minimum: number, maximum: number) =>
@@ -95,39 +150,76 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 
 const CharacterQuickStats = ({
   currentHp,
+
   maxHp,
+
   onCurrentHpChange,
+
   armorClass,
+
   initiative,
+
   initiativeSubValue,
+
   speed,
+
   proficiencyBonus,
+
   passivePerception,
+
   passiveInsight,
+
   passiveInvestigation,
+
   abilityScores,
+
   savingThrowProficiencies = [],
+
   skills = [],
+
   conditions = [],
+
   onConditionsChange,
+
   defenses = [],
+
   lockedDefenses = [],
+
   onDefensesChange,
+
   heroicInspiration = false,
+
   onHeroicInspirationChange,
+
   deathSaves = { successes: 0, failures: 0 },
+
   onDeathSavesChange,
+
   hitDiceLabel,
+
   progress,
+
   languages = [],
+
   armorProficiencies = [],
+
   weaponProficiencies = [],
+
   toolProficiencies = [],
+
+  onEditCombat,
+
+  onEditSavingThrows,
+
+  onEditSkills,
+
+  onEditProficiencies,
 }: CharacterQuickStatsProps) => {
   const nextLevel =
     progress?.nextLevelXp !== null ? (progress?.level ?? 0) + 1 : null;
 
   const safeMaxHp = Math.max(1, maxHp);
+
   const hpPercent = clamp((currentHp / safeMaxHp) * 100, 0, 100);
 
   return (
@@ -139,6 +231,7 @@ const CharacterQuickStats = ({
           defaultOpen
           summary={`${currentHp}/${maxHp} HP · AC ${armorClass}`}
           className="xl:col-start-3 xl:row-span-2 xl:row-start-1"
+          onEdit={onEditCombat}
         >
           <div className="mt-2 grid grid-cols-6 gap-1">
             <HpStat
@@ -212,6 +305,7 @@ const CharacterQuickStats = ({
                   onChange={(successes) =>
                     onDeathSavesChange?.({
                       ...deathSaves,
+
                       successes,
                     })
                   }
@@ -225,6 +319,7 @@ const CharacterQuickStats = ({
                   onChange={(failures) =>
                     onDeathSavesChange?.({
                       ...deathSaves,
+
                       failures,
                     })
                   }
@@ -262,6 +357,7 @@ const CharacterQuickStats = ({
 
                 <span className="text-[10px] font-semibold text-zinc-200">
                   {progress.xp}
+
                   {progress.nextLevelXp !== null
                     ? ` / ${progress.nextLevelXp}`
                     : ""}
@@ -288,12 +384,16 @@ const CharacterQuickStats = ({
           defaultOpen={false}
           summary={`STR ${formatModifier(getModifier(abilityScores.str ?? 10))} · DEX ${formatModifier(getModifier(abilityScores.dex ?? 10))} · CON ${formatModifier(getModifier(abilityScores.con ?? 10))}`}
           className="xl:col-start-1 xl:row-start-1"
+          onEdit={onEditSavingThrows}
         >
           <div className="mt-2 divide-y divide-white/[0.045]">
             {abilities.map((ability) => {
               const score = abilityScores[ability.id] ?? 10;
+
               const modifier = getModifier(score);
+
               const proficient = savingThrowProficiencies.includes(ability.id);
+
               const save = modifier + (proficient ? proficiencyBonus : 0);
 
               return (
@@ -347,6 +447,7 @@ const CharacterQuickStats = ({
           defaultOpen={false}
           summary={`${skills.filter((skill) => skill.proficient).length} proficient`}
           className="xl:col-start-2 xl:row-start-1"
+          onEdit={onEditSkills}
         >
           <div className="mt-2 grid grid-cols-1 gap-x-4 sm:grid-cols-2">
             {skills.map((skill) => (
@@ -361,11 +462,15 @@ const CharacterQuickStats = ({
           defaultOpen={false}
           summary={`${languages.length} ${languages.length === 1 ? "language" : "languages"}`}
           className="xl:col-span-2 xl:col-start-1 xl:row-start-2"
+          onEdit={onEditProficiencies}
         >
           <div className="mt-2 grid gap-x-6 gap-y-2 sm:grid-cols-2">
             <ProficiencyRow label="Languages" values={languages} />
+
             <ProficiencyRow label="Armor" values={armorProficiencies} />
+
             <ProficiencyRow label="Weapons" values={weaponProficiencies} />
+
             <ProficiencyRow label="Tools" values={toolProficiencies} />
           </div>
         </QuickSection>
@@ -376,23 +481,39 @@ const CharacterQuickStats = ({
 
 type QuickSectionProps = {
   title: string;
+
   storageId: string;
+
   children: ReactNode;
+
   defaultOpen?: boolean;
+
   summary?: ReactNode;
+
   className?: string;
+
+  onEdit?: () => void;
 };
 
 const QuickSection = ({
   title,
+
   storageId,
+
   children,
+
   defaultOpen = true,
+
   summary,
+
   className = "",
+
+  onEdit,
 }: QuickSectionProps) => {
   const { characterId } = useParams();
+
   const [open, setOpen] = useState(defaultOpen);
+
   const restoredKeyRef = useRef<string | null>(null);
 
   const storageKey = characterId
@@ -437,31 +558,43 @@ const QuickSection = ({
     <section
       className={`overflow-hidden rounded-xl border border-white/10 bg-zinc-900/40 ${className}`}
     >
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        aria-expanded={open}
-        className={`flex w-full items-center justify-between gap-3 px-3 text-left transition hover:bg-white/[0.025] md:pointer-events-none md:cursor-default md:hover:bg-transparent ${
-          open ? "py-3" : "py-2.5"
-        }`}
+      <div
+        className={`flex w-full items-center gap-2 px-3 ${open ? "py-3" : "py-2.5"}`}
       >
-        <div className="flex min-w-0 items-center gap-3">
-          <SectionLabel>{title}</SectionLabel>
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left transition md:pointer-events-none md:cursor-default"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <SectionLabel>{title}</SectionLabel>
 
-          {!open && summary ? (
-            <div className="min-w-0 truncate text-[10px] font-medium text-zinc-500 md:hidden">
-              {summary}
-            </div>
-          ) : null}
-        </div>
+            {!open && summary ? (
+              <div className="min-w-0 truncate text-[10px] font-medium text-zinc-500 md:hidden">
+                {summary}
+              </div>
+            ) : null}
+          </div>
 
-        <i
-          className={`fa-solid fa-chevron-down shrink-0 text-[9px] text-zinc-500 transition-transform md:hidden ${
-            open ? "rotate-180" : ""
-          }`}
-          aria-hidden="true"
-        />
-      </button>
+          <i
+            className={`fa-solid fa-chevron-down shrink-0 text-[9px] text-zinc-500 transition-transform md:hidden ${
+              open ? "rotate-180" : ""
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+
+        {onEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            className="shrink-0 rounded-md border border-white/[0.08] bg-white/[0.03] px-2 py-1 text-[9px] font-semibold text-zinc-400 transition hover:bg-white/[0.08] hover:text-white"
+          >
+            Edit
+          </button>
+        ) : null}
+      </div>
 
       <div
         className={`border-t border-white/[0.06] px-3 pb-3 ${
@@ -543,8 +676,11 @@ type CoreTone =
 
 const getHpTone = (percentage: number, currentHp: number): CoreTone => {
   if (currentHp <= 0) return "critical";
+
   if (percentage <= 25) return "danger";
+
   if (percentage <= 50) return "warning";
+
   return "healthy";
 };
 
@@ -554,54 +690,84 @@ const coreToneClasses: Record<
 > = {
   neutral: {
     background: "bg-black/20",
+
     border: "border-transparent",
+
     label: "text-zinc-400",
   },
+
   healthy: {
     background: "bg-emerald-500/[0.055]",
+
     border: "border-emerald-500/10",
+
     label: "text-emerald-300/80",
   },
+
   warning: {
     background: "bg-amber-500/[0.075]",
+
     border: "border-amber-500/15",
+
     label: "text-amber-300/90",
   },
+
   danger: {
     background: "bg-rose-500/[0.085]",
+
     border: "border-rose-500/20",
+
     label: "text-rose-300",
   },
+
   critical: {
     background: "bg-red-500/[0.14]",
+
     border: "border-red-500/30",
+
     label: "text-red-300",
   },
+
   ac: {
     background: "bg-sky-500/[0.055]",
+
     border: "border-sky-500/10",
+
     label: "text-sky-300/80",
   },
+
   initiative: {
     background: "bg-amber-500/[0.045]",
+
     border: "border-amber-500/10",
+
     label: "text-amber-300/80",
   },
 };
 
 const CoreStat = ({
   label,
+
   value,
+
   subValue,
+
   title,
+
   tone = "neutral",
+
   className = "",
 }: {
   label: string;
+
   value: ReactNode;
+
   subValue?: string;
+
   title?: string;
+
   tone?: CoreTone;
+
   className?: string;
 }) => {
   const classes = coreToneClasses[tone];
@@ -632,18 +798,27 @@ const CoreStat = ({
 
 const HpStat = ({
   currentHp,
+
   maxHp,
+
   hitDiceLabel,
+
   tone,
+
   onChange,
 }: {
   currentHp: number;
+
   maxHp: number;
+
   hitDiceLabel?: string;
+
   tone: CoreTone;
+
   onChange?: (value: number) => void | Promise<void>;
 }) => {
   const [open, setOpen] = useState(false);
+
   const [saving, setSaving] = useState(false);
 
   const modalRef = useRef<HTMLDivElement | null>(null);
@@ -674,12 +849,16 @@ const HpStat = ({
     };
 
     document.addEventListener("mousedown", handlePointerDown);
+
     document.addEventListener("touchstart", handlePointerDown);
+
     document.addEventListener("keydown", handleEscape);
 
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
+
       document.removeEventListener("touchstart", handlePointerDown);
+
       document.removeEventListener("keydown", handleEscape);
     };
   }, [open]);
@@ -691,6 +870,7 @@ const HpStat = ({
     if (!onChange) return;
 
     const normalized = clampHp(value);
+
     setSaving(true);
 
     try {
@@ -747,6 +927,7 @@ const HpStat = ({
                 <div className="flex items-start gap-3">
                   <p className="text-lg font-bold text-white">
                     {currentHp}
+
                     <span className="text-zinc-600">/{maxHp}</span>
                   </p>
 
@@ -784,10 +965,12 @@ const HpStat = ({
 
                 <div className="flex justify-between border-t border-white/[0.06] pt-2 text-[9px] text-zinc-500">
                   <span>Minimum 0</span>
+
                   <span>Maximum {maxHp}</span>
                 </div>
               </div>
             </div>,
+
             document.body,
           )
         : null}
@@ -797,19 +980,31 @@ const HpStat = ({
 
 const InteractiveCoreStat = ({
   label,
+
   value,
+
   subValue,
+
   active,
+
   onClick,
+
   disabled = false,
+
   className = "",
 }: {
   label: string;
+
   value: ReactNode;
+
   subValue?: string;
+
   active: boolean;
+
   onClick: () => void;
+
   disabled?: boolean;
+
   className?: string;
 }) => (
   <button
@@ -854,12 +1049,15 @@ const InteractiveCoreStat = ({
 
 const ConditionsControl = ({
   conditions,
+
   onChange,
 }: {
   conditions: string[];
+
   onChange?: (conditions: string[]) => void | Promise<void>;
 }) => {
   const [open, setOpen] = useState(false);
+
   const [saving, setSaving] = useState(false);
 
   const modalRef = useRef<HTMLDivElement | null>(null);
@@ -890,12 +1088,16 @@ const ConditionsControl = ({
     };
 
     document.addEventListener("mousedown", handlePointerDown);
+
     document.addEventListener("touchstart", handlePointerDown);
+
     document.addEventListener("keydown", handleEscape);
 
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
+
       document.removeEventListener("touchstart", handlePointerDown);
+
       document.removeEventListener("keydown", handleEscape);
     };
   }, [open]);
@@ -1014,6 +1216,7 @@ const ConditionsControl = ({
                 <div className="grid grid-cols-2 gap-1.5">
                   {conditionCatalog.map((definition) => {
                     const condition = definition.name;
+
                     const active = conditions.includes(condition);
 
                     return (
@@ -1042,6 +1245,7 @@ const ConditionsControl = ({
                 </div>
               </div>
             </div>,
+
             document.body,
           )
         : null}
@@ -1051,9 +1255,11 @@ const ConditionsControl = ({
 
 const StatePill = ({
   tone,
+
   children,
 }: {
   tone: "danger" | "defense";
+
   children: ReactNode;
 }) => {
   const classes =
@@ -1072,15 +1278,23 @@ const StatePill = ({
 
 const DeathSaveRow = ({
   label,
+
   value,
+
   type,
+
   onChange,
+
   disabled = false,
 }: {
   label: string;
+
   value: number;
+
   type: "success" | "failure";
+
   onChange: (value: number) => void;
+
   disabled?: boolean;
 }) => {
   const amount = clamp(value, 0, 3);
@@ -1089,6 +1303,7 @@ const DeathSaveRow = ({
     if (disabled) return;
 
     const requested = index + 1;
+
     const next = requested === amount ? amount - 1 : requested;
 
     onChange(clamp(next, 0, 3));
@@ -1143,9 +1358,11 @@ const SenseValue = ({ label, value }: { label: string; value: number }) => (
 
 const ProficiencyRow = ({
   label,
+
   values,
 }: {
   label: string;
+
   values: string[];
 }) => {
   const formatted = values.filter(Boolean).map(formatLabel);

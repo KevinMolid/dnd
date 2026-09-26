@@ -112,7 +112,12 @@ import { getCombatFeatures } from "../utils/combatFeatureHelpers";
 
 import { getCharacterMoneyCp } from "../../../rulesets/dnd/dnd2024/money";
 
-import type { CustomTrait } from "../../../types/customCharacter";
+import type {
+  CustomCharacter,
+  CustomCharacterStats,
+  CustomProficiencies,
+  CustomTrait,
+} from "../../../types/customCharacter";
 
 type CharacterSheetDataHookResultWithFeatureEditing =
   CharacterSheetDataHookResult & {
@@ -124,6 +129,15 @@ type CharacterSheetDataHookResultWithFeatureEditing =
     handleSetInventory: (
       equipment: CharacterEquipmentEntry[],
       money: Money,
+    ) => Promise<void>;
+
+    handleSetCustomCombat: (
+      abilityScores: Record<AbilityKey, number>,
+      customStats: CustomCharacterStats,
+    ) => Promise<void>;
+
+    handleSetCustomProficiencies: (
+      customProficiencies: CustomProficiencies,
     ) => Promise<void>;
   };
 
@@ -1936,6 +1950,96 @@ const handleRemoveSpell = async (
         throw err;
       }
     };
+
+
+  const handleSetCustomCombat = async (
+    nextAbilityScores: Record<AbilityKey, number>,
+    nextCustomStats: CustomCharacterStats,
+  ) => {
+    if (!character || !characterId || character.buildMode !== "custom") return;
+
+    const previousAbilityScores = character.abilityScores;
+    const previousCustomStats = character.customStats;
+
+    setCharacter((current) =>
+      current
+        ? {
+            ...current,
+            abilityScores: nextAbilityScores,
+            customStats: nextCustomStats,
+          }
+        : current,
+    );
+
+    try {
+      await updatePrivateAndPublic(
+        {
+          abilityScores: nextAbilityScores,
+          customStats: nextCustomStats,
+        },
+        {
+          currentHp: nextCustomStats.currentHp ?? 0,
+          maxHp: nextCustomStats.maxHp ?? 0,
+          armorClass: nextCustomStats.armorClass ?? 10,
+          speed: nextCustomStats.speed ?? 30,
+        },
+      );
+    } catch (err) {
+      console.error("Failed to update custom combat stats:", err);
+      setCharacter((current) =>
+        current
+          ? {
+              ...current,
+              abilityScores: previousAbilityScores,
+              customStats: previousCustomStats,
+            }
+          : current,
+      );
+      setError("Failed to update combat stats.");
+      throw err;
+    }
+  };
+
+  const handleSetCustomProficiencies = async (
+    nextCustomProficiencies: CustomProficiencies,
+  ) => {
+    if (!character || !characterId || character.buildMode !== "custom") return;
+
+    const customCharacter = character as CharacterDoc & CustomCharacter;
+    const previousCustomProficiencies = customCharacter.customProficiencies;
+
+    setCharacter((current) => {
+      if (!current) return current;
+
+      const currentCustom = current as CharacterDoc & CustomCharacter;
+
+      return {
+        ...currentCustom,
+        customProficiencies: nextCustomProficiencies,
+      };
+    });
+
+    try {
+      await updateDoc(doc(db, "characters", characterId), {
+        customProficiencies: nextCustomProficiencies,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Failed to update custom proficiencies:", err);
+      setCharacter((current) => {
+        if (!current) return current;
+
+        const currentCustom = current as CharacterDoc & CustomCharacter;
+
+        return {
+          ...currentCustom,
+          customProficiencies: previousCustomProficiencies,
+        };
+      });
+      setError("Failed to update proficiencies.");
+      throw err;
+    }
+  };
 
   /* =========================================================
      FEATURES
@@ -3919,6 +4023,10 @@ const nonSpeciesDerivedKnownSpells = [
   handleSetPlayerNotes,
 
   handleSetFeatures,
+
+  handleSetCustomCombat,
+
+  handleSetCustomProficiencies,
 
   handleEquipmentChange,
 

@@ -11,6 +11,20 @@ import ItemPickerModal from "../components/character/ItemPickerModal";
 
 import SpellPickerModal from "../components/character/SpellPickerModal";
 import CharacterFeaturesEditor from "../components/character/CharacterFeaturesEditor";
+import AbilityScoresSavingThrowsEditor from "../components/character/AbilityScoresSavingThrowsEditor";
+import SkillsEditor from "../components/character/SkillsEditor";
+import CombatStatsEditor from "../components/character/CombatStatsEditor";
+import ProficienciesLanguagesEditor, {
+  armorProficiencyPresets,
+  weaponProficiencyPresets,
+  getCustomProficiencyValues,
+  getSelectedProficiencyPresetIds,
+  joinProficiencyText,
+  mergePresetAndCustomProficiencies,
+  splitProficiencyText,
+  type ArmorProficiencyPresetId,
+  type WeaponProficiencyPresetId,
+} from "../components/character/ProficienciesLanguagesEditor";
 
 import { defaultCharacterPortraits } from "../data/defaultCharacterPortraits";
 
@@ -62,15 +76,6 @@ const abilityLabels: Record<AbilityKey, string> = {
   cha: "Charisma",
 };
 
-const abilityShortLabels: Record<AbilityKey, string> = {
-  str: "STR",
-  dex: "DEX",
-  con: "CON",
-  int: "INT",
-  wis: "WIS",
-  cha: "CHA",
-};
-
 const abilityKeys: AbilityKey[] = ["str", "dex", "con", "int", "wis", "cha"];
 
 const defaultAbilityScores: Record<AbilityKey, number> = {
@@ -114,94 +119,6 @@ const formatItemCategory = (value?: string) => {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
-};
-
-const splitTextList = (value: string) =>
-  value
-    .split(/[\n,]/)
-    .map((entry) => entry.trim())
-    .filter(Boolean);
-
-const joinTextList = (values?: string[]) => (values ?? []).join("\n");
-
-const normalizeProficiency = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-
-const armorProficiencyPresets = [
-  { id: "light-armor", label: "Light Armor" },
-  { id: "medium-armor", label: "Medium Armor" },
-  { id: "heavy-armor", label: "Heavy Armor" },
-  { id: "shields", label: "Shields" },
-] as const;
-
-const weaponProficiencyPresets = [
-  { id: "simple-weapons", label: "Simple Weapons" },
-  { id: "martial-weapons", label: "Martial Weapons" },
-  { id: "unarmed-strikes", label: "Unarmed Strikes" },
-  {
-    id: "martial-finesse-or-light",
-    label: "Martial Weapons with Finesse or Light",
-  },
-] as const;
-
-type ArmorProficiencyPresetId = (typeof armorProficiencyPresets)[number]["id"];
-
-type WeaponProficiencyPresetId =
-  (typeof weaponProficiencyPresets)[number]["id"];
-
-const getSelectedPresetIds = <TId extends string>(
-  values: string[] | undefined,
-  presets: readonly { id: TId; label: string }[],
-): TId[] => {
-  const normalizedValues = new Set(
-    (values ?? []).map((value) => normalizeProficiency(value)),
-  );
-
-  return presets
-    .filter(
-      (preset) =>
-        normalizedValues.has(normalizeProficiency(preset.id)) ||
-        normalizedValues.has(normalizeProficiency(preset.label)),
-    )
-    .map((preset) => preset.id);
-};
-
-const getCustomProficiencyValues = <TId extends string>(
-  values: string[] | undefined,
-  presets: readonly { id: TId; label: string }[],
-) => {
-  const presetAliases = new Set(
-    presets.flatMap((preset) => [
-      normalizeProficiency(preset.id),
-      normalizeProficiency(preset.label),
-    ]),
-  );
-
-  return (values ?? []).filter(
-    (value) => !presetAliases.has(normalizeProficiency(value)),
-  );
-};
-
-const mergePresetAndCustomProficiencies = (
-  presetIds: string[],
-  customText: string,
-) => {
-  const seen = new Set<string>();
-
-  return [...presetIds, ...splitTextList(customText)].filter((value) => {
-    const key = normalizeProficiency(value);
-
-    if (!key || seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
 };
 
 const createEquipmentInstanceId = (
@@ -350,20 +267,23 @@ const CustomCharacterCreator = ({
   const [armorProficiencyPresetIds, setArmorProficiencyPresetIds] = useState<
     ArmorProficiencyPresetId[]
   >(() =>
-    getSelectedPresetIds(initialProficiencies?.armor, armorProficiencyPresets),
+    getSelectedProficiencyPresetIds(
+      initialProficiencies?.armor,
+      armorProficiencyPresets,
+    ),
   );
 
   const [weaponProficiencyPresetIds, setWeaponProficiencyPresetIds] = useState<
     WeaponProficiencyPresetId[]
   >(() =>
-    getSelectedPresetIds(
+    getSelectedProficiencyPresetIds(
       initialProficiencies?.weapons,
       weaponProficiencyPresets,
     ),
   );
 
   const [armorProficienciesText, setArmorProficienciesText] = useState(() =>
-    joinTextList(
+    joinProficiencyText(
       getCustomProficiencyValues(
         initialProficiencies?.armor,
         armorProficiencyPresets,
@@ -372,7 +292,7 @@ const CustomCharacterCreator = ({
   );
 
   const [weaponProficienciesText, setWeaponProficienciesText] = useState(() =>
-    joinTextList(
+    joinProficiencyText(
       getCustomProficiencyValues(
         initialProficiencies?.weapons,
         weaponProficiencyPresets,
@@ -381,11 +301,11 @@ const CustomCharacterCreator = ({
   );
 
   const [toolProficienciesText, setToolProficienciesText] = useState(
-    joinTextList(initialProficiencies?.tools),
+    joinProficiencyText(initialProficiencies?.tools),
   );
 
   const [languagesText, setLanguagesText] = useState(
-    joinTextList(initialProficiencies?.languages),
+    joinProficiencyText(initialProficiencies?.languages),
   );
 
   const [catalogTraitIds, setCatalogTraitIds] = useState<string[]>(
@@ -510,23 +430,6 @@ const CustomCharacterCreator = ({
         ? current.filter((entry) => entry !== proficiency)
         : [...current, proficiency],
     );
-  };
-
-  const getSkillBonus = (
-    ability: AbilityKey,
-    proficiency: CustomProficiencyLevel,
-  ) => {
-    let bonus = getModifier(abilityScores[ability]);
-
-    if (proficiency === "proficient") {
-      bonus += customProficiencyBonus;
-    }
-
-    if (proficiency === "expertise") {
-      bonus += customProficiencyBonus * 2;
-    }
-
-    return bonus;
   };
 
   const toggleSkillProficiency = (
@@ -790,9 +693,9 @@ const CustomCharacterCreator = ({
         weaponProficienciesText,
       ),
 
-      tools: splitTextList(toolProficienciesText),
+      tools: splitProficiencyText(toolProficienciesText),
 
-      languages: splitTextList(languagesText),
+      languages: splitProficiencyText(languagesText),
     },
 
     catalogTraitIds,
@@ -1186,398 +1089,72 @@ const CustomCharacterCreator = ({
                   {/* ABILITIES & SAVING THROWS */}
 
                   <Card title="Ability Scores & Saving Throws">
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
-                      {abilityKeys.map((ability) => {
-                        const proficient =
-                          savingThrowProficiencies.includes(ability);
-
-                        const modifier = getModifier(abilityScores[ability]);
-
-                        const saveBonus =
-                          modifier + (proficient ? customProficiencyBonus : 0);
-
-                        return (
-                          <div
-                            key={ability}
-                            className="min-w-0 rounded-lg border border-white/10 bg-zinc-900 p-2.5"
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs font-bold text-zinc-500">
-                                {abilityShortLabels[ability]}
-                              </span>
-
-                              <span className="text-xs font-semibold text-zinc-300">
-                                {formatModifier(modifier)}
-                              </span>
-                            </div>
-
-                            <div className="mt-2">
-                              <NumberStepper
-                                value={abilityScores[ability]}
-                                onChange={(value) => {
-                                  setAbilityScores((current) => ({
-                                    ...current,
-                                    [ability]: value,
-                                  }));
-                                }}
-                                ariaLabel={`${abilityLabels[ability]} score`}
-                                size="default"
-                                width="full"
-                              />
-                            </div>
-
-                            <label className="mt-2.5 flex cursor-pointer items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5">
-                              <span className="flex min-w-0 items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={proficient}
-                                  onChange={() => toggleSavingThrow(ability)}
-                                  className="shrink-0"
-                                />
-
-                                <span className="truncate text-xs text-zinc-400">
-                                  Save
-                                </span>
-                              </span>
-
-                              <strong className="shrink-0 text-xs text-white">
-                                {formatModifier(saveBonus)}
-                              </strong>
-                            </label>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    <AbilityScoresSavingThrowsEditor
+                      abilityScores={abilityScores}
+                      savingThrowProficiencies={savingThrowProficiencies}
+                      proficiencyBonus={customProficiencyBonus}
+                      onAbilityScoreChange={(ability, value) =>
+                        setAbilityScores((current) => ({
+                          ...current,
+                          [ability]: value,
+                        }))
+                      }
+                      onSavingThrowToggle={toggleSavingThrow}
+                    />
                   </Card>
 
                   {/* COMBAT */}
 
                   <Card title="Combat">
-                    <div className="mb-3 rounded-lg border border-white/10 bg-zinc-900/55 p-3">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-white">
-                            Armor Class
-                          </p>
-                          <p className="mt-0.5 text-xs text-zinc-500">
-                            Calculate AC automatically, or use a manual
-                            override.
-                          </p>
-                        </div>
-
-                        <div
-                          className="inline-flex rounded-lg border border-white/10 bg-black/25 p-1"
-                          role="group"
-                          aria-label="Armor Class calculation mode"
-                        >
-                          {(["automatic", "manual"] as const).map(
-                            (modeOption) => {
-                              const selected = armorClassMode === modeOption;
-
-                              return (
-                                <button
-                                  key={modeOption}
-                                  type="button"
-                                  aria-pressed={selected}
-                                  onClick={() => setArmorClassMode(modeOption)}
-                                  className={`rounded-md px-3 py-1.5 text-xs font-semibold transition ${
-                                    selected
-                                      ? "bg-white text-zinc-950"
-                                      : "text-zinc-400 hover:bg-white/[0.06] hover:text-white"
-                                  }`}
-                                >
-                                  {modeOption === "automatic"
-                                    ? "Automatic"
-                                    : "Manual"}
-                                </button>
-                              );
-                            },
-                          )}
-                        </div>
-                      </div>
-
-                      {armorClassMode === "automatic" ? (
-                        <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_150px]">
-                          <div className="rounded-lg border border-white/[0.08] bg-black/20 p-3">
-                            <div className="flex items-end gap-3">
-                              <span className="text-3xl font-bold leading-none text-white">
-                                {resolvedArmorClass}
-                              </span>
-                              <span className="pb-0.5 text-sm font-medium text-zinc-300">
-                                {armorClassResult.formulaLabel}
-                              </span>
-                            </div>
-
-                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
-                              {armorClassResult.breakdown.map((line) => (
-                                <span
-                                  key={line.id}
-                                  className="text-xs text-zinc-400"
-                                  title={line.detail}
-                                >
-                                  {line.label}{" "}
-                                  <span className="font-semibold text-zinc-200">
-                                    {line.value >= 0 ? "+" : ""}
-                                    {line.value}
-                                  </span>
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-
-                          <NumberInput
-                            label="Additional modifier"
-                            value={armorClassBonus}
-                            onChange={setArmorClassBonus}
-                          />
-                        </div>
-                      ) : (
-                        <div className="mt-3 max-w-[180px]">
-                          <NumberInput
-                            label="Manual AC"
-                            value={manualArmorClass}
-                            min={0}
-                            onChange={setManualArmorClass}
-                          />
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="grid gap-2.5 sm:grid-cols-4">
-                      <NumberInput
-                        label="Max HP"
-                        value={customMaxHp}
-                        min={0}
-                        onChange={setCustomMaxHp}
-                      />
-
-                      <label className="block">
-                        <span className="text-sm text-zinc-300">Hit Die</span>
-                        <select
-                          value={customHitDie}
-                          onChange={(event) =>
-                            setCustomHitDie(event.target.value)
-                          }
-                          className="mt-1.5 w-full rounded-lg border border-white/10 bg-zinc-900 p-2.5 text-white outline-none focus:border-white/25"
-                        >
-                          <option value="d4">d4</option>
-                          <option value="d6">d6</option>
-                          <option value="d8">d8</option>
-                          <option value="d10">d10</option>
-                          <option value="d12">d12</option>
-                        </select>
-                      </label>
-
-                      <NumberInput
-                        label="Speed"
-                        value={customSpeed}
-                        min={0}
-                        onChange={setCustomSpeed}
-                      />
-                      <NumberInput
-                        label="Prof. Bonus"
-                        value={customProficiencyBonus}
-                        onChange={setCustomProficiencyBonus}
-                      />
-                    </div>
-
-                    <p className="mt-3 text-xs leading-5 text-zinc-500">
-                      New characters start at full HP with one Hit Die per
-                      level. When editing, current HP and spent Hit Dice are
-                      preserved.
-                    </p>
+                    <CombatStatsEditor
+                      armorClassMode={armorClassMode}
+                      manualArmorClass={manualArmorClass}
+                      armorClassBonus={armorClassBonus}
+                      maxHp={customMaxHp}
+                      hitDie={customHitDie}
+                      speed={customSpeed}
+                      proficiencyBonus={customProficiencyBonus}
+                      resolvedArmorClass={resolvedArmorClass}
+                      armorClassFormulaLabel={armorClassResult.formulaLabel}
+                      armorClassBreakdown={armorClassResult.breakdown}
+                      onArmorClassModeChange={setArmorClassMode}
+                      onManualArmorClassChange={setManualArmorClass}
+                      onArmorClassBonusChange={setArmorClassBonus}
+                      onMaxHpChange={setCustomMaxHp}
+                      onHitDieChange={setCustomHitDie}
+                      onSpeedChange={setCustomSpeed}
+                      onProficiencyBonusChange={setCustomProficiencyBonus}
+                    />
                   </Card>
 
                   {/* SKILLS */}
 
                   <Card title="Skills">
-                    <div className="grid gap-1.5 md:grid-cols-2">
-                      {customSkillDefinitions.map((skill) => {
-                        const proficiency = skillProficiencies[skill.id];
-
-                        return (
-                          <div
-                            key={skill.id}
-                            className="flex min-h-10 items-center gap-2 rounded-lg border border-white/[0.08] bg-zinc-900/70 px-2.5 py-1.5"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-xs font-medium text-zinc-100">
-                                {skill.name}
-                              </div>
-                              <div className="text-[9px] uppercase tracking-wide text-zinc-600">
-                                {abilityShortLabels[skill.ability]}
-                              </div>
-                            </div>
-
-                            <strong className="w-8 shrink-0 text-right text-xs text-white">
-                              {formatModifier(
-                                getSkillBonus(skill.ability, proficiency),
-                              )}
-                            </strong>
-
-                            <div className="flex shrink-0 items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  toggleSkillProficiency(skill.id, "proficient")
-                                }
-                                title="Proficient"
-                                aria-label={`${skill.name}: Proficient`}
-                                className={`flex h-5 w-5 items-center justify-center rounded-full border transition ${
-                                  proficiency === "proficient"
-                                    ? "border-emerald-400 bg-emerald-400"
-                                    : "border-zinc-600 bg-transparent hover:border-emerald-400/70"
-                                }`}
-                              >
-                                {proficiency === "proficient" ? (
-                                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-950" />
-                                ) : null}
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  toggleSkillProficiency(skill.id, "expertise")
-                                }
-                                title="Expertise"
-                                aria-label={`${skill.name}: Expertise`}
-                                className={`flex h-5 w-5 items-center justify-center rounded-full border transition ${
-                                  proficiency === "expertise"
-                                    ? "border-emerald-400 bg-emerald-400/15"
-                                    : "border-zinc-600 bg-transparent hover:border-emerald-400/70"
-                                }`}
-                              >
-                                <span
-                                  className={`h-2 w-2 rounded-full ${
-                                    proficiency === "expertise"
-                                      ? "bg-emerald-400"
-                                      : "bg-transparent"
-                                  }`}
-                                />
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <div className="mt-2 flex items-center gap-4 text-[9px] text-zinc-500">
-                      <span className="flex items-center gap-1.5">
-                        <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                        Proficiency
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="flex h-3 w-3 items-center justify-center rounded-full border border-emerald-400">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                        </span>
-                        Expertise
-                      </span>
-                    </div>
+                    <SkillsEditor
+                      abilityScores={abilityScores}
+                      skillProficiencies={skillProficiencies}
+                      proficiencyBonus={customProficiencyBonus}
+                      onSkillProficiencyChange={toggleSkillProficiency}
+                    />
                   </Card>
 
                   {/* PROFICIENCIES */}
 
                   <Card title="Other Proficiencies & Languages">
-                    <p className="mb-3 text-sm text-zinc-500">
-                      Choose common proficiencies below, and use the text fields
-                      for any additional or homebrew proficiencies. Separate
-                      custom entries with commas or new lines.
-                    </p>
-
-                    <div className="grid gap-2.5 sm:grid-cols-2">
-                      <div className="rounded-lg border border-white/10 bg-zinc-900/45 p-2.5">
-                        <p className="text-sm font-medium text-zinc-200">
-                          Armor Proficiencies
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {armorProficiencyPresets.map((preset) => {
-                            const selected = armorProficiencyPresetIds.includes(
-                              preset.id,
-                            );
-
-                            return (
-                              <button
-                                key={preset.id}
-                                type="button"
-                                onClick={() =>
-                                  toggleArmorProficiencyPreset(preset.id)
-                                }
-                                className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                                  selected
-                                    ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
-                                    : "border-white/10 bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-white"
-                                }`}
-                              >
-                                {selected ? "✓ " : ""}
-                                {preset.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div className="mt-3">
-                          <Textarea
-                            label="Additional armor proficiencies"
-                            value={armorProficienciesText}
-                            onChange={setArmorProficienciesText}
-                            rows={3}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="rounded-lg border border-white/10 bg-zinc-900/45 p-2.5">
-                        <p className="text-sm font-medium text-zinc-200">
-                          Weapon Proficiencies
-                        </p>
-
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {weaponProficiencyPresets.map((preset) => {
-                            const selected =
-                              weaponProficiencyPresetIds.includes(preset.id);
-
-                            return (
-                              <button
-                                key={preset.id}
-                                type="button"
-                                onClick={() =>
-                                  toggleWeaponProficiencyPreset(preset.id)
-                                }
-                                className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                                  selected
-                                    ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-200"
-                                    : "border-white/10 bg-white/[0.04] text-zinc-400 hover:bg-white/[0.08] hover:text-white"
-                                }`}
-                              >
-                                {selected ? "✓ " : ""}
-                                {preset.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div className="mt-3">
-                          <Textarea
-                            label="Additional weapon proficiencies"
-                            value={weaponProficienciesText}
-                            onChange={setWeaponProficienciesText}
-                            rows={3}
-                          />
-                        </div>
-                      </div>
-
-                      <Textarea
-                        label="Tool Proficiencies"
-                        value={toolProficienciesText}
-                        onChange={setToolProficienciesText}
-                      />
-
-                      <Textarea
-                        label="Languages"
-                        value={languagesText}
-                        onChange={setLanguagesText}
-                      />
-                    </div>
+                    <ProficienciesLanguagesEditor
+                      armorPresetIds={armorProficiencyPresetIds}
+                      weaponPresetIds={weaponProficiencyPresetIds}
+                      armorText={armorProficienciesText}
+                      weaponText={weaponProficienciesText}
+                      toolText={toolProficienciesText}
+                      languageText={languagesText}
+                      onArmorPresetToggle={toggleArmorProficiencyPreset}
+                      onWeaponPresetToggle={toggleWeaponProficiencyPreset}
+                      onArmorTextChange={setArmorProficienciesText}
+                      onWeaponTextChange={setWeaponProficienciesText}
+                      onToolTextChange={setToolProficienciesText}
+                      onLanguageTextChange={setLanguagesText}
+                    />
                   </Card>
 
                   {/* EQUIPMENT */}
