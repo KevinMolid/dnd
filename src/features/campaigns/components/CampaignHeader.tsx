@@ -142,7 +142,7 @@ const CampaignHeader = ({
             ) : null}
           </div>
 
-          <div className="-mx-6 -mb-6 overflow-x-auto border-t border-white/10 bg-zinc-950/55 px-6 backdrop-blur-sm sm:-mx-8 sm:-mb-8 sm:px-8">
+          <div className="-mx-6 -mb-6 overflow-x-auto border-t border-white/10 bg-zinc-950/55 px-6 backdrop-blur-sm workspace-scrollbar sm:-mx-8 sm:-mb-8 sm:px-8">
             <div className="flex min-w-max items-center">
               <NavLink
                 to={`/campaigns/${campaign.id}`}
