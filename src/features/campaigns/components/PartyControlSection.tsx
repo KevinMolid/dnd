@@ -46,6 +46,8 @@ type PartyControlSectionProps = {
 type PartyCharacter = CampaignCharacter & {
   buildMode?: string;
 
+  heroicInspiration?: boolean;
+
   customStats?: {
     currentHp?: number;
 
@@ -278,6 +280,31 @@ const PartyControlSection = ({
                   </div>
 
                   <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-end">
+                    {character.heroicInspiration ? (
+                      <div
+                        title="Heroic Inspiration"
+                        className="relative flex h-7 w-7 shrink-0 items-center justify-center"
+                      >
+                        <i
+                          className="fa-solid fa-dice-d20 text-2xl text-neutral-600"
+                          aria-hidden="true"
+                        />
+                        <span
+                          className="absolute inset-0 flex items-center justify-center
+               font-serif text-xl font-black leading-none text-black"
+                          aria-hidden="true"
+                        >
+                          I
+                        </span>
+                        <span
+                          className="absolute inset-0 flex items-center justify-center
+               font-serif text-md font-bold leading-none text-amber-200"
+                          aria-hidden="true"
+                        >
+                          I
+                        </span>
+                      </div>
+                    ) : null}
                     <div className="w-full min-w-0 md:w-[120px] md:shrink-0">
                       <div>
                         <div className="w-full min-w-0">
