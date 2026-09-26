@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+
 import { Link, useLocation } from "react-router-dom";
 
 import Avatar from "../../../components/Avatar";
+
 import NumberStepper from "../../../components/NumberStepper";
-import { getXpProgressWithinLevel } from "../../../rulesets/dnd/dnd2024/xpProgression";
 
 import {
   ALL_CONDITIONS,
@@ -12,29 +13,42 @@ import {
 
 type PartyControlSectionProps = {
   characters: CampaignCharacter[];
+
   isGm: boolean;
+
   currentUserId?: string | null;
+
   onOpenLevelUp: (character: CampaignCharacter) => void;
+
   onOpenAwardXpModal: () => void;
+
   onUpdateCharacter: (
     id: string,
+
     updates: Record<string, unknown>,
   ) => Promise<void>;
+
   onUpdateCharacterXp: (
     character: CampaignCharacter,
+
     nextXp: number,
   ) => Promise<void>;
+
   onToggleCondition: (
     character: CampaignCharacter,
+
     condition: string,
   ) => Promise<void>;
+
   onClearConditions: (character: CampaignCharacter) => Promise<void>;
 };
 
 type PartyCharacter = CampaignCharacter & {
   buildMode?: string;
+
   customStats?: {
     currentHp?: number;
+
     maxHp?: number;
   };
 };
@@ -45,45 +59,61 @@ const isCustomCharacter = (character: PartyCharacter) =>
 const getLiveHp = (character: PartyCharacter) => {
   if (isCustomCharacter(character)) {
     const maxHp = character.customStats?.maxHp ?? character.maxHp ?? 0;
+
     const currentHp =
       character.customStats?.currentHp ?? character.currentHp ?? maxHp;
 
     return {
       currentHp: Math.max(0, currentHp),
+
       maxHp: Math.max(1, maxHp),
     };
   }
 
   return {
     currentHp: character.currentHp ?? 0,
+
     maxHp: Math.max(1, character.maxHp ?? 1),
   };
 };
 
 const PartyControlSection = ({
   characters,
+
   isGm,
+
   currentUserId,
+
   onOpenLevelUp,
+
   onOpenAwardXpModal,
+
   onUpdateCharacter,
+
   onUpdateCharacterXp,
+
   onToggleCondition,
+
   onClearConditions,
 }: PartyControlSectionProps) => {
   const location = useLocation();
+
   const [expandedCharacterId, setExpandedCharacterId] = useState<string | null>(
     null,
   );
+
   const [hpAdjustments, setHpAdjustments] = useState<Record<string, number>>(
     {},
   );
+
   const [xpAdjustments, setXpAdjustments] = useState<Record<string, number>>(
     {},
   );
+
   const [openConditionMenuId, setOpenConditionMenuId] = useState<string | null>(
     null,
   );
+
   const conditionMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -107,6 +137,7 @@ const PartyControlSection = ({
       document.removeEventListener("pointerdown", handlePointerDown);
     };
   }, [openConditionMenuId]);
+
   const [portraitCharacter, setPortraitCharacter] =
     useState<CampaignCharacter | null>(null);
 
@@ -114,7 +145,7 @@ const PartyControlSection = ({
     <section className="rounded-xl border border-white/10 bg-zinc-900/35 p-3">
       <div className="mb-3 flex items-center justify-between">
         <div className="w-full">
-          <div className="flex w-full justify-between">
+          <div className="flex w-full min-w-0 flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <i className="fa-solid fa-shield-halved text-xs text-zinc-500" />
 
@@ -141,6 +172,7 @@ const PartyControlSection = ({
             <p className="text-sm text-zinc-300">
               No active characters in the party yet.
             </p>
+
             <p className="mt-2 text-sm text-zinc-500">
               Characters can exist in the campaign without being active.
             </p>
@@ -148,12 +180,17 @@ const PartyControlSection = ({
         ) : (
           characters.map((character) => {
             const liveHp = getLiveHp(character);
+
             const hp = liveHp.currentHp;
+
             const maxHp = liveHp.maxHp;
+
             const hpPercent = Math.max(0, Math.min(100, (hp / maxHp) * 100));
-            const xpData = getXpProgressWithinLevel(character.xp ?? 0);
+
             const isExpanded = expandedCharacterId === character.id;
+
             const pendingHpDelta = hpAdjustments[character.id] ?? 0;
+
             const pendingXpDelta = xpAdjustments[character.id] ?? 0;
 
             const canOpenCharacter =
@@ -164,28 +201,12 @@ const PartyControlSection = ({
                 character.claimMode === "assigned" &&
                 currentUserId === character.claimableByUid);
 
-            const xpWithinLevel = Math.max(
-              0,
-              (character.xp ?? 0) - xpData.currentLevelXp,
-            );
-            const xpNeededWithinLevel =
-              xpData.nextLevelXp !== null
-                ? Math.max(1, xpData.nextLevelXp - xpData.currentLevelXp)
-                : null;
-            const xpPercent =
-              xpNeededWithinLevel !== null
-                ? Math.max(
-                    0,
-                    Math.min(100, (xpWithinLevel / xpNeededWithinLevel) * 100),
-                  )
-                : 100;
-
             return (
               <div
                 key={character.id}
                 className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2 transition hover:border-white/15 hover:bg-white/[0.025]"
               >
-                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div className="min-w-0 flex items-center gap-3">
                     {character.imageUrl ? (
                       <button
@@ -243,19 +264,23 @@ const PartyControlSection = ({
                       <p className="mt-0.5 truncate text-xs text-zinc-400">
                         {[
                           character.level ? `Level ${character.level}` : null,
+
                           character.race,
+
                           character.className,
                         ]
+
                           .filter(Boolean)
+
                           .join(" ")}
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 md:justify-end">
-                    <div className="w-[236px] shrink-0">
-                      <div className="flex items-center gap-3">
-                        <div className="w-28">
+                  <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-end">
+                    <div className="w-full min-w-0 md:w-[120px] md:shrink-0">
+                      <div>
+                        <div className="w-full min-w-0">
                           <div className="mb-1 flex items-center justify-between gap-2 text-[10px] leading-none">
                             <span
                               className={`font-semibold ${
@@ -268,12 +293,13 @@ const PartyControlSection = ({
                             >
                               HP
                             </span>
+
                             <span className="tabular-nums text-zinc-400">
                               {hp}/{maxHp}
                             </span>
                           </div>
 
-                          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+                          <div className="h-1 overflow-hidden rounded-full bg-white/[0.08]">
                             <div
                               className={`h-full rounded-full transition-[width] ${
                                 hpPercent <= 25
@@ -283,26 +309,6 @@ const PartyControlSection = ({
                                     : "bg-emerald-500"
                               }`}
                               style={{ width: `${hpPercent}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="w-28">
-                          <div className="mb-1 flex items-center justify-between gap-2 text-[10px] leading-none">
-                            <span className="font-semibold text-blue-300">
-                              XP
-                            </span>
-                            <span className="tabular-nums text-zinc-400">
-                              {xpNeededWithinLevel !== null
-                                ? `${xpWithinLevel}/${xpNeededWithinLevel}`
-                                : "Max level"}
-                            </span>
-                          </div>
-
-                          <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
-                            <div
-                              className="h-full rounded-full bg-blue-500 transition-[width]"
-                              style={{ width: `${xpPercent}%` }}
                             />
                           </div>
                         </div>
@@ -322,7 +328,7 @@ const PartyControlSection = ({
                       ) : null}
                     </div>
 
-                    <div className="flex shrink-0 items-center justify-end gap-2">
+                    <div className="flex w-full shrink-0 items-center justify-end gap-2 border-t border-white/[0.06] pt-2 md:w-auto md:border-t-0 md:pt-0">
                       {isGm && (
                         <button
                           onClick={() =>
@@ -341,6 +347,7 @@ const PartyControlSection = ({
                           to={`/characters/${character.id}`}
                           state={{
                             from: `${location.pathname}${location.search}`,
+
                             label: "Back to campaign",
                           }}
                           className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
@@ -368,6 +375,7 @@ const PartyControlSection = ({
                             onChange={(value) =>
                               setHpAdjustments((prev) => ({
                                 ...prev,
+
                                 [character.id]: value,
                               }))
                             }
@@ -379,6 +387,7 @@ const PartyControlSection = ({
                             onClick={async () => {
                               const nextHp = Math.max(
                                 0,
+
                                 Math.min(maxHp, hp + pendingHpDelta),
                               );
 
@@ -386,6 +395,7 @@ const PartyControlSection = ({
                                 await onUpdateCharacter(character.id, {
                                   customStats: {
                                     ...(character.customStats ?? {}),
+
                                     currentHp: nextHp,
                                   },
                                 });
@@ -397,6 +407,7 @@ const PartyControlSection = ({
 
                               setHpAdjustments((prev) => ({
                                 ...prev,
+
                                 [character.id]: 0,
                               }));
                             }}
@@ -419,6 +430,7 @@ const PartyControlSection = ({
                             onChange={(value) =>
                               setXpAdjustments((prev) => ({
                                 ...prev,
+
                                 [character.id]: value,
                               }))
                             }
@@ -430,11 +442,13 @@ const PartyControlSection = ({
                             onClick={async () => {
                               await onUpdateCharacterXp(
                                 character,
+
                                 (character.xp ?? 0) + pendingXpDelta,
                               );
 
                               setXpAdjustments((prev) => ({
                                 ...prev,
+
                                 [character.id]: 0,
                               }));
                             }}
@@ -474,6 +488,7 @@ const PartyControlSection = ({
                               type="button"
                               onClick={async () => {
                                 setOpenConditionMenuId(null);
+
                                 await onClearConditions(character);
                               }}
                               className="rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-400 transition hover:border-rose-400/20 hover:bg-rose-500/10 hover:text-rose-300"
@@ -504,6 +519,7 @@ const PartyControlSection = ({
                                     }`}
                                   >
                                     <span>{condition}</span>
+
                                     <span className="text-[10px]">
                                       {active ? "Selected" : ""}
                                     </span>
