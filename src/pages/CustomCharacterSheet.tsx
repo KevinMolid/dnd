@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import CharacterInventoryEquipment from "../components/CharacterInventoryEquipment";
+import CharacterInventoryEquipment, {
+  type InventorySortMode,
+} from "../components/CharacterInventoryEquipment";
 
 import CharacterInventoryEditorModal from "../components/character/CharacterInventoryEditorModal";
 
@@ -407,6 +409,82 @@ const CustomCharacterSheet = ({
 
   const [inventoryEditorOpen, setInventoryEditorOpen] = useState(false);
 
+  const [inventorySortMode, setInventorySortMode] = useState<InventorySortMode>(
+    () => {
+      if (typeof window === "undefined") return "oldest";
+
+      const saved = window.localStorage.getItem(
+        "character-inventory-sort-mode",
+      );
+
+      if (
+        saved === "oldest" ||
+        saved === "newest" ||
+        saved === "name-asc" ||
+        saved === "name-desc" ||
+        saved === "category"
+      ) {
+        return saved;
+      }
+
+      return "oldest";
+    },
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    window.localStorage.setItem(
+      "character-inventory-sort-mode",
+      inventorySortMode,
+    );
+  }, [inventorySortMode]);
+
+  const [inventorySortOpen, setInventorySortOpen] = useState(false);
+  const inventorySortRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!inventorySortOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (
+        inventorySortRef.current &&
+        !inventorySortRef.current.contains(event.target as Node)
+      ) {
+        setInventorySortOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setInventorySortOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [inventorySortOpen]);
+
+  const inventorySortOptions: Array<{
+    value: InventorySortMode;
+    label: string;
+  }> = [
+    { value: "oldest", label: "Oldest" },
+    { value: "newest", label: "Newest" },
+    { value: "name-asc", label: "Name A–Z" },
+    { value: "name-desc", label: "Name Z–A" },
+    { value: "category", label: "Category" },
+  ];
+
+  const inventorySortLabel =
+    inventorySortOptions.find((option) => option.value === inventorySortMode)
+      ?.label ?? "Oldest";
+
   const [quickStatsEditor, setQuickStatsEditor] = useState<
     "combat" | "saving-throws" | "skills" | "proficiencies" | null
   >(null);
@@ -466,10 +544,15 @@ const CustomCharacterSheet = ({
 
   const normalizedCustomProficiencies: CustomProficiencies = {
     savingThrows: customProficiencies?.savingThrows ?? [],
+
     skills,
+
     armor: customProficiencies?.armor ?? [],
+
     weapons: customProficiencies?.weapons ?? [],
+
     tools: customProficiencies?.tools ?? [],
+
     languages: customProficiencies?.languages ?? [],
   };
 
@@ -545,7 +628,11 @@ const CustomCharacterSheet = ({
 
   /* =========================================================
 
+
+
        ATTACKS
+
+
 
     ========================================================= */
 
@@ -618,11 +705,19 @@ const CustomCharacterSheet = ({
 
       /*
 
+
+
        * Resolved items can carry bonuses from both the item definition and the
+
+
 
        * individual equipment entry. Include both so +1/+2/+3 and custom magic
 
+
+
        * weapons affect attack and damage correctly.
+
+
 
        */
 
@@ -639,11 +734,19 @@ const CustomCharacterSheet = ({
 
       /*
 
+
+
        * This is the weapon's ordinary attack profile. Being equipped in the
+
+
 
        * Off Hand slot does not itself turn an attack into the special extra
 
+
+
        * attack granted by the Light property.
+
+
 
        */
 
@@ -699,15 +802,27 @@ const CustomCharacterSheet = ({
 
   /*
 
+
+
    * Every held weapon remains an ordinary Attack-action option. "Off Hand"
+
+
 
    * describes where the weapon is held; it does not reduce an ordinary
 
+
+
    * attack's attack or damage modifiers.
+
+
 
    *
 
+
+
    * Light/Nick/Dual Wielder EXTRA attacks are generated separately below.
+
+
 
    */
 
@@ -715,7 +830,11 @@ const CustomCharacterSheet = ({
 
   /* =========================================================
 
+
+
        SPELLS
+
+
 
     ========================================================= */
 
@@ -755,23 +874,41 @@ const CustomCharacterSheet = ({
 
   /* =========================================================
 
+
+
        FEATURES
+
+
 
     ========================================================= */
 
   /*
 
+
+
    * Library features are stored on the character as catalog IDs rather
+
+
 
    * than copied Trait objects. Resolve those IDs against the central
 
+
+
    * catalog every time the sheet renders.
+
+
 
    *
 
+
+
    * This means corrections to the rules data automatically appear on
 
+
+
    * every character that uses the feature.
+
+
 
    */
 
@@ -783,29 +920,55 @@ const CustomCharacterSheet = ({
 
   /*
 
+
+
    * Keep the catalog metadata together with the trait for rendering.
 
+
+
    *
+
+
 
    * sourceName gives us useful groups such as:
 
+
+
    *
+
+
 
    *   Druid
 
+
+
    *   Elf
+
+
 
    *   Elf — Drow
 
+
+
    *   Goliath — Stone's Endurance
+
+
 
    *   Tiefling — Infernal
 
+
+
    *   Tough
+
+
 
    *
 
+
+
    * without copying that metadata into the Trait itself.
+
+
 
    */
 
@@ -822,7 +985,11 @@ const CustomCharacterSheet = ({
 
   /*
 
+
+
    * Custom traits remain embedded directly on the character.
+
+
 
    */
 
@@ -839,17 +1006,31 @@ const CustomCharacterSheet = ({
 
   /*
 
+
+
    * One combined feature collection is now used by both:
+
+
 
    *
 
+
+
    *   - the Features tab
+
+
 
    *   - Overview actions
 
+
+
    *   - Overview bonus actions
 
+
+
    *   - Overview reactions
+
+
 
    */
 
@@ -861,7 +1042,11 @@ const CustomCharacterSheet = ({
 
   /* =========================================================
 
+
+
        PLAY ACTIONS
+
+
 
     ========================================================= */
 
@@ -940,7 +1125,11 @@ const CustomCharacterSheet = ({
 
   /* =========================================================
 
+
+
        FEATURE GROUPS
+
+
 
     ========================================================= */
 
@@ -1073,13 +1262,77 @@ const CustomCharacterSheet = ({
 
   /* =========================================================
 
+
+
        OTHER DETAIL TABS
+
+
 
     ========================================================= */
 
   const renderInventoryTab = () => (
     <div className="space-y-2">
-      <div className="flex justify-end">
+      <div className="flex items-center justify-end gap-2">
+        <div
+          ref={inventorySortRef}
+          className="relative flex items-center gap-2 text-[10px] text-zinc-500"
+        >
+          <span>Sort</span>
+
+          <button
+            type="button"
+            onClick={() => setInventorySortOpen((current) => !current)}
+            aria-haspopup="listbox"
+            aria-expanded={inventorySortOpen}
+            className="flex min-w-[92px] items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.1] hover:text-white"
+          >
+            <span>{inventorySortLabel}</span>
+            <span
+              aria-hidden="true"
+              className={`text-[9px] text-zinc-500 transition-transform ${
+                inventorySortOpen ? "rotate-180" : ""
+              }`}
+            >
+              ▾
+            </span>
+          </button>
+
+          {inventorySortOpen ? (
+            <div
+              role="listbox"
+              aria-label="Sort inventory"
+              className="absolute right-0 top-[calc(100%+6px)] z-50 min-w-[132px] overflow-hidden rounded-lg border border-white/10 bg-zinc-950 p-1 shadow-2xl"
+            >
+              {inventorySortOptions.map((option) => {
+                const selected = option.value === inventorySortMode;
+
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    onClick={() => {
+                      setInventorySortMode(option.value);
+                      setInventorySortOpen(false);
+                    }}
+                    className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-[10px] font-medium transition ${
+                      selected
+                        ? "bg-white/[0.1] text-white"
+                        : "text-zinc-400 hover:bg-white/[0.06] hover:text-white"
+                    }`}
+                  >
+                    <span>{option.label}</span>
+                    {selected ? (
+                      <span className="text-emerald-400">✓</span>
+                    ) : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
+
         <button
           type="button"
           onClick={() => setInventoryEditorOpen(true)}
@@ -1094,6 +1347,7 @@ const CustomCharacterSheet = ({
         onChange={handleEquipmentChange}
         campaignItemsById={campaignItemsById}
         money={money}
+        sortMode={inventorySortMode}
       />
     </div>
   );
@@ -1281,18 +1535,25 @@ const CustomCharacterSheet = ({
         onSaveCombat={async (nextAbilityScores, nextStats) => {
           const nextArmorClass = calculateArmorClass({
             abilityScores: nextAbilityScores,
+
             className: character.className ?? "",
+
             equipment: character.equipment ?? [],
+
             resolveItem: (entry) =>
               resolveItemFromEquipmentEntry(entry, campaignItemsById),
+
             mode: nextStats.armorClassMode ?? "automatic",
+
             manualArmorClass:
               nextStats.manualArmorClass ?? nextStats.armorClass ?? 10,
+
             extraModifier: nextStats.armorClassBonus ?? 0,
           }).value;
 
           await handleSetCustomCombat(nextAbilityScores, {
             ...nextStats,
+
             armorClass: nextArmorClass,
           });
         }}

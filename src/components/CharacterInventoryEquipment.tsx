@@ -25,29 +25,50 @@ import ItemTooltip from "./ItemTooltip";
 
 type Props = {
   equipment: CharacterEquipmentEntry[];
+
   onChange: (nextEquipment: CharacterEquipmentEntry[]) => void | Promise<void>;
+
   campaignItemsById?: Record<string, CampaignItem>;
+
   money?: Money;
+
+  sortMode?: InventorySortMode;
 };
 
 type ResolvedEquipmentRow = {
   entry: CharacterEquipmentEntry;
+
   resolvedItem: ReturnType<typeof resolveItemFromEquipmentEntry>;
 };
 
 type InventoryDisplayRow = {
   key: string;
+
   entries: CharacterEquipmentEntry[];
+
   entry: CharacterEquipmentEntry;
+
   resolvedItem: ReturnType<typeof resolveItemFromEquipmentEntry>;
+
   totalQuantity: number;
+
   grouped: boolean;
 };
 
+export type InventorySortMode =
+  | "oldest"
+  | "newest"
+  | "name-asc"
+  | "name-desc"
+  | "category";
+
 const formatLabel = (value: string) =>
   value
+
     .split("-")
+
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+
     .join(" ");
 
 const getEntryDisplayId = (entry: CharacterEquipmentEntry) =>
@@ -63,14 +84,18 @@ const normalizeEntry = (
 
     return {
       ...rest,
+
       equipped: false,
+
       equippedSlots: [],
     };
   }
 
   return {
     ...entry,
+
     equipped: true,
+
     equippedSlots,
   };
 };
@@ -82,29 +107,40 @@ const unequipEntry = (
 
   return {
     ...rest,
+
     equipped: false,
+
     equippedSlots: [],
   };
 };
 
 const normalizeMoney = (money?: Money): Required<Money> => ({
   cp: Math.max(0, Math.floor(money?.cp ?? 0)),
+
   sp: Math.max(0, Math.floor(money?.sp ?? 0)),
+
   ep: Math.max(0, Math.floor(money?.ep ?? 0)),
+
   gp: Math.max(0, Math.floor(money?.gp ?? 0)),
+
   pp: Math.max(0, Math.floor(money?.pp ?? 0)),
 });
 
 const CharacterInventoryEquipment = ({
   equipment,
+
   onChange,
+
   campaignItemsById = {},
+
   money: suppliedMoney,
+  sortMode = "oldest",
 }: Props) => {
   const money = useMemo(() => normalizeMoney(suppliedMoney), [suppliedMoney]);
 
   const normalizedEquipment = useMemo(
     () => equipment.map(normalizeEntry),
+
     [equipment],
   );
 
@@ -112,74 +148,139 @@ const CharacterInventoryEquipment = ({
     () =>
       normalizedEquipment.map((entry) => ({
         entry,
+
         resolvedItem: resolveItemFromEquipmentEntry(entry, campaignItemsById),
       })),
+
     [normalizedEquipment, campaignItemsById],
   );
 
   /*
+
    * Stackable mundane items are grouped for display only.
+
    * The stored character inventory is left untouched.
+
    *
+
    * Equippable / equipped objects remain individual instances so that
+
    * Main Hand, Off Hand, armor slots, etc. always refer to a real instance.
+
    */
+
   const displayRows = useMemo<InventoryDisplayRow[]>(() => {
     const rows: InventoryDisplayRow[] = [];
+
     const groupedIndexes = new Map<string, number>();
 
     for (const { entry, resolvedItem } of resolvedEquipment) {
       const equippedSlots = entry.equippedSlots ?? [];
+
       const isEquipped = equippedSlots.length > 0;
 
       /*
+
        * Equipped items have one canonical visual home: the Equipped panel.
+
        * They remain in the underlying equipment array; they are only omitted
+
        * from the backpack/inventory list.
+
        */
+
       if (isEquipped) {
         continue;
       }
 
       const isEquippable = isItemEquippable(resolvedItem);
+
       const canGroup = Boolean(resolvedItem?.stackable && !isEquippable);
 
       if (!canGroup) {
         rows.push({
           key: `instance:${entry.instanceId}`,
+
           entries: [entry],
+
           entry,
+
           resolvedItem,
+
           totalQuantity: Math.max(1, entry.quantity ?? 1),
+
           grouped: false,
         });
+
         continue;
       }
 
       const displayId = getEntryDisplayId(entry);
+
       const groupKey = `${entry.source}:${displayId}`;
+
       const existingIndex = groupedIndexes.get(groupKey);
 
       if (existingIndex === undefined) {
         groupedIndexes.set(groupKey, rows.length);
+
         rows.push({
           key: `group:${groupKey}`,
+
           entries: [entry],
+
           entry,
+
           resolvedItem,
+
           totalQuantity: Math.max(1, entry.quantity ?? 1),
+
           grouped: false,
         });
       } else {
         const existing = rows[existingIndex];
+
         existing.entries.push(entry);
+
         existing.totalQuantity += Math.max(1, entry.quantity ?? 1);
+
         existing.grouped = true;
       }
     }
 
     return rows;
   }, [resolvedEquipment]);
+
+  const sortedDisplayRows = useMemo(() => {
+    if (sortMode === "oldest") return displayRows;
+    if (sortMode === "newest") return [...displayRows].reverse();
+
+    const getName = (row: InventoryDisplayRow) => {
+      const displayId = getEntryDisplayId(row.entry);
+
+      return (
+        row.resolvedItem?.name ??
+        row.entry.name ??
+        (displayId ? formatLabel(displayId) : "Unknown Item")
+      );
+    };
+
+    const getCategory = (row: InventoryDisplayRow) =>
+      row.resolvedItem?.category
+        ? formatLabel(String(row.resolvedItem.category))
+        : "Item";
+
+    return [...displayRows].sort((a, b) => {
+      if (sortMode === "category") {
+        const categoryCompare = getCategory(a).localeCompare(getCategory(b));
+        if (categoryCompare !== 0) return categoryCompare;
+      }
+
+      const nameCompare = getName(a).localeCompare(getName(b));
+
+      return sortMode === "name-desc" ? -nameCompare : nameCompare;
+    });
+  }, [displayRows, sortMode]);
 
   const equippedBySlot = useMemo(() => {
     const slotMap: Partial<Record<EquipmentSlotId, CharacterEquipmentEntry>> =
@@ -204,7 +305,9 @@ const CharacterInventoryEquipment = ({
 
   const handleEquip = (
     instanceId: string,
+
     item: NonNullable<ResolvedEquipmentRow["resolvedItem"]>,
+
     mode?: WieldMode,
   ) => {
     const slotsToOccupy = getOccupiedSlotsForEquip(item, mode);
@@ -224,24 +327,35 @@ const CharacterInventoryEquipment = ({
     }
 
     /*
+
      * Equipping always represents one physical item.
+
      *
+
      * Older/imported inventories can still contain an equippable entry with a
+
      * quantity greater than 1 (for example 2× Longsword). Split that stack
+
      * before equipping so one sword can be in Main Hand while the other remains
+
      * available to equip in Off Hand.
+
      */
+
     const targetQuantity = Math.max(1, next[targetIndex].quantity ?? 1);
 
     if (targetQuantity > 1) {
       const remainder: CharacterEquipmentEntry = {
         ...unequipEntry(next[targetIndex]),
+
         instanceId: crypto.randomUUID(),
+
         quantity: targetQuantity - 1,
       };
 
       next[targetIndex] = {
         ...next[targetIndex],
+
         quantity: 1,
       };
 
@@ -249,10 +363,15 @@ const CharacterInventoryEquipment = ({
     }
 
     /*
+
      * Unequip any other item that currently occupies one of the requested
+
      * slots. The target itself is skipped so changing its wield mode does not
+
      * unnecessarily clear it first.
+
      */
+
     for (let i = 0; i < next.length; i += 1) {
       const entry = next[i];
 
@@ -261,6 +380,7 @@ const CharacterInventoryEquipment = ({
       }
 
       const occupied = entry.equippedSlots ?? [];
+
       const conflicts = occupied.some((slot) => slotsToOccupy.includes(slot));
 
       if (conflicts) {
@@ -278,9 +398,13 @@ const CharacterInventoryEquipment = ({
 
     next[finalTargetIndex] = {
       ...next[finalTargetIndex],
+
       quantity: 1,
+
       equipped: true,
+
       equippedSlots: slotsToOccupy,
+
       ...(mode ? { wieldMode: mode } : {}),
     };
 
@@ -288,13 +412,21 @@ const CharacterInventoryEquipment = ({
   };
 
   /*
+
    * Quantity changes operate on the real stored equipment entries rather than
+
    * on the grouped display row.
+
    *
+
    * For visually grouped items, decrementing consumes the last underlying
+
    * stack first. If that stack reaches zero, its equipment entry is removed.
+
    * Incrementing adds to the first underlying stack.
+
    */
+
   const handleAdjustQuantity = (row: InventoryDisplayRow, delta: number) => {
     if (delta === 0 || row.entries.length === 0) {
       return;
@@ -317,19 +449,25 @@ const CharacterInventoryEquipment = ({
 
       next[targetIndex] = {
         ...next[targetIndex],
+
         quantity: Math.max(1, next[targetIndex].quantity ?? 1) + delta,
       };
 
       void onChange(next);
+
       return;
     }
 
     let remainingToRemove = Math.abs(delta);
 
     /*
+
      * Work backwards through the underlying entries. This keeps the oldest
+
      * stack/instance stable while reducing newer duplicate stacks first.
+
      */
+
     for (
       let entryIndex = row.entries.length - 1;
       entryIndex >= 0 && remainingToRemove > 0;
@@ -350,12 +488,14 @@ const CharacterInventoryEquipment = ({
       if (quantity > remainingToRemove) {
         next[targetIndex] = {
           ...next[targetIndex],
+
           quantity: quantity - remainingToRemove,
         };
 
         remainingToRemove = 0;
       } else {
         remainingToRemove -= quantity;
+
         next.splice(targetIndex, 1);
       }
     }
@@ -370,18 +510,19 @@ const CharacterInventoryEquipment = ({
   return (
     <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px]">
       {/* =====================================================
+
           INVENTORY
+
       ===================================================== */}
 
       <section className="overflow-hidden rounded-xl border border-white/10 bg-zinc-900/40">
         {displayRows.length > 0 ? (
           <div className="divide-y divide-white/[0.06]">
-            {displayRows.map((row) => (
+            {sortedDisplayRows.map((row) => (
               <InventoryRow
                 key={row.key}
                 row={row}
                 onEquip={handleEquip}
-                onAdjustQuantity={handleAdjustQuantity}
                 onUseItem={handleUseItem}
               />
             ))}
@@ -394,12 +535,15 @@ const CharacterInventoryEquipment = ({
       </section>
 
       {/* =====================================================
+
           SIDE SUMMARY
+
       ===================================================== */}
 
       <div className="space-y-3">
         <section className="rounded-xl border border-white/10 bg-zinc-900/40 p-3">
           <SectionLabel>Money</SectionLabel>
+
           <MoneySummary money={money} />
         </section>
 
@@ -409,12 +553,15 @@ const CharacterInventoryEquipment = ({
           {equipmentSlotOrder.some((slot) => equippedBySlot[slot]) ? (
             <div className="mt-2 divide-y divide-white/[0.055]">
               {equipmentSlotOrder
+
                 .filter((slot) => equippedBySlot[slot])
+
                 .map((slot) => {
                   const equippedItem = equippedBySlot[slot]!;
 
                   const resolvedItem = resolveItemFromEquipmentEntry(
                     equippedItem,
+
                     campaignItemsById,
                   );
 
@@ -426,12 +573,17 @@ const CharacterInventoryEquipment = ({
                     (displayId ? formatLabel(displayId) : "Unknown Item");
 
                   const occupiedSlots = equippedItem.equippedSlots ?? [];
+
                   const isPrimarySlot = occupiedSlots[0] === slot;
 
                   /*
+
                    * Multi-slot equipment should only be rendered once.
+
                    * The first occupied slot becomes its visual home.
+
                    */
+
                   if (!isPrimarySlot) {
                     return null;
                   }
@@ -450,10 +602,12 @@ const CharacterInventoryEquipment = ({
                           {equippedItem.wieldMode === "two-handed"
                             ? "Two-Handed"
                             : occupiedSlots
+
                                 .map(
                                   (occupiedSlot) =>
                                     equipmentSlotLabels[occupiedSlot],
                                 )
+
                                 .join(" · ")}
                         </p>
                       ) : null}
@@ -507,24 +661,27 @@ const CharacterInventoryEquipment = ({
 };
 
 /* =========================================================
+
    INVENTORY ROW
+
 ========================================================= */
 
 const InventoryRow = ({
   row,
+
   onEquip,
-  onAdjustQuantity,
+
   onUseItem,
 }: {
   row: InventoryDisplayRow;
 
   onEquip: (
     instanceId: string,
+
     item: NonNullable<InventoryDisplayRow["resolvedItem"]>,
+
     mode?: WieldMode,
   ) => void;
-
-  onAdjustQuantity: (row: InventoryDisplayRow, delta: number) => void;
 
   onUseItem: (row: InventoryDisplayRow) => void;
 }) => {
@@ -548,9 +705,13 @@ const InventoryRow = ({
     normalizedCategory === "consumable" || normalizedCategory === "ammunition";
 
   /*
+
    * Weapons, armor and other equippable objects remain individual instances.
+
    * Quantity controls belong to backpack-style inventory rows.
+
    */
+
   const canAdjustQuantity = !isEquippable;
 
   const itemContent = (
@@ -610,14 +771,6 @@ const InventoryRow = ({
           </button>
         ) : null}
 
-        {canAdjustQuantity ? (
-          <QuantityControl
-            quantity={totalQuantity}
-            onDecrease={() => onAdjustQuantity(row, -1)}
-            onIncrease={() => onAdjustQuantity(row, 1)}
-          />
-        ) : null}
-
         {isEquippable ? (
           <>
             {actions.map((action) => (
@@ -641,59 +794,27 @@ const InventoryRow = ({
   );
 };
 
-const QuantityControl = ({
-  quantity,
-  onDecrease,
-  onIncrease,
-}: {
-  quantity: number;
-  onDecrease: () => void;
-  onIncrease: () => void;
-}) => (
-  <div
-    className="flex h-7 items-center overflow-hidden rounded-md border border-white/[0.08] bg-black/20"
-    aria-label="Item quantity controls"
-  >
-    <button
-      type="button"
-      onClick={onDecrease}
-      title={quantity <= 1 ? "Remove item" : "Decrease quantity"}
-      aria-label={quantity <= 1 ? "Remove item" : "Decrease quantity"}
-      className="flex h-full w-7 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
-    >
-      −
-    </button>
-
-    <span className="min-w-[30px] border-x border-white/[0.06] px-1 text-center text-[9px] font-semibold tabular-nums text-zinc-300">
-      {quantity}
-    </span>
-
-    <button
-      type="button"
-      onClick={onIncrease}
-      title="Increase quantity"
-      aria-label="Increase quantity"
-      className="flex h-full w-7 items-center justify-center text-[10px] font-semibold text-zinc-500 transition hover:bg-white/[0.06] hover:text-zinc-200"
-    >
-      +
-    </button>
-  </div>
-);
-
 /* =========================================================
+
    MONEY
+
 ========================================================= */
 
 const MoneySummary = ({ money }: { money: Required<Money> }) => {
   const denominations = [
     { key: "pp" as const, label: "PP", className: "text-cyan-200" },
+
     { key: "gp" as const, label: "GP", className: "text-yellow-400" },
+
     { key: "ep" as const, label: "EP", className: "text-sky-300" },
+
     { key: "sp" as const, label: "SP", className: "text-zinc-300" },
+
     { key: "cp" as const, label: "CP", className: "text-amber-600" },
   ];
 
   const nonZero = denominations.filter(({ key }) => money[key] > 0);
+
   const visible = nonZero.length > 0 ? nonZero : [denominations[1]];
 
   return (
@@ -701,7 +822,9 @@ const MoneySummary = ({ money }: { money: Required<Money> }) => {
       {visible.map(({ key, label, className }, index) => (
         <span key={key} className="inline-flex items-baseline gap-1 text-xs">
           {index > 0 ? <span className="mr-1 text-zinc-700">·</span> : null}
+
           <strong className="text-zinc-100">{money[key]}</strong>
+
           <span className={`text-[10px] font-semibold ${className}`}>
             {label}
           </span>
@@ -712,17 +835,22 @@ const MoneySummary = ({ money }: { money: Required<Money> }) => {
 };
 
 /* =========================================================
+
    HELPERS
+
 ========================================================= */
 
 const getCompactActionLabel = (label: string) => {
   const normalized = label.toLowerCase();
 
   if (normalized.includes("main hand")) return "Main";
+
   if (normalized.includes("off hand")) return "Off";
+
   if (normalized.includes("two-handed") || normalized.includes("two handed")) {
     return "2H";
   }
+
   if (normalized === "equip") return "Equip";
 
   return label;
