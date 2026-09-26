@@ -1183,38 +1183,70 @@ const CustomCharacterCreator = ({
                     </div>
                   </Card>
 
-                  {/* ABILITIES */}
+                  {/* ABILITIES & SAVING THROWS */}
 
-                  <Card title="Ability Scores">
-                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
-                      {abilityKeys.map((key) => (
-                        <div
-                          key={key}
-                          className="rounded-lg border border-white/10 bg-zinc-900 p-2.5 text-center"
-                        >
-                          <label className="text-xs font-bold text-zinc-500">
-                            {abilityShortLabels[key]}
-                          </label>
+                  <Card title="Ability Scores & Saving Throws">
+                    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+                      {abilityKeys.map((ability) => {
+                        const proficient =
+                          savingThrowProficiencies.includes(ability);
 
-                          <div className="mt-2 flex justify-center">
-                            <NumberStepper
-                              value={abilityScores[key]}
-                              onChange={(value) => {
-                                setAbilityScores((current) => ({
-                                  ...current,
-                                  [key]: value,
-                                }));
-                              }}
-                              ariaLabel={`${abilityLabels[key]} score`}
-                              size="default"
-                            />
+                        const modifier = getModifier(abilityScores[ability]);
+
+                        const saveBonus =
+                          modifier + (proficient ? customProficiencyBonus : 0);
+
+                        return (
+                          <div
+                            key={ability}
+                            className="min-w-0 rounded-lg border border-white/10 bg-zinc-900 p-2.5"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-bold text-zinc-500">
+                                {abilityShortLabels[ability]}
+                              </span>
+
+                              <span className="text-xs font-semibold text-zinc-300">
+                                {formatModifier(modifier)}
+                              </span>
+                            </div>
+
+                            <div className="mt-2">
+                              <NumberStepper
+                                value={abilityScores[ability]}
+                                onChange={(value) => {
+                                  setAbilityScores((current) => ({
+                                    ...current,
+                                    [ability]: value,
+                                  }));
+                                }}
+                                ariaLabel={`${abilityLabels[ability]} score`}
+                                size="default"
+                                width="full"
+                              />
+                            </div>
+
+                            <label className="mt-2.5 flex cursor-pointer items-center justify-between gap-2 border-t border-white/[0.08] pt-2.5">
+                              <span className="flex min-w-0 items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={proficient}
+                                  onChange={() => toggleSavingThrow(ability)}
+                                  className="shrink-0"
+                                />
+
+                                <span className="truncate text-xs text-zinc-400">
+                                  Save
+                                </span>
+                              </span>
+
+                              <strong className="shrink-0 text-xs text-white">
+                                {formatModifier(saveBonus)}
+                              </strong>
+                            </label>
                           </div>
-
-                          <p className="mt-1 text-xs text-zinc-400">
-                            {formatModifier(getModifier(abilityScores[key]))}
-                          </p>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </Card>
 
@@ -1354,41 +1386,6 @@ const CustomCharacterCreator = ({
                       level. When editing, current HP and spent Hit Dice are
                       preserved.
                     </p>
-                  </Card>
-
-                  {/* SAVES */}
-
-                  <Card title="Saving Throws">
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {abilityKeys.map((ability) => {
-                        const proficient =
-                          savingThrowProficiencies.includes(ability);
-
-                        const bonus =
-                          getModifier(abilityScores[ability]) +
-                          (proficient ? customProficiencyBonus : 0);
-
-                        return (
-                          <label
-                            key={ability}
-                            className="flex items-center justify-between rounded-lg border border-white/10 bg-zinc-900 p-2.5"
-                          >
-                            <span>
-                              <input
-                                type="checkbox"
-                                checked={proficient}
-                                onChange={() => toggleSavingThrow(ability)}
-                                className="mr-3"
-                              />
-
-                              {abilityLabels[ability]}
-                            </span>
-
-                            <strong>{formatModifier(bonus)}</strong>
-                          </label>
-                        );
-                      })}
-                    </div>
                   </Card>
 
                   {/* SKILLS */}
