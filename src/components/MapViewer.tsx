@@ -823,7 +823,7 @@ const MapViewer = ({
                     </h3>
                   </div>
 
-                  {mapData.readAloud && (
+                  {!mapData.descriptionHtml?.trim() && mapData.readAloud && (
                     <section className="space-y-2">
                       <div className="text-sm font-semibold text-yellow-300">
                         Read aloud
@@ -891,17 +891,18 @@ const MapViewer = ({
                     </button>
                   ) : null}
 
-                  {selectedRoom.readAloud && (
-                    <section className="space-y-2">
-                      <div className="text-sm font-semibold text-yellow-300">
-                        Read aloud
-                      </div>
+                  {!selectedRoom.descriptionHtml?.trim() &&
+                    selectedRoom.readAloud && (
+                      <section className="space-y-2">
+                        <div className="text-sm font-semibold text-yellow-300">
+                          Read aloud
+                        </div>
 
-                      <p className="whitespace-pre-wrap rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-3 text-sm leading-6 text-yellow-50">
-                        {selectedRoom.readAloud}
-                      </p>
-                    </section>
-                  )}
+                        <p className="whitespace-pre-wrap rounded-lg border border-yellow-400/20 bg-yellow-400/10 p-3 text-sm leading-6 text-yellow-50">
+                          {selectedRoom.readAloud}
+                        </p>
+                      </section>
+                    )}
 
                   {(selectedRoom.descriptionHtml?.trim() ||
                     selectedRoom.description?.length) && (

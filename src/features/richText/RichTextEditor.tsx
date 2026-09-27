@@ -4,6 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 
 import AccordionExtension from "../workspace/notes/AccordionExtension";
 import ReadAloudExtension from "../workspace/notes/ReadAloudExtension";
+import GMNoteExtension from "../workspace/notes/GMNoteExtension";
 
 type RichTextEditorProps = {
   value: string;
@@ -61,6 +62,7 @@ export default function RichTextEditor({
       }),
       AccordionExtension,
       ReadAloudExtension,
+      GMNoteExtension,
     ],
     [],
   );
@@ -164,6 +166,15 @@ export default function RichTextEditor({
               className={formatButtonClass(editor.isActive("readAloud"))}
             >
               <i className="fa-regular fa-message text-[9px]" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleGMNote().run()}
+              title="GM note (Ctrl+Alt+G)"
+              className={formatButtonClass(editor.isActive("gmNote"))}
+            >
+              <i className="fa-solid fa-note-sticky text-[9px]" />
             </button>
 
             <div className="mx-1 h-4 w-px bg-white/10" />

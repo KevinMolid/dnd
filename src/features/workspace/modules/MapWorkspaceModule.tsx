@@ -33,6 +33,8 @@ import {
   mapCharacterToEncounterPlayer,
 } from "../../../utils/encounterPlayers";
 
+import RichTextContent from "../../richText/RichTextContent";
+
 type EnvironmentRollResult = {
   roomId: number;
   roomName: string;
@@ -56,43 +58,6 @@ const renderParagraphs = (paragraphs?: string[]) => {
   );
 };
 
-const renderRichDescriptionHtml = (html: string) => {
-  if (typeof DOMParser === "undefined") {
-    return html;
-  }
-
-  const doc = new DOMParser().parseFromString(html, "text/html");
-
-  doc
-    .querySelectorAll<HTMLElement>('[data-note-accordion="true"]')
-    .forEach((accordion) => {
-      const details = doc.createElement("details");
-      details.className =
-        "group my-2 overflow-hidden rounded-lg border border-white/10 bg-black/20";
-
-      if (accordion.getAttribute("data-open") !== "false") {
-        details.setAttribute("open", "");
-      }
-
-      const summary = doc.createElement("summary");
-      summary.className =
-        "flex cursor-pointer list-none items-center gap-2 border-b border-white/[0.06] bg-white/[0.025] px-2.5 py-2 text-xs font-semibold text-zinc-200 [&::-webkit-details-marker]:hidden";
-      summary.innerHTML = `<span class="text-[9px] text-zinc-500 transition-transform group-open:rotate-90">▶</span><span>${accordion.getAttribute("data-title") || "Section"}</span>`;
-
-      const content = doc.createElement("div");
-      content.className = "px-3 py-2";
-      const sourceContent = accordion.querySelector(
-        '[data-note-accordion-content="true"]',
-      );
-      content.innerHTML = sourceContent?.innerHTML ?? accordion.innerHTML;
-
-      details.append(summary, content);
-      accordion.replaceWith(details);
-    });
-
-  return doc.body.innerHTML;
-};
-
 const RichDescription = ({
   html,
   legacyParagraphs,
@@ -100,17 +65,11 @@ const RichDescription = ({
   html?: string;
   legacyParagraphs?: string[];
 }) => {
-  const renderedHtml = useMemo(
-    () => (html?.trim() ? renderRichDescriptionHtml(html) : ""),
-    [html],
-  );
-
-  if (renderedHtml) {
+  if (html?.trim()) {
     return (
-      <div
-        className="rich-text-content text-xs leading-5 text-zinc-300 [&_blockquote]:my-2 [&_blockquote]:border-l-2 [&_blockquote]:border-white/15 [&_blockquote]:pl-3 [&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-bold [&_h2]:mb-2 [&_h2]:text-base [&_h2]:font-bold [&_h3]:mb-1.5 [&_h3]:text-sm [&_h3]:font-semibold [&_p]:mb-2 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-zinc-100 [&_em]:italic [&_u]:underline [&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:my-2 [&_ol]:list-decimal [&_ol]:pl-5"
-        dangerouslySetInnerHTML={{ __html: renderedHtml }}
-      />
+      <div className="text-xs text-zinc-300">
+        <RichTextContent value={html} />
+      </div>
     );
   }
 

@@ -4,6 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 
 import AccordionExtension from "../workspace/notes/AccordionExtension";
 import ReadAloudExtension from "../workspace/notes/ReadAloudExtension";
+import GMNoteExtension from "../workspace/notes/GMNoteExtension";
 import { normalizeRichTextContent } from "./RichTextEditor";
 
 type RichTextContentProps = {
@@ -18,7 +19,9 @@ export default function RichTextContent({ value }: RichTextContentProps) {
         bulletList: false,
         code: false,
         codeBlock: false,
-        heading: false,
+        heading: {
+          levels: [2, 3],
+        },
         horizontalRule: false,
         orderedList: false,
         strike: false,
@@ -26,6 +29,7 @@ export default function RichTextContent({ value }: RichTextContentProps) {
       }),
       AccordionExtension,
       ReadAloudExtension,
+      GMNoteExtension,
     ],
     [],
   );
