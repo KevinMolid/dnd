@@ -2370,9 +2370,13 @@ const MapEditorModal = ({
                     >
                       <option value="">No linked map</option>
                       {allMaps
-                        .filter((candidate) => candidate.id !== map.id)
+                        .filter((candidate) => candidate.parentMapId === map.id)
                         .slice()
-                        .sort((a, b) => a.title.localeCompare(b.title))
+                        .sort(
+                          (a, b) =>
+                            (a.order ?? 0) - (b.order ?? 0) ||
+                            a.title.localeCompare(b.title),
+                        )
                         .map((candidate) => (
                           <option key={candidate.id} value={candidate.id}>
                             {candidate.title}

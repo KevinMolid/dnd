@@ -83,6 +83,7 @@ const MapViewerPage = () => {
         <MapEditorModal
           campaignId={campaignId}
           map={map}
+          allMaps={maps}
           initialSelectedRoomId={editingRoomId}
           onClose={() => setEditingRoomId(undefined)}
         />
