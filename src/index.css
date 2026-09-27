@@ -98,6 +98,50 @@ html {
   text-underline-offset: 2px;
 }
 
+.workspace-note-editor h2 {
+  margin: 1.25rem 0 0.5rem;
+  color: rgb(250 250 250);
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 700;
+  letter-spacing: 0.015em;
+}
+
+.workspace-note-editor h3 {
+  margin: 1rem 0 0.4rem;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgb(244 244 245);
+  font-size: 1rem;
+  line-height: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.workspace-note-editor > h2:first-child,
+.workspace-note-editor > h3:first-child {
+  margin-top: 0;
+}
+
+.workspace-note-editor .read-aloud-block {
+  margin: 0.75rem 0;
+  padding: 0.25rem 0.75rem;
+
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+  border-right: 1px solid rgba(255, 255, 255, 0.28);
+
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.workspace-note-editor .read-aloud-block > :first-child {
+  margin-top: 0;
+}
+
+.workspace-note-editor .read-aloud-block > :last-child {
+  margin-bottom: 0;
+}
+
 /* -------------------------------------------------------
    Entity mentions
 ------------------------------------------------------- */

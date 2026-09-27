@@ -3,6 +3,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
 import AccordionExtension from "../workspace/notes/AccordionExtension";
+import ReadAloudExtension from "../workspace/notes/ReadAloudExtension";
 import { normalizeRichTextContent } from "./RichTextEditor";
 
 type RichTextContentProps = {
@@ -24,6 +25,7 @@ export default function RichTextContent({ value }: RichTextContentProps) {
         link: false,
       }),
       AccordionExtension,
+      ReadAloudExtension,
     ],
     [],
   );

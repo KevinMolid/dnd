@@ -3,6 +3,7 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 
 import AccordionExtension from "../workspace/notes/AccordionExtension";
+import ReadAloudExtension from "../workspace/notes/ReadAloudExtension";
 
 type RichTextEditorProps = {
   value: string;
@@ -50,13 +51,16 @@ export default function RichTextEditor({
         bulletList: false,
         code: false,
         codeBlock: false,
-        heading: false,
+        heading: {
+          levels: [2, 3],
+        },
         horizontalRule: false,
         orderedList: false,
         strike: false,
         link: false,
       }),
       AccordionExtension,
+      ReadAloudExtension,
     ],
     [],
   );
@@ -121,6 +125,45 @@ export default function RichTextEditor({
               className={formatButtonClass(editor.isActive("underline"))}
             >
               <span className="underline">U</span>
+            </button>
+
+            <div className="mx-1 h-4 w-px bg-white/10" />
+
+            <button
+              type="button"
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 2 }).run()
+              }
+              title="Main heading"
+              className={formatButtonClass(
+                editor.isActive("heading", { level: 2 }),
+              )}
+            >
+              <span className="text-[11px] font-bold">H1</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                editor.chain().focus().toggleHeading({ level: 3 }).run()
+              }
+              title="Subheading"
+              className={formatButtonClass(
+                editor.isActive("heading", { level: 3 }),
+              )}
+            >
+              <span className="text-[10px] font-semibold">H2</span>
+            </button>
+
+            <div className="mx-1 h-4 w-px bg-white/10" />
+
+            <button
+              type="button"
+              onClick={() => editor.chain().focus().toggleReadAloud().run()}
+              title="Read aloud (Ctrl+Alt+R)"
+              className={formatButtonClass(editor.isActive("readAloud"))}
+            >
+              <i className="fa-regular fa-message text-[9px]" />
             </button>
 
             <div className="mx-1 h-4 w-px bg-white/10" />
