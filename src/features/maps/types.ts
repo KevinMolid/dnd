@@ -71,23 +71,9 @@ export type CampaignMapRoom = {
   name: string;
   markers: MapPoint[];
   pin?: MapPoint;
-
-  /*
-   * Rich-text description stored as TipTap HTML.
-   *
-   * New maps and areas should use this field for descriptive prose,
-   * read-aloud text, developments, captives, notes, and other
-   * free-form information. Accordion sections can be used to organise
-   * the content when needed.
-   */
   descriptionHtml?: string;
 
-  /*
-   * Legacy description fields.
-   *
-   * Keep these temporarily so existing maps can be migrated into
-   * descriptionHtml without losing content.
-   */
+  /* Legacy description fields kept for migration. */
   readAloud?: string;
   description?: string[];
   developments?: string[];
@@ -110,20 +96,22 @@ export type CampaignMapDoc = {
   title: string;
   imageUrl: string;
   rooms: CampaignMapRoom[];
+
+  /**
+   * Sibling order. Maps with the same parentMapId are ordered together.
+   * Missing values on legacy documents are treated as a top-level map.
+   */
   order: number;
+  parentMapId?: string | null;
+
   createdByUid: string;
   createdAt?: unknown;
   updatedAt?: unknown;
   environmentEffects?: EnvironmentEffect[];
 
-  /*
-   * Rich-text description for the map overview.
-   */
   descriptionHtml?: string;
 
-  /*
-   * Legacy overview fields. Kept temporarily for migration.
-   */
+  /* Legacy overview fields kept for migration. */
   generalDescription?: string[];
   readAloud?: string;
 

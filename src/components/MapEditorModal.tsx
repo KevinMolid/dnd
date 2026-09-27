@@ -29,6 +29,7 @@ import type {
 type Props = {
   campaignId: string;
   map: CampaignMap;
+  allMaps?: CampaignMap[];
   onClose: () => void;
   initialSelectedRoomId?: number | null;
 };
@@ -793,6 +794,7 @@ const compactDangerButtonClass =
 const MapEditorModal = ({
   campaignId,
   map,
+  allMaps = [],
   onClose,
   initialSelectedRoomId = null,
 }: Props) => {
@@ -869,6 +871,40 @@ const MapEditorModal = ({
 
   const [imageUrl, setImageUrl] = useState(map.imageUrl);
 
+  const [parentMapId, setParentMapId] = useState<string | null>(
+    map.parentMapId ?? null,
+  );
+
+  const invalidParentIds = useMemo(() => {
+    const invalid = new Set<string>([map.id]);
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+
+      allMaps.forEach((candidate) => {
+        if (
+          candidate.parentMapId &&
+          invalid.has(candidate.parentMapId) &&
+          !invalid.has(candidate.id)
+        ) {
+          invalid.add(candidate.id);
+          changed = true;
+        }
+      });
+    }
+
+    return invalid;
+  }, [allMaps, map.id]);
+
+  const parentMapOptions = useMemo(
+    () =>
+      allMaps
+        .filter((candidate) => !invalidParentIds.has(candidate.id))
+        .sort((a, b) => a.title.localeCompare(b.title)),
+    [allMaps, invalidParentIds],
+  );
+
   const [overviewDescriptionHtml, setOverviewDescriptionHtml] = useState(
     legacyOverviewDescriptionToHtml(map),
   );
@@ -925,6 +961,7 @@ const MapEditorModal = ({
   useEffect(() => {
     setTitle(map.title);
     setImageUrl(map.imageUrl);
+    setParentMapId(map.parentMapId ?? null);
     setOverviewDescriptionHtml(legacyOverviewDescriptionToHtml(map));
     setOverviewMonsters(map.monsters ?? []);
     setOverviewTreasure(normalizeLegacyTreasure(map.treasure));
@@ -1443,6 +1480,8 @@ const MapEditorModal = ({
 
         imageUrl: imageUrl.trim(),
 
+        parentMapId,
+
         rooms: normalizedRooms,
 
         environmentEffects,
@@ -1774,7 +1813,7 @@ const MapEditorModal = ({
           <aside className="workspace-scrollbar min-h-0 overflow-auto bg-zinc-950 p-4">
             {!selectedRoom ? (
               <div className="space-y-3">
-                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-2">
+                <div className="grid grid-cols-1 gap-2 2xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1.35fr)]">
                   <input
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
@@ -1782,6 +1821,20 @@ const MapEditorModal = ({
                     placeholder="Map title"
                     className="min-w-0 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-lg font-bold text-white outline-none transition focus:border-white/20"
                   />
+
+                  <select
+                    value={parentMapId ?? ""}
+                    onChange={(e) => setParentMapId(e.target.value || null)}
+                    aria-label="Parent map"
+                    className="min-w-0 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2.5 text-sm font-semibold text-white outline-none transition focus:border-white/20"
+                  >
+                    <option value="">No parent (top level)</option>
+                    {parentMapOptions.map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.title}
+                      </option>
+                    ))}
+                  </select>
 
                   <input
                     value={imageUrl}

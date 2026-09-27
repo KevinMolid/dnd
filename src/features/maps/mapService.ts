@@ -3,11 +3,15 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
   updateDoc,
+  where,
+  writeBatch,
   type Unsubscribe,
 } from "firebase/firestore";
 import { db } from "../../firebase";
@@ -38,12 +42,14 @@ export const createCampaignMap = async ({
   title,
   imageUrl,
   order,
+  parentMapId = null,
 }: {
   campaignId: string;
   createdByUid: string;
   title: string;
   imageUrl: string;
   order: number;
+  parentMapId?: string | null;
 }) => {
   await addDoc(mapsCollection(campaignId), {
     campaignId,
@@ -52,6 +58,7 @@ export const createCampaignMap = async ({
     title,
     imageUrl,
     order,
+    parentMapId,
     rooms: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -73,6 +80,38 @@ export const deleteCampaignMap = async (
   campaignId: string,
   mapId: string,
 ) => {
-  const ref = doc(db, "campaigns", campaignId, "maps", mapId);
-  await deleteDoc(ref);
+  const mapRef = doc(db, "campaigns", campaignId, "maps", mapId);
+  const mapSnapshot = await getDoc(mapRef);
+
+  if (!mapSnapshot.exists()) {
+    return;
+  }
+
+  const deletedMap = mapSnapshot.data() as CampaignMapDoc;
+  const newParentMapId = deletedMap.parentMapId ?? null;
+
+  // Preserve the hierarchy when deleting a parent:
+  // direct children move up one level instead of becoming unreachable.
+  const childQuery = query(
+    mapsCollection(campaignId),
+    where("parentMapId", "==", mapId),
+  );
+  const childSnapshot = await getDocs(childQuery);
+
+  if (childSnapshot.empty) {
+    await deleteDoc(mapRef);
+    return;
+  }
+
+  const batch = writeBatch(db);
+
+  childSnapshot.docs.forEach((childDoc) => {
+    batch.update(childDoc.ref, {
+      parentMapId: newParentMapId,
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  batch.delete(mapRef);
+  await batch.commit();
 };
