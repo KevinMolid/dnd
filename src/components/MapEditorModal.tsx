@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import RichTextEditor from "../features/richText/RichTextEditor";
@@ -961,6 +961,9 @@ const MapEditorModal = ({
 
   const [error, setError] = useState<string | null>(null);
 
+  const [editorWidth, setEditorWidth] = useState(600);
+  const mainLayoutRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     setTitle(map.title);
     setImageUrl(map.imageUrl);
@@ -1436,6 +1439,44 @@ const MapEditorModal = ({
     window.addEventListener("pointerup", handlePointerUp);
   };
 
+  const handleEditorResizePointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
+    event.preventDefault();
+
+    const layout = mainLayoutRef.current;
+
+    if (!layout) {
+      return;
+    }
+
+    const layoutRect = layout.getBoundingClientRect();
+
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const requestedWidth = layoutRect.right - moveEvent.clientX;
+
+      const maxEditorWidth = Math.max(420, layoutRect.width - 240 - 360 - 6);
+
+      const nextWidth = Math.min(Math.max(requestedWidth, 420), maxEditorWidth);
+
+      setEditorWidth(nextWidth);
+    };
+
+    const handlePointerUp = () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+  };
+
   /*
    * SAVE / DELETE
    */
@@ -1582,7 +1623,15 @@ const MapEditorModal = ({
         )}
 
         {/* Main layout */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[240px_minmax(0,1fr)_500px]">
+        <div
+          ref={mainLayoutRef}
+          className="grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[240px_minmax(0,1fr)_6px_var(--editor-width)]"
+          style={
+            {
+              "--editor-width": `${editorWidth}px`,
+            } as React.CSSProperties
+          }
+        >
           {/* Left sidebar */}
           <aside className="workspace-scrollbar min-h-0 overflow-auto border-b border-white/10 bg-zinc-950 p-3 xl:border-b-0 xl:border-r">
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -1671,7 +1720,7 @@ const MapEditorModal = ({
           </aside>
 
           {/* Map */}
-          <section className="workspace-scrollbar min-h-0 overflow-auto border-b border-white/10 bg-zinc-900 xl:border-b-0 xl:border-r">
+          <section className="workspace-scrollbar min-h-0 overflow-auto border-b border-white/10 bg-zinc-900 xl:border-b-0">
             {imageUrl ? (
               <div
                 className={`relative w-full bg-black ${
@@ -1812,6 +1861,21 @@ const MapEditorModal = ({
               </div>
             )}
           </section>
+
+          {/* Map / editor resize handle */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize map and editor"
+            onPointerDown={handleEditorResizePointerDown}
+            className="group relative hidden cursor-col-resize bg-white/10 transition hover:bg-white/20 xl:block"
+          >
+            <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-white/10 transition group-hover:bg-white/40" />
+
+            <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-10 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-zinc-900 opacity-0 shadow-lg transition group-hover:opacity-100">
+              <i className="fa-solid fa-grip-lines-vertical text-[9px] text-white/50" />
+            </div>
+          </div>
 
           {/* Right sidebar */}
           <aside className="workspace-scrollbar min-h-0 overflow-auto bg-zinc-950 p-4">
