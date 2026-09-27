@@ -55,6 +55,7 @@ type EditableRoom = {
   encounterWeights: EncounterCategoryWeights;
   exitsText: string;
   experience: string;
+  linkedMapId: string | null;
 };
 
 const escapeHtml = (value: string) =>
@@ -658,6 +659,7 @@ const normalizeRoomsForEditing = (
       .filter((exitId): exitId is number => exitId !== undefined)
       .join(", "),
     experience: room.experience ?? "",
+    linkedMapId: room.linkedMapId ?? null,
   }));
 };
 
@@ -695,6 +697,7 @@ const editableToRoom = (
     encounterWeights: editable.encounterWeights,
     exits: parseExits(editable.exitsText),
     encounterTemplate: original?.encounterTemplate ?? null,
+    linkedMapId: editable.linkedMapId,
   };
 
   if (editable.pin) {
@@ -1255,6 +1258,7 @@ const MapEditorModal = ({
       encounterWeights: { ...DEFAULT_ENCOUNTER_WEIGHTS },
       exitsText: "",
       experience: "",
+      linkedMapId: null,
     };
 
     setRooms((prev) => [...prev, newRoom]);
@@ -2346,6 +2350,41 @@ const MapEditorModal = ({
                     updateSelectedRoom({ encounterWeights })
                   }
                 />
+
+                <CollapsibleSection
+                  title="Linked map"
+                  count={selectedRoom.linkedMapId ? 1 : undefined}
+                >
+                  <div className="space-y-2">
+                    <label className={labelClass}>
+                      Map opened from this area
+                    </label>
+                    <select
+                      value={selectedRoom.linkedMapId ?? ""}
+                      onChange={(e) =>
+                        updateSelectedRoom({
+                          linkedMapId: e.target.value || null,
+                        })
+                      }
+                      className={inputClass}
+                    >
+                      <option value="">No linked map</option>
+                      {allMaps
+                        .filter((candidate) => candidate.id !== map.id)
+                        .slice()
+                        .sort((a, b) => a.title.localeCompare(b.title))
+                        .map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {candidate.title}
+                          </option>
+                        ))}
+                    </select>
+                    <p className="text-xs leading-5 text-white/45">
+                      Selecting this area in the viewer shows a direct link to
+                      this map.
+                    </p>
+                  </div>
+                </CollapsibleSection>
 
                 <CollapsibleSection title="Connections & experience">
                   <div className="space-y-3">

@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import MapEditorModal from "../components/MapEditorModal";
 import CreateMapModal from "./CreateMapModal";
+import NestedMapTree from "./NestedMapTree";
 import { useAuth } from "../context/AuthContext";
 import {
   createCampaignMap,
@@ -15,8 +16,9 @@ const DEFAULT_IMAGE_URL =
   "https://i.etsystatic.com/18388031/r/il/056bd0/6063210018/il_1080xN.6063210018_a4k1.jpg";
 
 type ViewMode = "all" | "nested";
+type DropPosition = "before" | "after";
 
-const normalizeParentId = (map: CampaignMap) => map.parentMapId ?? null;
+const parentIdOf = (map: CampaignMap) => map.parentMapId ?? null;
 
 const CampaignMapsPage = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -26,15 +28,12 @@ const CampaignMapsPage = () => {
 
   const [editingMapId, setEditingMapId] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("nested");
-  const [currentParentMapId, setCurrentParentMapId] = useState<string | null>(
+  const [createParentMapId, setCreateParentMapId] = useState<string | null>(
     null,
   );
-
-  const [orderedMapIds, setOrderedMapIds] = useState<string[]>([]);
-  const [draggedMapId, setDraggedMapId] = useState<string | null>(null);
-  const [dragOverMapId, setDragOverMapId] = useState<string | null>(null);
-  const [savingOrder, setSavingOrder] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("nested");
+  const [currentMapId, setCurrentMapId] = useState<string | null>(null);
+  const [savingStructure, setSavingStructure] = useState(false);
 
   const mapById = useMemo(
     () => new Map(maps.map((map) => [map.id, map])),
@@ -45,14 +44,12 @@ const CampaignMapsPage = () => {
     const result = new Map<string | null, CampaignMap[]>();
 
     maps.forEach((map) => {
-      const parentId = normalizeParentId(map);
-      const current = result.get(parentId) ?? [];
-      current.push(map);
-      result.set(parentId, current);
+      const parentId = parentIdOf(map);
+      result.set(parentId, [...(result.get(parentId) ?? []), map]);
     });
 
-    result.forEach((children) => {
-      children.sort(
+    result.forEach((siblings) => {
+      siblings.sort(
         (a, b) =>
           (a.order ?? 0) - (b.order ?? 0) || a.title.localeCompare(b.title),
       );
@@ -61,18 +58,31 @@ const CampaignMapsPage = () => {
     return result;
   }, [maps]);
 
-  const getChildCount = (mapId: string) =>
-    childrenByParent.get(mapId)?.length ?? 0;
-
-  const currentParentMap =
-    currentParentMapId !== null
-      ? (mapById.get(currentParentMapId) ?? null)
-      : null;
-
-  const nestedMaps = useMemo(
-    () => childrenByParent.get(currentParentMapId) ?? [],
-    [childrenByParent, currentParentMapId],
+  const roots = useMemo(
+    () => childrenByParent.get(null) ?? [],
+    [childrenByParent],
   );
+
+  const currentMap = currentMapId ? (mapById.get(currentMapId) ?? null) : null;
+
+  const breadcrumbs = useMemo(() => {
+    if (!currentMap) return [];
+
+    const result: CampaignMap[] = [];
+    const visited = new Set<string>();
+    let current: CampaignMap | null = currentMap;
+
+    while (current) {
+      if (visited.has(current.id)) break;
+      visited.add(current.id);
+      result.unshift(current);
+
+      const parentId = parentIdOf(current);
+      current = parentId ? (mapById.get(parentId) ?? null) : null;
+    }
+
+    return result;
+  }, [currentMap, mapById]);
 
   const allMaps = useMemo(
     () =>
@@ -83,74 +93,23 @@ const CampaignMapsPage = () => {
     [maps],
   );
 
-  const displayedMaps = viewMode === "nested" ? nestedMaps : allMaps;
-
-  useEffect(() => {
-    if (
-      currentParentMapId !== null &&
-      maps.length > 0 &&
-      !mapById.has(currentParentMapId)
-    ) {
-      setCurrentParentMapId(null);
-    }
-  }, [currentParentMapId, mapById, maps.length]);
-
-  useEffect(() => {
-    if (viewMode !== "nested") {
-      setOrderedMapIds([]);
-      return;
-    }
-
-    setOrderedMapIds(nestedMaps.map((map) => map.id));
-  }, [nestedMaps, viewMode]);
-
-  const orderedNestedMaps = useMemo(() => {
-    if (viewMode !== "nested") {
-      return displayedMaps;
-    }
-
-    const byId = new Map(nestedMaps.map((map) => [map.id, map]));
-    const ordered = orderedMapIds
-      .map((id) => byId.get(id))
-      .filter((map): map is CampaignMap => Boolean(map));
-    const missing = nestedMaps.filter((map) => !orderedMapIds.includes(map.id));
-
-    return [...ordered, ...missing];
-  }, [displayedMaps, nestedMaps, orderedMapIds, viewMode]);
-
-  const visibleMaps = viewMode === "nested" ? orderedNestedMaps : displayedMaps;
-
   const editingMap = useMemo(
     () => maps.find((map) => map.id === editingMapId) ?? null,
     [maps, editingMapId],
   );
 
-  const breadcrumbs = useMemo(() => {
-    const result: CampaignMap[] = [];
-    const visited = new Set<string>();
-    let id = currentParentMapId;
-
-    while (id) {
-      if (visited.has(id)) break;
-      visited.add(id);
-
-      const map = mapById.get(id);
-      if (!map) break;
-
-      result.unshift(map);
-      id = normalizeParentId(map);
-    }
-
-    return result;
-  }, [currentParentMapId, mapById]);
-
-  const openMap = (mapId: string) => {
+  const openMapViewer = (mapId: string) => {
     if (!campaignId) return;
     navigate(`/campaigns/${campaignId}/maps/${mapId}`);
   };
 
-  const openNestedMap = (mapId: string) => {
-    setCurrentParentMapId(mapId);
+  const browseMap = (mapId: string) => {
+    setCurrentMapId(mapId);
+  };
+
+  const openCreateModal = (parentMapId: string | null) => {
+    setCreateParentMapId(parentMapId);
+    setIsCreateModalOpen(true);
   };
 
   const handleCreateMap = async (values: {
@@ -163,7 +122,7 @@ const CampaignMapsPage = () => {
     }
 
     const siblingCount = maps.filter(
-      (map) => normalizeParentId(map) === values.parentMapId,
+      (map) => parentIdOf(map) === values.parentMapId,
     ).length;
 
     await createCampaignMap({
@@ -176,78 +135,153 @@ const CampaignMapsPage = () => {
     });
   };
 
-  const moveMap = (sourceId: string, targetId: string) => {
-    if (sourceId === targetId) return;
+  const wouldCreateCycle = (sourceId: string, newParentId: string) => {
+    if (sourceId === newParentId) return true;
 
-    setOrderedMapIds((current) => {
-      const next = [...current];
-      const sourceIndex = next.indexOf(sourceId);
-      const targetIndex = next.indexOf(targetId);
+    const visited = new Set<string>();
+    let currentId: string | null = newParentId;
 
-      if (sourceIndex === -1 || targetIndex === -1) return current;
+    while (currentId) {
+      if (currentId === sourceId) return true;
+      if (visited.has(currentId)) return true;
+      visited.add(currentId);
 
-      next.splice(sourceIndex, 1);
-      next.splice(targetIndex, 0, sourceId);
-      return next;
-    });
+      const current = mapById.get(currentId);
+      currentId = current ? parentIdOf(current) : null;
+    }
+
+    return false;
   };
 
-  const persistMapOrder = async (ids: string[]) => {
-    if (!campaignId || savingOrder || viewMode !== "nested") return;
+  const normalizeSiblingOrder = async (
+    parentMapId: string | null,
+    orderedIds: string[],
+  ) => {
+    if (!campaignId) return;
 
-    setSavingOrder(true);
+    await Promise.all(
+      orderedIds.map((mapId, index) =>
+        updateCampaignMap(campaignId, mapId, {
+          parentMapId,
+          order: index,
+        }),
+      ),
+    );
+  };
 
+  const moveMapInto = async (sourceId: string, newParentId: string) => {
+    if (!campaignId || savingStructure) return;
+    if (wouldCreateCycle(sourceId, newParentId)) return;
+
+    const source = mapById.get(sourceId);
+    if (!source) return;
+
+    const oldParentId = parentIdOf(source);
+    if (oldParentId === newParentId) return;
+
+    const oldSiblings = (childrenByParent.get(oldParentId) ?? [])
+      .filter((map) => map.id !== sourceId)
+      .map((map) => map.id);
+
+    const newSiblings = (childrenByParent.get(newParentId) ?? [])
+      .filter((map) => map.id !== sourceId)
+      .map((map) => map.id);
+
+    setSavingStructure(true);
     try {
-      await Promise.all(
-        ids.map((mapId, index) =>
-          updateCampaignMap(campaignId, mapId, { order: index }),
-        ),
-      );
+      await updateCampaignMap(campaignId, sourceId, {
+        parentMapId: newParentId,
+        order: newSiblings.length,
+      });
+
+      await Promise.all([
+        normalizeSiblingOrder(oldParentId, oldSiblings),
+        normalizeSiblingOrder(newParentId, [...newSiblings, sourceId]),
+      ]);
     } catch (error) {
-      console.error("Failed to save map order:", error);
-      setOrderedMapIds(nestedMaps.map((map) => map.id));
+      console.error("Failed to move map into parent:", error);
     } finally {
-      setSavingOrder(false);
+      setSavingStructure(false);
     }
   };
 
-  const handleDragStart = (
-    event: React.DragEvent<HTMLButtonElement>,
-    mapId: string,
+  const moveMapToParent = async (
+    sourceId: string,
+    newParentId: string | null,
   ) => {
-    if (viewMode !== "nested") return;
+    if (!campaignId || savingStructure) return;
 
-    setDraggedMapId(mapId);
-    setDragOverMapId(mapId);
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", mapId);
+    if (newParentId) {
+      await moveMapInto(sourceId, newParentId);
+      return;
+    }
+
+    const source = mapById.get(sourceId);
+    if (!source) return;
+
+    const oldParentId = parentIdOf(source);
+    if (oldParentId === null) return;
+
+    const oldSiblings = (childrenByParent.get(oldParentId) ?? [])
+      .filter((map) => map.id !== sourceId)
+      .map((map) => map.id);
+
+    const rootIds = roots
+      .filter((map) => map.id !== sourceId)
+      .map((map) => map.id);
+
+    setSavingStructure(true);
+    try {
+      await updateCampaignMap(campaignId, sourceId, {
+        parentMapId: null,
+        order: rootIds.length,
+      });
+
+      await Promise.all([
+        normalizeSiblingOrder(oldParentId, oldSiblings),
+        normalizeSiblingOrder(null, [...rootIds, sourceId]),
+      ]);
+    } catch (error) {
+      console.error("Failed to move map to root:", error);
+    } finally {
+      setSavingStructure(false);
+    }
   };
 
-  const handleDragOver = (
-    event: React.DragEvent<HTMLElement>,
-    targetMapId: string,
+  const reorderMap = async (
+    sourceId: string,
+    targetId: string,
+    position: DropPosition,
   ) => {
-    if (viewMode !== "nested") return;
+    if (!campaignId || savingStructure || sourceId === targetId) return;
 
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
+    const source = mapById.get(sourceId);
+    const target = mapById.get(targetId);
+    if (!source || !target) return;
 
-    if (!draggedMapId || draggedMapId === targetMapId) return;
-    if (dragOverMapId === targetMapId) return;
+    const sourceParentId = parentIdOf(source);
+    const targetParentId = parentIdOf(target);
 
-    setDragOverMapId(targetMapId);
-    moveMap(draggedMapId, targetMapId);
-  };
+    if (sourceParentId !== targetParentId) return;
 
-  const handleDragEnd = () => {
-    const idsToSave = [...orderedMapIds];
-    const hadDrag = Boolean(draggedMapId);
+    const siblingIds = (childrenByParent.get(sourceParentId) ?? []).map(
+      (map) => map.id,
+    );
 
-    setDraggedMapId(null);
-    setDragOverMapId(null);
+    const withoutSource = siblingIds.filter((id) => id !== sourceId);
+    const targetIndex = withoutSource.indexOf(targetId);
+    if (targetIndex === -1) return;
 
-    if (hadDrag) {
-      void persistMapOrder(idsToSave);
+    const insertIndex = position === "before" ? targetIndex : targetIndex + 1;
+    withoutSource.splice(insertIndex, 0, sourceId);
+
+    setSavingStructure(true);
+    try {
+      await normalizeSiblingOrder(sourceParentId, withoutSource);
+    } catch (error) {
+      console.error("Failed to reorder maps:", error);
+    } finally {
+      setSavingStructure(false);
     }
   };
 
@@ -288,16 +322,20 @@ const CampaignMapsPage = () => {
             </button>
           </div>
 
-          {viewMode === "nested" && savingOrder ? (
+          {savingStructure ? (
             <span className="text-[10px] font-medium text-zinc-500">
-              Saving order…
+              Saving map structure…
             </span>
           ) : null}
         </div>
 
         <button
           type="button"
-          onClick={() => setIsCreateModalOpen(true)}
+          onClick={() =>
+            openCreateModal(
+              viewMode === "nested" && currentMap ? currentMap.id : null,
+            )
+          }
           className="rounded-md border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
         >
           <i className="fa-solid fa-plus mr-1.5 text-[10px]" />
@@ -305,66 +343,44 @@ const CampaignMapsPage = () => {
         </button>
       </div>
 
-      {viewMode === "nested" ? (
-        <div className="mb-3 flex min-h-9 items-center gap-1 overflow-x-auto rounded-lg border border-white/[0.07] bg-white/[0.02] px-2 py-1.5 text-xs workspace-scrollbar">
+      {viewMode === "nested" && currentMap ? (
+        <div className="workspace-scrollbar mb-3 flex min-h-9 items-center gap-1 overflow-x-auto rounded-lg border border-white/[0.08] bg-zinc-900/25 px-2 py-1">
           <button
             type="button"
-            onClick={() => setCurrentParentMapId(null)}
-            className={`shrink-0 rounded-md px-2 py-1 transition ${
-              currentParentMapId === null
-                ? "font-semibold text-white"
+            onClick={() => setCurrentMapId(null)}
+            className={`shrink-0 rounded-md px-2 py-1.5 text-xs font-medium transition ${
+              currentMap === null
+                ? "text-white"
                 : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
             }`}
           >
             Maps
           </button>
 
-          {breadcrumbs.map((map) => (
-            <div key={map.id} className="flex shrink-0 items-center gap-1">
-              <i className="fa-solid fa-chevron-right text-[8px] text-zinc-700" />
-              <button
-                type="button"
-                onClick={() => setCurrentParentMapId(map.id)}
-                className={`max-w-48 truncate rounded-md px-2 py-1 transition ${
-                  map.id === currentParentMapId
-                    ? "font-semibold text-white"
-                    : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
-                }`}
+          {breadcrumbs.map((breadcrumb) => {
+            const isCurrent = breadcrumb.id === currentMap?.id;
+
+            return (
+              <div
+                key={breadcrumb.id}
+                className="flex shrink-0 items-center gap-1"
               >
-                {map.title}
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {viewMode === "nested" && currentParentMap ? (
-        <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-white/[0.08] bg-white/[0.025] p-3">
-          <div className="min-w-0">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
-              Current map
-            </div>
-            <div className="truncate text-sm font-semibold text-white">
-              {currentParentMap.title}
-            </div>
-          </div>
-
-          <div className="flex shrink-0 gap-1.5">
-            <button
-              type="button"
-              onClick={() => openMap(currentParentMap.id)}
-              className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
-            >
-              Open
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditingMapId(currentParentMap.id)}
-              className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-            >
-              Edit
-            </button>
-          </div>
+                <i className="fa-solid fa-chevron-right text-[8px] text-zinc-700" />
+                <button
+                  type="button"
+                  onClick={() => setCurrentMapId(breadcrumb.id)}
+                  className={`max-w-52 truncate rounded-md px-2 py-1.5 text-xs font-medium transition ${
+                    isCurrent
+                      ? "text-white"
+                      : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
+                  }`}
+                  title={breadcrumb.title}
+                >
+                  {breadcrumb.title}
+                </button>
+              </div>
+            );
+          })}
         </div>
       ) : null}
 
@@ -372,51 +388,42 @@ const CampaignMapsPage = () => {
         <div className="rounded-xl border border-white/10 bg-zinc-900/35 p-6 text-center">
           <p className="text-xs text-zinc-400">Loading maps...</p>
         </div>
-      ) : visibleMaps.length === 0 ? (
+      ) : maps.length === 0 ? (
         <div className="rounded-xl border border-dashed border-white/10 bg-zinc-900/25 p-6 text-center">
-          <p className="text-sm font-semibold text-zinc-100">
-            {viewMode === "nested" && currentParentMap
-              ? "No submaps yet."
-              : "No maps yet."}
-          </p>
+          <p className="text-sm font-semibold text-zinc-100">No maps yet.</p>
           <p className="mt-1 text-xs text-zinc-400">
-            {viewMode === "nested" && currentParentMap
-              ? `Add a map here to make it a submap of ${currentParentMap.title}.`
-              : "Create your first map to start building the campaign world."}
+            Create your first map to start building the campaign world.
           </p>
         </div>
+      ) : viewMode === "nested" ? (
+        <NestedMapTree
+          currentMap={currentMap}
+          rootMaps={roots}
+          childrenByParent={childrenByParent}
+          onBrowse={browseMap}
+          onOpen={openMapViewer}
+          onEdit={setEditingMapId}
+          onAddSubmap={openCreateModal}
+          onMoveInto={moveMapInto}
+          onMoveToParent={moveMapToParent}
+          onReorder={reorderMap}
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {visibleMaps.map((map, index) => {
-            const isDragging = draggedMapId === map.id;
-            const isDragTarget =
-              Boolean(draggedMapId) &&
-              dragOverMapId === map.id &&
-              draggedMapId !== map.id;
-            const childCount = getChildCount(map.id);
-            const parent =
-              viewMode === "all" && normalizeParentId(map)
-                ? mapById.get(normalizeParentId(map)!)
-                : null;
+          {allMaps.map((map) => {
+            const parentId = parentIdOf(map);
+            const parent = parentId ? (mapById.get(parentId) ?? null) : null;
+            const childCount = childrenByParent.get(map.id)?.length ?? 0;
 
             return (
               <article
                 key={map.id}
-                onDragOver={(event) => handleDragOver(event, map.id)}
-                className={`group relative overflow-hidden rounded-xl border bg-zinc-900/35 transition ${
-                  isDragging
-                    ? "scale-[0.985] border-cyan-400/25 opacity-50"
-                    : isDragTarget
-                      ? "border-cyan-400/35 bg-cyan-400/[0.03]"
-                      : "border-white/[0.08] hover:border-white/15"
-                }`}
+                className="group overflow-hidden rounded-xl border border-white/[0.08] bg-zinc-900/35 transition hover:border-white/15"
               >
                 <button
                   type="button"
-                  onClick={() => openMap(map.id)}
-                  className="block w-full overflow-hidden bg-black text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 focus-visible:ring-inset"
-                  title={`Open ${map.title}`}
-                  aria-label={`Open map ${map.title}`}
+                  onClick={() => openMapViewer(map.id)}
+                  className="block w-full overflow-hidden bg-black text-left"
                 >
                   <div className="aspect-[16/9] overflow-hidden">
                     <img
@@ -430,73 +437,36 @@ const CampaignMapsPage = () => {
 
                 <div className="p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      {viewMode === "nested" ? (
-                        <button
-                          type="button"
-                          draggable
-                          onDragStart={(event) =>
-                            handleDragStart(event, map.id)
-                          }
-                          onDragEnd={handleDragEnd}
-                          onClick={(event) => event.stopPropagation()}
-                          title="Drag to reorder"
-                          aria-label={`Drag ${map.title} to reorder`}
-                          className="flex h-8 w-7 shrink-0 cursor-grab items-center justify-center rounded-md text-zinc-600 transition hover:bg-white/[0.05] hover:text-zinc-300 active:cursor-grabbing"
-                        >
-                          <i className="fa-solid fa-grip-vertical text-xs" />
-                        </button>
-                      ) : null}
-
-                      <div className="min-w-0">
-                        <h3 className="truncate text-base font-semibold text-white">
-                          {viewMode === "nested" ? (
-                            <span className="mr-1.5 text-zinc-500">
-                              {index + 1}.
-                            </span>
-                          ) : null}
-                          {map.title}
-                        </h3>
-
-                        <p className="mt-0.5 truncate text-xs text-zinc-500">
-                          {map.rooms?.length ?? 0}{" "}
-                          {(map.rooms?.length ?? 0) === 1 ? "area" : "areas"}
-                          <span className="mx-1.5 text-zinc-700">•</span>
-                          {childCount} {childCount === 1 ? "submap" : "submaps"}
-                          {parent ? (
-                            <>
-                              <span className="mx-1.5 text-zinc-700">•</span>
-                              <span>in {parent.title}</span>
-                            </>
-                          ) : null}
-                        </p>
-                      </div>
+                    <div className="min-w-0">
+                      <h3 className="truncate text-base font-semibold text-white">
+                        {map.title}
+                      </h3>
+                      <p className="mt-0.5 truncate text-xs text-zinc-500">
+                        {map.rooms?.length ?? 0}{" "}
+                        {(map.rooms?.length ?? 0) === 1 ? "area" : "areas"}
+                        <span className="mx-1.5 text-zinc-700">•</span>
+                        {childCount} {childCount === 1 ? "submap" : "submaps"}
+                        {parent ? (
+                          <>
+                            <span className="mx-1.5 text-zinc-700">•</span>
+                            in {parent.title}
+                          </>
+                        ) : null}
+                      </p>
                     </div>
 
                     <div className="flex shrink-0 gap-1.5">
-                      {viewMode === "nested" ? (
-                        <button
-                          type="button"
-                          onClick={() => openNestedMap(map.id)}
-                          className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-                          title={`Show submaps of ${map.title}`}
-                        >
-                          Browse
-                        </button>
-                      ) : null}
-
                       <button
                         type="button"
-                        onClick={() => openMap(map.id)}
-                        className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                        onClick={() => openMapViewer(map.id)}
+                        className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.08] hover:text-white"
                       >
                         Open
                       </button>
-
                       <button
                         type="button"
                         onClick={() => setEditingMapId(map.id)}
-                        className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                        className="rounded-md border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
                       >
                         Edit
                       </button>
@@ -524,7 +494,7 @@ const CampaignMapsPage = () => {
           onCreate={handleCreateMap}
           maps={maps}
           defaultImageUrl={DEFAULT_IMAGE_URL}
-          defaultParentMapId={viewMode === "nested" ? currentParentMapId : null}
+          defaultParentMapId={createParentMapId}
         />
       ) : null}
     </>

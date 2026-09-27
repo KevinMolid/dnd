@@ -27,6 +27,7 @@ import type {
 import MapCanvas, { type MapCanvasHandle } from "./maps/MapCanvas";
 
 import RichTextContent from "../features/richText/RichTextContent";
+import { useCampaignMaps } from "../features/maps/useCampaignMaps";
 
 type MapViewerProps = {
   campaignId: string;
@@ -88,23 +89,34 @@ type ExtendedCampaignMap = CampaignMap & {
 
 const normalizeItemText = (value: string) => {
   return value
+
     .toLowerCase()
+
     .trim()
+
     .replace(/^(en|et|ei|a|an|the)\s+/i, "")
+
     .replace(/[–—-]/g, " ")
+
     .replace(/[^\p{L}\p{N}\s+]/gu, "")
+
     .replace(/\s+/g, " ")
+
     .trim();
 };
 
 const formatItemCategory = (value: string) =>
   value
+
     .split("-")
+
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+
     .join(" ");
 
 const getTreasureSearchVariants = (value: string) => {
   const normalized = normalizeItemText(value);
+
   const variants = new Set<string>([normalized]);
 
   const leadingBonus = normalized.match(/^\+(\d+)\s+(.+)$/);
@@ -149,11 +161,14 @@ const parseMoneyText = (text: string): Partial<Money> | null => {
   }
 
   const amount = Number(match[1]);
+
   const currency = match[2].toLowerCase() as "gp" | "sp" | "cp";
 
   return {
     gp: currency === "gp" ? amount : 0,
+
     sp: currency === "sp" ? amount : 0,
+
     cp: currency === "cp" ? amount : 0,
   };
 };
@@ -176,9 +191,11 @@ const getMoneyLabel = (money: Partial<Money>) => {
 
 const TreasureLink = ({
   text,
+
   item,
 }: {
   text: string;
+
   item: Item;
 }) => {
   return (
@@ -218,6 +235,7 @@ const TreasureLink = ({
 
 const renderParagraphs = (
   paragraphs?: string[],
+
   className = "space-y-2 text-sm leading-6 text-white/75",
 ) => {
   if (!paragraphs || paragraphs.length === 0) {
@@ -235,9 +253,11 @@ const renderParagraphs = (
 
 const RichDescription = ({
   html,
+
   legacyParagraphs,
 }: {
   html?: string;
+
   legacyParagraphs?: string[];
 }) => {
   if (html?.trim()) {
@@ -259,6 +279,7 @@ const getDefaultEnvironmentLevel = (effect: EnvironmentEffect) => {
 
 const getEnvironmentLevelName = (
   effect: EnvironmentEffect,
+
   value: number,
 ) => {
   return (
@@ -269,6 +290,7 @@ const getEnvironmentLevelName = (
 
 const getRoomEnvironmentLevel = (
   room: CampaignMapRoom,
+
   effect: EnvironmentEffect,
 ) => {
   return room.environment?.[effect.id] ?? getDefaultEnvironmentLevel(effect);
@@ -276,16 +298,51 @@ const getRoomEnvironmentLevel = (
 
 const MapViewer = ({
   campaignId,
+
   map,
+
   onClose,
+
   onEdit,
+
   players,
+
   onGiveItemToPlayer,
+
   onGiveItemToParty,
+
   onGiveMoneyToPlayer,
+
   onGiveMoneyToParty,
 }: MapViewerProps) => {
   const navigate = useNavigate();
+  const { maps: campaignMaps } = useCampaignMaps(campaignId);
+  const campaignMapById = useMemo(
+    () =>
+      new Map(campaignMaps.map((campaignMap) => [campaignMap.id, campaignMap])),
+    [campaignMaps],
+  );
+
+  const mapBreadcrumbs = useMemo(() => {
+    if (!map) return [];
+    const result: CampaignMap[] = [];
+    const visited = new Set<string>();
+    let parentId = map.parentMapId ?? null;
+
+    while (parentId) {
+      if (visited.has(parentId)) break;
+      visited.add(parentId);
+      const parent = campaignMapById.get(parentId);
+      if (!parent) break;
+      result.unshift(parent);
+      parentId = parent.parentMapId ?? null;
+    }
+    return result;
+  }, [map, campaignMapById]);
+
+  const openCampaignMap = (mapId: string) => {
+    navigate(`/campaigns/${campaignId}/maps/${mapId}`);
+  };
 
   const { loadEncounterTemplate } = useEncounter();
 
@@ -383,9 +440,13 @@ const MapViewer = ({
     setRoomStates(map.rooms ?? []);
 
     /*
+
      * Preserve the currently selected area when
+
      * Firestore updates the map.
+
      */
+
     setSelectedRoomId((currentRoomId) => {
       if (currentRoomId === null) {
         return null;
@@ -399,7 +460,6 @@ const MapViewer = ({
     });
 
     setHoveredRoomId(null);
-
 
     setIsTreasureModalOpen(false);
 
@@ -421,6 +481,7 @@ const MapViewer = ({
       }
 
       const top = viewer.getBoundingClientRect().top;
+
       const availableHeight = Math.max(420, window.innerHeight - top - 16);
 
       setViewerHeight(availableHeight);
@@ -447,6 +508,10 @@ const MapViewer = ({
     return roomStates.find((room) => room.id === selectedRoomId) ?? null;
   }, [roomStates, selectedRoomId]);
 
+  const linkedMap = selectedRoom?.linkedMapId
+    ? (campaignMapById.get(selectedRoom.linkedMapId) ?? null)
+    : null;
+
   const linkedTreasureEntries = useMemo<LinkedTreasureEntry[]>(() => {
     if (!selectedRoom?.treasure?.length) {
       return [];
@@ -455,6 +520,7 @@ const MapViewer = ({
     return selectedRoom.treasure.flatMap<LinkedTreasureEntry>(
       (treasure: MapTreasure, index): LinkedTreasureEntry[] => {
         const quantity = Math.max(1, treasure.count ?? 1);
+
         const displayText =
           quantity > 1 ? `${quantity}× ${treasure.name}` : treasure.name;
 
@@ -463,8 +529,11 @@ const MapViewer = ({
         if (item) {
           return Array.from({ length: quantity }, (_, quantityIndex) => ({
             key: `${selectedRoom.id}-${index}-${quantityIndex}-item-${item.id}`,
+
             text: displayText,
+
             type: "item" as const,
+
             item,
           }));
         }
@@ -474,16 +543,22 @@ const MapViewer = ({
         if (money) {
           const multipliedMoney: Partial<Money> = {
             gp: (money.gp ?? 0) * quantity,
+
             sp: (money.sp ?? 0) * quantity,
+
             cp: (money.cp ?? 0) * quantity,
           };
 
           return [
             {
               key: `${selectedRoom.id}-${index}-money-${treasure.name}`,
+
               text: displayText,
+
               type: "money" as const,
+
               money: multipliedMoney,
+
               moneyLabel: getMoneyLabel(multipliedMoney),
             },
           ];
@@ -507,7 +582,9 @@ const MapViewer = ({
   };
 
   /*
+
    * TREASURE
+
    */
 
   const openTreasureModal = () => {
@@ -610,14 +687,35 @@ const MapViewer = ({
     >
       <div className="flex h-full flex-col overflow-hidden bg-zinc-950">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-3 py-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
-          >
-            <i className="fa-solid fa-arrow-left text-[10px]" />
-            Maps
-          </button>
+          <div className="workspace-scrollbar flex min-w-0 items-center gap-1 overflow-x-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+            >
+              <i className="fa-solid fa-arrow-left text-[10px]" />
+              Maps
+            </button>
+            {mapBreadcrumbs.map((breadcrumb) => (
+              <div
+                key={breadcrumb.id}
+                className="flex shrink-0 items-center gap-1"
+              >
+                <i className="fa-solid fa-chevron-right text-[8px] text-zinc-700" />
+                <button
+                  type="button"
+                  onClick={() => openCampaignMap(breadcrumb.id)}
+                  className="h-8 max-w-44 truncate rounded-md px-2 text-xs font-medium text-zinc-500 transition hover:bg-white/[0.05] hover:text-zinc-200"
+                >
+                  {breadcrumb.title}
+                </button>
+              </div>
+            ))}
+            <i className="fa-solid fa-chevron-right shrink-0 text-[8px] text-zinc-700" />
+            <span className="max-w-52 shrink-0 truncate px-2 text-xs font-semibold text-white">
+              {mapData.title}
+            </span>
+          </div>
 
           {onEdit ? (
             <button
@@ -648,8 +746,11 @@ const MapViewer = ({
                   </span>
 
                   {roomStates
+
                     .slice()
+
                     .sort((a, b) => a.id - b.id)
+
                     .map((room) => {
                       const selected = selectedRoomId === room.id;
 
@@ -747,7 +848,6 @@ const MapViewer = ({
                       This map does not yet have a general description.
                     </p>
                   )}
-
                 </div>
               ) : roomStates.length === 0 ? (
                 <div className="space-y-3">
@@ -765,6 +865,31 @@ const MapViewer = ({
                     </h3>
                   </div>
 
+                  {linkedMap ? (
+                    <button
+                      type="button"
+                      onClick={() => openCampaignMap(linkedMap.id)}
+                      className="group flex w-full items-center gap-3 overflow-hidden rounded-xl border border-cyan-400/15 bg-cyan-400/[0.05] p-2 text-left transition hover:border-cyan-400/30 hover:bg-cyan-400/[0.08]"
+                    >
+                      <div className="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-black">
+                        <img
+                          src={linkedMap.imageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          draggable={false}
+                        />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300/60">
+                          Linked map
+                        </div>
+                        <div className="truncate text-sm font-semibold text-white">
+                          {linkedMap.title}
+                        </div>
+                      </div>
+                      <i className="fa-solid fa-arrow-right shrink-0 px-2 text-xs text-cyan-200/70" />
+                    </button>
+                  ) : null}
 
                   {selectedRoom.readAloud && (
                     <section className="space-y-2">
@@ -814,6 +939,7 @@ const MapViewer = ({
                             >
                               <div className="font-medium">
                                 {monster.count ? `${monster.count}x ` : ""}
+
                                 {monster.name}
                               </div>
 

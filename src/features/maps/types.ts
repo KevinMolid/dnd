@@ -71,6 +71,7 @@ export type CampaignMapRoom = {
   name: string;
   markers: MapPoint[];
   pin?: MapPoint;
+  linkedMapId?: string | null;
   descriptionHtml?: string;
 
   /* Legacy description fields kept for migration. */
