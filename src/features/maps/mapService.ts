@@ -60,6 +60,7 @@ export const createCampaignMap = async ({
     order,
     parentMapId,
     rooms: [],
+    musicCues: [],
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });

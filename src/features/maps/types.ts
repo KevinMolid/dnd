@@ -35,6 +35,18 @@ export type MapEncounterEntry = {
   description?: string;
 };
 
+export type MapMusicCue = {
+  id: string;
+  name: string;
+  spotifyUrl: string;
+
+  /**
+   * Reserved for the Spotify playback integration.
+   * We can populate this from spotifyUrl when playback is added.
+   */
+  spotifyUri?: string;
+};
+
 export type EncounterCategoryWeights = {
   creature: number;
   phenomenon: number;
@@ -73,6 +85,7 @@ export type CampaignMapRoom = {
   pin?: MapPoint;
   linkedMapId?: string | null;
   descriptionHtml?: string;
+  musicCues?: MapMusicCue[];
 
   /* Legacy description fields kept for migration. */
   readAloud?: string;
@@ -111,6 +124,7 @@ export type CampaignMapDoc = {
   environmentEffects?: EnvironmentEffect[];
 
   descriptionHtml?: string;
+  musicCues?: MapMusicCue[];
 
   /* Legacy overview fields kept for migration. */
   generalDescription?: string[];

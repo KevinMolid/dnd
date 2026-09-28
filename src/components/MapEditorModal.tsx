@@ -23,6 +23,7 @@ import type {
   EnvironmentLevel,
   MapEncounterEntry,
   MapMonster,
+  MapMusicCue,
   MapTreasure,
 } from "../features/maps/types";
 
@@ -52,6 +53,7 @@ type EditableRoom = {
   clues: MapEncounterEntry[];
   phenomena: MapEncounterEntry[];
   events: MapEncounterEntry[];
+  musicCues: MapMusicCue[];
   encounterWeights: EncounterCategoryWeights;
   exitsText: string;
   experience: string;
@@ -518,6 +520,118 @@ const EncounterEntryEditor = ({
   );
 };
 
+const createMusicCueId = () =>
+  `music-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const MusicCueEditor = ({
+  value,
+  onChange,
+}: {
+  value: MapMusicCue[];
+  onChange: (value: MapMusicCue[]) => void;
+}) => (
+  <div>
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div>
+        <div className="text-sm font-medium text-white/85">
+          Spotify music cues
+        </div>
+        <p className="mt-0.5 text-xs leading-5 text-white/40">
+          Add tracks, albums, or playlists to use while running this location.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() =>
+          onChange([
+            ...value,
+            { id: createMusicCueId(), name: "", spotifyUrl: "" },
+          ])
+        }
+        className={compactButtonClass}
+      >
+        <i className="fa-solid fa-plus" />
+        Add cue
+      </button>
+    </div>
+
+    {value.length === 0 ? (
+      <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] p-3 text-sm text-white/50">
+        No music cues yet.
+      </div>
+    ) : (
+      <div className="space-y-2">
+        {value.map((cue, index) => (
+          <div
+            key={cue.id}
+            className="rounded-xl border border-white/[0.08] bg-zinc-900/60 p-2.5"
+          >
+            <div className="flex items-center gap-2">
+              <input
+                value={cue.name}
+                onChange={(e) =>
+                  onChange(
+                    value.map((candidate, i) =>
+                      i === index
+                        ? { ...candidate, name: e.target.value }
+                        : candidate,
+                    ),
+                  )
+                }
+                placeholder="Cue name, e.g. Ambient"
+                aria-label="Music cue name"
+                className="min-w-0 flex-1 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm font-semibold text-white outline-none focus:border-emerald-500/40"
+              />
+              <button
+                type="button"
+                onClick={() => onChange(value.filter((_, i) => i !== index))}
+                className="h-9 w-9 shrink-0 rounded-lg text-zinc-500 transition hover:bg-red-500/10 hover:text-red-300"
+                aria-label="Delete music cue"
+                title="Delete music cue"
+              >
+                <i className="fa-solid fa-trash text-xs" />
+              </button>
+            </div>
+
+            <div className="mt-2 flex items-center gap-2">
+              <div className="relative min-w-0 flex-1">
+                <i className="fa-brands fa-spotify pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-white/35" />
+                <input
+                  value={cue.spotifyUrl}
+                  onChange={(e) =>
+                    onChange(
+                      value.map((candidate, i) =>
+                        i === index
+                          ? { ...candidate, spotifyUrl: e.target.value }
+                          : candidate,
+                      ),
+                    )
+                  }
+                  placeholder="https://open.spotify.com/..."
+                  aria-label="Spotify URL"
+                  className="w-full rounded-lg border border-white/10 bg-black/25 py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/40"
+                />
+              </div>
+              {cue.spotifyUrl.trim() ? (
+                <a
+                  href={cue.spotifyUrl.trim()}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-zinc-400 transition hover:bg-white/[0.08] hover:text-white"
+                  aria-label="Open Spotify link"
+                  title="Open Spotify link"
+                >
+                  <i className="fa-solid fa-arrow-up-right-from-square text-xs" />
+                </a>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+);
+
 const CollapsibleSection = ({
   title,
   count,
@@ -653,6 +767,7 @@ const normalizeRoomsForEditing = (
     clues: room.clues ?? [],
     phenomena: room.phenomena ?? [],
     events: room.events ?? [],
+    musicCues: room.musicCues ?? [],
     encounterWeights: normalizeWeights(room.encounterWeights),
     exitsText: (room.exits ?? [])
       .map((exitId) => firstNewIdByOldId.get(exitId))
@@ -694,6 +809,9 @@ const editableToRoom = (
     clues: editable.clues.filter((entry) => entry.name.trim()),
     phenomena: editable.phenomena.filter((entry) => entry.name.trim()),
     events: editable.events.filter((entry) => entry.name.trim()),
+    musicCues: editable.musicCues.filter(
+      (cue) => cue.name.trim() || cue.spotifyUrl.trim(),
+    ),
     encounterWeights: editable.encounterWeights,
     exits: parseExits(editable.exitsText),
     encounterTemplate: original?.encounterTemplate ?? null,
@@ -932,6 +1050,10 @@ const MapEditorModal = ({
     map.events ?? [],
   );
 
+  const [overviewMusicCues, setOverviewMusicCues] = useState<MapMusicCue[]>(
+    map.musicCues ?? [],
+  );
+
   const [overviewEncounterWeights, setOverviewEncounterWeights] =
     useState<EncounterCategoryWeights>(normalizeWeights(map.encounterWeights));
 
@@ -974,6 +1096,7 @@ const MapEditorModal = ({
     setOverviewClues(map.clues ?? []);
     setOverviewPhenomena(map.phenomena ?? []);
     setOverviewEvents(map.events ?? []);
+    setOverviewMusicCues(map.musicCues ?? []);
     setOverviewEncounterWeights(normalizeWeights(map.encounterWeights));
 
     setEnvironmentEffects(map.environmentEffects ?? []);
@@ -1258,6 +1381,7 @@ const MapEditorModal = ({
       clues: [],
       phenomena: [],
       events: [],
+      musicCues: [],
       encounterWeights: { ...DEFAULT_ENCOUNTER_WEIGHTS },
       exitsText: "",
       experience: "",
@@ -1544,6 +1668,9 @@ const MapEditorModal = ({
         clues: overviewClues.filter((entry) => entry.name.trim()),
         phenomena: overviewPhenomena.filter((entry) => entry.name.trim()),
         events: overviewEvents.filter((entry) => entry.name.trim()),
+        musicCues: overviewMusicCues.filter(
+          (cue) => cue.name.trim() || cue.spotifyUrl.trim(),
+        ),
         encounterWeights: overviewEncounterWeights,
       });
 
@@ -2236,6 +2363,16 @@ const MapEditorModal = ({
                   />
                 </CollapsibleSection>
 
+                <CollapsibleSection
+                  title="Music"
+                  count={overviewMusicCues.length}
+                >
+                  <MusicCueEditor
+                    value={overviewMusicCues}
+                    onChange={setOverviewMusicCues}
+                  />
+                </CollapsibleSection>
+
                 <EncounterWeightsEditor
                   value={overviewEncounterWeights}
                   onChange={setOverviewEncounterWeights}
@@ -2405,6 +2542,16 @@ const MapEditorModal = ({
                     description="Discoveries that reveal information or point somewhere."
                     value={selectedRoom.clues}
                     onChange={(clues) => updateSelectedRoom({ clues })}
+                  />
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  title="Music"
+                  count={selectedRoom.musicCues.length}
+                >
+                  <MusicCueEditor
+                    value={selectedRoom.musicCues}
+                    onChange={(musicCues) => updateSelectedRoom({ musicCues })}
                   />
                 </CollapsibleSection>
 
