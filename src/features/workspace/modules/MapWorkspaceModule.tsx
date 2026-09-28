@@ -37,10 +37,15 @@ import RichTextContent from "../../richText/RichTextContent";
 
 type EnvironmentRollResult = {
   roomId: number;
+
   roomName: string;
+
   roll: number;
+
   previousLevel: number;
+
   targetLevel: number;
+
   nextLevel: number;
 };
 
@@ -60,9 +65,11 @@ const renderParagraphs = (paragraphs?: string[]) => {
 
 const RichDescription = ({
   html,
+
   legacyParagraphs,
 }: {
   html?: string;
+
   legacyParagraphs?: string[];
 }) => {
   if (html?.trim()) {
@@ -99,6 +106,7 @@ const getEnvironmentLevelName = (effect: EnvironmentEffect, value: number) => {
 
 const getRoomEnvironmentLevel = (
   room: CampaignMapRoom,
+
   effect: EnvironmentEffect,
 ) => {
   return room.environment?.[effect.id] ?? getDefaultEnvironmentLevel(effect);
@@ -106,7 +114,9 @@ const getRoomEnvironmentLevel = (
 
 const moveTowardsTarget = (
   effect: EnvironmentEffect,
+
   currentValue: number,
+
   targetValue: number,
 ) => {
   const levels = getSortedLevels(effect);
@@ -146,9 +156,13 @@ const moveTowardsTarget = (
 
 export default function MapWorkspaceModule({
   module,
+
   campaignId,
+
   editing,
+
   updateModule,
+
   removeModule,
 }: WorkspaceModuleRenderProps) {
   const navigate = useNavigate();
@@ -161,6 +175,7 @@ export default function MapWorkspaceModule({
 
   const activeCharacters = useMemo(
     () => getActiveCampaignCharacters(campaignCharacters),
+
     [campaignCharacters],
   );
 
@@ -168,8 +183,11 @@ export default function MapWorkspaceModule({
 
   const {
     loadEncounterTemplate,
+
     createNewEncounter,
+
     addMonsterToEncounter,
+
     addPlayerToEncounter,
   } = useEncounter();
 
@@ -180,6 +198,7 @@ export default function MapWorkspaceModule({
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
   const [environmentOpen, setEnvironmentOpen] = useState(false);
+  const [musicOpen, setMusicOpen] = useState(false);
 
   const [roomStates, setRoomStates] = useState<CampaignMapRoom[]>([]);
 
@@ -230,8 +249,11 @@ export default function MapWorkspaceModule({
 
     setActiveLocation({
       mapId: selectedMap.id,
+
       mapTitle: selectedMap.title,
+
       roomId: -1,
+
       roomName: selectedMap.title,
     });
   }, [selectedMap, setActiveLocation]);
@@ -245,6 +267,13 @@ export default function MapWorkspaceModule({
 
     return roomStates.find((room) => room.id === selectedRoomId) ?? null;
   }, [roomStates, selectedRoomId]);
+
+  const currentMusicCues =
+    selectedRoom?.musicCues ?? selectedMap?.musicCues ?? [];
+
+  useEffect(() => {
+    setMusicOpen(false);
+  }, [selectedMap?.id, selectedRoomId]);
 
   const environmentEffects = selectedMap?.environmentEffects ?? [];
 
@@ -339,6 +368,7 @@ export default function MapWorkspaceModule({
 
   const getResolvedPopulation = (mapMonsters?: MapMonster[]) => {
     return (mapMonsters ?? [])
+
       .map((mapMonster) => {
         const monster = getLinkedMonster(mapMonster);
 
@@ -354,6 +384,7 @@ export default function MapWorkspaceModule({
           quantity: Math.max(1, mapMonster.count ?? 1),
         };
       })
+
       .filter(
         (
           value,
@@ -392,6 +423,7 @@ export default function MapWorkspaceModule({
 
         return {
           ...mapMonster,
+
           monsterKey: `${linkedMonster.source}:${linkedMonster.id}`,
         };
       });
@@ -400,6 +432,7 @@ export default function MapWorkspaceModule({
 
     const upgradedRooms = selectedMap.rooms.map((room) => ({
       ...room,
+
       monsters: upgradeMonsters(room.monsters),
     }));
 
@@ -409,6 +442,7 @@ export default function MapWorkspaceModule({
 
     updateCampaignMap(campaignId, selectedMap.id, {
       rooms: upgradedRooms,
+
       monsters: upgradedOverviewMonsters,
     }).catch((error) => {
       console.error("Failed to upgrade map monster references:", error);
@@ -467,10 +501,15 @@ export default function MapWorkspaceModule({
     setDetailsExpanded(false);
   }, [
     selectedMap,
+
     selectedRoomId,
+
     roomStates,
+
     module.id,
+
     module.config,
+
     updateModule,
   ]);
 
@@ -492,17 +531,25 @@ export default function MapWorkspaceModule({
     if (nextMap && (nextMap.rooms?.length ?? 0) === 0) {
       setActiveLocation({
         mapId: nextMap.id,
+
         mapTitle: nextMap.title,
+
         roomId: -1,
+
         roomName: nextMap.title,
       });
     }
 
     setHoveredRoomId(null);
+
     setDetailsExpanded(false);
+
     setEnvironmentOpen(false);
+
     setLastRollResults([]);
+
     setEnvironmentError(null);
+
     setEncounterStartedMessage(null);
   };
 
@@ -527,16 +574,24 @@ export default function MapWorkspaceModule({
 
     setActiveLocation({
       mapId: selectedMap.id,
+
       mapTitle: selectedMap.title,
+
       roomId: room.id,
+
       roomName: room.name,
     });
 
     /*
+
      * Do not change detailsExpanded here.
+
      *
+
      * If the information panel is open, keep it open
+
      * and simply show the newly selected area's data.
+
      */
 
     setEncounterStartedMessage(null);
@@ -551,6 +606,7 @@ export default function MapWorkspaceModule({
       updateModule(module.id, {
         config: {
           ...module.config,
+
           selectedRoomId: null,
         },
       });
@@ -558,8 +614,11 @@ export default function MapWorkspaceModule({
 
     setActiveLocation({
       mapId: selectedMap.id,
+
       mapTitle: selectedMap.title,
+
       roomId: -1,
+
       roomName: selectedMap.title,
     });
 
@@ -568,6 +627,7 @@ export default function MapWorkspaceModule({
 
   const saveEnvironmentRooms = async (
     nextRooms: CampaignMapRoom[],
+
     previousRooms: CampaignMapRoom[],
   ) => {
     if (!selectedMap) {
@@ -597,6 +657,7 @@ export default function MapWorkspaceModule({
 
   const changeRoomEnvironmentLevel = async (
     roomId: number,
+
     direction: -1 | 1,
   ) => {
     if (!activeEffect || isEnvironmentSaving) {
@@ -626,6 +687,7 @@ export default function MapWorkspaceModule({
 
       const nextIndex = Math.max(
         0,
+
         Math.min(levels.length - 1, currentIndex + direction),
       );
 
@@ -671,10 +733,15 @@ export default function MapWorkspaceModule({
 
       results.push({
         roomId: room.id,
+
         roomName: room.name,
+
         roll,
+
         previousLevel: currentLevel,
+
         targetLevel,
+
         nextLevel,
       });
 
@@ -716,16 +783,23 @@ export default function MapWorkspaceModule({
 
       const nextLevel = moveTowardsTarget(
         activeEffect,
+
         currentLevel,
+
         targetLevel,
       );
 
       results.push({
         roomId: room.id,
+
         roomName: room.name,
+
         roll,
+
         previousLevel: currentLevel,
+
         targetLevel,
+
         nextLevel,
       });
 
@@ -789,8 +863,11 @@ export default function MapWorkspaceModule({
 
       setActiveLocation({
         mapId: selectedMap.id,
+
         mapTitle: selectedMap.title,
+
         roomId: selectedRoom.id,
+
         roomName: selectedRoom.name,
       });
 
@@ -830,6 +907,7 @@ export default function MapWorkspaceModule({
     population.forEach(({ monster, quantity }) => {
       for (let index = 0; index < quantity; index += 1) {
         addMonsterToEncounter(monster);
+
         totalMonsters += 1;
       }
     });
@@ -837,15 +915,21 @@ export default function MapWorkspaceModule({
     if (selectedRoom) {
       setActiveLocation({
         mapId: selectedMap.id,
+
         mapTitle: selectedMap.title,
+
         roomId: selectedRoom.id,
+
         roomName: selectedRoom.name,
       });
     } else {
       setActiveLocation({
         mapId: selectedMap.id,
+
         mapTitle: selectedMap.title,
+
         roomId: -1,
+
         roomName: selectedMap.title,
       });
     }
@@ -904,6 +988,7 @@ export default function MapWorkspaceModule({
 
   const currentMonsterCount = currentPopulation.reduce(
     (total, entry) => total + entry.quantity,
+
     0,
   );
 
@@ -959,6 +1044,7 @@ export default function MapWorkspaceModule({
 
                   if (value === "") {
                     showOverview();
+
                     return;
                   }
 
@@ -973,8 +1059,11 @@ export default function MapWorkspaceModule({
                 </option>
 
                 {roomStates
+
                   .slice()
+
                   .sort((a, b) => a.id - b.id)
+
                   .map((room) => (
                     <option
                       key={room.id}
@@ -991,12 +1080,45 @@ export default function MapWorkspaceModule({
           </>
         ) : null}
 
+        {/* Music */}
+        {currentMusicCues.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setMusicOpen((current) => !current);
+              setEnvironmentOpen(false);
+            }}
+            title={`${currentMusicCues.length} music cue${
+              currentMusicCues.length === 1 ? "" : "s"
+            }`}
+            aria-label="Music cues"
+            className={`workspace-no-drag flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2 transition ${
+              musicOpen
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <i className="fa-solid fa-music text-[10px]" />
+            <span className="hidden text-[10px] font-semibold xl:inline">
+              Music
+            </span>
+            {currentMusicCues.length > 1 ? (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded bg-white/10 px-1 text-[9px] font-bold">
+                {currentMusicCues.length}
+              </span>
+            ) : null}
+          </button>
+        ) : null}
+
         {/* Environment */}
 
         {activeEffect ? (
           <button
             type="button"
-            onClick={() => setEnvironmentOpen((current) => !current)}
+            onClick={() => {
+              setEnvironmentOpen((current) => !current);
+              setMusicOpen(false);
+            }}
             title={`${activeEffect.name} controls`}
             aria-label={`${activeEffect.name} controls`}
             className={`workspace-no-drag flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2 transition ${
@@ -1043,6 +1165,65 @@ export default function MapWorkspaceModule({
               <i className="fa-solid fa-xmark text-xs" />
             </button>
           </>
+        ) : null}
+
+        {/* Music popup */}
+        {musicOpen && currentMusicCues.length > 0 ? (
+          <div className="workspace-no-drag absolute right-2 top-9 z-50 flex w-[min(390px,calc(100%-16px))] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl">
+            <div className="flex items-center gap-3 border-b border-white/10 p-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-300">
+                <i className="fa-solid fa-music text-xs" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
+                  Music
+                </div>
+                <div className="truncate text-sm font-bold text-white">
+                  {selectedRoom?.name ?? selectedMap.title}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMusicOpen(false)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/10 hover:text-white"
+                aria-label="Close music cues"
+                title="Close"
+              >
+                <i className="fa-solid fa-xmark" />
+              </button>
+            </div>
+
+            <div className="workspace-scrollbar max-h-[min(420px,65vh)] overflow-y-auto p-2">
+              <div className="space-y-1.5">
+                {currentMusicCues.map((cue) => (
+                  <a
+                    key={cue.id}
+                    href={cue.spotifyUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={() => setMusicOpen(false)}
+                    className="group flex items-center gap-2.5 rounded-lg border border-white/5 bg-black/15 px-2.5 py-2.5 transition hover:border-emerald-500/20 hover:bg-emerald-500/[0.07]"
+                    title={`Open ${cue.name || "music cue"} in Spotify`}
+                  >
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-300 transition group-hover:bg-emerald-500/15">
+                      <i className="fa-brands fa-spotify text-sm" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-xs font-semibold text-zinc-200 group-hover:text-white">
+                        {cue.name || "Spotify music"}
+                      </div>
+                      <div className="mt-0.5 truncate text-[10px] text-zinc-500">
+                        Open in Spotify
+                      </div>
+                    </div>
+                    <i className="fa-solid fa-arrow-up-right-from-square shrink-0 text-[10px] text-zinc-600 transition group-hover:text-emerald-300" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          </div>
         ) : null}
 
         {/* Environment popup */}
@@ -1198,13 +1379,17 @@ export default function MapWorkspaceModule({
 
               <div className="space-y-1">
                 {roomStates
+
                   .slice()
+
                   .sort((a, b) => a.id - b.id)
+
                   .map((room) => {
                     const levels = getSortedLevels(activeEffect);
 
                     const currentValue = getRoomEnvironmentLevel(
                       room,
+
                       activeEffect,
                     );
 
@@ -1237,6 +1422,7 @@ export default function MapWorkspaceModule({
                           <div className="mt-0.5 truncate text-[10px] font-medium text-emerald-300/80">
                             {getEnvironmentLevelName(
                               activeEffect,
+
                               currentValue,
                             )}
                           </div>
@@ -1303,11 +1489,15 @@ export default function MapWorkspaceModule({
                           <div className="mt-1 text-[10px] text-zinc-400">
                             {getEnvironmentLevelName(
                               activeEffect,
+
                               result.previousLevel,
                             )}
+
                             {" → "}
+
                             {getEnvironmentLevelName(
                               activeEffect,
+
                               result.nextLevel,
                             )}
 
@@ -1319,6 +1509,7 @@ export default function MapWorkspaceModule({
                               Target:{" "}
                               {getEnvironmentLevelName(
                                 activeEffect,
+
                                 result.targetLevel,
                               )}
                             </div>
@@ -1335,6 +1526,7 @@ export default function MapWorkspaceModule({
       </div>
 
       {/* Map / information view */}
+
       <div className="workspace-no-drag relative min-h-0 flex-1 overflow-hidden bg-zinc-950">
         {!detailsExpanded ? (
           <>
@@ -1354,6 +1546,7 @@ export default function MapWorkspaceModule({
 
                 return getEnvironmentLevelName(
                   activeEffect,
+
                   getRoomEnvironmentLevel(room, activeEffect),
                 );
               }}
@@ -1447,6 +1640,31 @@ export default function MapWorkspaceModule({
                         html={selectedRoom.descriptionHtml}
                         legacyParagraphs={selectedRoom.description}
                       />
+                    </section>
+                  ) : null}
+
+                  {selectedRoom.musicCues?.length ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Music
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedRoom.musicCues.map((cue) => (
+                          <a
+                            key={cue.id}
+                            href={cue.spotifyUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex min-w-0 items-center gap-2 rounded-lg border border-emerald-500/10 bg-emerald-500/[0.04] px-2.5 py-2 text-xs font-semibold text-emerald-200 transition hover:border-emerald-500/25 hover:bg-emerald-500/[0.09]"
+                          >
+                            <i className="fa-brands fa-spotify shrink-0" />
+                            <span className="truncate">
+                              {cue.name || "Spotify music"}
+                            </span>
+                            <i className="fa-solid fa-arrow-up-right-from-square shrink-0 text-[9px] text-emerald-300/60" />
+                          </a>
+                        ))}
+                      </div>
                     </section>
                   ) : null}
 
@@ -1583,6 +1801,7 @@ export default function MapWorkspaceModule({
                               {(treasure.count ?? 1) > 1
                                 ? `${treasure.count}× `
                                 : ""}
+
                               {treasure.name}
                             </span>
                           </li>
@@ -1678,12 +1897,38 @@ export default function MapWorkspaceModule({
                     </p>
                   )}
 
+                  {selectedMap.musicCues?.length ? (
+                    <section>
+                      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                        Music
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedMap.musicCues.map((cue) => (
+                          <a
+                            key={cue.id}
+                            href={cue.spotifyUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex min-w-0 items-center gap-2 rounded-lg border border-emerald-500/10 bg-emerald-500/[0.04] px-2.5 py-2 text-xs font-semibold text-emerald-200 transition hover:border-emerald-500/25 hover:bg-emerald-500/[0.09]"
+                          >
+                            <i className="fa-brands fa-spotify shrink-0" />
+                            <span className="truncate">
+                              {cue.name || "Spotify music"}
+                            </span>
+                            <i className="fa-solid fa-arrow-up-right-from-square shrink-0 text-[9px] text-emerald-300/60" />
+                          </a>
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
+
                   {selectedMap.monsters?.length ? (
                     <section>
                       <div className="mb-1.5 flex items-center justify-between gap-2">
                         <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                           Creatures
                         </div>
+
                         <div className="text-[10px] text-zinc-500">
                           Click to inspect
                         </div>
@@ -1702,8 +1947,10 @@ export default function MapWorkspaceModule({
                                 <div className="flex items-center gap-2">
                                   <div className="min-w-0 flex-1 text-xs font-semibold text-zinc-300">
                                     {monster.count ? `${monster.count}× ` : ""}
+
                                     {monster.name}
                                   </div>
+
                                   <i className="fa-solid fa-link-slash shrink-0 text-[10px] text-zinc-600" />
                                 </div>
 
@@ -1739,8 +1986,10 @@ export default function MapWorkspaceModule({
                               <div className="min-w-0 flex-1">
                                 <div className="truncate text-xs font-semibold text-amber-200">
                                   {monster.count ? `${monster.count}× ` : ""}
+
                                   {monster.name}
                                 </div>
+
                                 <div className="mt-0.5 text-[10px] text-zinc-500">
                                   CR {linkedMonster.challengeRating} · AC{" "}
                                   {linkedMonster.armorClass} · HP{" "}
@@ -1774,8 +2023,11 @@ export default function MapWorkspaceModule({
 
                       <div className="grid gap-1.5 sm:grid-cols-2">
                         {roomStates
+
                           .slice()
+
                           .sort((a, b) => a.id - b.id)
+
                           .map((room) => {
                             const environmentName = activeEffect
                               ? getEnvironmentLevelName(

@@ -34,6 +34,7 @@ import EditCharacter from "./pages/EditCharacter";
 import DMWorkspacePage from "./pages/DMWorkspacePage";
 
 import CampaignGmOutlet from "./features/campaigns/components/CampaignGmOutlet";
+import SpotifyCallbackPage from "./features/spotify/SpotifyCallbackPage";
 
 // Context
 import { EncounterProvider } from "./context/EncounterContext";
@@ -80,6 +81,18 @@ type AppRoutesProps = {
 };
 
 function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
+  /*
+   * Spotify OAuth must be able to finish before Lorebound's own auth-route
+   * fallback runs. The PKCE verifier is stored in sessionStorage.
+   */
+  if (window.location.pathname === "/spotify/callback") {
+    return (
+      <Routes>
+        <Route path="/spotify/callback" element={<SpotifyCallbackPage />} />
+      </Routes>
+    );
+  }
+
   if (!user) {
     return (
       <Routes>
@@ -227,19 +240,15 @@ function AppShell({
 }: AppShellProps) {
   const location = useLocation();
 
-  /*
-   * Workspace gets its own compact application shell.
-   *
-   * The ordinary Lorebound header is intentionally
-   * omitted here to maximize usable DM screen space.
-   */
   const isWorkspaceRoute = /^\/campaigns\/[^/]+\/workspace\/?$/.test(
     location.pathname,
   );
 
+  const isSpotifyCallback = location.pathname === "/spotify/callback";
+
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      {!isWorkspaceRoute ? (
+      {!isWorkspaceRoute && !isSpotifyCallback ? (
         <Header onOpenLogin={openLoginModal} onOpenSignup={openSignupModal} />
       ) : null}
 
@@ -251,15 +260,17 @@ function AppShell({
         />
       </main>
 
-      <AuthModal
-        open={authModalOpen}
-        title={authModalTitle}
-        mode={authMode}
-        onClose={() => setAuthModalOpen(false)}
-        onSwitchMode={(mode) => setAuthMode(mode)}
-      >
-        <Login mode={authMode} onSuccess={() => setAuthModalOpen(false)} />
-      </AuthModal>
+      {!isSpotifyCallback ? (
+        <AuthModal
+          open={authModalOpen}
+          title={authModalTitle}
+          mode={authMode}
+          onClose={() => setAuthModalOpen(false)}
+          onSwitchMode={(mode) => setAuthMode(mode)}
+        >
+          <Login mode={authMode} onSuccess={() => setAuthModalOpen(false)} />
+        </AuthModal>
+      ) : null}
     </div>
   );
 }
@@ -287,7 +298,10 @@ function App() {
     setAuthModalOpen(true);
   };
 
-  if (loading) {
+  /*
+   * Do not block the Spotify callback on Firebase auth restoration.
+   */
+  if (loading && window.location.pathname !== "/spotify/callback") {
     return (
       <div className="min-h-screen bg-zinc-950 p-6 text-white">Loading...</div>
     );

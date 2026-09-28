@@ -6,7 +6,8 @@ export type WorkspaceModuleType =
   | "character"
   | "partyControl"
   | "randomEncounter"
-  | "notes";
+  | "notes"
+  | "music";
 
 export type MonsterModuleMode =
   | "pinned"

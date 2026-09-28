@@ -14,6 +14,8 @@ import PartyControlWorkspaceModule from "./modules/PartyControlWorkspaceModule";
 
 import MapWorkspaceModule from "./modules/MapWorkspaceModule";
 
+import MusicWorkspaceModule from "./modules/MusicWorkspaceModule";
+
 import RandomEncounterWorkspaceModule from "./modules/RandomEncounterWorkspaceModule";
 
 import {
@@ -258,5 +260,30 @@ export const MODULE_REGISTRY: Record<
 
     component:
       NotesWorkspaceModule,
+  },
+
+  music: {
+    type: "music",
+
+    title: "Music",
+
+    description:
+      "Control music cues for the current map and location.",
+
+    icon:
+      "fa-solid fa-music",
+
+    defaultW: 4,
+
+    defaultH: 7,
+
+    minW: 3,
+
+    minH: 4,
+
+    showHeader: false,
+
+    component:
+      MusicWorkspaceModule,
   },
 };
