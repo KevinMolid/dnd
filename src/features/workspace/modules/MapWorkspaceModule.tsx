@@ -242,8 +242,20 @@ export default function MapWorkspaceModule({
     setRoomStates(selectedMap.rooms ?? []);
   }, [selectedMap]);
 
+  const selectedRoomId = module.config?.selectedRoomId ?? null;
+
   useEffect(() => {
-    if (!selectedMap || (selectedMap.rooms?.length ?? 0) > 0) {
+    if (!selectedMap) {
+      return;
+    }
+
+    /*
+     * A map overview is a valid active location.
+     *
+     * Do not overwrite a selected area here; this effect should only
+     * establish the map overview when no area is selected.
+     */
+    if (selectedRoomId !== null) {
       return;
     }
 
@@ -256,9 +268,7 @@ export default function MapWorkspaceModule({
 
       roomName: selectedMap.title,
     });
-  }, [selectedMap, setActiveLocation]);
-
-  const selectedRoomId = module.config?.selectedRoomId ?? null;
+  }, [selectedMap, selectedRoomId, setActiveLocation]);
 
   const selectedRoom = useMemo(() => {
     if (selectedRoomId === null) {
@@ -528,7 +538,13 @@ export default function MapWorkspaceModule({
       },
     });
 
-    if (nextMap && (nextMap.rooms?.length ?? 0) === 0) {
+    /*
+     * Selecting a map always makes its overview the active location.
+     *
+     * Areas are more specific locations within that map and will replace
+     * this when the DM selects one.
+     */
+    if (nextMap) {
       setActiveLocation({
         mapId: nextMap.id,
 
