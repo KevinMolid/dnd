@@ -232,6 +232,64 @@ export default function MapWorkspaceModule({
     return maps[0];
   }, [maps, module.config?.mapId]);
 
+  const hierarchicalMaps = useMemo(() => {
+    const mapsByParent = new Map<string | null, typeof maps>();
+
+    for (const map of maps) {
+      const parentId = map.parentMapId ?? null;
+      const siblings = mapsByParent.get(parentId) ?? [];
+
+      siblings.push(map);
+      mapsByParent.set(parentId, siblings);
+    }
+
+    // Respect the sibling ordering already used by the Maps page.
+    for (const siblings of mapsByParent.values()) {
+      siblings.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }
+
+    const result: Array<{
+      map: (typeof maps)[number];
+      depth: number;
+    }> = [];
+
+    const visited = new Set<string>();
+
+    const addMapAndChildren = (map: (typeof maps)[number], depth: number) => {
+      // Protect against accidentally corrupted/circular parent relationships.
+      if (visited.has(map.id)) {
+        return;
+      }
+
+      visited.add(map.id);
+      result.push({ map, depth });
+
+      const children = mapsByParent.get(map.id) ?? [];
+
+      for (const child of children) {
+        addMapAndChildren(child, depth + 1);
+      }
+    };
+
+    const topLevelMaps = mapsByParent.get(null) ?? [];
+
+    for (const map of topLevelMaps) {
+      addMapAndChildren(map, 0);
+    }
+
+    /*
+     * Legacy/orphaned maps whose parent no longer exists should still
+     * remain selectable rather than disappearing from the dropdown.
+     */
+    for (const map of maps) {
+      if (!visited.has(map.id)) {
+        addMapAndChildren(map, 0);
+      }
+    }
+
+    return result;
+  }, [maps]);
+
   useEffect(() => {
     if (!selectedMap) {
       setRoomStates([]);
@@ -1032,13 +1090,13 @@ export default function MapWorkspaceModule({
             aria-label="Select map"
             className="workspace-no-drag h-8 w-full min-w-0 appearance-none truncate border-0 bg-transparent py-0.5 pr-7 text-xs font-semibold text-zinc-100 outline-none transition hover:text-white"
           >
-            {maps.map((map) => (
+            {hierarchicalMaps.map(({ map, depth }) => (
               <option
                 key={map.id}
                 value={map.id}
                 className="bg-zinc-900 text-zinc-100"
               >
-                {map.title}
+                {`${"\u00A0".repeat(depth * 6)}${map.title}`}
               </option>
             ))}
           </select>
