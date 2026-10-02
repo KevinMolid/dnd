@@ -1045,34 +1045,67 @@ function JournalEntryCard({
         </div>
 
         <div className="col-start-3 row-span-2 hidden shrink-0 sm:block">
-          {entry.createdByName ? (
-            <div className="flex items-center justify-end gap-2">
-              <Avatar
-                name={entry.createdByName}
-                src={authorImageUrl}
-                className="h-7 w-7 shrink-0 rounded-full"
-              />
-              <span className="text-xs font-semibold text-zinc-200">
-                {entry.createdByName}
-              </span>
-            </div>
-          ) : null}
+          <div className="flex items-center justify-end gap-2">
+            {expanded && isGm ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onEdit();
+                }}
+                className={compactButton}
+              >
+                <i className="fa-solid fa-pen mr-1.5 text-[9px]" />
+                Edit
+              </button>
+            ) : null}
+
+            {entry.createdByName ? (
+              <div className="flex items-center gap-2">
+                <Avatar
+                  name={entry.createdByName}
+                  src={authorImageUrl}
+                  className="h-7 w-7 shrink-0 rounded-full"
+                />
+
+                <span className="text-xs font-semibold text-zinc-200">
+                  {entry.createdByName}
+                </span>
+              </div>
+            ) : null}
+          </div>
         </div>
       </button>
 
       {expanded ? (
         <div className="grid grid-cols-[20px_minmax(0,1fr)] gap-x-3 border-t border-white/[0.06] px-3 pb-4 pt-4 sm:grid-cols-[20px_minmax(0,1fr)_auto] sm:px-4">
           <div className="col-start-2 min-w-0 sm:col-end-4">
-            <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 sm:hidden">
+            <div className="mb-4 flex items-center justify-between gap-3 sm:hidden">
               {entry.createdByName ? (
-                <span className="flex items-center gap-2 font-semibold text-zinc-200">
+                <span className="flex min-w-0 items-center gap-2 font-semibold text-zinc-200">
                   <Avatar
                     name={entry.createdByName}
                     src={authorImageUrl}
                     className="h-6 w-6 shrink-0 rounded-full"
                   />
-                  {entry.createdByName}
+
+                  <span className="truncate text-xs">
+                    {entry.createdByName}
+                  </span>
                 </span>
+              ) : (
+                <span />
+              )}
+
+              {isGm ? (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  className={compactButton}
+                >
+                  <i className="fa-solid fa-pen mr-1.5 text-[9px]" />
+                  Edit
+                </button>
               ) : null}
             </div>
 
