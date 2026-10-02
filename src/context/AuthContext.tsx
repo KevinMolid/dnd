@@ -1,14 +1,16 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
-  ReactNode,
-  useCallback,
+  type ReactNode,
 } from "react";
-import { User, onAuthStateChanged, signOut } from "firebase/auth";
-import { doc, getDoc, Timestamp } from "firebase/firestore";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { doc, getDoc, type Timestamp } from "firebase/firestore";
+
 import { auth, db } from "../firebase";
+import { ensureUserProfileDocument } from "../auth";
 
 type AppUser = {
   uid: string;
@@ -39,8 +41,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchAppUser = useCallback(async (uid: string) => {
-    const snap = await getDoc(doc(db, "users", uid));
+  const fetchAppUser = useCallback(async (firebaseUser: User) => {
+    /*
+     * Google and other federated providers create the Firebase Auth user
+     * automatically. Ensure Lorebound's /users/{uid} document also exists
+     * before trying to read it.
+     */
+    await ensureUserProfileDocument(firebaseUser);
+
+    const snap = await getDoc(doc(db, "users", firebaseUser.uid));
 
     if (!snap.exists()) {
       setAppUser(null);
@@ -50,9 +59,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const data = snap.data();
 
     setAppUser({
-      uid: data.uid ?? uid,
-      email: data.email ?? null,
-      displayName: data.displayName ?? "",
+      uid: data.uid ?? firebaseUser.uid,
+      email: data.email ?? firebaseUser.email ?? null,
+      displayName:
+        data.displayName ??
+        firebaseUser.displayName ??
+        firebaseUser.email?.split("@")[0] ??
+        "",
       createdAt: data.createdAt,
       imageUrl: data.imageUrl,
     });
@@ -64,7 +77,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    await fetchAppUser(auth.currentUser.uid);
+    await fetchAppUser(auth.currentUser);
   }, [fetchAppUser]);
 
   useEffect(() => {
@@ -72,13 +85,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setUser(firebaseUser);
 
-      if (firebaseUser) {
-        await fetchAppUser(firebaseUser.uid);
-      } else {
+      try {
+        if (firebaseUser) {
+          await fetchAppUser(firebaseUser);
+        } else {
+          setAppUser(null);
+        }
+      } catch (error) {
+        console.error("Failed to load authenticated user profile:", error);
         setAppUser(null);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     });
 
     return () => unsub();
