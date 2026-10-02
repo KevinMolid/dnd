@@ -480,8 +480,18 @@ const MapViewer = ({
         return;
       }
 
-      const top = viewer.getBoundingClientRect().top;
+      // Mobile/tablet should use normal document flow.
+      if (window.innerWidth < 1024) {
+        setViewerHeight(null);
 
+        window.requestAnimationFrame(() => {
+          mapCanvasRef.current?.fitToViewport();
+        });
+
+        return;
+      }
+
+      const top = viewer.getBoundingClientRect().top;
       const availableHeight = Math.max(420, window.innerHeight - top - 16);
 
       setViewerHeight(availableHeight);
@@ -680,12 +690,12 @@ const MapViewer = ({
   return (
     <div
       ref={viewerRef}
-      className="w-full overflow-hidden bg-zinc-950 text-white"
+      className="w-full bg-zinc-950 text-white lg:overflow-hidden"
       style={{
-        height: viewerHeight ? `${viewerHeight}px` : "calc(100dvh - 1rem)",
+        height: viewerHeight ? `${viewerHeight}px` : undefined,
       }}
     >
-      <div className="flex h-full flex-col overflow-hidden bg-zinc-950">
+      <div className="flex flex-col bg-zinc-950 lg:h-full lg:overflow-hidden">
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-white/[0.06] px-3 py-2">
           <div className="workspace-scrollbar flex min-w-0 items-center gap-1 overflow-x-auto">
             <button
@@ -730,14 +740,14 @@ const MapViewer = ({
         </div>
 
         <div
-          className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row"
+          className="flex flex-col lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden"
           style={
             {
               "--sidebar-width": `${sidebarWidth}px`,
             } as CSSProperties
           }
         >
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1">
             {roomStates.length > 0 ? (
               <div className="workspace-scrollbar shrink-0 overflow-x-auto border-b border-white/[0.06] px-3 py-2">
                 <div className="flex min-w-max items-center gap-1.5">
@@ -775,7 +785,7 @@ const MapViewer = ({
               </div>
             ) : null}
 
-            <div className="flex min-h-0 flex-1">
+            <div className="flex w-full lg:min-h-0 lg:flex-1">
               <MapCanvas
                 ref={mapCanvasRef}
                 map={mapData}
@@ -794,7 +804,7 @@ const MapViewer = ({
 
                   return getEnvironmentLevelName(activeEffect, level);
                 }}
-                className="min-h-[420px] flex-1 lg:h-full lg:min-h-0"
+                className="h-[55dvh] min-h-[320px] max-h-[600px] w-full lg:h-full lg:min-h-0 lg:max-h-none lg:flex-1"
               />
             </div>
           </div>
@@ -811,7 +821,8 @@ const MapViewer = ({
 
           {/* Information panel */}
 
-          <aside className="workspace-scrollbar min-h-0 w-full shrink-0 overflow-y-auto border-t border-white/10 bg-zinc-950 p-4 lg:w-[var(--sidebar-width)] lg:border-t-0">
+          <aside className="w-full border-t border-white/10 bg-zinc-950 p-4 workspace-scrollbar lg:min-h-0 lg:w-[var(--sidebar-width)] lg:shrink-0 lg:overflow-y-auto lg:border-t-0">
+            {" "}
             <div className="space-y-5">
               {/* Overview / selected area */}
 
