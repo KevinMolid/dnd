@@ -161,182 +161,376 @@ export default function CreateHandoutModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-2 backdrop-blur-[2px] sm:p-4"
       onClick={handleClose}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl border border-white/10 bg-zinc-900 shadow-2xl"
+        className="
+        flex
+        max-h-[calc(100dvh-1rem)]
+        w-full
+        max-w-2xl
+        flex-col
+        overflow-hidden
+        rounded-xl
+        border
+        border-white/[0.08]
+        bg-zinc-950
+        shadow-2xl
+        sm:max-h-[calc(100dvh-2rem)]
+      "
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
-          <h2 className="text-lg font-semibold text-white">
-            {isEditing ? "Edit handout" : "Create handout"}
-          </h2>
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between border-b border-white/[0.06] px-4 py-3 sm:px-5">
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-white">
+              {isEditing ? "Edit handout" : "Create handout"}
+            </h2>
+
+            <p className="mt-0.5 text-xs text-zinc-500">
+              {isEditing
+                ? "Update the handout content and player visibility."
+                : "Create information that can be shared with your players."}
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={handleClose}
             disabled={saving}
-            className="rounded-md px-3 py-1 text-sm text-zinc-300 hover:bg-white/5 hover:text-white disabled:opacity-50"
+            className="
+            ml-4
+            inline-flex
+            h-8
+            w-8
+            shrink-0
+            items-center
+            justify-center
+            rounded-lg
+            border
+            border-white/[0.08]
+            bg-white/[0.03]
+            text-zinc-400
+            transition
+            hover:bg-white/[0.07]
+            hover:text-white
+            disabled:cursor-not-allowed
+            disabled:opacity-50
+          "
+            aria-label="Close"
           >
-            Close
+            <i className="fa-solid fa-xmark text-xs" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-6">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-200">
-              Title
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="The Goblin Ambush"
-              className="w-full rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-zinc-400"
-              disabled={saving}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          {/* Scrollable content */}
+          <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
+            <div className="space-y-5 p-4 sm:p-5">
+              {/* Title */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-zinc-300">
+                  Title
+                </label>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-200">
-              Content
-            </label>
-            <textarea
-              value={content}
-              spellCheck={false}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Write the handout text here..."
-              rows={10}
-              className="w-full resize-y rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-zinc-400"
-              disabled={saving}
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-zinc-200">
-              Image URL
-            </label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://example.com/image.jpg"
-              className="w-full rounded-xl border border-white/10 bg-zinc-800 px-4 py-3 text-white outline-none placeholder:text-zinc-500 focus:border-zinc-400"
-              disabled={saving}
-            />
-          </div>
-
-          <div className="rounded-2xl border border-white/10 bg-zinc-800/60 p-4">
-            <label className="mb-3 block text-sm font-medium text-zinc-200">
-              Player visibility
-            </label>
-
-            <div className="space-y-2">
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 px-3 py-3 hover:bg-white/5">
                 <input
-                  type="radio"
-                  name="visibility"
-                  value="hidden"
-                  checked={visibility === "hidden"}
-                  onChange={() => setVisibility("hidden")}
-                  className="mt-1"
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="The Goblin Ambush"
                   disabled={saving}
+                  className="
+                  h-10
+                  w-full
+                  rounded-lg
+                  border
+                  border-white/[0.08]
+                  bg-white/[0.035]
+                  px-3
+                  text-sm
+                  text-white
+                  outline-none
+                  transition
+                  placeholder:text-zinc-600
+                  hover:border-white/[0.12]
+                  focus:border-cyan-400/40
+                  focus:bg-white/[0.05]
+                  focus:ring-1
+                  focus:ring-cyan-400/10
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
                 />
-                <div>
-                  <div className="text-sm font-medium text-white">Hidden</div>
-                  <div className="text-xs text-zinc-400">
-                    Players cannot see this handout yet.
-                  </div>
-                </div>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 px-3 py-3 hover:bg-white/5">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value="allPlayers"
-                  checked={visibility === "allPlayers"}
-                  onChange={() => setVisibility("allPlayers")}
-                  className="mt-1"
-                  disabled={saving}
-                />
-                <div>
-                  <div className="text-sm font-medium text-white">
-                    Show to all players
-                  </div>
-                  <div className="text-xs text-zinc-400">
-                    Every player in the campaign can see this handout.
-                  </div>
-                </div>
-              </label>
-
-              <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 px-3 py-3 hover:bg-white/5">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value="selectedPlayers"
-                  checked={visibility === "selectedPlayers"}
-                  onChange={() => setVisibility("selectedPlayers")}
-                  className="mt-1"
-                  disabled={saving}
-                />
-                <div>
-                  <div className="text-sm font-medium text-white">
-                    Show to selected players
-                  </div>
-                  <div className="text-xs text-zinc-400">
-                    Only chosen players can see this handout.
-                  </div>
-                </div>
-              </label>
-            </div>
-
-            {visibility === "selectedPlayers" ? (
-              <div className="mt-4 rounded-xl border border-white/10 bg-zinc-900/70 p-3">
-                <div className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">
-                  Select players
-                </div>
-
-                {sortedPlayers.length === 0 ? (
-                  <div className="text-sm text-zinc-500">
-                    No player members found.
-                  </div>
-                ) : (
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    {sortedPlayers.map((player) => (
-                      <label
-                        key={player.uid}
-                        className="flex cursor-pointer items-center gap-3 rounded-lg border border-white/10 px-3 py-2 hover:bg-white/5"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={visibleToPlayerUids.includes(player.uid)}
-                          onChange={() => togglePlayer(player.uid)}
-                          disabled={saving}
-                        />
-                        <span className="text-sm text-zinc-200">
-                          {player.displayName}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                )}
               </div>
-            ) : null}
+
+              {/* Content */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-zinc-300">
+                  Content
+                </label>
+
+                <textarea
+                  value={content}
+                  spellCheck={false}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Write the handout text here..."
+                  rows={9}
+                  disabled={saving}
+                  className="
+                  min-h-44
+                  w-full
+                  resize-y
+                  rounded-lg
+                  border
+                  border-white/[0.08]
+                  bg-white/[0.035]
+                  px-3
+                  py-2.5
+                  text-sm
+                  leading-6
+                  text-white
+                  outline-none
+                  transition
+                  placeholder:text-zinc-600
+                  hover:border-white/[0.12]
+                  focus:border-cyan-400/40
+                  focus:bg-white/[0.05]
+                  focus:ring-1
+                  focus:ring-cyan-400/10
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+                />
+              </div>
+
+              {/* Image URL */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-zinc-300">
+                  Image URL
+                </label>
+
+                <input
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  disabled={saving}
+                  className="
+                  h-10
+                  w-full
+                  rounded-lg
+                  border
+                  border-white/[0.08]
+                  bg-white/[0.035]
+                  px-3
+                  text-sm
+                  text-white
+                  outline-none
+                  transition
+                  placeholder:text-zinc-600
+                  hover:border-white/[0.12]
+                  focus:border-cyan-400/40
+                  focus:bg-white/[0.05]
+                  focus:ring-1
+                  focus:ring-cyan-400/10
+                  disabled:cursor-not-allowed
+                  disabled:opacity-50
+                "
+                />
+              </div>
+
+              {/* Player visibility */}
+              <section className="overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.02]">
+                <div className="border-b border-white/[0.06] px-4 py-3">
+                  <div className="text-sm font-semibold text-zinc-200">
+                    Player visibility
+                  </div>
+
+                  <div className="mt-0.5 text-xs text-zinc-500">
+                    Choose who can see this handout.
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 p-2">
+                  <label
+                    className={`
+                    flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition
+                    ${
+                      visibility === "hidden"
+                        ? "border-cyan-400/20 bg-cyan-400/[0.06]"
+                        : "border-transparent hover:border-white/[0.06] hover:bg-white/[0.035]"
+                    }
+                  `}
+                  >
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="hidden"
+                      checked={visibility === "hidden"}
+                      onChange={() => setVisibility("hidden")}
+                      disabled={saving}
+                      className="mt-0.5 accent-cyan-500"
+                    />
+
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-white">
+                        Hidden
+                      </div>
+
+                      <div className="mt-0.5 text-xs leading-5 text-zinc-500">
+                        Players cannot see this handout yet.
+                      </div>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`
+                    flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition
+                    ${
+                      visibility === "allPlayers"
+                        ? "border-cyan-400/20 bg-cyan-400/[0.06]"
+                        : "border-transparent hover:border-white/[0.06] hover:bg-white/[0.035]"
+                    }
+                  `}
+                  >
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="allPlayers"
+                      checked={visibility === "allPlayers"}
+                      onChange={() => setVisibility("allPlayers")}
+                      disabled={saving}
+                      className="mt-0.5 accent-cyan-500"
+                    />
+
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-white">
+                        Show to all players
+                      </div>
+
+                      <div className="mt-0.5 text-xs leading-5 text-zinc-500">
+                        Every player in the campaign can see this handout.
+                      </div>
+                    </div>
+                  </label>
+
+                  <label
+                    className={`
+                    flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition
+                    ${
+                      visibility === "selectedPlayers"
+                        ? "border-cyan-400/20 bg-cyan-400/[0.06]"
+                        : "border-transparent hover:border-white/[0.06] hover:bg-white/[0.035]"
+                    }
+                  `}
+                  >
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="selectedPlayers"
+                      checked={visibility === "selectedPlayers"}
+                      onChange={() => setVisibility("selectedPlayers")}
+                      disabled={saving}
+                      className="mt-0.5 accent-cyan-500"
+                    />
+
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-white">
+                        Show to selected players
+                      </div>
+
+                      <div className="mt-0.5 text-xs leading-5 text-zinc-500">
+                        Only chosen players can see this handout.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {visibility === "selectedPlayers" ? (
+                  <div className="border-t border-white/[0.06] p-3">
+                    <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                      Select players
+                    </div>
+
+                    {sortedPlayers.length === 0 ? (
+                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.025] px-3 py-3 text-sm text-zinc-500">
+                        No player members found.
+                      </div>
+                    ) : (
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {sortedPlayers.map((player) => {
+                          const selected = visibleToPlayerUids.includes(
+                            player.uid,
+                          );
+
+                          return (
+                            <label
+                              key={player.uid}
+                              className={`
+                              flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 transition
+                              ${
+                                selected
+                                  ? "border-cyan-400/20 bg-cyan-400/[0.06]"
+                                  : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05]"
+                              }
+                            `}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => togglePlayer(player.uid)}
+                                disabled={saving}
+                                className="accent-cyan-500"
+                              />
+
+                              <span className="truncate text-sm text-zinc-200">
+                                {player.displayName}
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </section>
+
+              {error ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-red-500/20 bg-red-500/[0.08] px-3 py-2.5 text-sm text-red-300">
+                  <i className="fa-solid fa-circle-exclamation mt-0.5 text-xs" />
+
+                  <span>{error}</span>
+                </div>
+              ) : null}
+            </div>
           </div>
 
-          {error ? (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-              {error}
-            </div>
-          ) : null}
-
-          <div className="flex justify-end gap-3 pt-2">
+          {/* Footer */}
+          <div className="flex shrink-0 items-center justify-end gap-2 border-t border-white/[0.06] bg-zinc-950 px-4 py-3 sm:px-5">
             <button
               type="button"
               onClick={handleClose}
               disabled={saving}
-              className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-white/5 disabled:opacity-50"
+              className="
+              inline-flex
+              h-9
+              items-center
+              justify-center
+              rounded-lg
+              border
+              border-white/[0.08]
+              bg-white/[0.035]
+              px-4
+              text-xs
+              font-semibold
+              text-zinc-300
+              transition
+              hover:bg-white/[0.07]
+              hover:text-white
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+            "
             >
               Cancel
             </button>
@@ -344,8 +538,36 @@ export default function CreateHandoutModal({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-zinc-200 disabled:opacity-50"
+              className="
+              inline-flex
+              h-9
+              items-center
+              justify-center
+              gap-2
+              rounded-lg
+              border
+              border-cyan-400/20
+              bg-cyan-600
+              px-4
+              text-xs
+              font-semibold
+              text-white
+              transition
+              hover:bg-cyan-500
+              disabled:cursor-not-allowed
+              disabled:opacity-50
+            "
             >
+              {saving ? (
+                <i className="fa-solid fa-spinner fa-spin text-[10px]" />
+              ) : (
+                <i
+                  className={`fa-solid ${
+                    isEditing ? "fa-floppy-disk" : "fa-plus"
+                  } text-[10px]`}
+                />
+              )}
+
               {saving
                 ? isEditing
                   ? "Saving..."
