@@ -92,42 +92,42 @@ export default function RichTextEditor({
         }
 
         /*
-         * If the pasted content is essentially a small inline fragment
-         * (emoji, word, short phrase, symbol, etc.), insert the plain text
-         * directly instead of letting ProseMirror interpret clipboard HTML
-         * such as <p>, <div> or <br>.
+         * Small inline clipboard fragments can contain HTML wrappers such as
+         * <p>, <div> or <br>. Insert these as plain text so that pasting an
+         * emoji, word, symbol or short phrase does not create extra lines.
          */
         const normalizedText = plainText
           .replace(/\r\n/g, "\n")
           .replace(/\r/g, "\n");
 
-        const lines = normalizedText.split("\n");
-
-        const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
+        const nonEmptyLines = normalizedText
+          .split("\n")
+          .filter((line) => line.trim().length > 0);
 
         const looksLikeInlinePaste =
           nonEmptyLines.length <= 1 && normalizedText.length <= 500;
 
-        if (looksLikeInlinePaste) {
-          event.preventDefault();
+        if (!looksLikeInlinePaste) {
+          /*
+           * Larger or genuinely multi-line content should keep TipTap's
+           * normal paste handling so paragraph structure can be preserved.
+           */
+          return false;
+        }
 
-          const text = normalizedText.replace(/^\n+/, "").replace(/\n+$/, "");
+        event.preventDefault();
 
-          if (!text) {
-            return true;
-          }
+        const text = normalizedText.replace(/^\n+/, "").replace(/\n+$/, "");
 
-          const { from, to } = view.state.selection;
-
-          view.dispatch(view.state.tr.insertText(text, from, to));
-
+        if (!text) {
           return true;
         }
 
-        /*
-         * For larger/richer pasted content, let TipTap handle it normally.
-         */
-        return false;
+        const { from, to } = view.state.selection;
+
+        view.dispatch(view.state.tr.insertText(text, from, to));
+
+        return true;
       },
     },
 
@@ -152,8 +152,24 @@ export default function RichTextEditor({
   }, [editor, value]);
 
   return (
-    <div className="overflow-hidden rounded-lg border border-white/10 bg-black/20">
-      <div className="flex h-9 items-center gap-0.5 border-b border-white/[0.08] bg-white/[0.025] px-2">
+    <div className="rounded-lg border border-white/10 bg-black/20">
+      <div
+        className="
+          sticky
+          top-[78px]
+          z-40
+          flex
+          h-9
+          items-center
+          gap-0.5
+          border-b
+          border-white/[0.08]
+          bg-zinc-950/95
+          px-2
+          shadow-md
+          backdrop-blur
+        "
+      >
         {editor ? (
           <>
             <button
@@ -247,7 +263,7 @@ export default function RichTextEditor({
         ) : null}
       </div>
 
-      <div className="workspace-scrollbar max-h-[520px] overflow-y-auto">
+      <div className="workspace-scrollbar max-h-[520px] overflow-y-auto rounded-b-lg">
         <EditorContent
           editor={editor}
           className={`px-3 py-3 text-sm leading-6 text-zinc-200 ${minHeightClassName}`}
