@@ -77,10 +77,64 @@ export default function RichTextEditor({
         "data-placeholder": placeholder,
         spellcheck: "false",
       },
+
+      handlePaste(view, event) {
+        const clipboardData = event.clipboardData;
+
+        if (!clipboardData) {
+          return false;
+        }
+
+        const plainText = clipboardData.getData("text/plain");
+
+        if (!plainText) {
+          return false;
+        }
+
+        /*
+         * If the pasted content is essentially a small inline fragment
+         * (emoji, word, short phrase, symbol, etc.), insert the plain text
+         * directly instead of letting ProseMirror interpret clipboard HTML
+         * such as <p>, <div> or <br>.
+         */
+        const normalizedText = plainText
+          .replace(/\r\n/g, "\n")
+          .replace(/\r/g, "\n");
+
+        const lines = normalizedText.split("\n");
+
+        const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
+
+        const looksLikeInlinePaste =
+          nonEmptyLines.length <= 1 && normalizedText.length <= 500;
+
+        if (looksLikeInlinePaste) {
+          event.preventDefault();
+
+          const text = normalizedText.replace(/^\n+/, "").replace(/\n+$/, "");
+
+          if (!text) {
+            return true;
+          }
+
+          const { from, to } = view.state.selection;
+
+          view.dispatch(view.state.tr.insertText(text, from, to));
+
+          return true;
+        }
+
+        /*
+         * For larger/richer pasted content, let TipTap handle it normally.
+         */
+        return false;
+      },
     },
+
     onUpdate: ({ editor: currentEditor }) => {
       onChange(currentEditor.getHTML());
     },
+
     onSelectionUpdate: () => {
       setRevision((current) => current + 1);
     },
