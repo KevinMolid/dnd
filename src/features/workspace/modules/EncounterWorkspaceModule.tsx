@@ -319,11 +319,53 @@ export default function EncounterWorkspaceModule({
   };
 
   const getEntryImage = (entry: EncounterEntry) => {
-    if (entry.entityKind === "monster") {
-      return entry.monsterSnapshot?.img;
+    if (entry.entityKind === "player") {
+      return getCharacterForEntry(entry)?.imageUrl;
     }
 
-    return getCharacterForEntry(entry)?.imageUrl;
+    const snapshot = entry.monsterSnapshot;
+
+    /*
+     * Prefer the current monster library image instead of relying solely
+     * on the encounter snapshot.
+     *
+     * Older encounters, templates, or snapshots may not contain img even
+     * though the monster definition does.
+     */
+    if (snapshot) {
+      if (snapshot.source) {
+        const exactMonster = allMonsters.find(
+          (monster) =>
+            monster.source === snapshot.source &&
+            monster.id === snapshot.monsterId,
+        );
+
+        if (exactMonster?.img) {
+          return exactMonster.img;
+        }
+      }
+
+      const monsterById = allMonsters.find(
+        (monster) => monster.id === snapshot.monsterId,
+      );
+
+      if (monsterById?.img) {
+        return monsterById.img;
+      }
+    }
+
+    const monsterByName = allMonsters.find(
+      (monster) => monster.name === entry.entityName,
+    );
+
+    if (monsterByName?.img) {
+      return monsterByName.img;
+    }
+
+    /*
+     * Final fallback for snapshots that already contain an image.
+     */
+    return snapshot?.img;
   };
 
   const getMonsterKeyForEntry = useCallback(

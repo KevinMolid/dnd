@@ -559,6 +559,7 @@ export const humanoids: MonsterDefinition[] = [
   {
     "id": "guard",
     "name": "Guard",
+    "img": "https://i.imgur.com/SoHSHxa.jpeg",
     "type": "Humanoid",
     "size": "Medium",
     "alignment": "Neutral",
@@ -1207,6 +1208,7 @@ export const humanoids: MonsterDefinition[] = [
   {
     "id": "scout",
     "name": "Scout",
+    "img": "https://i.imgur.com/dCFiOcD.jpeg",
     "type": "Humanoid",
     "size": "Medium",
     "alignment": "Neutral",
@@ -1575,6 +1577,7 @@ export const humanoids: MonsterDefinition[] = [
   {
     "id": "warrior-veteran",
     "name": "Warrior Veteran",
+    "img": "https://i.imgur.com/1Xew5r8.jpeg",
     "type": "Humanoid",
     "size": "Medium",
     "alignment": "Neutral",
