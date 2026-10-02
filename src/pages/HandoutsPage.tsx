@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+
 import { useParams } from "react-router-dom";
+
 import {
   collection,
   deleteDoc,
@@ -11,11 +13,17 @@ import {
   Timestamp,
   where,
 } from "firebase/firestore";
+
 import { db } from "../firebase";
+
 import { useAuth } from "../context/AuthContext";
+
 import CreateHandoutModal from "../components/CreateHandoutModal";
+
 import type { CampaignMemberDoc } from "../types/campaign";
+
 import type { CampaignHandoutDoc } from "../types/handouts";
+import RichTextContent from "../features/richText/RichTextContent";
 
 type HandoutWithId = CampaignHandoutDoc & {
   id: string;
@@ -37,55 +45,87 @@ function formatDate(value: Timestamp | null | undefined) {
 
 function canPlayerSeeHandout(handout: CampaignHandoutDoc, uid: string) {
   if (handout.visibility === "allPlayers") return true;
+
   if (handout.visibility === "selectedPlayers") {
     return (handout.visibleToPlayerUids ?? []).includes(uid);
   }
+
   return false;
+}
+
+function getHandoutPreview(value: string) {
+  return value
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;|&#160;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#039;|&#39;/gi, "'")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function getVisibilityLabel(handout: CampaignHandoutDoc) {
   if (handout.visibility === "allPlayers") return "Visible to all";
+
   if (handout.visibility === "selectedPlayers") {
     const count = handout.visibleToPlayerUids?.length ?? 0;
+
     return `Visible to ${count} ${count === 1 ? "player" : "players"}`;
   }
+
   return "Hidden";
 }
 
 export default function HandoutsPage() {
   const { user } = useAuth();
+
   const { campaignId } = useParams<{ campaignId: string }>();
 
   const [membership, setMembership] = useState<CampaignMemberDoc | null>(null);
+
   const [members, setMembers] = useState<MemberWithUid[]>([]);
 
   const [handouts, setHandouts] = useState<HandoutWithId[]>([]);
+
   const [loadingHandouts, setLoadingHandouts] = useState(true);
 
   const [selectedHandoutId, setSelectedHandoutId] = useState<string | null>(
     null,
   );
+
   const [createOpen, setCreateOpen] = useState(false);
+
   const [editOpen, setEditOpen] = useState(false);
+
   const [deleting, setDeleting] = useState(false);
+
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
     if (!user || !campaignId) {
       setMembership(null);
+
       return;
     }
 
     const safeCampaignId = campaignId;
+
     let cancelled = false;
 
     const loadMembership = async () => {
       try {
         const memberRef = doc(
           db,
+
           "campaigns",
+
           safeCampaignId,
+
           "members",
+
           user.uid,
         );
 
@@ -115,23 +155,30 @@ export default function HandoutsPage() {
   useEffect(() => {
     if (!campaignId || !user) {
       setMembers([]);
+
       return;
     }
 
     const safeCampaignId = campaignId;
+
     const membersRef = collection(db, "campaigns", safeCampaignId, "members");
 
     const unsub = onSnapshot(
       membersRef,
+
       (snapshot) => {
         const next = snapshot.docs.map((docSnap) => ({
           ...(docSnap.data() as CampaignMemberDoc),
+
           uid: docSnap.id,
         }));
+
         setMembers(next);
       },
+
       (error) => {
         console.error("Failed to load campaign members:", error);
+
         setMembers([]);
       },
     );
@@ -142,11 +189,14 @@ export default function HandoutsPage() {
   useEffect(() => {
     if (!user || !campaignId || !membership) {
       setHandouts([]);
+
       setLoadingHandouts(false);
+
       return;
     }
 
     const safeCampaignId = campaignId;
+
     const handoutsRef = collection(db, "campaigns", safeCampaignId, "handouts");
 
     setLoadingHandouts(true);
@@ -156,18 +206,24 @@ export default function HandoutsPage() {
 
       const unsub = onSnapshot(
         q,
+
         (snapshot) => {
           const next: HandoutWithId[] = snapshot.docs.map((docSnap) => ({
             id: docSnap.id,
+
             ...(docSnap.data() as CampaignHandoutDoc),
           }));
 
           setHandouts(next);
+
           setLoadingHandouts(false);
         },
+
         (error) => {
           console.error("Failed to load handouts:", error);
+
           setHandouts([]);
+
           setLoadingHandouts(false);
         },
       );
@@ -177,19 +233,26 @@ export default function HandoutsPage() {
 
     const visibleToAllQuery = query(
       handoutsRef,
+
       where("visibility", "==", "allPlayers"),
+
       orderBy("createdAt", "desc"),
     );
 
     const visibleToSelectedQuery = query(
       handoutsRef,
+
       where("visibility", "==", "selectedPlayers"),
+
       where("visibleToPlayerUids", "array-contains", user.uid),
+
       orderBy("createdAt", "desc"),
     );
 
     let allPlayersDocs: HandoutWithId[] = [];
+
     let selectedPlayerDocs: HandoutWithId[] = [];
+
     let finishedCount = 0;
 
     const syncMerged = () => {
@@ -201,16 +264,20 @@ export default function HandoutsPage() {
 
       const merged = Array.from(mergedMap.values()).sort((a, b) => {
         const aTime = a.createdAt?.toMillis?.() ?? 0;
+
         const bTime = b.createdAt?.toMillis?.() ?? 0;
+
         return bTime - aTime;
       });
 
       setHandouts(merged);
+
       setLoadingHandouts(false);
     };
 
     const handleInitialLoad = () => {
       finishedCount += 1;
+
       if (finishedCount >= 2) {
         syncMerged();
       }
@@ -218,44 +285,59 @@ export default function HandoutsPage() {
 
     const unsubAll = onSnapshot(
       visibleToAllQuery,
+
       (snapshot) => {
         allPlayersDocs = snapshot.docs.map((docSnap) => ({
           id: docSnap.id,
+
           ...(docSnap.data() as CampaignHandoutDoc),
         }));
+
         handleInitialLoad();
+
         if (finishedCount >= 2) {
           syncMerged();
         }
       },
+
       (error) => {
         console.error("Failed to load public handouts:", error);
+
         allPlayersDocs = [];
+
         handleInitialLoad();
       },
     );
 
     const unsubSelected = onSnapshot(
       visibleToSelectedQuery,
+
       (snapshot) => {
         selectedPlayerDocs = snapshot.docs.map((docSnap) => ({
           id: docSnap.id,
+
           ...(docSnap.data() as CampaignHandoutDoc),
         }));
+
         handleInitialLoad();
+
         if (finishedCount >= 2) {
           syncMerged();
         }
       },
+
       (error) => {
         console.error("Failed to load selected handouts:", error);
+
         selectedPlayerDocs = [];
+
         handleInitialLoad();
       },
     );
 
     return () => {
       unsubAll();
+
       unsubSelected();
     };
   }, [campaignId, user, membership]);
@@ -265,25 +347,32 @@ export default function HandoutsPage() {
   const playerMembers = useMemo(
     () =>
       members
+
         .filter((member) => member.role === "player")
+
         .map((member) => ({
           uid: member.uid,
+
           displayName:
             member.displayName?.trim() ||
             member.email?.trim() ||
             "Unnamed player",
         })),
+
     [members],
   );
 
   const visibleHandouts = useMemo(() => {
     if (!user) return [];
+
     if (isGm) return handouts;
+
     return handouts.filter((handout) => canPlayerSeeHandout(handout, user.uid));
   }, [handouts, isGm, user]);
 
   const selectedHandout = useMemo(
     () => visibleHandouts.find((item) => item.id === selectedHandoutId) ?? null,
+
     [visibleHandouts, selectedHandoutId],
   );
 
@@ -292,6 +381,7 @@ export default function HandoutsPage() {
       if (current && visibleHandouts.some((item) => item.id === current)) {
         return current;
       }
+
       return visibleHandouts[0]?.id ?? null;
     });
   }, [visibleHandouts]);
@@ -312,6 +402,7 @@ export default function HandoutsPage() {
     if (!selectedHandout || deleting || !campaignId) return;
 
     const safeCampaignId = campaignId;
+
     const confirmed = window.confirm(
       `Delete "${selectedHandout.title}"? This cannot be undone.`,
     );
@@ -320,11 +411,13 @@ export default function HandoutsPage() {
 
     try {
       setDeleting(true);
+
       await deleteDoc(
         doc(db, "campaigns", safeCampaignId, "handouts", selectedHandout.id),
       );
     } catch (error) {
       console.error("Failed to delete handout:", error);
+
       window.alert("Failed to delete handout.");
     } finally {
       setDeleting(false);
@@ -399,9 +492,11 @@ export default function HandoutsPage() {
                           <div className="truncate text-sm font-semibold text-white">
                             {handout.title}
                           </div>
+
                           <div className="mt-1 line-clamp-1 text-xs text-zinc-400">
-                            {handout.content}
+                            {getHandoutPreview(handout.content)}
                           </div>
+
                           {isGm ? (
                             <div className="mt-1 text-[11px] text-zinc-500">
                               {getVisibilityLabel(handout)}
@@ -423,6 +518,7 @@ export default function HandoutsPage() {
                   <p className="text-lg font-medium text-zinc-200">
                     No handout selected
                   </p>
+
                   <p className="mt-2 text-sm">
                     {isGm
                       ? "Create a handout to get started."
@@ -438,11 +534,14 @@ export default function HandoutsPage() {
                       <h2 className="text-2xl font-bold">
                         {selectedHandout.title}
                       </h2>
+
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-400">
                         <span>Created by: {selectedHandout.createdByName}</span>
+
                         <span>
                           Created: {formatDate(selectedHandout.createdAt)}
                         </span>
+
                         <span>
                           Updated: {formatDate(selectedHandout.updatedAt)}
                         </span>
@@ -464,6 +563,7 @@ export default function HandoutsPage() {
                         >
                           Edit
                         </button>
+
                         <button
                           type="button"
                           onClick={handleDeleteHandout}
@@ -477,8 +577,8 @@ export default function HandoutsPage() {
                   </div>
                 </div>
 
-                <div className="mb-4 whitespace-pre-wrap break-words text-sm leading-7 text-zinc-200">
-                  {selectedHandout.content}
+                <div className="mb-4 break-words text-sm leading-7 text-zinc-200">
+                  <RichTextContent value={selectedHandout.content} />
                 </div>
 
                 {selectedHandout.imageUrl ? (
@@ -493,6 +593,7 @@ export default function HandoutsPage() {
                         alt={selectedHandout.title}
                         className="max-h-[340px] w-full object-contain transition group-hover:scale-[1.01]"
                       />
+
                       <div className="border-t border-white/10 px-4 py-2 text-left text-xs text-zinc-400">
                         Click image to enlarge
                       </div>
@@ -520,10 +621,15 @@ export default function HandoutsPage() {
             selectedHandout
               ? {
                   id: selectedHandout.id,
+
                   title: selectedHandout.title,
+
                   content: selectedHandout.content,
+
                   imageUrl: selectedHandout.imageUrl ?? null,
+
                   visibility: selectedHandout.visibility,
+
                   visibleToPlayerUids:
                     selectedHandout.visibleToPlayerUids ?? [],
                 }

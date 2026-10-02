@@ -11,6 +11,7 @@ type RichTextEditorProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   minHeightClassName?: string;
+  stickyToolbar?: boolean;
 };
 
 export function normalizeRichTextContent(value: string) {
@@ -42,6 +43,7 @@ export default function RichTextEditor({
   onChange,
   placeholder = "Write here...",
   minHeightClassName = "min-h-[260px]",
+  stickyToolbar = true,
 }: RichTextEditorProps) {
   const [revision, setRevision] = useState(0);
 
@@ -154,21 +156,9 @@ export default function RichTextEditor({
   return (
     <div className="rounded-lg border border-white/10 bg-black/20">
       <div
-        className="
-          sticky
-          top-[78px]
-          z-40
-          flex
-          h-9
-          items-center
-          gap-0.5
-          border-b
-          border-white/[0.08]
-          bg-zinc-950/95
-          px-2
-          shadow-md
-          backdrop-blur
-        "
+        className={`flex h-9 items-center gap-0.5 border-b border-white/[0.08] bg-zinc-950/95 px-2 backdrop-blur ${
+          stickyToolbar ? "sticky top-[78px] z-40 shadow-md" : "relative z-10"
+        }`}
       >
         {editor ? (
           <>
