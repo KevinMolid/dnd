@@ -197,8 +197,7 @@ export default function MapWorkspaceModule({
 
   const [detailsExpanded, setDetailsExpanded] = useState(false);
 
-  const [environmentOpen, setEnvironmentOpen] = useState(false);
-  const [musicOpen, setMusicOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const [roomStates, setRoomStates] = useState<CampaignMapRoom[]>([]);
 
@@ -213,6 +212,27 @@ export default function MapWorkspaceModule({
   const [encounterStartedMessage, setEncounterStartedMessage] = useState<
     string | null
   >(null);
+
+  const showAreaNumbers = module.config?.showAreaNumbers ?? true;
+  const showAreaNames = module.config?.showAreaNames ?? true;
+  const showEnvironmentLabels = module.config?.showEnvironmentLabels ?? true;
+  const showAreaBoundaries = module.config?.showAreaBoundaries ?? true;
+
+  const updateMapDisplaySetting = (
+    key:
+      | "showAreaNumbers"
+      | "showAreaNames"
+      | "showEnvironmentLabels"
+      | "showAreaBoundaries",
+    value: boolean,
+  ) => {
+    updateModule(module.id, {
+      config: {
+        ...module.config,
+        [key]: value,
+      },
+    });
+  };
 
   const selectedMap = useMemo(() => {
     if (maps.length === 0) {
@@ -339,9 +359,7 @@ export default function MapWorkspaceModule({
   const currentMusicCues =
     selectedRoom?.musicCues ?? selectedMap?.musicCues ?? [];
 
-  useEffect(() => {
-    setMusicOpen(false);
-  }, [selectedMap?.id, selectedRoomId]);
+  useEffect(() => {}, [selectedMap?.id, selectedRoomId]);
 
   const environmentEffects = selectedMap?.environmentEffects ?? [];
 
@@ -617,8 +635,6 @@ export default function MapWorkspaceModule({
     setHoveredRoomId(null);
 
     setDetailsExpanded(false);
-
-    setEnvironmentOpen(false);
 
     setLastRollResults([]);
 
@@ -1154,60 +1170,20 @@ export default function MapWorkspaceModule({
           </>
         ) : null}
 
-        {/* Music */}
-        {currentMusicCues.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => {
-              setMusicOpen((current) => !current);
-              setEnvironmentOpen(false);
-            }}
-            title={`${currentMusicCues.length} music cue${
-              currentMusicCues.length === 1 ? "" : "s"
-            }`}
-            aria-label="Music cues"
-            className={`workspace-no-drag flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2 transition ${
-              musicOpen
-                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <i className="fa-solid fa-music text-[10px]" />
-            <span className="hidden text-[10px] font-semibold xl:inline">
-              Music
-            </span>
-            {currentMusicCues.length > 1 ? (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded bg-white/10 px-1 text-[9px] font-bold">
-                {currentMusicCues.length}
-              </span>
-            ) : null}
-          </button>
-        ) : null}
-
-        {/* Environment */}
-
-        {activeEffect ? (
-          <button
-            type="button"
-            onClick={() => {
-              setEnvironmentOpen((current) => !current);
-              setMusicOpen(false);
-            }}
-            title={`${activeEffect.name} controls`}
-            aria-label={`${activeEffect.name} controls`}
-            className={`workspace-no-drag flex h-8 shrink-0 items-center gap-1.5 rounded-md border px-2 transition ${
-              environmentOpen
-                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <i className="fa-solid fa-cloud text-[10px]" />
-
-            <span className="hidden max-w-28 truncate text-[10px] font-semibold xl:inline">
-              {selectedRoomEnvironmentName ?? activeEffect.name}
-            </span>
-          </button>
-        ) : null}
+        {/* Map settings */}
+        <button
+          type="button"
+          onClick={() => setSettingsOpen((current) => !current)}
+          title="Map settings"
+          aria-label="Map settings"
+          className={`workspace-no-drag flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition ${
+            settingsOpen
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+              : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+          }`}
+        >
+          <i className="fa-solid fa-gear text-[11px]" />
+        </button>
 
         {/* Open full viewer */}
 
@@ -1241,17 +1217,17 @@ export default function MapWorkspaceModule({
           </>
         ) : null}
 
-        {/* Music popup */}
-        {musicOpen && currentMusicCues.length > 0 ? (
-          <div className="workspace-no-drag absolute right-2 top-9 z-50 flex w-[min(390px,calc(100%-16px))] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl">
-            <div className="flex items-center gap-3 border-b border-white/10 p-3">
+        {/* Settings popup */}
+        {settingsOpen ? (
+          <div className="workspace-no-drag absolute right-2 top-9 z-50 flex max-h-[min(620px,80vh)] w-[min(420px,calc(100%-16px))] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl">
+            <div className="flex shrink-0 items-center gap-3 border-b border-white/10 p-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-300">
-                <i className="fa-solid fa-music text-xs" />
+                <i className="fa-solid fa-gear text-xs" />
               </div>
 
               <div className="min-w-0 flex-1">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
-                  Music
+                  Map settings
                 </div>
                 <div className="truncate text-sm font-bold text-white">
                   {selectedRoom?.name ?? selectedMap.title}
@@ -1260,340 +1236,376 @@ export default function MapWorkspaceModule({
 
               <button
                 type="button"
-                onClick={() => setMusicOpen(false)}
+                onClick={() => setSettingsOpen(false)}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/10 hover:text-white"
-                aria-label="Close music cues"
+                aria-label="Close map settings"
                 title="Close"
               >
                 <i className="fa-solid fa-xmark" />
               </button>
             </div>
 
-            <div className="workspace-scrollbar max-h-[min(420px,65vh)] overflow-y-auto p-2">
-              <div className="space-y-1.5">
-                {currentMusicCues.map((cue) => (
-                  <a
-                    key={cue.id}
-                    href={cue.spotifyUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={() => setMusicOpen(false)}
-                    className="group flex items-center gap-2.5 rounded-lg border border-white/5 bg-black/15 px-2.5 py-2.5 transition hover:border-emerald-500/20 hover:bg-emerald-500/[0.07]"
-                    title={`Open ${cue.name || "music cue"} in Spotify`}
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-300 transition group-hover:bg-emerald-500/15">
-                      <i className="fa-brands fa-spotify text-sm" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-xs font-semibold text-zinc-200 group-hover:text-white">
-                        {cue.name || "Spotify music"}
-                      </div>
-                      <div className="mt-0.5 truncate text-[10px] text-zinc-500">
-                        Open in Spotify
-                      </div>
-                    </div>
-                    <i className="fa-solid fa-arrow-up-right-from-square shrink-0 text-[10px] text-zinc-600 transition group-hover:text-emerald-300" />
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Environment popup */}
-
-        {environmentOpen && activeEffect ? (
-          <div className="workspace-no-drag absolute right-2 top-9 z-50 flex max-h-[min(520px,75vh)] w-[min(390px,calc(100%-16px))] flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-2xl">
-            <div className="shrink-0 border-b border-white/10 p-3">
-              <div className="flex items-start gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-300">
-                  <i className="fa-solid fa-cloud" />
+            <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
+              <section className="border-b border-white/10 p-3">
+                <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                  Display
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300/80">
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    ["showAreaNumbers", "Area numbers", showAreaNumbers],
+                    ["showAreaNames", "Area names", showAreaNames],
+                    [
+                      "showEnvironmentLabels",
+                      "Environment labels",
+                      showEnvironmentLabels,
+                    ],
+                    [
+                      "showAreaBoundaries",
+                      "Area boundaries",
+                      showAreaBoundaries,
+                    ],
+                  ].map(([key, label, checked]) => (
+                    <label
+                      key={String(key)}
+                      className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/5 bg-black/15 px-2.5 py-2 text-xs text-zinc-300 transition hover:bg-white/[0.04]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={Boolean(checked)}
+                        onChange={(event) =>
+                          updateMapDisplaySetting(
+                            key as
+                              | "showAreaNumbers"
+                              | "showAreaNames"
+                              | "showEnvironmentLabels"
+                              | "showAreaBoundaries",
+                            event.target.checked,
+                          )
+                        }
+                        className="accent-emerald-500"
+                      />
+                      <span>{String(label)}</span>
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              <section className="border-b border-white/10 p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <i className="fa-solid fa-music text-[10px] text-emerald-300" />
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                    Music
+                  </div>
+                  {currentMusicCues.length > 0 ? (
+                    <span className="ml-auto rounded bg-white/10 px-1.5 py-0.5 text-[9px] font-bold text-zinc-300">
+                      {currentMusicCues.length}
+                    </span>
+                  ) : null}
+                </div>
+
+                {currentMusicCues.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {currentMusicCues.map((cue) => (
+                      <a
+                        key={cue.id}
+                        href={cue.spotifyUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="group flex items-center gap-2.5 rounded-lg border border-white/5 bg-black/15 px-2.5 py-2.5 transition hover:border-emerald-500/20 hover:bg-emerald-500/[0.07]"
+                        title={`Open ${cue.name || "music cue"} in Spotify`}
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-300 transition group-hover:bg-emerald-500/15">
+                          <i className="fa-brands fa-spotify text-sm" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-xs font-semibold text-zinc-200 group-hover:text-white">
+                            {cue.name || "Spotify music"}
+                          </div>
+                          <div className="mt-0.5 truncate text-[10px] text-zinc-500">
+                            Open in Spotify
+                          </div>
+                        </div>
+
+                        <i className="fa-solid fa-arrow-up-right-from-square shrink-0 text-[10px] text-zinc-600 transition group-hover:text-emerald-300" />
+                      </a>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-dashed border-white/10 bg-black/10 px-3 py-3 text-xs text-zinc-500">
+                    No music cues for this location.
+                  </div>
+                )}
+              </section>
+
+              <section className="p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <i className="fa-solid fa-cloud text-[10px] text-emerald-300" />
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
                     Environment
                   </div>
-
-                  <div className="truncate text-sm font-bold text-white">
-                    {activeEffect.name}
-                  </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setEnvironmentOpen(false)}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/10 hover:text-white"
-                >
-                  <i className="fa-solid fa-xmark" />
-                </button>
-              </div>
+                {activeEffect ? (
+                  <div className="space-y-3">
+                    <div className="rounded-lg border border-white/5 bg-black/15 p-2.5">
+                      <div className="text-xs font-semibold text-white">
+                        {activeEffect.name}
+                      </div>
 
-              {environmentEffects.length > 1 ? (
-                <select
-                  value={activeEffect.id}
-                  onChange={(event) =>
-                    selectEnvironmentEffect(event.target.value)
-                  }
-                  className="mt-3 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white outline-none"
-                >
-                  {environmentEffects.map((effect) => (
-                    <option
-                      key={effect.id}
-                      value={effect.id}
-                      className="bg-zinc-900"
-                    >
-                      {effect.name}
-                    </option>
-                  ))}
-                </select>
-              ) : null}
-            </div>
-
-            <div className="shrink-0 border-b border-white/10 p-3">
-              {selectedRoom && selectedRoomEnvironmentLevel !== null ? (
-                <div className="mb-3 flex items-center gap-3 rounded-lg border border-white/5 bg-black/20 p-2.5">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[11px] text-zinc-400">
-                      {selectedRoom.id}. {selectedRoom.name}
+                      {environmentEffects.length > 1 ? (
+                        <select
+                          value={activeEffect.id}
+                          onChange={(event) =>
+                            selectEnvironmentEffect(event.target.value)
+                          }
+                          className="mt-2 w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white outline-none"
+                        >
+                          {environmentEffects.map((effect) => (
+                            <option
+                              key={effect.id}
+                              value={effect.id}
+                              className="bg-zinc-900"
+                            >
+                              {effect.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : null}
                     </div>
 
-                    <div className="mt-0.5 truncate text-xs font-semibold text-emerald-300">
-                      {selectedRoomEnvironmentName}
-                    </div>
-                  </div>
-
-                  {(() => {
-                    const levels = getSortedLevels(activeEffect);
-
-                    const currentIndex = levels.findIndex(
-                      (level) => level.value === selectedRoomEnvironmentLevel,
-                    );
-
-                    return (
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          disabled={currentIndex <= 0 || isEnvironmentSaving}
-                          onClick={() =>
-                            changeRoomEnvironmentLevel(selectedRoom.id, -1)
-                          }
-                          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 disabled:opacity-25"
-                        >
-                          −
-                        </button>
-
-                        <div className="min-w-7 text-center text-sm font-bold text-white">
-                          {selectedRoomEnvironmentLevel}
+                    {selectedRoom && selectedRoomEnvironmentLevel !== null ? (
+                      <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-black/20 p-2.5">
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-[11px] text-zinc-400">
+                            {selectedRoom.id}. {selectedRoom.name}
+                          </div>
+                          <div className="mt-0.5 truncate text-xs font-semibold text-emerald-300">
+                            {selectedRoomEnvironmentName}
+                          </div>
                         </div>
 
-                        <button
-                          type="button"
-                          disabled={
-                            currentIndex < 0 ||
-                            currentIndex >= levels.length - 1 ||
-                            isEnvironmentSaving
-                          }
-                          onClick={() =>
-                            changeRoomEnvironmentLevel(selectedRoom.id, 1)
-                          }
-                          className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 disabled:opacity-25"
-                        >
-                          +
-                        </button>
-                      </div>
-                    );
-                  })()}
-                </div>
-              ) : null}
+                        {(() => {
+                          const levels = getSortedLevels(activeEffect);
+                          const currentIndex = levels.findIndex(
+                            (level) =>
+                              level.value === selectedRoomEnvironmentLevel,
+                          );
 
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={rollEnvironmentForAllAreas}
-                  disabled={isEnvironmentSaving || roomStates.length === 0}
-                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40"
-                >
-                  <i className="fa-solid fa-dice-d20 mr-1.5" />
+                          return (
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={
+                                  currentIndex <= 0 || isEnvironmentSaving
+                                }
+                                onClick={() =>
+                                  changeRoomEnvironmentLevel(
+                                    selectedRoom.id,
+                                    -1,
+                                  )
+                                }
+                                className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 disabled:opacity-25"
+                              >
+                                −
+                              </button>
 
-                  {isEnvironmentSaving
-                    ? "Saving..."
-                    : `Roll d${activeEffect.diceSides}`}
-                </button>
+                              <div className="min-w-7 text-center text-sm font-bold text-white">
+                                {selectedRoomEnvironmentLevel}
+                              </div>
 
-                <button
-                  type="button"
-                  onClick={randomizeEnvironmentForAllAreas}
-                  disabled={isEnvironmentSaving || roomStates.length === 0}
-                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/10 disabled:opacity-40"
-                >
-                  <i className="fa-solid fa-shuffle mr-1.5" />
-                  Randomize
-                </button>
-              </div>
-
-              <p className="mt-2 text-[10px] leading-4 text-zinc-500">
-                Roll moves each area at most {activeEffect.maxChangePerRoll}{" "}
-                level
-                {activeEffect.maxChangePerRoll === 1 ? "" : "s"} toward its
-                rolled target. Randomize sets the rolled target directly.
-              </p>
-
-              {environmentError ? (
-                <div className="mt-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-2 text-[11px] text-rose-300">
-                  {environmentError}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-2">
-              <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                Areas
-              </div>
-
-              <div className="space-y-1">
-                {roomStates
-
-                  .slice()
-
-                  .sort((a, b) => a.id - b.id)
-
-                  .map((room) => {
-                    const levels = getSortedLevels(activeEffect);
-
-                    const currentValue = getRoomEnvironmentLevel(
-                      room,
-
-                      activeEffect,
-                    );
-
-                    let currentIndex = levels.findIndex(
-                      (level) => level.value === currentValue,
-                    );
-
-                    if (currentIndex < 0) {
-                      currentIndex = 0;
-                    }
-
-                    return (
-                      <div
-                        key={room.id}
-                        className={`flex items-center gap-2 rounded-lg border p-2 ${
-                          selectedRoomId === room.id
-                            ? "border-emerald-500/25 bg-emerald-500/[0.07]"
-                            : "border-white/5 bg-black/10"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => selectRoom(room.id)}
-                          className="min-w-0 flex-1 text-left"
-                        >
-                          <div className="truncate text-xs font-semibold text-zinc-200">
-                            {room.id}. {room.name}
-                          </div>
-
-                          <div className="mt-0.5 truncate text-[10px] font-medium text-emerald-300/80">
-                            {getEnvironmentLevelName(
-                              activeEffect,
-
-                              currentValue,
-                            )}
-                          </div>
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={currentIndex <= 0 || isEnvironmentSaving}
-                          onClick={() =>
-                            changeRoomEnvironmentLevel(room.id, -1)
-                          }
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-xs text-zinc-300 hover:bg-white/10 disabled:opacity-20"
-                        >
-                          −
-                        </button>
-
-                        <div className="w-5 shrink-0 text-center text-xs font-bold text-zinc-200">
-                          {currentValue}
-                        </div>
-
-                        <button
-                          type="button"
-                          disabled={
-                            currentIndex >= levels.length - 1 ||
-                            isEnvironmentSaving
-                          }
-                          onClick={() => changeRoomEnvironmentLevel(room.id, 1)}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-xs text-zinc-300 hover:bg-white/10 disabled:opacity-20"
-                        >
-                          +
-                        </button>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {lastRollResults.length > 0 ? (
-                <div className="mt-4 border-t border-white/10 pt-3">
-                  <div className="mb-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
-                    Last Roll
-                  </div>
-
-                  <div className="space-y-1">
-                    {lastRollResults.map((result) => {
-                      const changed = result.previousLevel !== result.nextLevel;
-
-                      return (
-                        <button
-                          key={result.roomId}
-                          type="button"
-                          onClick={() => selectRoom(result.roomId)}
-                          className="w-full rounded-lg border border-white/5 bg-black/10 px-2.5 py-2 text-left transition hover:bg-white/5"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-zinc-200">
-                              {result.roomId}. {result.roomName}
-                            </span>
-
-                            <span className="shrink-0 text-[10px] font-bold text-emerald-300">
-                              d{activeEffect.diceSides}: {result.roll}
-                            </span>
-                          </div>
-
-                          <div className="mt-1 text-[10px] text-zinc-400">
-                            {getEnvironmentLevelName(
-                              activeEffect,
-
-                              result.previousLevel,
-                            )}
-
-                            {" → "}
-
-                            {getEnvironmentLevelName(
-                              activeEffect,
-
-                              result.nextLevel,
-                            )}
-
-                            {!changed && " (no change)"}
-                          </div>
-
-                          {result.targetLevel !== result.nextLevel ? (
-                            <div className="mt-0.5 text-[9px] text-zinc-500">
-                              Target:{" "}
-                              {getEnvironmentLevelName(
-                                activeEffect,
-
-                                result.targetLevel,
-                              )}
+                              <button
+                                type="button"
+                                disabled={
+                                  currentIndex < 0 ||
+                                  currentIndex >= levels.length - 1 ||
+                                  isEnvironmentSaving
+                                }
+                                onClick={() =>
+                                  changeRoomEnvironmentLevel(selectedRoom.id, 1)
+                                }
+                                className="flex h-8 w-8 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-200 transition hover:bg-white/10 disabled:opacity-25"
+                              >
+                                +
+                              </button>
                             </div>
-                          ) : null}
-                        </button>
-                      );
-                    })}
+                          );
+                        })()}
+                      </div>
+                    ) : null}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={rollEnvironmentForAllAreas}
+                        disabled={
+                          isEnvironmentSaving || roomStates.length === 0
+                        }
+                        className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-40"
+                      >
+                        <i className="fa-solid fa-dice-d20 mr-1.5" />
+                        {isEnvironmentSaving
+                          ? "Saving..."
+                          : `Roll d${activeEffect.diceSides}`}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={randomizeEnvironmentForAllAreas}
+                        disabled={
+                          isEnvironmentSaving || roomStates.length === 0
+                        }
+                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-white/10 disabled:opacity-40"
+                      >
+                        <i className="fa-solid fa-shuffle mr-1.5" />
+                        Randomize
+                      </button>
+                    </div>
+
+                    {environmentError ? (
+                      <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-2 text-[11px] text-rose-300">
+                        {environmentError}
+                      </div>
+                    ) : null}
+
+                    <div>
+                      <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                        Areas
+                      </div>
+
+                      <div className="space-y-1">
+                        {roomStates
+                          .slice()
+                          .sort((a, b) => a.id - b.id)
+                          .map((room) => {
+                            const levels = getSortedLevels(activeEffect);
+                            const currentValue = getRoomEnvironmentLevel(
+                              room,
+                              activeEffect,
+                            );
+
+                            let currentIndex = levels.findIndex(
+                              (level) => level.value === currentValue,
+                            );
+
+                            if (currentIndex < 0) {
+                              currentIndex = 0;
+                            }
+
+                            return (
+                              <div
+                                key={room.id}
+                                className={`flex items-center gap-2 rounded-lg border p-2 ${
+                                  selectedRoomId === room.id
+                                    ? "border-emerald-500/25 bg-emerald-500/[0.07]"
+                                    : "border-white/5 bg-black/10"
+                                }`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => selectRoom(room.id)}
+                                  className="min-w-0 flex-1 text-left"
+                                >
+                                  <div className="truncate text-xs font-semibold text-zinc-200">
+                                    {room.id}. {room.name}
+                                  </div>
+                                  <div className="mt-0.5 truncate text-[10px] font-medium text-emerald-300/80">
+                                    {getEnvironmentLevelName(
+                                      activeEffect,
+                                      currentValue,
+                                    )}
+                                  </div>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  disabled={
+                                    currentIndex <= 0 || isEnvironmentSaving
+                                  }
+                                  onClick={() =>
+                                    changeRoomEnvironmentLevel(room.id, -1)
+                                  }
+                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-xs text-zinc-300 hover:bg-white/10 disabled:opacity-20"
+                                >
+                                  −
+                                </button>
+
+                                <div className="w-5 shrink-0 text-center text-xs font-bold text-zinc-200">
+                                  {currentValue}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  disabled={
+                                    currentIndex >= levels.length - 1 ||
+                                    isEnvironmentSaving
+                                  }
+                                  onClick={() =>
+                                    changeRoomEnvironmentLevel(room.id, 1)
+                                  }
+                                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-xs text-zinc-300 hover:bg-white/10 disabled:opacity-20"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+
+                    {lastRollResults.length > 0 ? (
+                      <div className="border-t border-white/10 pt-3">
+                        <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">
+                          Last Roll
+                        </div>
+
+                        <div className="space-y-1">
+                          {lastRollResults.map((result) => {
+                            const changed =
+                              result.previousLevel !== result.nextLevel;
+
+                            return (
+                              <button
+                                key={result.roomId}
+                                type="button"
+                                onClick={() => selectRoom(result.roomId)}
+                                className="w-full rounded-lg border border-white/5 bg-black/10 px-2.5 py-2 text-left transition hover:bg-white/5"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="min-w-0 flex-1 truncate text-[11px] font-semibold text-zinc-200">
+                                    {result.roomId}. {result.roomName}
+                                  </span>
+                                  <span className="shrink-0 text-[10px] font-bold text-emerald-300">
+                                    d{activeEffect.diceSides}: {result.roll}
+                                  </span>
+                                </div>
+
+                                <div className="mt-1 text-[10px] text-zinc-400">
+                                  {getEnvironmentLevelName(
+                                    activeEffect,
+                                    result.previousLevel,
+                                  )}
+                                  {" → "}
+                                  {getEnvironmentLevelName(
+                                    activeEffect,
+                                    result.nextLevel,
+                                  )}
+                                  {!changed && " (no change)"}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                </div>
-              ) : null}
+                ) : (
+                  <div className="rounded-lg border border-dashed border-white/10 bg-black/10 px-3 py-3 text-xs text-zinc-500">
+                    No environment effects configured for this map.
+                  </div>
+                )}
+              </section>
             </div>
           </div>
         ) : null}
@@ -1624,6 +1636,10 @@ export default function MapWorkspaceModule({
                   getRoomEnvironmentLevel(room, activeEffect),
                 );
               }}
+              showAreaNumbers={showAreaNumbers}
+              showAreaNames={showAreaNames}
+              showEnvironmentLabels={showEnvironmentLabels}
+              showAreaBoundaries={showAreaBoundaries}
               className="h-full w-full"
             />
 

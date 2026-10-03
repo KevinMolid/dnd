@@ -33,6 +33,11 @@ type MapCanvasProps = {
 
   getRoomEnvironmentLabel?: (room: CampaignMapRoom) => string | null;
 
+  showAreaNumbers?: boolean;
+  showAreaNames?: boolean;
+  showEnvironmentLabels?: boolean;
+  showAreaBoundaries?: boolean;
+
   className?: string;
 };
 
@@ -103,6 +108,14 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
       onHoverRoom,
 
       getRoomEnvironmentLabel,
+
+      showAreaNumbers = true,
+
+      showAreaNames = true,
+
+      showEnvironmentLabels = true,
+
+      showAreaBoundaries = true,
 
       className = "",
     },
@@ -444,14 +457,18 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
                             ? "transparent"
                             : isHovered
                               ? "rgba(255,255,255,0.10)"
-                              : "rgba(255,255,255,0.015)"
+                              : showAreaBoundaries
+                                ? "rgba(255,255,255,0.015)"
+                                : "transparent"
                         }
                         stroke={
                           isSelected
                             ? "transparent"
                             : isHovered
                               ? "rgba(255,255,255,0.75)"
-                              : "rgba(255,255,255,0.10)"
+                              : showAreaBoundaries
+                                ? "rgba(255,255,255,0.10)"
+                                : "transparent"
                         }
                         strokeWidth={isHovered ? 3 : 1.5}
                         vectorEffect="non-scaling-stroke"
@@ -548,35 +565,50 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
                       }}
                     >
                       <div className="flex flex-col items-center">
-                        <div
-                          className={`flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-[10px] font-bold shadow-lg backdrop-blur-sm transition ${
-                            isSelected
-                              ? "border-emerald-200 bg-emerald-500 text-white ring-2 ring-emerald-300/25"
-                              : isHovered
-                                ? "border-white/70 bg-zinc-900/95 text-white"
-                                : "border-white/30 bg-black/90 text-white"
-                          }`}
-                        >
-                          {room.id}
-                        </div>
-
-                        <div
-                          className={`mt-1 max-w-32 rounded-md border border-white/5 bg-black/90 px-2 py-1 text-center shadow-lg backdrop-blur-sm transition ${
-                            isSelected || isHovered
-                              ? "text-white"
-                              : "text-zinc-200"
-                          }`}
-                        >
-                          <div className="truncate text-[9px] font-semibold leading-3.5">
-                            {room.name}
+                        {showAreaNumbers ? (
+                          <div
+                            className={`flex h-7 min-w-7 items-center justify-center rounded-full border px-1.5 text-[10px] font-bold shadow-lg backdrop-blur-sm transition ${
+                              isSelected
+                                ? "border-emerald-200 bg-emerald-500 text-white ring-2 ring-emerald-300/25"
+                                : isHovered
+                                  ? "border-white/70 bg-zinc-900/95 text-white"
+                                  : "border-white/30 bg-black/90 text-white"
+                            }`}
+                          >
+                            {room.id}
                           </div>
+                        ) : null}
 
-                          {environmentLabel ? (
-                            <div className="mt-0.5 truncate text-[8px] font-semibold leading-3 text-emerald-300">
-                              {environmentLabel}
-                            </div>
-                          ) : null}
-                        </div>
+                        {showAreaNames ||
+                        (showEnvironmentLabels && environmentLabel) ? (
+                          <div
+                            className={`${showAreaNumbers ? "mt-1" : ""} max-w-32 rounded-md border border-white/5 bg-black/90 px-2 py-1 text-center shadow-lg backdrop-blur-sm transition ${
+                              isSelected || isHovered
+                                ? "text-white"
+                                : "text-zinc-200"
+                            }`}
+                          >
+                            {showAreaNames ? (
+                              <div className="truncate text-[9px] font-semibold leading-3.5">
+                                {room.name}
+                              </div>
+                            ) : null}
+
+                            {showEnvironmentLabels && environmentLabel ? (
+                              <div
+                                className={`${showAreaNames ? "mt-0.5" : ""} truncate text-[8px] font-semibold leading-3 text-emerald-300`}
+                              >
+                                {environmentLabel}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+
+                        {!showAreaNumbers &&
+                        !showAreaNames &&
+                        !(showEnvironmentLabels && environmentLabel) ? (
+                          <div className="h-4 w-4 rounded-full border border-transparent bg-transparent" />
+                        ) : null}
                       </div>
                     </button>
                   );

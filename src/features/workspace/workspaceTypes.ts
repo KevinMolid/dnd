@@ -67,6 +67,18 @@ export type WorkspaceModuleConfig = {
   selectedRoomId?: number | null;
 
   mapEnvironmentEffectId?: string;
+
+  /**
+   * Map display preferences.
+   * These are stored per Map module instance.
+   */
+  showAreaNumbers?: boolean;
+
+  showAreaNames?: boolean;
+
+  showEnvironmentLabels?: boolean;
+
+  showAreaBoundaries?: boolean;
 };
 
 export type WorkspaceModule = {
