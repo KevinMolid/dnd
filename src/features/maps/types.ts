@@ -29,6 +29,12 @@ export type MapTreasure = {
   count?: number;
 };
 
+export type MapNpcPlacement = {
+  npcId: string;
+  notes?: string;
+  hidden?: boolean;
+};
+
 export type MapEncounterEntry = {
   id: string;
   name: string;
@@ -96,6 +102,7 @@ export type CampaignMapRoom = {
 
   treasure?: MapTreasure[];
   monsters?: MapMonster[];
+  npcPlacements?: MapNpcPlacement[];
   clues?: MapEncounterEntry[];
   phenomena?: MapEncounterEntry[];
   events?: MapEncounterEntry[];
@@ -131,6 +138,7 @@ export type CampaignMapDoc = {
   readAloud?: string;
 
   monsters?: MapMonster[];
+  npcPlacements?: MapNpcPlacement[];
   treasure?: MapTreasure[];
   clues?: MapEncounterEntry[];
   phenomena?: MapEncounterEntry[];

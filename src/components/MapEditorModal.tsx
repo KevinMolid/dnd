@@ -40,6 +40,28 @@ type MapPoint = {
   y: number;
 };
 
+type MapNpcPlacement = {
+  npcId: string;
+  notes?: string;
+  hidden?: boolean;
+};
+
+type CampaignMapRoomWithNpcs = CampaignMapRoom & {
+  npcPlacements?: MapNpcPlacement[];
+};
+
+type CampaignMapWithNpcs = CampaignMap & {
+  npcPlacements?: MapNpcPlacement[];
+};
+
+type CampaignNpcOption = {
+  id: string;
+  name: string;
+  categories?: string[];
+  location?: string;
+  imageUrl?: string;
+};
+
 type EditableRoom = {
   editorId: string;
   sourceIndex: number | null;
@@ -50,6 +72,7 @@ type EditableRoom = {
   descriptionHtml: string;
   treasure: MapTreasure[];
   monsters: MapMonster[];
+  npcPlacements: MapNpcPlacement[];
   clues: MapEncounterEntry[];
   phenomena: MapEncounterEntry[];
   events: MapEncounterEntry[];
@@ -295,6 +318,217 @@ const TreasureEditor = ({
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+const NpcEditor = ({
+  value,
+  onChange,
+  npcs,
+}: {
+  value: MapNpcPlacement[];
+  onChange: (value: MapNpcPlacement[]) => void;
+  npcs: CampaignNpcOption[];
+}) => {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+
+    return npcs
+      .filter((npc) => !value.some((placement) => placement.npcId === npc.id))
+      .filter((npc) => {
+        if (!q) return true;
+
+        return [npc.name, npc.location, ...(npc.categories ?? [])]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      })
+      .slice(0, 100);
+  }, [npcs, search, value]);
+
+  const npcById = useMemo(
+    () => new Map(npcs.map((npc) => [npc.id, npc])),
+    [npcs],
+  );
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <div>
+          <label className="text-sm font-medium text-white/85">NPCs</label>
+          <p className="mt-0.5 text-xs text-white/40">
+            NPCs normally found in this area.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          className={compactButtonClass}
+        >
+          <i className="fa-solid fa-plus" />
+          NPC
+        </button>
+      </div>
+
+      {open ? (
+        <div className="mb-3 rounded-xl border border-white/10 bg-zinc-950 p-2">
+          <input
+            autoFocus
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search name, category, or location..."
+            className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40"
+          />
+
+          <div className="workspace-scrollbar mt-2 max-h-64 overflow-y-auto">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-center text-xs text-zinc-500">
+                No matching NPCs.
+              </div>
+            ) : (
+              filtered.map((npc) => (
+                <button
+                  key={npc.id}
+                  type="button"
+                  onClick={() => {
+                    onChange([
+                      ...value,
+                      {
+                        npcId: npc.id,
+                        hidden: false,
+                        notes: "",
+                      },
+                    ]);
+                    setSearch("");
+                    setOpen(false);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition hover:bg-white/[0.06]"
+                >
+                  <img
+                    src={npc.imageUrl || "/images/DefaultNPC.png"}
+                    alt=""
+                    className="h-9 w-9 shrink-0 rounded-lg object-cover"
+                  />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-white">
+                      {npc.name || "Unnamed NPC"}
+                    </div>
+
+                    <div className="truncate text-[11px] text-zinc-500">
+                      {[npc.location, ...(npc.categories ?? [])]
+                        .filter(Boolean)
+                        .join(" · ") || "No category or location"}
+                    </div>
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {value.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] p-3 text-sm text-white/50">
+          No NPCs linked to this area.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {value.map((placement, index) => {
+            const npc = npcById.get(placement.npcId);
+
+            return (
+              <div
+                key={`${placement.npcId}-${index}`}
+                className="rounded-xl border border-white/[0.08] bg-zinc-900/60 p-2.5"
+              >
+                <div className="flex items-center gap-2">
+                  <img
+                    src={npc?.imageUrl || "/images/DefaultNPC.png"}
+                    alt=""
+                    className="h-10 w-10 shrink-0 rounded-lg object-cover"
+                  />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-white">
+                      {npc?.name || "Missing NPC"}
+                    </div>
+
+                    <div className="truncate text-[11px] text-zinc-500">
+                      {npc?.location || "No location"}
+                    </div>
+                  </div>
+
+                  <label
+                    className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/10 bg-black/20 px-2 py-1.5 text-[11px] text-zinc-400"
+                    title="Hidden NPCs can be kept GM-only in map views."
+                  >
+                    <input
+                      type="checkbox"
+                      checked={placement.hidden ?? false}
+                      onChange={(event) =>
+                        onChange(
+                          value.map((candidate, candidateIndex) =>
+                            candidateIndex === index
+                              ? {
+                                  ...candidate,
+                                  hidden: event.target.checked,
+                                }
+                              : candidate,
+                          ),
+                        )
+                      }
+                    />
+                    Hidden
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onChange(
+                        value.filter(
+                          (_, candidateIndex) => candidateIndex !== index,
+                        ),
+                      )
+                    }
+                    className="h-8 w-8 shrink-0 rounded-lg text-zinc-500 transition hover:bg-red-500/10 hover:text-red-300"
+                    aria-label="Remove NPC from area"
+                    title="Remove NPC from area"
+                  >
+                    <i className="fa-solid fa-xmark text-xs" />
+                  </button>
+                </div>
+
+                <textarea
+                  value={placement.notes ?? ""}
+                  spellCheck={false}
+                  onChange={(event) =>
+                    onChange(
+                      value.map((candidate, candidateIndex) =>
+                        candidateIndex === index
+                          ? {
+                              ...candidate,
+                              notes: event.target.value,
+                            }
+                          : candidate,
+                      ),
+                    )
+                  }
+                  rows={2}
+                  placeholder="Notes for this NPC in this area..."
+                  className="workspace-scrollbar mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/40"
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
@@ -764,6 +998,7 @@ const normalizeRoomsForEditing = (
     descriptionHtml: legacyRoomDescriptionToHtml(room),
     treasure: normalizeLegacyTreasure(room.treasure),
     monsters: room.monsters ?? [],
+    npcPlacements: (room as CampaignMapRoomWithNpcs).npcPlacements ?? [],
     clues: room.clues ?? [],
     phenomena: room.phenomena ?? [],
     events: room.events ?? [],
@@ -799,13 +1034,14 @@ const editableToRoom = (
   editable: EditableRoom,
   original?: CampaignMapRoom,
 ): CampaignMapRoom => {
-  const room: CampaignMapRoom = {
+  const room: CampaignMapRoomWithNpcs = {
     id: editable.id,
     name: editable.name.trim() || `Room ${editable.id}`,
     markers: editable.markers,
     descriptionHtml: editable.descriptionHtml,
     treasure: editable.treasure,
     monsters: editable.monsters,
+    npcPlacements: editable.npcPlacements,
     clues: editable.clues.filter((entry) => entry.name.trim()),
     phenomena: editable.phenomena.filter((entry) => entry.name.trim()),
     events: editable.events.filter((entry) => entry.name.trim()),
@@ -925,6 +1161,46 @@ const MapEditorModal = ({
     Record<string, CampaignItem>
   >({});
 
+  const [campaignNpcs, setCampaignNpcs] = useState<CampaignNpcOption[]>([]);
+
+  useEffect(() => {
+    if (!campaignId) {
+      setCampaignNpcs([]);
+      return;
+    }
+
+    return onSnapshot(
+      collection(db, "campaigns", campaignId, "npcs"),
+      (snapshot) => {
+        setCampaignNpcs(
+          snapshot.docs
+            .map((docSnap) => {
+              const data = docSnap.data() as {
+                name?: string;
+                categories?: string[];
+                location?: string;
+                imageUrl?: string;
+              };
+
+              return {
+                id: docSnap.id,
+                name: data.name ?? "Unnamed NPC",
+                categories: data.categories ?? [],
+                location: data.location ?? "",
+                imageUrl: data.imageUrl ?? "",
+              };
+            })
+            .sort((a, b) =>
+              a.name.localeCompare(b.name, undefined, {
+                sensitivity: "base",
+              }),
+            ),
+        );
+      },
+      (loadError) => console.error("Failed to load campaign NPCs:", loadError),
+    );
+  }, [campaignId]);
+
   useEffect(() => {
     if (!campaignId) {
       setCampaignItemsById({});
@@ -1034,6 +1310,10 @@ const MapEditorModal = ({
     map.monsters ?? [],
   );
 
+  const [overviewNpcPlacements, setOverviewNpcPlacements] = useState<
+    MapNpcPlacement[]
+  >((map as CampaignMapWithNpcs).npcPlacements ?? []);
+
   const [overviewTreasure, setOverviewTreasure] = useState<MapTreasure[]>(
     normalizeLegacyTreasure(map.treasure),
   );
@@ -1092,6 +1372,7 @@ const MapEditorModal = ({
     setParentMapId(map.parentMapId ?? null);
     setOverviewDescriptionHtml(legacyOverviewDescriptionToHtml(map));
     setOverviewMonsters(map.monsters ?? []);
+    setOverviewNpcPlacements((map as CampaignMapWithNpcs).npcPlacements ?? []);
     setOverviewTreasure(normalizeLegacyTreasure(map.treasure));
     setOverviewClues(map.clues ?? []);
     setOverviewPhenomena(map.phenomena ?? []);
@@ -1378,6 +1659,7 @@ const MapEditorModal = ({
       descriptionHtml: "",
       treasure: [],
       monsters: [],
+      npcPlacements: [],
       clues: [],
       phenomena: [],
       events: [],
@@ -1662,6 +1944,8 @@ const MapEditorModal = ({
         readAloud: "",
 
         monsters: overviewMonsters,
+
+        npcPlacements: overviewNpcPlacements,
 
         treasure: overviewTreasure,
 
@@ -2040,16 +2324,14 @@ const MapEditorModal = ({
                   />
                 </div>
 
-                <div>
-                  <label className={labelClass}>Description</label>
-
+                <CollapsibleSection title="Description" defaultOpen>
                   <RichTextEditor
                     value={overviewDescriptionHtml}
                     onChange={setOverviewDescriptionHtml}
                     placeholder="Describe the map, add read-aloud text, notes, or organised accordion sections..."
                     minHeightClassName="min-h-[220px]"
                   />
-                </div>
+                </CollapsibleSection>
 
                 <CollapsibleSection
                   title="Environment effects"
@@ -2331,6 +2613,17 @@ const MapEditorModal = ({
                 </CollapsibleSection>
 
                 <CollapsibleSection
+                  title="NPCs"
+                  count={overviewNpcPlacements.length}
+                >
+                  <NpcEditor
+                    value={overviewNpcPlacements}
+                    onChange={setOverviewNpcPlacements}
+                    npcs={campaignNpcs}
+                  />
+                </CollapsibleSection>
+
+                <CollapsibleSection
                   title="Phenomena"
                   count={overviewPhenomena.length}
                 >
@@ -2506,6 +2799,19 @@ const MapEditorModal = ({
                     onChange={(monsters) => updateSelectedRoom({ monsters })}
                     monsterOptions={monsterOptions}
                     title="Creatures"
+                  />
+                </CollapsibleSection>
+
+                <CollapsibleSection
+                  title="NPCs"
+                  count={selectedRoom.npcPlacements.length}
+                >
+                  <NpcEditor
+                    value={selectedRoom.npcPlacements}
+                    onChange={(npcPlacements) =>
+                      updateSelectedRoom({ npcPlacements })
+                    }
+                    npcs={campaignNpcs}
                   />
                 </CollapsibleSection>
 
