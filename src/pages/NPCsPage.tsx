@@ -213,7 +213,23 @@ const textAreaClass =
   "workspace-scrollbar rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
 
 type NpcSortMode = "name-asc" | "name-desc" | "category" | "location";
+
 type NpcViewMode = "large" | "compact";
+
+type NpcSearchField =
+  | "all"
+  | "name"
+  | "location"
+  | "categories"
+  | "species"
+  | "occupation"
+  | "role"
+  | "personality"
+  | "publicDescription"
+  | "relationships"
+  | "knowledge"
+  | "clues"
+  | "notes";
 
 const normalizeSearchValue = (value: unknown): string => {
   if (Array.isArray(value)) {
@@ -227,8 +243,53 @@ const normalizeSearchValue = (value: unknown): string => {
   return "";
 };
 
-const getNpcSearchText = (npc: CampaignNpc) =>
-  [
+const getNpcSearchText = (npc: CampaignNpc, field: NpcSearchField): string => {
+  if (field === "name")
+    return normalizeSearchValue(npc.name).toLocaleLowerCase();
+  if (field === "location")
+    return normalizeSearchValue(npc.location).toLocaleLowerCase();
+  if (field === "categories")
+    return normalizeSearchValue(npc.categories).toLocaleLowerCase();
+  if (field === "species")
+    return normalizeSearchValue(npc.species).toLocaleLowerCase();
+  if (field === "occupation")
+    return normalizeSearchValue(npc.occupation).toLocaleLowerCase();
+  if (field === "role")
+    return normalizeSearchValue(npc.role).toLocaleLowerCase();
+  if (field === "personality")
+    return normalizeSearchValue(npc.personality).toLocaleLowerCase();
+  if (field === "publicDescription")
+    return normalizeSearchValue(npc.publicDescription).toLocaleLowerCase();
+  if (field === "relationships")
+    return normalizeSearchValue(npc.relationships).toLocaleLowerCase();
+  if (field === "clues")
+    return normalizeSearchValue(npc.clues).toLocaleLowerCase();
+
+  if (field === "knowledge") {
+    return [npc.knows, npc.doesntKnow, npc.claims, npc.secretTruth]
+      .map(normalizeSearchValue)
+      .join(" ")
+      .toLocaleLowerCase();
+  }
+
+  if (field === "notes") {
+    return [
+      npc.quickReference,
+      npc.notes,
+      npc.statBlock,
+      npc.itemsLoot,
+      npc.reactions,
+      npc.wants,
+      npc.fears,
+      npc.voice,
+      npc.mannerisms,
+    ]
+      .map(normalizeSearchValue)
+      .join(" ")
+      .toLocaleLowerCase();
+  }
+
+  return [
     npc.name,
     npc.species,
     npc.occupation,
@@ -256,6 +317,7 @@ const getNpcSearchText = (npc: CampaignNpc) =>
     .map(normalizeSearchValue)
     .join(" ")
     .toLocaleLowerCase();
+};
 
 const getFirstCategory = (npc: CampaignNpc) =>
   [...(npc.categories ?? [])].sort((a, b) =>
@@ -311,10 +373,16 @@ export default function NPCsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [searchField, setSearchField] = useState<NpcSearchField>("all");
+
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
   const [sortMode, setSortMode] = useState<NpcSortMode>("name-asc");
+
   const [viewMode, setViewMode] = useState<NpcViewMode>(() => {
     const saved = window.localStorage.getItem("lorebound:npc-view-mode");
+
     return saved === "compact" ? "compact" : "large";
   });
 
@@ -366,19 +434,26 @@ export default function NPCsPage() {
         new Set(
           npcs.flatMap((npc) =>
             (npc.categories ?? [])
+
               .map((category) => category.trim())
+
               .filter(Boolean),
           ),
         ),
       ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })),
+
     [npcs],
   );
 
   const filteredAndSortedNpcs = useMemo(() => {
     const terms = searchQuery
+
       .trim()
+
       .toLocaleLowerCase()
+
       .split(/\s+/)
+
       .filter(Boolean);
 
     const filtered = npcs.filter((npc) => {
@@ -398,7 +473,7 @@ export default function NPCsPage() {
         return true;
       }
 
-      const searchText = getNpcSearchText(npc);
+      const searchText = getNpcSearchText(npc, searchField);
 
       return terms.every((term) => searchText.includes(term));
     });
@@ -413,7 +488,9 @@ export default function NPCsPage() {
       if (sortMode === "category") {
         const categoryCompare = getFirstCategory(a).localeCompare(
           getFirstCategory(b),
+
           undefined,
+
           { sensitivity: "base" },
         );
 
@@ -425,7 +502,9 @@ export default function NPCsPage() {
       if (sortMode === "location") {
         const locationCompare = (a.location || "").localeCompare(
           b.location || "",
+
           undefined,
+
           { sensitivity: "base" },
         );
 
@@ -438,7 +517,7 @@ export default function NPCsPage() {
         sensitivity: "base",
       });
     });
-  }, [npcs, searchQuery, selectedCategory, sortMode]);
+  }, [npcs, searchQuery, searchField, selectedCategory, sortMode]);
 
   const updateField = (key: keyof NpcFormState, value: string) => {
     setForm((prev) => ({
@@ -1030,27 +1109,56 @@ export default function NPCsPage() {
         <>
           <section className="mb-4 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <div className="relative min-w-0 flex-1">
-                <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500" />
+              <div className="flex min-w-0 flex-1 overflow-hidden rounded-xl border border-white/10 bg-black/20 focus-within:border-emerald-500/40">
+                <select
+                  value={searchField}
+                  onChange={(event) =>
+                    setSearchField(event.target.value as NpcSearchField)
+                  }
+                  aria-label="Search field"
+                  className="h-10 shrink-0 border-r border-white/10 bg-zinc-950 px-3 text-xs font-medium text-zinc-300 outline-none"
+                >
+                  <option value="all">All fields</option>
+                  <option value="name">Name</option>
+                  <option value="location">Location</option>
+                  <option value="categories">Categories</option>
+                  <option value="species">Species</option>
+                  <option value="occupation">Occupation / Title</option>
+                  <option value="role">Role</option>
+                  <option value="personality">Play / Personality</option>
+                  <option value="publicDescription">Public description</option>
+                  <option value="relationships">Relationships</option>
+                  <option value="knowledge">Knowledge / Claims</option>
+                  <option value="clues">Clues</option>
+                  <option value="notes">GM / Other notes</option>
+                </select>
 
-                <input
-                  type="search"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search names, locations, notes, relationships, clues..."
-                  className="h-10 w-full rounded-xl border border-white/10 bg-black/20 pl-9 pr-9 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/40"
-                />
+                <div className="relative min-w-0 flex-1">
+                  <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500" />
 
-                {searchQuery ? (
-                  <button
-                    type="button"
-                    onClick={() => setSearchQuery("")}
-                    aria-label="Clear search"
-                    className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/10 hover:text-white"
-                  >
-                    <i className="fa-solid fa-xmark text-xs" />
-                  </button>
-                ) : null}
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder={
+                      searchField === "all"
+                        ? "Search all NPC fields..."
+                        : "Search selected field..."
+                    }
+                    className="h-10 w-full bg-transparent pl-9 pr-9 text-sm text-white outline-none placeholder:text-zinc-600"
+                  />
+
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery("")}
+                      aria-label="Clear search"
+                      className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/10 hover:text-white"
+                    >
+                      <i className="fa-solid fa-xmark text-xs" />
+                    </button>
+                  ) : null}
+                </div>
               </div>
 
               <select
@@ -1061,8 +1169,11 @@ export default function NPCsPage() {
                 className="h-10 rounded-xl border border-white/10 bg-zinc-950 px-3 text-sm text-zinc-200 outline-none focus:border-emerald-500/40"
               >
                 <option value="name-asc">Name A–Z</option>
+
                 <option value="name-desc">Name Z–A</option>
+
                 <option value="category">Category</option>
+
                 <option value="location">Location</option>
               </select>
 
