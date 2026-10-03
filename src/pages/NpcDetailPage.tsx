@@ -16,6 +16,12 @@ type ViewMode = "player" | "gm";
 
 type DetailTab = "knowledge" | "deception" | "reactions" | "gameplay" | "gm";
 
+type NpcImageOption = {
+  url: string;
+  cropX?: number;
+  cropY?: number;
+};
+
 type CampaignNpc = {
   id: string;
   campaignId?: string;
@@ -27,6 +33,7 @@ type CampaignNpc = {
   role?: string;
   categories?: string[];
   imageUrl?: string;
+  alternativeImages?: NpcImageOption[];
   imageCropX?: number;
   imageCropY?: number;
 
@@ -74,6 +81,7 @@ type NpcFormState = {
   role: string;
   categories: string;
   imageUrl: string;
+  alternativeImages: string;
   imageCropX: number;
   imageCropY: number;
 
@@ -111,6 +119,7 @@ const createEmptyForm = (): NpcFormState => ({
   role: "",
   categories: "",
   imageUrl: "",
+  alternativeImages: "",
   imageCropX: 50,
   imageCropY: 50,
 
@@ -149,6 +158,22 @@ const parseList = (value: string): string[] =>
     .map((line) => line.trim())
     .filter(Boolean);
 
+const buildAlternativeImages = (
+  value: string,
+  existing: NpcImageOption[] = [],
+): NpcImageOption[] =>
+  parseList(value).map((url) => {
+    const previous = existing.find((image) => image.url === url);
+
+    return (
+      previous ?? {
+        url,
+        cropX: 50,
+        cropY: 50,
+      }
+    );
+  });
+
 const clampPercentage = (value: number) => Math.max(0, Math.min(100, value));
 
 const mapNpcToForm = (npc: CampaignNpc | null): NpcFormState => ({
@@ -158,6 +183,9 @@ const mapNpcToForm = (npc: CampaignNpc | null): NpcFormState => ({
   role: npc?.role ?? "",
   categories: toMultiline(npc?.categories),
   imageUrl: npc?.imageUrl ?? "",
+  alternativeImages: (npc?.alternativeImages ?? [])
+    .map((image) => image.url)
+    .join("\n"),
   imageCropX: clampPercentage(npc?.imageCropX ?? 50),
   imageCropY: clampPercentage(npc?.imageCropY ?? 50),
 
@@ -372,6 +400,40 @@ export default function NpcDetailPage() {
     setError(null);
   };
 
+  const handleSetActiveImage = async (image: NpcImageOption) => {
+    if (!campaignId || !npcId || !npc || !image.url) return;
+
+    const currentActiveUrl = npc.imageUrl?.trim() ?? "";
+
+    const remainingAlternatives = (npc.alternativeImages ?? []).filter(
+      (candidate) => candidate.url !== image.url,
+    );
+
+    const nextAlternatives = currentActiveUrl
+      ? [
+          {
+            url: currentActiveUrl,
+            cropX: npc.imageCropX ?? 50,
+            cropY: npc.imageCropY ?? 50,
+          },
+          ...remainingAlternatives,
+        ]
+      : remainingAlternatives;
+
+    try {
+      await updateDoc(doc(db, "campaigns", campaignId, "npcs", npcId), {
+        imageUrl: image.url,
+        imageCropX: clampPercentage(image.cropX ?? 50),
+        imageCropY: clampPercentage(image.cropY ?? 50),
+        alternativeImages: nextAlternatives,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error(err);
+      setError("Failed to change active NPC image.");
+    }
+  };
+
   const handleSave = async () => {
     if (!campaignId || !npcId || !npc) return;
 
@@ -396,6 +458,10 @@ export default function NpcDetailPage() {
         role: form.role.trim(),
         categories: parseList(form.categories),
         imageUrl: form.imageUrl.trim(),
+        alternativeImages: buildAlternativeImages(
+          form.alternativeImages,
+          npc.alternativeImages,
+        ),
         imageCropX: clampPercentage(form.imageCropX),
         imageCropY: clampPercentage(form.imageCropY),
 
@@ -837,6 +903,25 @@ export default function NpcDetailPage() {
                   />
                 </label>
 
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Alternative image URLs
+                  </span>
+                  <textarea
+                    value={form.alternativeImages}
+                    spellCheck={false}
+                    onChange={(e) =>
+                      updateField("alternativeImages", e.target.value)
+                    }
+                    rows={4}
+                    className={textAreaClass}
+                    placeholder={"https://...\nhttps://..."}
+                  />
+                  <span className="text-xs text-zinc-500">
+                    One per line. Use GM View to choose which image is active.
+                  </span>
+                </label>
+
                 {form.imageUrl || "/images/DefaultNPC.png" ? (
                   <>
                     <div
@@ -1207,6 +1292,71 @@ export default function NpcDetailPage() {
                   </div>
                 ) : null}
               </div>
+            </div>
+          </section>
+
+          <section className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-white">NPC Images</h2>
+                <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-500">
+                  The active image is used throughout Lorebound and is the image
+                  players can see. Alternative images remain available in GM
+                  View until activated.
+                </p>
+              </div>
+
+              <span className="text-xs text-zinc-500">
+                {1 + (npc?.alternativeImages?.length ?? 0)} image
+                {1 + (npc?.alternativeImages?.length ?? 0) === 1 ? "" : "s"}
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="overflow-hidden rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04]">
+                <div className="relative aspect-[16/9] overflow-hidden bg-black">
+                  <img
+                    src={npc?.imageUrl || "/images/DefaultNPC.png"}
+                    alt={`${npc?.name || "NPC"} active portrait`}
+                    className="h-full w-full object-cover"
+                    style={{
+                      objectPosition: `${npc?.imageCropX ?? 50}% ${npc?.imageCropY ?? 50}%`,
+                    }}
+                  />
+
+                  <span className="absolute left-2 top-2 rounded-md border border-emerald-400/25 bg-black/70 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">
+                    Active
+                  </span>
+                </div>
+              </div>
+
+              {(npc?.alternativeImages ?? []).map((image) => (
+                <div
+                  key={image.url}
+                  className="overflow-hidden rounded-2xl border border-white/10 bg-black/10"
+                >
+                  <div className="aspect-[16/9] overflow-hidden bg-black">
+                    <img
+                      src={image.url}
+                      alt={`${npc?.name || "NPC"} alternative portrait`}
+                      className="h-full w-full object-cover"
+                      style={{
+                        objectPosition: `${image.cropX ?? 50}% ${image.cropY ?? 50}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="p-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSetActiveImage(image)}
+                      className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-emerald-500/20 hover:bg-emerald-500/10 hover:text-emerald-300"
+                    >
+                      Set as active
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
 

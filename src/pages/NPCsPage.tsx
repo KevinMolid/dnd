@@ -19,6 +19,12 @@ import { db } from "../firebase";
 
 import { useAuth } from "../context/AuthContext";
 
+type NpcImageOption = {
+  url: string;
+  cropX?: number;
+  cropY?: number;
+};
+
 type CampaignNpc = {
   id: string;
 
@@ -37,6 +43,8 @@ type CampaignNpc = {
   categories?: string[];
 
   imageUrl?: string;
+
+  alternativeImages?: NpcImageOption[];
 
   imageCropX?: number;
 
@@ -110,6 +118,8 @@ type NpcFormState = {
 
   imageUrl: string;
 
+  alternativeImages: string;
+
   publicDescription: string;
 
   personality: string;
@@ -160,6 +170,8 @@ const createEmptyNpcForm = (): NpcFormState => ({
 
   imageUrl: "",
 
+  alternativeImages: "",
+
   publicDescription: "",
 
   personality: "",
@@ -206,6 +218,13 @@ const parseList = (value: string): string[] =>
 
     .filter(Boolean);
 
+const parseAlternativeImages = (value: string): NpcImageOption[] =>
+  parseList(value).map((url) => ({
+    url,
+    cropX: 50,
+    cropY: 50,
+  }));
+
 const inputClass =
   "rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
 
@@ -246,76 +265,124 @@ const normalizeSearchValue = (value: unknown): string => {
 const getNpcSearchText = (npc: CampaignNpc, field: NpcSearchField): string => {
   if (field === "name")
     return normalizeSearchValue(npc.name).toLocaleLowerCase();
+
   if (field === "location")
     return normalizeSearchValue(npc.location).toLocaleLowerCase();
+
   if (field === "categories")
     return normalizeSearchValue(npc.categories).toLocaleLowerCase();
+
   if (field === "species")
     return normalizeSearchValue(npc.species).toLocaleLowerCase();
+
   if (field === "occupation")
     return normalizeSearchValue(npc.occupation).toLocaleLowerCase();
+
   if (field === "role")
     return normalizeSearchValue(npc.role).toLocaleLowerCase();
+
   if (field === "personality")
     return normalizeSearchValue(npc.personality).toLocaleLowerCase();
+
   if (field === "publicDescription")
     return normalizeSearchValue(npc.publicDescription).toLocaleLowerCase();
+
   if (field === "relationships")
     return normalizeSearchValue(npc.relationships).toLocaleLowerCase();
+
   if (field === "clues")
     return normalizeSearchValue(npc.clues).toLocaleLowerCase();
 
   if (field === "knowledge") {
     return [npc.knows, npc.doesntKnow, npc.claims, npc.secretTruth]
+
       .map(normalizeSearchValue)
+
       .join(" ")
+
       .toLocaleLowerCase();
   }
 
   if (field === "notes") {
     return [
       npc.quickReference,
+
       npc.notes,
+
       npc.statBlock,
+
       npc.itemsLoot,
+
       npc.reactions,
+
       npc.wants,
+
       npc.fears,
+
       npc.voice,
+
       npc.mannerisms,
     ]
+
       .map(normalizeSearchValue)
+
       .join(" ")
+
       .toLocaleLowerCase();
   }
 
   return [
     npc.name,
+
     npc.species,
+
     npc.occupation,
+
     npc.role,
+
     npc.categories,
+
     npc.publicDescription,
+
     npc.personality,
+
     npc.voice,
+
     npc.mannerisms,
+
     npc.wants,
+
     npc.fears,
+
     npc.knows,
+
     npc.doesntKnow,
+
     npc.claims,
+
     npc.secretTruth,
+
     npc.reactions,
+
     npc.location,
+
     npc.relationships,
+
     npc.clues,
+
     npc.statBlock,
+
     npc.itemsLoot,
+
     npc.quickReference,
+
     npc.notes,
   ]
+
     .map(normalizeSearchValue)
+
     .join(" ")
+
     .toLocaleLowerCase();
 };
 
@@ -459,13 +526,15 @@ export default function NPCsPage() {
     const filtered = npcs.filter((npc) => {
       if (selectedCategories.length > 0) {
         const npcCategories = (npc.categories ?? [])
+
           .map((category) => category.trim())
+
           .filter(Boolean);
 
-        const wantsNone = selectedCategories.includes("__none__");
+        const wantsNone = selectedCategories.includes("\_\_none\_\_");
 
         const selectedNamedCategories = selectedCategories.filter(
-          (category) => category !== "__none__",
+          (category) => category !== "\_\_none\_\_",
         );
 
         const matchesNone = wantsNone && npcCategories.length === 0;
@@ -574,6 +643,8 @@ export default function NPCsPage() {
         categories: parseList(form.categories),
 
         imageUrl: form.imageUrl.trim(),
+
+        alternativeImages: parseAlternativeImages(form.alternativeImages),
 
         imageCropX: 50,
 
@@ -785,6 +856,28 @@ export default function NPCsPage() {
                     className={inputClass}
                     placeholder="https://..."
                   />
+                </label>
+
+                <label className="flex flex-col gap-2 md:col-span-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Alternative image URLs
+                  </span>
+
+                  <textarea
+                    value={form.alternativeImages}
+                    spellCheck={false}
+                    onChange={(e) =>
+                      updateField("alternativeImages", e.target.value)
+                    }
+                    rows={4}
+                    className={textAreaClass}
+                    placeholder={"https://...\nhttps://..."}
+                  />
+
+                  <span className="text-xs text-zinc-500">
+                    One image URL per line. Alternative images are GM-only until
+                    one is set as active.
+                  </span>
                 </label>
               </div>
             </Section>
@@ -1134,17 +1227,29 @@ export default function NPCsPage() {
                   className="h-10 shrink-0 border-r border-white/10 bg-zinc-950 px-3 text-xs font-medium text-zinc-300 outline-none"
                 >
                   <option value="all">All fields</option>
+
                   <option value="name">Name</option>
+
                   <option value="location">Location</option>
+
                   <option value="categories">Categories</option>
+
                   <option value="species">Species</option>
+
                   <option value="occupation">Occupation / Title</option>
+
                   <option value="role">Role</option>
+
                   <option value="personality">Play / Personality</option>
+
                   <option value="publicDescription">Public description</option>
+
                   <option value="relationships">Relationships</option>
+
                   <option value="knowledge">Knowledge / Claims</option>
+
                   <option value="clues">Clues</option>
+
                   <option value="notes">GM / Other notes</option>
                 </select>
 
@@ -1240,13 +1345,15 @@ export default function NPCsPage() {
                 type="button"
                 onClick={() =>
                   setSelectedCategories((current) =>
-                    current.includes("__none__")
-                      ? current.filter((category) => category !== "__none__")
-                      : [...current, "__none__"],
+                    current.includes("\_\_none\_\_")
+                      ? current.filter(
+                          (category) => category !== "\_\_none\_\_",
+                        )
+                      : [...current, "\_\_none\_\_"],
                   )
                 }
                 className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                  selectedCategories.includes("__none__")
+                  selectedCategories.includes("\_\_none\_\_")
                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
                     : "border-white/10 bg-white/[0.035] text-zinc-400 hover:bg-white/[0.07] hover:text-white"
                 }`}
