@@ -79,6 +79,8 @@ export type WorkspaceModuleConfig = {
   showEnvironmentLabels?: boolean;
 
   showAreaBoundaries?: boolean;
+
+  showNpcMinis?: boolean;
 };
 
 export type WorkspaceModule = {

@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
   type WheelEvent as ReactWheelEvent,
 } from "react";
 
@@ -14,6 +15,18 @@ import type { CampaignMap, CampaignMapRoom } from "../../features/maps/types";
 
 export type MapCanvasHandle = {
   fitToViewport: () => void;
+};
+
+export type MapNpcMini = {
+  npcId: string;
+  name: string;
+  imageUrl?: string;
+  imageCropX?: number;
+  imageCropY?: number;
+  x: number;
+  y: number;
+  size?: number;
+  hidden?: boolean;
 };
 
 type MapCanvasProps = {
@@ -37,6 +50,13 @@ type MapCanvasProps = {
   showAreaNames?: boolean;
   showEnvironmentLabels?: boolean;
   showAreaBoundaries?: boolean;
+
+  npcMinis?: MapNpcMini[];
+  showNpcMinis?: boolean;
+  placingNpcId?: string | null;
+  onPlaceNpcMini?: (npcId: string, x: number, y: number) => void;
+  onMoveNpcMini?: (npcId: string, x: number, y: number) => void;
+  onSelectNpcMini?: (npcId: string) => void;
 
   className?: string;
 };
@@ -117,6 +137,18 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
 
       showAreaBoundaries = true,
 
+      npcMinis = [],
+
+      showNpcMinis = true,
+
+      placingNpcId = null,
+
+      onPlaceNpcMini,
+
+      onMoveNpcMini,
+
+      onSelectNpcMini,
+
       className = "",
     },
 
@@ -125,6 +157,17 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
     const viewportRef = useRef<HTMLDivElement | null>(null);
 
     const imageRef = useRef<HTMLImageElement | null>(null);
+
+    const imageLayerRef = useRef<HTMLDivElement | null>(null);
+
+    const draggingMiniRef = useRef<{
+      npcId: string;
+      pointerId: number;
+      x: number;
+      y: number;
+    } | null>(null);
+
+    const [draggingMiniId, setDraggingMiniId] = useState<string | null>(null);
 
     const [imageSize, setImageSize] = useState<ImageSize | null>(null);
 
@@ -376,6 +419,102 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
       setIsDragging(false);
     };
 
+    const getImagePercentFromClientPoint = (
+      clientX: number,
+      clientY: number,
+    ) => {
+      const layer = imageLayerRef.current;
+
+      if (!layer) {
+        return null;
+      }
+
+      const rect = layer.getBoundingClientRect();
+
+      if (rect.width <= 0 || rect.height <= 0) {
+        return null;
+      }
+
+      return {
+        x: Math.max(
+          0,
+          Math.min(100, ((clientX - rect.left) / rect.width) * 100),
+        ),
+        y: Math.max(
+          0,
+          Math.min(100, ((clientY - rect.top) / rect.height) * 100),
+        ),
+      };
+    };
+
+    const handleMiniPointerDown = (
+      event: ReactPointerEvent<HTMLButtonElement>,
+      mini: MapNpcMini,
+    ) => {
+      if (!onMoveNpcMini) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.currentTarget.setPointerCapture(event.pointerId);
+
+      draggingMiniRef.current = {
+        npcId: mini.npcId,
+        pointerId: event.pointerId,
+        x: mini.x,
+        y: mini.y,
+      };
+
+      setDraggingMiniId(mini.npcId);
+    };
+
+    const handleMiniPointerMove = (
+      event: ReactPointerEvent<HTMLButtonElement>,
+    ) => {
+      const dragging = draggingMiniRef.current;
+
+      if (!dragging || dragging.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const point = getImagePercentFromClientPoint(
+        event.clientX,
+        event.clientY,
+      );
+
+      if (!point) {
+        return;
+      }
+
+      dragging.x = point.x;
+      dragging.y = point.y;
+
+      const target = event.currentTarget;
+      target.style.left = `${point.x}%`;
+      target.style.top = `${point.y}%`;
+    };
+
+    const finishMiniDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+      const dragging = draggingMiniRef.current;
+
+      if (!dragging || dragging.pointerId !== event.pointerId) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      draggingMiniRef.current = null;
+      setDraggingMiniId(null);
+
+      onMoveNpcMini?.(dragging.npcId, dragging.x, dragging.y);
+    };
+
     const scaledWidth = imageSize ? imageSize.width * zoom : 0;
 
     const scaledHeight = imageSize ? imageSize.height * zoom : 0;
@@ -403,6 +542,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
           }}
         >
           <div
+            ref={imageLayerRef}
             className="relative shrink-0"
             style={{
               width: scaledWidth > 0 ? `${scaledWidth}px` : undefined,
@@ -613,6 +753,94 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
                     </button>
                   );
                 })}
+
+                {/* NPC minis */}
+                {showNpcMinis
+                  ? npcMinis.map((mini) => {
+                      const size = Math.max(28, Math.min(72, mini.size ?? 42));
+                      const isDragging = draggingMiniId === mini.npcId;
+
+                      return (
+                        <button
+                          key={`npc-mini-${mini.npcId}`}
+                          type="button"
+                          data-map-interactive
+                          onClick={(event) => {
+                            event.stopPropagation();
+
+                            if (!isDragging) {
+                              onSelectNpcMini?.(mini.npcId);
+                            }
+                          }}
+                          onPointerDown={(event) =>
+                            handleMiniPointerDown(event, mini)
+                          }
+                          onPointerMove={handleMiniPointerMove}
+                          onPointerUp={finishMiniDrag}
+                          onPointerCancel={finishMiniDrag}
+                          title={`${mini.name}${mini.hidden ? " (hidden)" : ""}`}
+                          aria-label={`NPC mini: ${mini.name}`}
+                          className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 bg-zinc-950 p-0.5 shadow-xl transition ${
+                            isDragging
+                              ? "cursor-grabbing border-emerald-300 ring-2 ring-emerald-300/30"
+                              : mini.hidden
+                                ? "cursor-grab border-violet-400/80 ring-2 ring-violet-400/15 hover:scale-105"
+                                : "cursor-grab border-white/80 hover:scale-105 hover:border-emerald-300"
+                          }`}
+                          style={{
+                            left: `${mini.x}%`,
+                            top: `${mini.y}%`,
+                            width: `${size}px`,
+                            height: `${size}px`,
+                            touchAction: "none",
+                          }}
+                        >
+                          <img
+                            src={mini.imageUrl || "/images/DefaultNPC.png"}
+                            alt=""
+                            draggable={false}
+                            className="pointer-events-none h-full w-full rounded-full object-cover"
+                            style={{
+                              objectPosition: `${mini.imageCropX ?? 50}% ${mini.imageCropY ?? 50}%`,
+                            }}
+                          />
+
+                          {mini.hidden ? (
+                            <span className="pointer-events-none absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full border border-violet-300/30 bg-violet-950 text-[7px] text-violet-200 shadow">
+                              <i className="fa-solid fa-eye-slash" />
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })
+                  : null}
+
+                {/* Placement overlay */}
+                {placingNpcId ? (
+                  <button
+                    type="button"
+                    data-map-interactive
+                    onClick={(event) => {
+                      event.stopPropagation();
+
+                      const point = getImagePercentFromClientPoint(
+                        event.clientX,
+                        event.clientY,
+                      );
+
+                      if (point) {
+                        onPlaceNpcMini?.(placingNpcId, point.x, point.y);
+                      }
+                    }}
+                    className="absolute inset-0 z-30 cursor-crosshair bg-emerald-400/[0.02]"
+                    aria-label="Place NPC mini on map"
+                    title="Click to place NPC mini"
+                  >
+                    <span className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 rounded-md border border-emerald-400/20 bg-black/85 px-2.5 py-1 text-[10px] font-semibold text-emerald-200 shadow-lg">
+                      Click map to place NPC mini
+                    </span>
+                  </button>
+                ) : null}
               </>
             ) : null}
           </div>

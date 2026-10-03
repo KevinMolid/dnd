@@ -2,8 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useNavigate } from "react-router-dom";
 
+import { collection, onSnapshot } from "firebase/firestore";
+
+import { db } from "../../../firebase";
+
 import MapCanvas, {
   type MapCanvasHandle,
+  type MapNpcMini,
 } from "../../../components/maps/MapCanvas";
 
 import { useEncounter } from "../../../context/EncounterContext";
@@ -18,6 +23,7 @@ import type {
   CampaignMapRoom,
   EnvironmentEffect,
   MapMonster,
+  MapNpcPlacement,
 } from "../../maps/types";
 
 import type { MonsterDefinition } from "../../monsters/catalog/monsterTypes";
@@ -47,6 +53,14 @@ type EnvironmentRollResult = {
   targetLevel: number;
 
   nextLevel: number;
+};
+
+type CampaignNpcMiniSource = {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  imageCropX?: number;
+  imageCropY?: number;
 };
 
 const renderParagraphs = (paragraphs?: string[]) => {
@@ -199,6 +213,20 @@ export default function MapWorkspaceModule({
 
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  const [campaignNpcs, setCampaignNpcs] = useState<CampaignNpcMiniSource[]>([]);
+
+  const [overviewNpcPlacements, setOverviewNpcPlacements] = useState<
+    MapNpcPlacement[]
+  >([]);
+
+  const [placingNpcId, setPlacingNpcId] = useState<string | null>(null);
+
+  const [isNpcPlacementSaving, setIsNpcPlacementSaving] = useState(false);
+
+  const [npcPlacementError, setNpcPlacementError] = useState<string | null>(
+    null,
+  );
+
   const [roomStates, setRoomStates] = useState<CampaignMapRoom[]>([]);
 
   const [isEnvironmentSaving, setIsEnvironmentSaving] = useState(false);
@@ -217,13 +245,15 @@ export default function MapWorkspaceModule({
   const showAreaNames = module.config?.showAreaNames ?? true;
   const showEnvironmentLabels = module.config?.showEnvironmentLabels ?? true;
   const showAreaBoundaries = module.config?.showAreaBoundaries ?? true;
+  const showNpcMinis = module.config?.showNpcMinis ?? true;
 
   const updateMapDisplaySetting = (
     key:
       | "showAreaNumbers"
       | "showAreaNames"
       | "showEnvironmentLabels"
-      | "showAreaBoundaries",
+      | "showAreaBoundaries"
+      | "showNpcMinis",
     value: boolean,
   ) => {
     updateModule(module.id, {
@@ -233,6 +263,40 @@ export default function MapWorkspaceModule({
       },
     });
   };
+
+  useEffect(() => {
+    if (!campaignId) {
+      setCampaignNpcs([]);
+      return;
+    }
+
+    return onSnapshot(
+      collection(db, "campaigns", campaignId, "npcs"),
+      (snapshot) => {
+        setCampaignNpcs(
+          snapshot.docs.map((document) => {
+            const data = document.data() as {
+              name?: string;
+              imageUrl?: string;
+              imageCropX?: number;
+              imageCropY?: number;
+            };
+
+            return {
+              id: document.id,
+              name: data.name?.trim() || "Unnamed NPC",
+              imageUrl: data.imageUrl ?? "",
+              imageCropX: data.imageCropX ?? 50,
+              imageCropY: data.imageCropY ?? 50,
+            };
+          }),
+        );
+      },
+      (error) => {
+        console.error("Failed to load NPCs for map workspace:", error);
+      },
+    );
+  }, [campaignId]);
 
   const selectedMap = useMemo(() => {
     if (maps.length === 0) {
@@ -318,6 +382,8 @@ export default function MapWorkspaceModule({
     }
 
     setRoomStates(selectedMap.rooms ?? []);
+    setOverviewNpcPlacements(selectedMap.npcPlacements ?? []);
+    setPlacingNpcId(null);
   }, [selectedMap]);
 
   const selectedRoomId = module.config?.selectedRoomId ?? null;
@@ -355,6 +421,47 @@ export default function MapWorkspaceModule({
 
     return roomStates.find((room) => room.id === selectedRoomId) ?? null;
   }, [roomStates, selectedRoomId]);
+
+  const npcsById = useMemo(
+    () => new Map(campaignNpcs.map((npc) => [npc.id, npc])),
+    [campaignNpcs],
+  );
+
+  const currentNpcPlacements =
+    selectedRoom?.npcPlacements ?? overviewNpcPlacements;
+
+  const currentNpcMinis = useMemo<MapNpcMini[]>(
+    () =>
+      currentNpcPlacements.flatMap((placement) => {
+        if (
+          typeof placement.x !== "number" ||
+          typeof placement.y !== "number"
+        ) {
+          return [];
+        }
+
+        const npc = npcsById.get(placement.npcId);
+
+        if (!npc) {
+          return [];
+        }
+
+        return [
+          {
+            npcId: placement.npcId,
+            name: npc.name,
+            imageUrl: npc.imageUrl,
+            imageCropX: npc.imageCropX,
+            imageCropY: npc.imageCropY,
+            x: placement.x,
+            y: placement.y,
+            size: placement.miniSize,
+            hidden: placement.hidden,
+          },
+        ];
+      }),
+    [currentNpcPlacements, npcsById],
+  );
 
   const currentMusicCues =
     selectedRoom?.musicCues ?? selectedMap?.musicCues ?? [];
@@ -685,6 +792,7 @@ export default function MapWorkspaceModule({
      */
 
     setEncounterStartedMessage(null);
+    setPlacingNpcId(null);
   };
 
   const showOverview = () => {
@@ -713,6 +821,109 @@ export default function MapWorkspaceModule({
     });
 
     setEncounterStartedMessage(null);
+    setPlacingNpcId(null);
+  };
+
+  const saveCurrentNpcPlacements = async (
+    nextPlacements: MapNpcPlacement[],
+  ) => {
+    if (!selectedMap || isNpcPlacementSaving) {
+      return;
+    }
+
+    setNpcPlacementError(null);
+
+    if (selectedRoom) {
+      const previousRooms = roomStates;
+
+      const nextRooms = roomStates.map((room) =>
+        room.id === selectedRoom.id
+          ? {
+              ...room,
+              npcPlacements: nextPlacements,
+            }
+          : room,
+      );
+
+      setRoomStates(nextRooms);
+
+      try {
+        setIsNpcPlacementSaving(true);
+
+        await updateCampaignMap(campaignId, selectedMap.id, {
+          rooms: nextRooms,
+        });
+      } catch (error) {
+        console.error("Failed to save NPC mini placement:", error);
+        setRoomStates(previousRooms);
+        setNpcPlacementError("Failed to save NPC mini position.");
+      } finally {
+        setIsNpcPlacementSaving(false);
+      }
+
+      return;
+    }
+
+    const previousPlacements = overviewNpcPlacements;
+    setOverviewNpcPlacements(nextPlacements);
+
+    try {
+      setIsNpcPlacementSaving(true);
+
+      await updateCampaignMap(campaignId, selectedMap.id, {
+        npcPlacements: nextPlacements,
+      });
+    } catch (error) {
+      console.error("Failed to save overview NPC mini placement:", error);
+      setOverviewNpcPlacements(previousPlacements);
+      setNpcPlacementError("Failed to save NPC mini position.");
+    } finally {
+      setIsNpcPlacementSaving(false);
+    }
+  };
+
+  const setNpcMiniPosition = (npcId: string, x: number, y: number) => {
+    const nextPlacements = currentNpcPlacements.map((placement) =>
+      placement.npcId === npcId
+        ? {
+            ...placement,
+            x,
+            y,
+          }
+        : placement,
+    );
+
+    void saveCurrentNpcPlacements(nextPlacements);
+  };
+
+  const placeNpcMini = (npcId: string, x: number, y: number) => {
+    setNpcMiniPosition(npcId, x, y);
+    setPlacingNpcId(null);
+  };
+
+  const removeNpcMini = (npcId: string) => {
+    const nextPlacements = currentNpcPlacements.map((placement) => {
+      if (placement.npcId !== npcId) {
+        return placement;
+      }
+
+      const { x: _x, y: _y, miniSize: _miniSize, ...withoutMini } = placement;
+
+      return withoutMini;
+    });
+
+    void saveCurrentNpcPlacements(nextPlacements);
+
+    if (placingNpcId === npcId) {
+      setPlacingNpcId(null);
+    }
+  };
+
+  const inspectNpc = (npcId: string) => {
+    selectEntity({
+      type: "npc",
+      npcId,
+    });
   };
 
   const saveEnvironmentRooms = async (
@@ -1265,6 +1476,7 @@ export default function MapWorkspaceModule({
                       "Area boundaries",
                       showAreaBoundaries,
                     ],
+                    ["showNpcMinis", "NPC minis", showNpcMinis],
                   ].map(([key, label, checked]) => (
                     <label
                       key={String(key)}
@@ -1279,7 +1491,8 @@ export default function MapWorkspaceModule({
                               | "showAreaNumbers"
                               | "showAreaNames"
                               | "showEnvironmentLabels"
-                              | "showAreaBoundaries",
+                              | "showAreaBoundaries"
+                              | "showNpcMinis",
                             event.target.checked,
                           )
                         }
@@ -1640,6 +1853,12 @@ export default function MapWorkspaceModule({
               showAreaNames={showAreaNames}
               showEnvironmentLabels={showEnvironmentLabels}
               showAreaBoundaries={showAreaBoundaries}
+              npcMinis={currentNpcMinis}
+              showNpcMinis={showNpcMinis}
+              placingNpcId={placingNpcId}
+              onPlaceNpcMini={placeNpcMini}
+              onMoveNpcMini={setNpcMiniPosition}
+              onSelectNpcMini={inspectNpc}
               className="h-full w-full"
             />
 
@@ -1754,6 +1973,126 @@ export default function MapWorkspaceModule({
                             <i className="fa-solid fa-arrow-up-right-from-square shrink-0 text-[9px] text-emerald-300/60" />
                           </a>
                         ))}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {currentNpcPlacements.length ? (
+                    <section>
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                          NPCs
+                        </div>
+
+                        <div className="text-[10px] text-zinc-500">
+                          {isNpcPlacementSaving
+                            ? "Saving..."
+                            : "Click to inspect"}
+                        </div>
+                      </div>
+
+                      {npcPlacementError ? (
+                        <div className="mb-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-2 text-[11px] text-rose-300">
+                          {npcPlacementError}
+                        </div>
+                      ) : null}
+
+                      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-1.5">
+                        {currentNpcPlacements.map((placement) => {
+                          const npc = npcsById.get(placement.npcId);
+                          const hasMini =
+                            typeof placement.x === "number" &&
+                            typeof placement.y === "number";
+                          const isPlacing = placingNpcId === placement.npcId;
+
+                          return (
+                            <div
+                              key={placement.npcId}
+                              className="flex min-w-0 items-center gap-2 rounded-lg border border-violet-500/10 bg-violet-500/[0.035] p-2"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => inspectNpc(placement.npcId)}
+                                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                title={`Inspect ${npc?.name ?? "NPC"}`}
+                              >
+                                <img
+                                  src={
+                                    npc?.imageUrl || "/images/DefaultNPC.png"
+                                  }
+                                  alt=""
+                                  className="h-9 w-9 shrink-0 rounded-full border border-white/10 object-cover"
+                                  style={{
+                                    objectPosition: `${npc?.imageCropX ?? 50}% ${npc?.imageCropY ?? 50}%`,
+                                  }}
+                                />
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="truncate text-xs font-semibold text-violet-200">
+                                      {npc?.name ?? "Missing NPC"}
+                                    </span>
+
+                                    {placement.hidden ? (
+                                      <i
+                                        className="fa-solid fa-eye-slash shrink-0 text-[9px] text-violet-400"
+                                        title="Hidden"
+                                      />
+                                    ) : null}
+                                  </div>
+
+                                  {placement.notes ? (
+                                    <div className="mt-0.5 line-clamp-1 text-[10px] text-zinc-500">
+                                      {placement.notes}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPlacingNpcId((current) =>
+                                    current === placement.npcId
+                                      ? null
+                                      : placement.npcId,
+                                  )
+                                }
+                                disabled={isNpcPlacementSaving}
+                                title={
+                                  hasMini
+                                    ? "Move mini to a new position"
+                                    : "Place mini on map"
+                                }
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition ${
+                                  isPlacing
+                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                                    : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                                } disabled:opacity-40`}
+                              >
+                                <i
+                                  className={`fa-solid ${
+                                    hasMini
+                                      ? "fa-location-crosshairs"
+                                      : "fa-location-dot"
+                                  } text-[10px]`}
+                                />
+                              </button>
+
+                              {hasMini ? (
+                                <button
+                                  type="button"
+                                  onClick={() => removeNpcMini(placement.npcId)}
+                                  disabled={isNpcPlacementSaving}
+                                  title="Remove mini from map"
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-40"
+                                >
+                                  <i className="fa-solid fa-map-pin text-[10px]" />
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     </section>
                   ) : null}
@@ -2008,6 +2347,126 @@ export default function MapWorkspaceModule({
                             <i className="fa-solid fa-arrow-up-right-from-square shrink-0 text-[9px] text-emerald-300/60" />
                           </a>
                         ))}
+                      </div>
+                    </section>
+                  ) : null}
+
+                  {currentNpcPlacements.length ? (
+                    <section>
+                      <div className="mb-1.5 flex items-center justify-between gap-2">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                          NPCs
+                        </div>
+
+                        <div className="text-[10px] text-zinc-500">
+                          {isNpcPlacementSaving
+                            ? "Saving..."
+                            : "Click to inspect"}
+                        </div>
+                      </div>
+
+                      {npcPlacementError ? (
+                        <div className="mb-2 rounded-lg border border-rose-500/20 bg-rose-500/10 px-2.5 py-2 text-[11px] text-rose-300">
+                          {npcPlacementError}
+                        </div>
+                      ) : null}
+
+                      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-1.5">
+                        {currentNpcPlacements.map((placement) => {
+                          const npc = npcsById.get(placement.npcId);
+                          const hasMini =
+                            typeof placement.x === "number" &&
+                            typeof placement.y === "number";
+                          const isPlacing = placingNpcId === placement.npcId;
+
+                          return (
+                            <div
+                              key={placement.npcId}
+                              className="flex min-w-0 items-center gap-2 rounded-lg border border-violet-500/10 bg-violet-500/[0.035] p-2"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => inspectNpc(placement.npcId)}
+                                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                title={`Inspect ${npc?.name ?? "NPC"}`}
+                              >
+                                <img
+                                  src={
+                                    npc?.imageUrl || "/images/DefaultNPC.png"
+                                  }
+                                  alt=""
+                                  className="h-9 w-9 shrink-0 rounded-full border border-white/10 object-cover"
+                                  style={{
+                                    objectPosition: `${npc?.imageCropX ?? 50}% ${npc?.imageCropY ?? 50}%`,
+                                  }}
+                                />
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="truncate text-xs font-semibold text-violet-200">
+                                      {npc?.name ?? "Missing NPC"}
+                                    </span>
+
+                                    {placement.hidden ? (
+                                      <i
+                                        className="fa-solid fa-eye-slash shrink-0 text-[9px] text-violet-400"
+                                        title="Hidden"
+                                      />
+                                    ) : null}
+                                  </div>
+
+                                  {placement.notes ? (
+                                    <div className="mt-0.5 line-clamp-1 text-[10px] text-zinc-500">
+                                      {placement.notes}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPlacingNpcId((current) =>
+                                    current === placement.npcId
+                                      ? null
+                                      : placement.npcId,
+                                  )
+                                }
+                                disabled={isNpcPlacementSaving}
+                                title={
+                                  hasMini
+                                    ? "Move mini to a new position"
+                                    : "Place mini on map"
+                                }
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition ${
+                                  isPlacing
+                                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                                    : "border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                                } disabled:opacity-40`}
+                              >
+                                <i
+                                  className={`fa-solid ${
+                                    hasMini
+                                      ? "fa-location-crosshairs"
+                                      : "fa-location-dot"
+                                  } text-[10px]`}
+                                />
+                              </button>
+
+                              {hasMini ? (
+                                <button
+                                  type="button"
+                                  onClick={() => removeNpcMini(placement.npcId)}
+                                  disabled={isNpcPlacementSaving}
+                                  title="Remove mini from map"
+                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-500 transition hover:border-rose-500/20 hover:bg-rose-500/10 hover:text-rose-300 disabled:opacity-40"
+                                >
+                                  <i className="fa-solid fa-map-pin text-[10px]" />
+                                </button>
+                              ) : null}
+                            </div>
+                          );
+                        })}
                       </div>
                     </section>
                   ) : null}

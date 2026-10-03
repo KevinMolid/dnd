@@ -33,6 +33,18 @@ export type MapNpcPlacement = {
   npcId: string;
   notes?: string;
   hidden?: boolean;
+
+  /**
+   * Optional NPC mini position on the map image.
+   * Percentages make the position independent of module size / zoom.
+   */
+  x?: number;
+  y?: number;
+
+  /**
+   * Optional display size in CSS pixels at 1x UI scale.
+   */
+  miniSize?: number;
 };
 
 export type MapEncounterEntry = {
