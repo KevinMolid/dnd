@@ -376,7 +376,7 @@ export default function NPCsPage() {
 
   const [searchField, setSearchField] = useState<NpcSearchField>("all");
 
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const [sortMode, setSortMode] = useState<NpcSortMode>("name-asc");
 
@@ -457,16 +457,31 @@ export default function NPCsPage() {
       .filter(Boolean);
 
     const filtered = npcs.filter((npc) => {
-      if (
-        selectedCategory &&
-        !(npc.categories ?? []).some(
-          (category) =>
-            category.localeCompare(selectedCategory, undefined, {
-              sensitivity: "base",
-            }) === 0,
-        )
-      ) {
-        return false;
+      if (selectedCategories.length > 0) {
+        const npcCategories = (npc.categories ?? [])
+          .map((category) => category.trim())
+          .filter(Boolean);
+
+        const wantsNone = selectedCategories.includes("__none__");
+
+        const selectedNamedCategories = selectedCategories.filter(
+          (category) => category !== "__none__",
+        );
+
+        const matchesNone = wantsNone && npcCategories.length === 0;
+
+        const matchesNamedCategory = selectedNamedCategories.some((selected) =>
+          npcCategories.some(
+            (category) =>
+              category.localeCompare(selected, undefined, {
+                sensitivity: "base",
+              }) === 0,
+          ),
+        );
+
+        if (!matchesNone && !matchesNamedCategory) {
+          return false;
+        }
       }
 
       if (terms.length === 0) {
@@ -517,7 +532,7 @@ export default function NPCsPage() {
         sensitivity: "base",
       });
     });
-  }, [npcs, searchQuery, searchField, selectedCategory, sortMode]);
+  }, [npcs, searchQuery, searchField, selectedCategories, sortMode]);
 
   const updateField = (key: keyof NpcFormState, value: string) => {
     setForm((prev) => ({
@@ -1211,9 +1226,9 @@ export default function NPCsPage() {
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => setSelectedCategory(null)}
+                onClick={() => setSelectedCategories([])}
                 className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                  selectedCategory === null
+                  selectedCategories.length === 0
                     ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
                     : "border-white/10 bg-white/[0.035] text-zinc-400 hover:bg-white/[0.07] hover:text-white"
                 }`}
@@ -1221,17 +1236,37 @@ export default function NPCsPage() {
                 All
               </button>
 
+              <button
+                type="button"
+                onClick={() =>
+                  setSelectedCategories((current) =>
+                    current.includes("__none__")
+                      ? current.filter((category) => category !== "__none__")
+                      : [...current, "__none__"],
+                  )
+                }
+                className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+                  selectedCategories.includes("__none__")
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    : "border-white/10 bg-white/[0.035] text-zinc-400 hover:bg-white/[0.07] hover:text-white"
+                }`}
+              >
+                None
+              </button>
+
               {categories.map((category) => (
                 <button
                   key={category}
                   type="button"
                   onClick={() =>
-                    setSelectedCategory((current) =>
-                      current === category ? null : category,
+                    setSelectedCategories((current) =>
+                      current.includes(category)
+                        ? current.filter((entry) => entry !== category)
+                        : [...current, category],
                     )
                   }
                   className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
-                    selectedCategory === category
+                    selectedCategories.includes(category)
                       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
                       : "border-white/10 bg-white/[0.035] text-zinc-400 hover:bg-white/[0.07] hover:text-white"
                   }`}
