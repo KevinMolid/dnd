@@ -24,86 +24,136 @@ import type {
 import type { CampaignDoc } from "../types/campaign";
 
 import "react-grid-layout/css/styles.css";
+
 import "react-resizable/css/styles.css";
 
 import { usePageTitle } from "../hooks/usePageTitle";
 
-type SavedWorkspace = {
+type WorkspaceTab = {
+  id: string;
+  name: string;
   modules: WorkspaceModule[];
+  layout: LayoutItem[];
+};
 
+type SavedWorkspace = {
+  activeTabId: string;
+  tabs: WorkspaceTab[];
+};
+
+type LegacySavedWorkspace = {
+  modules: WorkspaceModule[];
   layout: LayoutItem[];
 };
 
 const DEFAULT_MODULES: WorkspaceModule[] = [
   {
     id: "default-map",
+
     type: "map",
+
     title: "Map",
   },
 
   {
     id: "default-encounter",
+
     type: "encounter",
+
     title: "Encounter",
   },
 
   {
     id: "default-monster",
+
     type: "monster",
+
     title: "Monster Stat Block",
   },
 
   {
     id: "default-notes",
+
     type: "notes",
+
     title: "DM Notes",
   },
 ];
 
 /*
+
  * 24-column workspace.
+
  *
+
  * These defaults are intentionally only a starting point.
+
  * The workspace is designed to be manually resized by the DM.
+
  */
+
 const DEFAULT_LAYOUT: LayoutItem[] = [
   {
     i: "default-map",
+
     x: 0,
+
     y: 0,
+
     w: 14,
+
     h: 20,
+
     minW: 6,
+
     minH: 6,
   },
 
   {
     i: "default-encounter",
+
     x: 14,
+
     y: 0,
+
     w: 10,
+
     h: 10,
+
     minW: 6,
+
     minH: 5,
   },
 
   {
     i: "default-notes",
+
     x: 14,
+
     y: 10,
+
     w: 6,
+
     h: 10,
+
     minW: 4,
+
     minH: 4,
   },
 
   {
     i: "default-monster",
+
     x: 20,
+
     y: 10,
+
     w: 4,
+
     h: 10,
+
     minW: 4,
+
     minH: 5,
   },
 ];
@@ -119,6 +169,52 @@ const createModuleId = () => {
   return `module-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 };
 
+const createWorkspaceTabId = () => {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return `workspace-tab-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+};
+
+const createDefaultWorkspaceTab = (): WorkspaceTab => ({
+  id: "default",
+  name: "Main",
+  modules: DEFAULT_MODULES.map((module) => ({
+    ...module,
+    config: module.config ? { ...module.config } : module.config,
+  })),
+  layout: DEFAULT_LAYOUT.map((item) => ({ ...item })),
+});
+
+const duplicateWorkspaceTab = (tab: WorkspaceTab): WorkspaceTab => {
+  const idMap = new Map<string, string>();
+
+  const modules = tab.modules.map((module) => {
+    const nextId = createModuleId();
+    idMap.set(module.id, nextId);
+
+    return {
+      ...module,
+      id: nextId,
+      config: module.config ? { ...module.config } : module.config,
+    };
+  });
+
+  return {
+    id: createWorkspaceTabId(),
+    name: `${tab.name} copy`,
+    modules,
+    layout: tab.layout.map((item) => ({
+      ...item,
+      i: idMap.get(item.i) ?? item.i,
+    })),
+  };
+};
+
 const getStorageKey = (campaignId: string) => `rphub-workspace-${campaignId}`;
 
 function loadWorkspace(campaignId: string): SavedWorkspace | null {
@@ -129,16 +225,59 @@ function loadWorkspace(campaignId: string): SavedWorkspace | null {
       return null;
     }
 
-    const parsed = JSON.parse(raw) as SavedWorkspace;
+    const parsed = JSON.parse(raw) as SavedWorkspace | LegacySavedWorkspace;
 
-    if (!Array.isArray(parsed.modules) || !Array.isArray(parsed.layout)) {
-      return null;
+    if (
+      "tabs" in parsed &&
+      Array.isArray(parsed.tabs) &&
+      parsed.tabs.length > 0
+    ) {
+      const validTabs = parsed.tabs.filter(
+        (tab) =>
+          tab &&
+          typeof tab.id === "string" &&
+          typeof tab.name === "string" &&
+          Array.isArray(tab.modules) &&
+          Array.isArray(tab.layout),
+      );
+
+      if (validTabs.length === 0) {
+        return null;
+      }
+
+      const requestedActiveId =
+        typeof parsed.activeTabId === "string" ? parsed.activeTabId : "";
+
+      return {
+        activeTabId: validTabs.some((tab) => tab.id === requestedActiveId)
+          ? requestedActiveId
+          : validTabs[0].id,
+        tabs: validTabs,
+      };
     }
 
-    return parsed;
+    if (
+      "modules" in parsed &&
+      "layout" in parsed &&
+      Array.isArray(parsed.modules) &&
+      Array.isArray(parsed.layout)
+    ) {
+      const migratedTab: WorkspaceTab = {
+        id: "default",
+        name: "Main",
+        modules: parsed.modules,
+        layout: parsed.layout,
+      };
+
+      return {
+        activeTabId: migratedTab.id,
+        tabs: [migratedTab],
+      };
+    }
+
+    return null;
   } catch (error) {
     console.error("Failed to load workspace", error);
-
     return null;
   }
 }
@@ -147,22 +286,24 @@ function saveWorkspace(campaignId: string, workspace: SavedWorkspace) {
   try {
     const browserWorkspace: SavedWorkspace = {
       ...workspace,
-      modules: workspace.modules.map((module) =>
-        module.type === "notes"
-          ? {
-              ...module,
-              config: {
-                ...module.config,
-                noteContent: undefined,
-              },
-            }
-          : module,
-      ),
+      tabs: workspace.tabs.map((tab) => ({
+        ...tab,
+        modules: tab.modules.map((module) =>
+          module.type === "notes"
+            ? {
+                ...module,
+                config: {
+                  ...module.config,
+                  noteContent: undefined,
+                },
+              }
+            : module,
+        ),
+      })),
     };
 
     localStorage.setItem(
       getStorageKey(campaignId),
-
       JSON.stringify(browserWorkspace),
     );
   } catch (error) {
@@ -184,9 +325,13 @@ type WorkspaceModuleCardProps = {
 
 function WorkspaceModuleCard({
   module,
+
   campaignId,
+
   editing,
+
   onRemove,
+
   onUpdate,
 }: WorkspaceModuleCardProps) {
   const definition = MODULE_REGISTRY[module.type];
@@ -251,9 +396,11 @@ export default function DMWorkspacePage() {
 
   usePageTitle(campaignName, "Workspace");
 
-  const [modules, setModules] = useState<WorkspaceModule[]>(DEFAULT_MODULES);
+  const [tabs, setTabs] = useState<WorkspaceTab[]>(() => [
+    createDefaultWorkspaceTab(),
+  ]);
 
-  const [layout, setLayout] = useState<LayoutItem[]>(DEFAULT_LAYOUT);
+  const [activeTabId, setActiveTabId] = useState("default");
 
   const [editing, setEditing] = useState(false);
 
@@ -262,13 +409,21 @@ export default function DMWorkspacePage() {
   const [hasLoaded, setHasLoaded] = useState(false);
 
   /*
+
    * Only fetch the one piece of campaign data this
+
    * shell actually needs: the campaign name.
+
    *
+
    * We deliberately do not use useCampaignPageData()
+
    * here because that hook subscribes to characters,
+
    * users, members, journal entries, etc.
+
    */
+
   useEffect(() => {
     if (!campaignId) {
       return;
@@ -308,12 +463,17 @@ export default function DMWorkspacePage() {
       return;
     }
 
+    setHasLoaded(false);
+
     const saved = loadWorkspace(campaignId);
 
     if (saved) {
-      setModules(saved.modules);
-
-      setLayout(saved.layout);
+      setTabs(saved.tabs);
+      setActiveTabId(saved.activeTabId);
+    } else {
+      const defaultTab = createDefaultWorkspaceTab();
+      setTabs([defaultTab]);
+      setActiveTabId(defaultTab.id);
     }
 
     setHasLoaded(true);
@@ -325,21 +485,39 @@ export default function DMWorkspacePage() {
     }
 
     saveWorkspace(campaignId, {
-      modules,
-      layout,
+      activeTabId,
+      tabs,
     });
-  }, [campaignId, modules, layout, hasLoaded]);
+  }, [campaignId, activeTabId, tabs, hasLoaded]);
+
+  const activeTab = useMemo(
+    () => tabs.find((tab) => tab.id === activeTabId) ?? tabs[0] ?? null,
+    [tabs, activeTabId],
+  );
+
+  const modules = activeTab?.modules ?? [];
+  const layout = activeTab?.layout ?? [];
+
+  function updateActiveTab(updater: (tab: WorkspaceTab) => WorkspaceTab) {
+    setTabs((current) =>
+      current.map((tab) => (tab.id === activeTabId ? updater(tab) : tab)),
+    );
+  }
 
   function handleLayoutChange(nextLayout: Layout) {
-    setLayout([...nextLayout]);
+    updateActiveTab((tab) => ({
+      ...tab,
+      layout: [...nextLayout],
+    }));
   }
 
   function handleUpdateModule(
     moduleId: string,
     changes: Partial<WorkspaceModule>,
   ) {
-    setModules((current) =>
-      current.map((module) =>
+    updateActiveTab((tab) => ({
+      ...tab,
+      modules: tab.modules.map((module) =>
         module.id === moduleId
           ? {
               ...module,
@@ -347,67 +525,123 @@ export default function DMWorkspacePage() {
             }
           : module,
       ),
-    );
+    }));
   }
 
   function handleAddModule(type: WorkspaceModuleType) {
     const definition = MODULE_REGISTRY[type];
-
     const id = createModuleId();
 
     const module: WorkspaceModule = {
       id,
-
       type,
-
       title: definition.title,
-
       config: {},
     };
 
     const layoutItem: LayoutItem = {
       i: id,
-
       x: 0,
-
       y: Infinity,
-
       w: definition.defaultW,
-
       h: definition.defaultH,
-
       minW: definition.minW,
-
       minH: definition.minH,
     };
 
-    setModules((current) => [...current, module]);
-
-    setLayout((current) => [...current, layoutItem]);
+    updateActiveTab((tab) => ({
+      ...tab,
+      modules: [...tab.modules, module],
+      layout: [...tab.layout, layoutItem],
+    }));
 
     setShowModulePicker(false);
   }
 
   function handleRemoveModule(id: string) {
-    setModules((current) => current.filter((module) => module.id !== id));
-
-    setLayout((current) => current.filter((item) => item.i !== id));
+    updateActiveTab((tab) => ({
+      ...tab,
+      modules: tab.modules.filter((module) => module.id !== id),
+      layout: tab.layout.filter((item) => item.i !== id),
+    }));
   }
 
   function handleResetWorkspace() {
+    if (!activeTab) return;
+
     const confirmed = window.confirm(
-      "Reset this workspace to the default layout?",
+      `Reset "${activeTab.name}" to the default layout?`,
     );
 
-    if (!confirmed) {
+    if (!confirmed) return;
+
+    const defaultTab = createDefaultWorkspaceTab();
+
+    updateActiveTab((tab) => ({
+      ...tab,
+      modules: defaultTab.modules,
+      layout: defaultTab.layout,
+    }));
+
+    setShowModulePicker(false);
+  }
+
+  function handleAddTab() {
+    const newTab: WorkspaceTab = {
+      id: createWorkspaceTabId(),
+      name: `Tab ${tabs.length + 1}`,
+      modules: [],
+      layout: [],
+    };
+
+    setTabs((current) => [...current, newTab]);
+    setActiveTabId(newTab.id);
+    setShowModulePicker(false);
+  }
+
+  function handleRenameTab(tab: WorkspaceTab) {
+    const nextName = window.prompt("Tab name", tab.name)?.trim();
+
+    if (!nextName || nextName === tab.name) return;
+
+    setTabs((current) =>
+      current.map((candidate) =>
+        candidate.id === tab.id ? { ...candidate, name: nextName } : candidate,
+      ),
+    );
+  }
+
+  function handleDuplicateTab(tab: WorkspaceTab) {
+    const duplicate = duplicateWorkspaceTab(tab);
+    setTabs((current) => [...current, duplicate]);
+    setActiveTabId(duplicate.id);
+  }
+
+  function handleDeleteTab(tab: WorkspaceTab) {
+    if (tabs.length <= 1) {
+      window.alert("The workspace must have at least one tab.");
       return;
     }
 
-    setModules(DEFAULT_MODULES);
+    const confirmed = window.confirm(`Delete workspace tab "${tab.name}"?`);
 
-    setLayout(DEFAULT_LAYOUT);
+    if (!confirmed) return;
 
-    setShowModulePicker(false);
+    setTabs((current) => {
+      const index = current.findIndex((candidate) => candidate.id === tab.id);
+      const nextTabs = current.filter((candidate) => candidate.id !== tab.id);
+
+      if (activeTabId === tab.id) {
+        const nextActive =
+          nextTabs[Math.min(index, nextTabs.length - 1)] ?? nextTabs[0];
+
+        if (nextActive) {
+          setActiveTabId(nextActive.id);
+        }
+      }
+
+      return nextTabs;
+    });
   }
 
   const renderedModules = useMemo(
@@ -427,6 +661,79 @@ export default function DMWorkspacePage() {
     [modules, campaignId, editing],
   );
 
+  const tabControls = (
+    <div className="workspace-scrollbar flex min-w-0 items-center gap-1 overflow-x-auto">
+      {tabs.map((tab) => {
+        const isActive = tab.id === activeTabId;
+
+        return (
+          <div
+            key={tab.id}
+            className={`group flex h-7 shrink-0 items-center rounded-md border transition ${
+              isActive
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                : "border-transparent text-zinc-500 hover:border-white/10 hover:bg-white/[0.04] hover:text-zinc-200"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => setActiveTabId(tab.id)}
+              className="h-full max-w-40 truncate px-2.5 text-[11px] font-semibold 2xl:max-w-56"
+              title={tab.name}
+            >
+              {tab.name}
+            </button>
+
+            {editing && isActive ? (
+              <div className="flex items-center border-l border-white/10 pr-1">
+                <button
+                  type="button"
+                  onClick={() => handleRenameTab(tab)}
+                  title="Rename tab"
+                  aria-label={`Rename ${tab.name}`}
+                  className="flex h-6 w-6 items-center justify-center rounded text-[9px] text-zinc-500 transition hover:bg-white/10 hover:text-white"
+                >
+                  <i className="fa-solid fa-pen" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDuplicateTab(tab)}
+                  title="Duplicate tab"
+                  aria-label={`Duplicate ${tab.name}`}
+                  className="flex h-6 w-6 items-center justify-center rounded text-[9px] text-zinc-500 transition hover:bg-white/10 hover:text-white"
+                >
+                  <i className="fa-regular fa-copy" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDeleteTab(tab)}
+                  title="Delete tab"
+                  aria-label={`Delete ${tab.name}`}
+                  className="flex h-6 w-6 items-center justify-center rounded text-[9px] text-zinc-500 transition hover:bg-rose-500/10 hover:text-rose-300"
+                >
+                  <i className="fa-solid fa-xmark" />
+                </button>
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={handleAddTab}
+        title="Add workspace tab"
+        aria-label="Add workspace tab"
+        className="flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-dashed border-white/10 px-2.5 text-[11px] font-semibold text-zinc-500 transition hover:border-emerald-500/30 hover:bg-emerald-500/5 hover:text-emerald-300"
+      >
+        <i className="fa-solid fa-plus text-[9px]" />
+        <span className="hidden 2xl:inline">Tab</span>
+      </button>
+    </div>
+  );
+
   if (!campaignId) {
     return (
       <div className="p-4 text-sm text-rose-400">No campaign selected.</div>
@@ -436,7 +743,9 @@ export default function DMWorkspacePage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* =====================================================
+
           COMPACT WORKSPACE SHELL
+
       ===================================================== */}
 
       <header className="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/95 backdrop-blur-xl">
@@ -500,7 +809,11 @@ export default function DMWorkspacePage() {
 
           {/* Workspace controls */}
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex min-w-0 shrink-0 items-center gap-1.5">
+            <div className="hidden min-w-0 max-w-[48vw] xl:block">
+              {tabControls}
+            </div>
+
             {editing ? (
               <>
                 <button
@@ -546,8 +859,14 @@ export default function DMWorkspacePage() {
         </div>
       </header>
 
+      <div className="sticky top-10 z-30 border-b border-white/10 bg-zinc-950/95 px-2 py-1 xl:hidden">
+        {tabControls}
+      </div>
+
       {/* =====================================================
+
           GRID
+
       ===================================================== */}
 
       <main className="p-2">
@@ -555,7 +874,7 @@ export default function DMWorkspacePage() {
           ref={containerRef as React.Ref<HTMLDivElement>}
           className={editing ? "rounded-lg bg-white/[0.015]" : ""}
         >
-          {mounted && hasLoaded ? (
+          {mounted && hasLoaded && activeTab ? (
             <ReactGridLayout
               layout={layout}
               width={width}
@@ -595,7 +914,9 @@ export default function DMWorkspacePage() {
       </main>
 
       {/* =====================================================
+
           MODULE PICKER
+
       ===================================================== */}
 
       {showModulePicker ? (
