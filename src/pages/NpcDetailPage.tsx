@@ -14,13 +14,7 @@ import { db } from "../firebase";
 
 type ViewMode = "player" | "gm";
 
-type DetailTab =
-  | "knowledge"
-  | "claims"
-  | "reactions"
-  | "gameplay"
-  | "stats"
-  | "notes";
+type DetailTab = "knowledge" | "deception" | "reactions" | "gameplay" | "gm";
 
 type CampaignNpc = {
   id: string;
@@ -31,6 +25,7 @@ type CampaignNpc = {
   species?: string;
   occupation?: string;
   role?: string;
+  categories?: string[];
   imageUrl?: string;
   imageCropX?: number;
   imageCropY?: number;
@@ -77,6 +72,7 @@ type NpcFormState = {
   species: string;
   occupation: string;
   role: string;
+  categories: string;
   imageUrl: string;
   imageCropX: number;
   imageCropY: number;
@@ -113,6 +109,7 @@ const createEmptyForm = (): NpcFormState => ({
   species: "",
   occupation: "",
   role: "",
+  categories: "",
   imageUrl: "",
   imageCropX: 50,
   imageCropY: 50,
@@ -159,6 +156,7 @@ const mapNpcToForm = (npc: CampaignNpc | null): NpcFormState => ({
   species: npc?.species ?? "",
   occupation: npc?.occupation ?? "",
   role: npc?.role ?? "",
+  categories: toMultiline(npc?.categories),
   imageUrl: npc?.imageUrl ?? "",
   imageCropX: clampPercentage(npc?.imageCropX ?? 50),
   imageCropY: clampPercentage(npc?.imageCropY ?? 50),
@@ -229,7 +227,6 @@ const EditStringField = ({
     <span className="text-sm font-medium text-zinc-300">{label}</span>
     <textarea
       value={value}
-      spellCheck={false}
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       className={textAreaClass}
@@ -252,7 +249,6 @@ const EditListField = ({
     <span className="text-sm font-medium text-zinc-300">{label}</span>
     <textarea
       value={value}
-      spellCheck={false}
       onChange={(e) => onChange(e.target.value)}
       rows={rows}
       className={textAreaClass}
@@ -398,6 +394,7 @@ export default function NpcDetailPage() {
         species: form.species.trim(),
         occupation: form.occupation.trim(),
         role: form.role.trim(),
+        categories: parseList(form.categories),
         imageUrl: form.imageUrl.trim(),
         imageCropX: clampPercentage(form.imageCropX),
         imageCropY: clampPercentage(form.imageCropY),
@@ -508,9 +505,9 @@ export default function NpcDetailPage() {
       visible: hasList(npc?.knows) || hasList(npc?.doesntKnow),
     },
     {
-      id: "claims",
-      label: "Claims",
-      visible: hasList(npc?.claims),
+      id: "deception",
+      label: "Deception",
+      visible: hasList(npc?.claims) || hasText(npc?.secretTruth),
     },
     {
       id: "reactions",
@@ -524,17 +521,13 @@ export default function NpcDetailPage() {
         hasText(npc?.location) ||
         hasList(npc?.relationships) ||
         hasList(npc?.clues) ||
+        hasText(npc?.statBlock) ||
         hasList(npc?.itemsLoot),
     },
     {
-      id: "stats",
-      label: "Stats",
-      visible: hasText(npc?.statBlock),
-    },
-    {
-      id: "notes",
-      label: "Notes",
-      visible: hasText(npc?.notes),
+      id: "gm",
+      label: "GM",
+      visible: hasText(npc?.quickReference) || hasText(npc?.notes),
     },
   ];
 
@@ -565,8 +558,28 @@ export default function NpcDetailPage() {
           </div>
         );
 
-      case "claims":
-        return <RenderList items={npc?.claims} />;
+      case "deception":
+        return (
+          <div className="grid gap-6 md:grid-cols-2">
+            {hasList(npc?.claims) ? (
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Claims
+                </div>
+                <RenderList items={npc?.claims} />
+              </div>
+            ) : null}
+
+            {hasText(npc?.secretTruth) ? (
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Secret / Truth
+                </div>
+                <div className="whitespace-pre-wrap">{npc?.secretTruth}</div>
+              </div>
+            ) : null}
+          </div>
+        );
 
       case "reactions":
         return (
@@ -608,6 +621,15 @@ export default function NpcDetailPage() {
               </div>
             ) : null}
 
+            {hasText(npc?.statBlock) ? (
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Stat Block
+                </div>
+                <div className="whitespace-pre-wrap">{npc?.statBlock}</div>
+              </div>
+            ) : null}
+
             {hasList(npc?.itemsLoot) ? (
               <div>
                 <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -619,11 +641,28 @@ export default function NpcDetailPage() {
           </div>
         );
 
-      case "stats":
-        return <div className="whitespace-pre-wrap">{npc?.statBlock}</div>;
+      case "gm":
+        return (
+          <div className="grid gap-6 md:grid-cols-2">
+            {hasText(npc?.quickReference) ? (
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Quick Reference
+                </div>
+                <div className="whitespace-pre-wrap">{npc?.quickReference}</div>
+              </div>
+            ) : null}
 
-      case "notes":
-        return <div className="whitespace-pre-wrap">{npc?.notes}</div>;
+            {hasText(npc?.notes) ? (
+              <div>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  Notes
+                </div>
+                <div className="whitespace-pre-wrap">{npc?.notes}</div>
+              </div>
+            ) : null}
+          </div>
+        );
 
       default:
         return null;
@@ -772,6 +811,23 @@ export default function NpcDetailPage() {
 
                 <label className="flex flex-col gap-2">
                   <span className="text-sm font-medium text-zinc-300">
+                    Categories
+                  </span>
+                  <textarea
+                    value={form.categories}
+                    spellCheck={false}
+                    onChange={(e) => updateField("categories", e.target.value)}
+                    rows={3}
+                    className={textAreaClass}
+                    placeholder={"Veyr\nMain story\nDen Tente Lykten"}
+                  />
+                  <span className="text-xs text-zinc-500">
+                    One per line. Commas also work.
+                  </span>
+                </label>
+
+                <label className="flex flex-col gap-2">
+                  <span className="text-sm font-medium text-zinc-300">
                     Image URL
                   </span>
                   <input
@@ -781,14 +837,14 @@ export default function NpcDetailPage() {
                   />
                 </label>
 
-                {form.imageUrl ? (
+                {form.imageUrl || "/images/DefaultNPC.png" ? (
                   <>
                     <div
                       className="relative aspect-[16/9] cursor-crosshair overflow-hidden rounded-2xl border border-white/10 bg-black/20"
                       onClick={handlePortraitFocusClick}
                     >
                       <img
-                        src={form.imageUrl}
+                        src={form.imageUrl || "/images/DefaultNPC.png"}
                         alt="Portrait focus preview"
                         className="h-full w-full object-cover"
                         style={{
@@ -1010,9 +1066,7 @@ export default function NpcDetailPage() {
                   alt={npc?.name || "NPC portrait"}
                   className="h-full w-full object-cover"
                   style={{
-                    objectPosition: npc?.imageUrl
-                      ? `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`
-                      : "50% 50%",
+                    objectPosition: `${npc?.imageCropX ?? 50}% ${npc?.imageCropY ?? 50}%`,
                   }}
                 />
               </div>
@@ -1047,9 +1101,7 @@ export default function NpcDetailPage() {
                   alt={npc?.name || "NPC portrait"}
                   className="h-full min-h-[360px] w-full object-cover"
                   style={{
-                    objectPosition: npc?.imageUrl
-                      ? `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`
-                      : "50% 50%",
+                    objectPosition: `${npc?.imageCropX ?? 50}% ${npc?.imageCropY ?? 50}%`,
                   }}
                 />
               </div>
@@ -1183,6 +1235,10 @@ export default function NpcDetailPage() {
 
               {activeTab ? (
                 <section className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-5 text-sm leading-6 text-zinc-200 shadow-xl">
+                  <div className="mb-3 text-xs font-bold uppercase tracking-wide text-zinc-500">
+                    {tabs.find((tab) => tab.id === activeTab)?.label}
+                  </div>
+
                   {renderActiveTab()}
                 </section>
               ) : null}

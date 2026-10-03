@@ -34,6 +34,8 @@ type CampaignNpc = {
 
   role?: string;
 
+  categories?: string[];
+
   imageUrl?: string;
 
   imageCropX?: number;
@@ -104,6 +106,8 @@ type NpcFormState = {
 
   role: string;
 
+  categories: string;
+
   imageUrl: string;
 
   publicDescription: string;
@@ -151,6 +155,8 @@ const createEmptyNpcForm = (): NpcFormState => ({
   occupation: "",
 
   role: "",
+
+  categories: "",
 
   imageUrl: "",
 
@@ -204,7 +210,57 @@ const inputClass =
   "rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
 
 const textAreaClass =
-  "rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
+  "workspace-scrollbar rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-white outline-none placeholder:text-zinc-500";
+
+type NpcSortMode = "name-asc" | "name-desc" | "category" | "location";
+type NpcViewMode = "large" | "compact";
+
+const normalizeSearchValue = (value: unknown): string => {
+  if (Array.isArray(value)) {
+    return value.map(normalizeSearchValue).join(" ");
+  }
+
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+
+  return "";
+};
+
+const getNpcSearchText = (npc: CampaignNpc) =>
+  [
+    npc.name,
+    npc.species,
+    npc.occupation,
+    npc.role,
+    npc.categories,
+    npc.publicDescription,
+    npc.personality,
+    npc.voice,
+    npc.mannerisms,
+    npc.wants,
+    npc.fears,
+    npc.knows,
+    npc.doesntKnow,
+    npc.claims,
+    npc.secretTruth,
+    npc.reactions,
+    npc.location,
+    npc.relationships,
+    npc.clues,
+    npc.statBlock,
+    npc.itemsLoot,
+    npc.quickReference,
+    npc.notes,
+  ]
+    .map(normalizeSearchValue)
+    .join(" ")
+    .toLocaleLowerCase();
+
+const getFirstCategory = (npc: CampaignNpc) =>
+  [...(npc.categories ?? [])].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: "base" }),
+  )[0] ?? "";
 
 const Section = ({
   title,
@@ -254,12 +310,26 @@ export default function NPCsPage() {
 
   const [error, setError] = useState<string | null>(null);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<NpcSortMode>("name-asc");
+  const [viewMode, setViewMode] = useState<NpcViewMode>(() => {
+    const saved = window.localStorage.getItem("lorebound:npc-view-mode");
+    return saved === "compact" ? "compact" : "large";
+  });
+
+  useEffect(() => {
+    window.localStorage.setItem("lorebound:npc-view-mode", viewMode);
+  }, [viewMode]);
+
   useEffect(() => {
     document.documentElement.classList.add("workspace-scrollbar");
+
     document.body.classList.add("workspace-scrollbar");
 
     return () => {
       document.documentElement.classList.remove("workspace-scrollbar");
+
       document.body.classList.remove("workspace-scrollbar");
     };
   }, []);
@@ -290,16 +360,85 @@ export default function NPCsPage() {
     return () => unsubscribe();
   }, [campaignId]);
 
-  const sortedNpcs = useMemo(
+  const categories = useMemo(
     () =>
-      [...npcs].sort((a, b) =>
-        (a.name || "").localeCompare(b.name || "", undefined, {
-          sensitivity: "base",
-        }),
-      ),
-
+      Array.from(
+        new Set(
+          npcs.flatMap((npc) =>
+            (npc.categories ?? [])
+              .map((category) => category.trim())
+              .filter(Boolean),
+          ),
+        ),
+      ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })),
     [npcs],
   );
+
+  const filteredAndSortedNpcs = useMemo(() => {
+    const terms = searchQuery
+      .trim()
+      .toLocaleLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    const filtered = npcs.filter((npc) => {
+      if (
+        selectedCategory &&
+        !(npc.categories ?? []).some(
+          (category) =>
+            category.localeCompare(selectedCategory, undefined, {
+              sensitivity: "base",
+            }) === 0,
+        )
+      ) {
+        return false;
+      }
+
+      if (terms.length === 0) {
+        return true;
+      }
+
+      const searchText = getNpcSearchText(npc);
+
+      return terms.every((term) => searchText.includes(term));
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sortMode === "name-desc") {
+        return (b.name || "").localeCompare(a.name || "", undefined, {
+          sensitivity: "base",
+        });
+      }
+
+      if (sortMode === "category") {
+        const categoryCompare = getFirstCategory(a).localeCompare(
+          getFirstCategory(b),
+          undefined,
+          { sensitivity: "base" },
+        );
+
+        if (categoryCompare !== 0) {
+          return categoryCompare;
+        }
+      }
+
+      if (sortMode === "location") {
+        const locationCompare = (a.location || "").localeCompare(
+          b.location || "",
+          undefined,
+          { sensitivity: "base" },
+        );
+
+        if (locationCompare !== 0) {
+          return locationCompare;
+        }
+      }
+
+      return (a.name || "").localeCompare(b.name || "", undefined, {
+        sensitivity: "base",
+      });
+    });
+  }, [npcs, searchQuery, selectedCategory, sortMode]);
 
   const updateField = (key: keyof NpcFormState, value: string) => {
     setForm((prev) => ({
@@ -337,6 +476,8 @@ export default function NPCsPage() {
         occupation: form.occupation.trim(),
 
         role: form.role.trim(),
+
+        categories: parseList(form.categories),
 
         imageUrl: form.imageUrl.trim(),
 
@@ -512,6 +653,31 @@ export default function NPCsPage() {
                   />
 
                   <span className="text-xs text-zinc-500">GM-only.</span>
+                </label>
+
+                <label className="flex flex-col gap-2 md:col-span-2">
+                  <span className="text-sm font-medium text-zinc-300">
+                    Categories
+                  </span>
+
+                  <input
+                    value={form.categories}
+                    onChange={(e) => updateField("categories", e.target.value)}
+                    className={inputClass}
+                    placeholder="Veyr, Main story, Den Tente Lykten..."
+                    list="npc-category-suggestions"
+                  />
+
+                  <datalist id="npc-category-suggestions">
+                    {categories.map((category) => (
+                      <option key={category} value={category} />
+                    ))}
+                  </datalist>
+
+                  <span className="text-xs text-zinc-500">
+                    Separate categories with commas. Existing categories are
+                    suggested automatically.
+                  </span>
                 </label>
 
                 <label className="flex flex-col gap-2 md:col-span-2">
@@ -861,92 +1027,284 @@ export default function NPCsPage() {
       )}
 
       {!showCreateForm ? (
-        <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
-          {loading ? (
-            <p className="text-sm text-zinc-400">Loading NPCs...</p>
-          ) : sortedNpcs.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-black/10 p-6 text-center">
-              <p className="text-sm text-zinc-400">
-                No NPCs yet. Create your first NPC to start building the
-                campaign cast.
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {sortedNpcs.map((npc) => (
-                <Link
-                  key={npc.id}
-                  to={`/campaigns/${campaignId}/npcs/${npc.id}`}
-                  className="block overflow-hidden rounded-2xl border border-white/10 bg-black/10 transition hover:bg-black/20"
+        <>
+          <section className="mb-4 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="relative min-w-0 flex-1">
+                <i className="fa-solid fa-magnifying-glass pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500" />
+
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search names, locations, notes, relationships, clues..."
+                  className="h-10 w-full rounded-xl border border-white/10 bg-black/20 pl-9 pr-9 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/40"
+                />
+
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-zinc-500 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <i className="fa-solid fa-xmark text-xs" />
+                  </button>
+                ) : null}
+              </div>
+
+              <select
+                value={sortMode}
+                onChange={(event) =>
+                  setSortMode(event.target.value as NpcSortMode)
+                }
+                className="h-10 rounded-xl border border-white/10 bg-zinc-950 px-3 text-sm text-zinc-200 outline-none focus:border-emerald-500/40"
+              >
+                <option value="name-asc">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
+                <option value="category">Category</option>
+                <option value="location">Location</option>
+              </select>
+
+              <div className="grid h-10 grid-cols-2 rounded-xl border border-white/10 bg-black/20 p-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("large")}
+                  title="Large cards"
+                  aria-label="Large NPC cards"
+                  className={`flex min-w-10 items-center justify-center rounded-lg px-2 text-xs transition ${
+                    viewMode === "large"
+                      ? "bg-white/10 text-white"
+                      : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
+                  }`}
                 >
-                  <div className="aspect-[16/9] w-full overflow-hidden border-b border-white/10 bg-black/20">
-                    <img
-                      src={npc.imageUrl || "/images/DefaultNPC.png"}
-                      alt={npc.name || "NPC portrait"}
-                      className="h-full w-full object-cover"
-                      style={{
-                        objectPosition: npc.imageUrl
-                          ? `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`
-                          : "50% 50%",
-                      }}
-                    />
-                  </div>
+                  <i className="fa-solid fa-grip" />
+                </button>
 
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h2 className="truncate text-lg font-semibold text-white">
-                          {npc.name || "Unnamed NPC"}
-                        </h2>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("compact")}
+                  title="Compact cards"
+                  aria-label="Compact NPC cards"
+                  className={`flex min-w-10 items-center justify-center rounded-lg px-2 text-xs transition ${
+                    viewMode === "compact"
+                      ? "bg-white/10 text-white"
+                      : "text-zinc-500 hover:bg-white/[0.05] hover:text-zinc-200"
+                  }`}
+                >
+                  <i className="fa-solid fa-list" />
+                </button>
+              </div>
+            </div>
 
-                        <p className="mt-1 truncate text-sm italic text-zinc-400">
-                          {[npc.species, npc.occupation]
+            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setSelectedCategory(null)}
+                className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+                  selectedCategory === null
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    : "border-white/10 bg-white/[0.035] text-zinc-400 hover:bg-white/[0.07] hover:text-white"
+                }`}
+              >
+                All
+              </button>
 
-                            .filter(Boolean)
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  type="button"
+                  onClick={() =>
+                    setSelectedCategory((current) =>
+                      current === category ? null : category,
+                    )
+                  }
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition ${
+                    selectedCategory === category
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                      : "border-white/10 bg-white/[0.035] text-zinc-400 hover:bg-white/[0.07] hover:text-white"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
 
-                            .join(" · ") || "—"}
-                        </p>
+              <span className="ml-auto text-xs text-zinc-500">
+                {filteredAndSortedNpcs.length} of {npcs.length} NPCs
+              </span>
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-white/5 p-5 shadow-xl">
+            {loading ? (
+              <p className="text-sm text-zinc-400">Loading NPCs...</p>
+            ) : filteredAndSortedNpcs.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/10 p-6 text-center">
+                <p className="text-sm text-zinc-400">
+                  {npcs.length === 0
+                    ? "No NPCs yet. Create your first NPC to start building the campaign cast."
+                    : "No NPCs match the current search or category filter."}
+                </p>
+              </div>
+            ) : viewMode === "large" ? (
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {filteredAndSortedNpcs.map((npc) => (
+                  <Link
+                    key={npc.id}
+                    to={`/campaigns/${campaignId}/npcs/${npc.id}`}
+                    className="block overflow-hidden rounded-2xl border border-white/10 bg-black/10 transition hover:bg-black/20"
+                  >
+                    <div className="aspect-[16/9] w-full overflow-hidden border-b border-white/10 bg-black/20">
+                      <img
+                        src={npc.imageUrl || "/images/DefaultNPC.png"}
+                        alt={npc.name || "NPC portrait"}
+                        className="h-full w-full object-cover"
+                        style={{
+                          objectPosition: npc.imageUrl
+                            ? `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`
+                            : "50% 50%",
+                        }}
+                      />
+                    </div>
+
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h2 className="truncate text-lg font-semibold text-white">
+                            {npc.name || "Unnamed NPC"}
+                          </h2>
+
+                          <p className="mt-1 truncate text-sm italic text-zinc-400">
+                            {[npc.species, npc.occupation]
+
+                              .filter(Boolean)
+
+                              .join(" · ") || "—"}
+                          </p>
+
+                          {npc.categories && npc.categories.length > 0 ? (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {npc.categories.slice(0, 3).map((category) => (
+                                <span
+                                  key={category}
+                                  className="rounded-md border border-emerald-500/15 bg-emerald-500/[0.06] px-1.5 py-0.5 text-[9px] font-medium text-emerald-300/90"
+                                >
+                                  {category}
+                                </span>
+                              ))}
+
+                              {npc.categories.length > 3 ? (
+                                <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] text-zinc-500">
+                                  +{npc.categories.length - 3}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2 text-sm leading-5">
+                        {npc.role ? (
+                          <p className="text-zinc-300">
+                            <span className="font-semibold text-white">
+                              Role:
+                            </span>{" "}
+                            {npc.role}
+                          </p>
+                        ) : null}
+
+                        {npc.personality && npc.personality.length > 0 ? (
+                          <p className="text-zinc-300">
+                            <span className="font-semibold text-white">
+                              🎭 Play:
+                            </span>{" "}
+                            {npc.personality.slice(0, 3).join(" · ")}
+                          </p>
+                        ) : null}
+
+                        {npc.wants ? (
+                          <p className="line-clamp-2 text-zinc-300">
+                            <span className="font-semibold text-white">
+                              🎯 Wants:
+                            </span>{" "}
+                            {npc.wants}
+                          </p>
+                        ) : npc.quickReference ? (
+                          <p className="line-clamp-2 whitespace-pre-wrap text-zinc-400">
+                            {npc.quickReference}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
-
-                    <div className="mt-4 space-y-2 text-sm leading-5">
-                      {npc.role ? (
-                        <p className="text-zinc-300">
-                          <span className="font-semibold text-white">
-                            Role:
-                          </span>{" "}
-                          {npc.role}
-                        </p>
-                      ) : null}
-
-                      {npc.personality && npc.personality.length > 0 ? (
-                        <p className="text-zinc-300">
-                          <span className="font-semibold text-white">
-                            🎭 Play:
-                          </span>{" "}
-                          {npc.personality.slice(0, 3).join(" · ")}
-                        </p>
-                      ) : null}
-
-                      {npc.wants ? (
-                        <p className="line-clamp-2 text-zinc-300">
-                          <span className="font-semibold text-white">
-                            🎯 Wants:
-                          </span>{" "}
-                          {npc.wants}
-                        </p>
-                      ) : npc.quickReference ? (
-                        <p className="line-clamp-2 whitespace-pre-wrap text-zinc-400">
-                          {npc.quickReference}
-                        </p>
-                      ) : null}
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {filteredAndSortedNpcs.map((npc) => (
+                  <Link
+                    key={npc.id}
+                    to={`/campaigns/${campaignId}/npcs/${npc.id}`}
+                    className="group flex min-w-0 overflow-hidden rounded-xl border border-white/10 bg-black/10 transition hover:border-white/20 hover:bg-black/20"
+                  >
+                    <div className="h-24 w-20 shrink-0 overflow-hidden border-r border-white/10 bg-black/20 sm:h-auto sm:min-h-24">
+                      <img
+                        src={npc.imageUrl || "/images/DefaultNPC.png"}
+                        alt={npc.name || "NPC portrait"}
+                        className="h-full w-full object-cover transition group-hover:brightness-110"
+                        style={{
+                          objectPosition: npc.imageUrl
+                            ? `${npc.imageCropX ?? 50}% ${npc.imageCropY ?? 50}%`
+                            : "50% 50%",
+                        }}
+                      />
                     </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+
+                    <div className="min-w-0 flex-1 p-2.5">
+                      <h2 className="truncate text-sm font-semibold text-white">
+                        {npc.name || "Unnamed NPC"}
+                      </h2>
+
+                      <div className="mt-1 flex min-h-5 flex-wrap gap-1">
+                        {npc.categories && npc.categories.length > 0 ? (
+                          <>
+                            {npc.categories.slice(0, 2).map((category) => (
+                              <span
+                                key={category}
+                                className="max-w-28 truncate rounded-md border border-emerald-500/15 bg-emerald-500/[0.06] px-1.5 py-0.5 text-[9px] font-medium text-emerald-300/90"
+                              >
+                                {category}
+                              </span>
+                            ))}
+
+                            {npc.categories.length > 2 ? (
+                              <span className="rounded-md border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[9px] text-zinc-500">
+                                +{npc.categories.length - 2}
+                              </span>
+                            ) : null}
+                          </>
+                        ) : (
+                          <span className="text-[10px] text-zinc-600">
+                            No category
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-zinc-400">
+                        <span className="font-semibold text-zinc-200">
+                          🎭 Play:
+                        </span>{" "}
+                        {npc.personality && npc.personality.length > 0
+                          ? npc.personality.slice(0, 3).join(" · ")
+                          : "—"}
+                      </p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </>
       ) : null}
     </Container>
   );
