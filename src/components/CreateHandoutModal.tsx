@@ -396,7 +396,6 @@ export default function CreateHandoutModal({
                     onChange={setContent}
                     placeholder="Write the handout text here..."
                     minHeightClassName="min-h-[220px]"
-                    stickyToolbar={false}
                   />
                 </div>
               </div>
