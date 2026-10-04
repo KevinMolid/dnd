@@ -20,6 +20,8 @@ import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
 
 import Avatar from "../components/Avatar";
 
+import { addLogEntry } from "../features/campaigns/utils/campaignLog";
+
 type PageState = "loading" | "ready" | "not-found" | "forbidden" | "error";
 
 type CampaignCharacterStatus = "inactive" | "active";
@@ -223,11 +225,19 @@ const CampaignCharactersPage = () => {
 
   /*
 
+
+
    * The campaign roster is intentionally loaded from the public party
+
+
 
    * collection. Campaign members must not need read access to the private
 
+
+
    * /characters documents just to see the roster.
+
+
 
    */
 
@@ -297,11 +307,19 @@ const CampaignCharactersPage = () => {
 
   /*
 
+
+
    * GM-only member list used by the Assigned access mode. We resolve names
+
+
 
    * from /users so the access picker remains useful even if the membership
 
+
+
    * document itself only contains role/status information.
+
+
 
    */
 
@@ -464,7 +482,6 @@ const CampaignCharactersPage = () => {
 
   const handleSetCampaignStatus = async (
     characterId: string,
-
     nextStatus: CampaignCharacterStatus,
   ) => {
     setBusyCharacterId(characterId);
@@ -473,9 +490,32 @@ const CampaignCharactersPage = () => {
       await updateCharacterAndParty(characterId, {
         campaignStatus: nextStatus,
       });
+
+      const character = campaignCharacters.find(
+        (candidate) => candidate.id === characterId,
+      );
+
+      if (campaignId && character) {
+        try {
+          await addLogEntry({
+            campaignId,
+            type:
+              nextStatus === "active"
+                ? "character_activated"
+                : "character_deactivated",
+            createdByUid: user?.uid ?? null,
+            characterId: character.id,
+            characterName: character.name,
+          });
+        } catch (logError) {
+          console.error(
+            "Character status changed, but activity logging failed:",
+            logError,
+          );
+        }
+      }
     } catch (error) {
       console.error("Failed to update campaign character status:", error);
-
       alert("Could not update character status.");
     } finally {
       setBusyCharacterId(null);
@@ -526,11 +566,19 @@ const CampaignCharactersPage = () => {
     try {
       /*
 
+
+
        * The public party document is readable to campaign members and is used
+
+
 
        * as the transaction's claim source. Firestore rules must enforce the
 
+
+
        * corresponding private /characters ownership transition.
+
+
 
        */
 
@@ -587,6 +635,28 @@ const CampaignCharactersPage = () => {
 
         transaction.update(partyRef, updates);
       });
+
+      try {
+        await addLogEntry({
+          campaignId,
+          type: "character_claimed",
+          createdByUid: user.uid,
+          characterId: character.id,
+          characterName: character.name,
+          payload: {
+            playerUid: user.uid,
+            playerName:
+              user.displayName?.trim() ||
+              members.find((member) => member.uid === user.uid)?.displayName ||
+              "A player",
+          },
+        });
+      } catch (logError) {
+        console.error(
+          "Character was claimed, but activity logging failed:",
+          logError,
+        );
+      }
     } catch (error) {
       console.error("Failed to claim character:", error);
 
@@ -657,6 +727,28 @@ const CampaignCharactersPage = () => {
 
         transaction.update(partyRef, updates);
       });
+
+      try {
+        await addLogEntry({
+          campaignId,
+          type: "character_released",
+          createdByUid: user.uid,
+          characterId: character.id,
+          characterName: character.name,
+          payload: {
+            playerUid: user.uid,
+            playerName:
+              user.displayName?.trim() ||
+              members.find((member) => member.uid === user.uid)?.displayName ||
+              "A player",
+          },
+        });
+      } catch (logError) {
+        console.error(
+          "Character was released, but activity logging failed:",
+          logError,
+        );
+      }
 
       setAccessEditorId(null);
     } catch (error) {

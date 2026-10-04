@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+
 import {
   collection,
   getDocs,
@@ -11,10 +12,12 @@ import {
 } from "firebase/firestore";
 
 import { db } from "../../../firebase";
+
 import type { CampaignLogEntry } from "../utils/campaignLog";
 
 type Props = {
   campaignId?: string;
+
   isGm: boolean;
 };
 
@@ -28,8 +31,11 @@ type ActivityEntry = StoredCampaignLogEntry & {
 
 type ActivityPresentation = {
   icon: string;
+
   iconClassName: string;
+
   title: string;
+
   detail?: string;
 };
 
@@ -37,6 +43,7 @@ const MAX_ACTIVITY_ENTRIES = 20;
 
 const readNumber = (
   payload: Record<string, unknown>,
+
   key: string,
 ): number | undefined => {
   const value = payload[key];
@@ -48,6 +55,7 @@ const readNumber = (
 
 const readString = (
   payload: Record<string, unknown>,
+
   key: string,
 ): string | undefined => {
   const value = payload[key];
@@ -59,7 +67,9 @@ const formatMoney = (payload: Record<string, unknown>) => {
   const parts: string[] = [];
 
   const gp = readNumber(payload, "gp");
+
   const sp = readNumber(payload, "sp");
+
   const cp = readNumber(payload, "cp");
 
   if (gp) {
@@ -91,6 +101,7 @@ const getActivityPresentation = (
   entry: ActivityEntry,
 ): ActivityPresentation => {
   const characterName = entry.characterName?.trim() || "A character";
+
   const payload = entry.payload ?? {};
 
   switch (entry.type) {
@@ -101,14 +112,18 @@ const getActivityPresentation = (
         readNumber(payload, "amountXp");
 
       const recipientCount = readNumber(payload, "recipientCount");
+
       const totalAmount = readNumber(payload, "totalAmount");
+
       const mixedAmounts = payload.mixedAmounts === true;
 
       if (recipientCount !== undefined && recipientCount > 1) {
         return {
           icon: "fa-star",
+
           iconClassName:
             "border-violet-400/15 bg-violet-500/10 text-violet-300",
+
           title:
             mixedAmounts && totalAmount !== undefined
               ? `${recipientCount} characters received ${totalAmount} XP total`
@@ -120,7 +135,9 @@ const getActivityPresentation = (
 
       return {
         icon: "fa-star",
+
         iconClassName: "border-violet-400/15 bg-violet-500/10 text-violet-300",
+
         title:
           amount !== undefined
             ? `${characterName} received ${amount} XP`
@@ -134,7 +151,9 @@ const getActivityPresentation = (
 
       return {
         icon: "fa-arrow-up",
+
         iconClassName: "border-amber-400/15 bg-amber-500/10 text-amber-300",
+
         title:
           level !== undefined
             ? `${characterName} reached level ${level}`
@@ -145,32 +164,87 @@ const getActivityPresentation = (
     case "inspiration_gained":
       return {
         icon: "fa-sparkles",
+
         iconClassName:
           "border-fuchsia-400/15 bg-fuchsia-500/10 text-fuchsia-300",
+
         title: `${characterName} gained Inspiration`,
       };
 
     case "inspiration_used":
       return {
         icon: "fa-sparkles",
+
         iconClassName: "border-zinc-400/15 bg-zinc-500/10 text-zinc-300",
+
         title: `${characterName} used Inspiration`,
       };
 
     case "character_activated":
       return {
         icon: "fa-user-plus",
+
         iconClassName:
           "border-emerald-400/15 bg-emerald-500/10 text-emerald-300",
+
         title: `${characterName} joined the active party`,
       };
 
     case "character_deactivated":
       return {
         icon: "fa-user-minus",
+
         iconClassName: "border-zinc-400/15 bg-zinc-500/10 text-zinc-400",
+
         title: `${characterName} left the active party`,
       };
+
+    case "character_claimed": {
+      const playerName = readString(payload, "playerName") ?? "A player";
+
+      return {
+        icon: "fa-hand",
+        iconClassName: "border-sky-400/15 bg-sky-500/10 text-sky-300",
+        title: `${playerName} claimed ${characterName}`,
+      };
+    }
+
+    case "character_released": {
+      const playerName = readString(payload, "playerName") ?? "A player";
+
+      return {
+        icon: "fa-arrow-right-from-bracket",
+        iconClassName: "border-amber-400/15 bg-amber-500/10 text-amber-300",
+        title: `${playerName} gave up ${characterName}`,
+      };
+    }
+
+    case "member_joined": {
+      const playerName =
+        readString(payload, "playerName") ??
+        readString(payload, "memberName") ??
+        "A player";
+
+      return {
+        icon: "fa-user-plus",
+        iconClassName:
+          "border-emerald-400/15 bg-emerald-500/10 text-emerald-300",
+        title: `${playerName} joined the campaign`,
+      };
+    }
+
+    case "member_left": {
+      const playerName =
+        readString(payload, "playerName") ??
+        readString(payload, "memberName") ??
+        "A player";
+
+      return {
+        icon: "fa-user-minus",
+        iconClassName: "border-zinc-400/15 bg-zinc-500/10 text-zinc-400",
+        title: `${playerName} left the campaign`,
+      };
+    }
 
     case "enemy_defeated": {
       const enemyName =
@@ -180,7 +254,9 @@ const getActivityPresentation = (
 
       return {
         icon: "fa-skull",
+
         iconClassName: "border-red-400/15 bg-red-500/10 text-red-300",
+
         title: `The party defeated ${enemyName}`,
       };
     }
@@ -188,7 +264,9 @@ const getActivityPresentation = (
     case "character_died":
       return {
         icon: "fa-skull-crossbones",
+
         iconClassName: "border-red-400/15 bg-red-500/10 text-red-300",
+
         title: `${characterName} died`,
       };
 
@@ -198,7 +276,9 @@ const getActivityPresentation = (
 
       return {
         icon: "fa-flag",
+
         iconClassName: "border-amber-400/15 bg-amber-500/10 text-amber-300",
+
         title,
       };
     }
@@ -213,8 +293,11 @@ const getActivityPresentation = (
 
       return {
         icon: "fa-gem",
+
         iconClassName: "border-sky-400/15 bg-sky-500/10 text-sky-300",
+
         title: `${characterName} received ${itemName}`,
+
         detail:
           quantity !== undefined && quantity > 1
             ? `Quantity: ${quantity}`
@@ -227,7 +310,9 @@ const getActivityPresentation = (
 
       return {
         icon: "fa-coins",
+
         iconClassName: "border-yellow-400/15 bg-yellow-500/10 text-yellow-300",
+
         title: amount
           ? `${characterName} received ${amount}`
           : `${characterName} received currency`,
@@ -239,7 +324,9 @@ const getActivityPresentation = (
 
       return {
         icon: "fa-clock-rotate-left",
+
         iconClassName: "border-white/10 bg-white/[0.04] text-zinc-400",
+
         title: exhaustiveType,
       };
     }
@@ -281,7 +368,9 @@ const formatActivityTime = (timestamp?: Timestamp | null) => {
 
   return date.toLocaleDateString(undefined, {
     day: "numeric",
+
     month: "short",
+
     year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
   });
 };
@@ -324,12 +413,15 @@ const ActivityRow = ({ entry }: { entry: ActivityEntry }) => {
 
 const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
+
   const [clearing, setClearing] = useState(false);
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!campaignId) {
       setEntries([]);
+
       setLoading(false);
 
       return;
@@ -339,7 +431,9 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
 
     const logQuery = query(
       collection(db, "campaigns", campaignId, "logEntries"),
+
       orderBy("createdAt", "desc"),
+
       limit(MAX_ACTIVITY_ENTRIES),
     );
 
@@ -349,10 +443,12 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
       (snapshot) => {
         const nextEntries = snapshot.docs.map((docSnap) => ({
           id: docSnap.id,
+
           ...(docSnap.data() as StoredCampaignLogEntry),
         }));
 
         setEntries(nextEntries);
+
         setLoading(false);
       },
 
@@ -360,6 +456,7 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
         console.error("Failed to load campaign activity:", error);
 
         setEntries([]);
+
         setLoading(false);
       },
     );
@@ -369,6 +466,7 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
 
   const visibleEntries = useMemo(
     () => entries.slice(0, MAX_ACTIVITY_ENTRIES),
+
     [entries],
   );
 

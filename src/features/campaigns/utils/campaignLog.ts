@@ -10,6 +10,10 @@ export type CampaignLogEntryType =
   | "gold_received"
   | "character_activated"
   | "character_deactivated"
+  | "character_claimed"
+  | "character_released"
+  | "member_joined"
+  | "member_left"
   | "enemy_defeated"
   | "character_died"
   | "milestone";
