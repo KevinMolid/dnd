@@ -9,9 +9,22 @@ const stripHtml = (value: string) => {
 
   const doc = new DOMParser().parseFromString(value, "text/html");
 
+  doc.querySelectorAll("br").forEach((element) => {
+    element.replaceWith("\n");
+  });
+
+  doc
+    .querySelectorAll("h1, h2, h3, h4, h5, h6, p, div, li")
+    .forEach((element) => {
+      element.append("\n");
+    });
+
   return (doc.body.textContent ?? "")
     .replace(/\u00a0/g, " ")
-    .replace(/\s+/g, " ")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n")
     .trim();
 };
 
@@ -111,7 +124,7 @@ const CampaignLatestJournalSection = ({
               </div>
 
               {latestJournalEntry.content ? (
-                <p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-400">
+                <p className="mt-2 line-clamp-5 whitespace-pre-line text-xs leading-5 text-zinc-400">
                   {stripHtml(latestJournalEntry.content)}
                 </p>
               ) : null}
