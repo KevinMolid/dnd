@@ -492,100 +492,94 @@ export default function NpcWorkspaceModule({
       {headerControls(selectedNpc)}
       {/* NPC content */}
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
-        {/* Identity */}
-        <div className="border-b border-white/10 p-3">
-          <div className="flex items-start gap-3">
-            <button
-              type="button"
-              disabled={!selectedNpc.imageUrl}
-              onClick={() => setPortraitOpen(true)}
-              title={selectedNpc.imageUrl ? "Enlarge portrait" : undefined}
-              className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/30 disabled:cursor-default"
-            >
-              {selectedNpc.imageUrl ? (
-                <img
-                  src={selectedNpc.imageUrl}
-                  alt={selectedNpc.name || "NPC"}
-                  className="h-full w-full object-cover"
-                  style={{
-                    objectPosition: `${selectedNpc.imageCropX ?? 50}% ${selectedNpc.imageCropY ?? 50}%`,
-                  }}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-zinc-700">
-                  <i className="fa-solid fa-user text-xl" />
-                </div>
-              )}
-            </button>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <h2 className="truncate text-base font-bold text-white">
-                  {selectedNpc.name || "Unnamed NPC"}
-                </h2>
+        {/* Identity: float allows personality badges to wrap beneath the portrait */}
+        <div className="flow-root border-b border-white/10 px-3 pt-2.5 pb-2">
+          <button
+            type="button"
+            disabled={!selectedNpc.imageUrl}
+            onClick={() => setPortraitOpen(true)}
+            title={selectedNpc.imageUrl ? "Enlarge portrait" : undefined}
+            className="float-left mr-3 mb-1 h-16 w-16 overflow-hidden rounded-xl border border-white/10 bg-black/30 disabled:cursor-default"
+          >
+            {selectedNpc.imageUrl ? (
+              <img
+                src={selectedNpc.imageUrl}
+                alt={selectedNpc.name || "NPC"}
+                className="h-full w-full object-cover"
+                style={{
+                  objectPosition: `${selectedNpc.imageCropX ?? 50}% ${selectedNpc.imageCropY ?? 50}%`,
+                }}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-zinc-700">
+                <i className="fa-solid fa-user text-xl" />
               </div>
-              {subtitle ? (
-                <div className="mt-0.5 whitespace-normal break-words text-xs leading-5 italic text-zinc-300">
-                  {subtitle}
-                </div>
-              ) : null}
-              {selectedNpc.personality?.length ? (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {selectedNpc.personality.map((trait, index) => (
-                    <span
-                      key={`${trait}-${index}`}
-                      className="rounded-md border border-violet-500/10 bg-violet-500/[0.05] px-1.5 py-1 text-xs text-violet-200"
-                    >
-                      {trait}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
+            )}
+          </button>
+          <h2 className="text-base font-bold leading-5 text-white break-words">
+            {selectedNpc.name || "Unnamed NPC"}
+          </h2>
+          {subtitle ? (
+            <div className="mt-0.5 whitespace-normal break-words text-xs leading-[18px] italic text-zinc-300">
+              {subtitle}
             </div>
-          </div>
+          ) : null}
+          {selectedNpc.personality?.length ? (
+            <div className="mt-1.5 text-xs leading-[25px]">
+              {selectedNpc.personality.map((trait, index) => (
+                <span
+                  key={`${trait}-${index}`}
+                  className="mr-1 mb-0.5 inline-block max-w-full break-words rounded-md border border-violet-500/10 bg-violet-500/[0.05] px-1.5 py-0.5 align-middle text-xs leading-5 text-violet-200"
+                >
+                  {trait}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
         {/* Most important live-roleplay info */}
-        <div className="space-y-2.5 p-3">
+        <div className="space-y-1.5 px-3 py-2.5">
           {selectedNpc.voice ? (
-            <div className="text-xs leading-5 text-sky-200/85">
+            <div className="text-xs leading-[18px] text-violet-100/90">
               <span className="mr-1.5 font-bold uppercase tracking-wide text-sky-300">
-                🗣️ Voice:
+                Voice
               </span>
               <span className="whitespace-pre-wrap">{selectedNpc.voice}</span>
             </div>
           ) : null}
           {selectedNpc.mannerisms?.length ? (
-            <div className="text-xs leading-5 text-violet-200/85">
+            <div className="text-xs leading-[18px] text-violet-100/90">
               <span className="mr-1.5 font-bold uppercase tracking-wide text-violet-300">
-                🎭 Manners:
+                Manners
               </span>
               <span>{selectedNpc.mannerisms.join(" · ")}</span>
             </div>
           ) : null}
           {selectedNpc.wants ? (
-            <div className="text-xs leading-5 text-emerald-200/85">
+            <div className="text-xs leading-[18px] text-violet-100/90">
               <span className="mr-1.5 font-bold uppercase tracking-wide text-emerald-300">
-                🎯 Wants:
+                Wants
               </span>
               <span className="whitespace-pre-wrap">{selectedNpc.wants}</span>
             </div>
           ) : null}
           {selectedNpc.fears ? (
-            <div className="text-xs leading-5 text-rose-200/85">
+            <div className="text-xs leading-[18px] text-violet-100/90">
               <span className="mr-1.5 font-bold uppercase tracking-wide text-rose-300">
-                ⚠ Fears:
+                Fears
               </span>
               <span className="whitespace-pre-wrap">{selectedNpc.fears}</span>
             </div>
           ) : null}
           {selectedNpc.quickReference ? (
-            <section className="min-w-0">
-              <div className="mb-1 text-xs font-bold uppercase tracking-wide text-violet-300">
+            <div className="min-w-0 text-xs leading-[18px] text-violet-100/90">
+              <span className="mr-1.5 font-bold uppercase tracking-wide text-violet-300">
                 Quick Reference
-              </div>
-              <div className="whitespace-pre-wrap text-xs leading-5 text-violet-100/90">
+              </span>
+              <span className="whitespace-pre-wrap">
                 {selectedNpc.quickReference}
-              </div>
-            </section>
+              </span>
+            </div>
           ) : null}
           {/* Expandable secondary sections */}
           {visibleSections.length > 0 ? (
@@ -611,7 +605,7 @@ export default function NpcWorkspaceModule({
                 ))}
               </div>
               {activeSection ? (
-                <div className="mt-2 rounded-lg border border-white/10 bg-black/20 p-3">
+                <div className="mt-2">
                   {activeSection === "description" ? (
                     <div className="whitespace-pre-wrap text-xs leading-5 text-zinc-300">
                       {selectedNpc.publicDescription}
