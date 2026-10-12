@@ -1,0 +1,102 @@
+/* Exact MTG card dimensions in physical CSS units. */
+.spell-card,
+.spell-card * { box-sizing: border-box; }
+.spell-card {
+  width: 2.5in;
+  height: 3.5in;
+  flex: none;
+  overflow: hidden;
+  padding: 0.075in;
+  color: #171717;
+  background: white;
+  border: 1.5px solid #171717;
+  border-radius: 0.11in;
+  font-family: Georgia, "Times New Roman", serif;
+  box-shadow: none;
+}
+.spell-card__inner {
+  --spell-text-size: 9pt;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0.038in;
+  font-size: var(--spell-text-size);
+  line-height: 1.19;
+}
+.spell-card__header { text-align: center; flex: none; }
+.spell-card__header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(11pt, calc(var(--spell-text-size) * 1.75), 16pt);
+  line-height: 1.05;
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.spell-card__header p { margin: 0.027in 0 0; font-style: italic; }
+.spell-card__rule {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 0.065in;
+  font-size: 6pt;
+  line-height: 1;
+}
+.spell-card__rule::before, .spell-card__rule::after {
+  content: "";
+  flex: 1;
+  border-top: 0.6px solid currentColor;
+}
+.spell-card__stats { margin: 0; flex: none; display: grid; row-gap: 0.035in; }
+.spell-card__stats > div { display: grid; grid-template-columns: 48% minmax(0, 1fr); gap: 0.035in; }
+.spell-card__stats dt { font-weight: bold; }
+.spell-card__stats dd { margin: 0; overflow-wrap: anywhere; }
+.spell-card__section { flex: none; min-width: 0; }
+.spell-card__section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.06in;
+  font-size: 0.95em;
+  line-height: 1.05;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+  margin: 0 0 0.027in;
+}
+.spell-card__section h2::after { content: ""; border-top: 0.6px solid currentColor; flex: 1; }
+.spell-card__section p { margin: 0; overflow-wrap: anywhere; white-space: pre-line; }
+
+.spell-print-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 32px 16px;
+  background: #e4e4e7;
+}
+.spell-print-page__controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  font: 13px system-ui, sans-serif;
+  color: #27272a;
+}
+.spell-print-page__controls button {
+  border: none;
+  background: #18181b;
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 9px 14px;
+  font: inherit;
+}
+@page { size: 2.5in 3.5in; margin: 0; }
+@media print {
+  html, body, #root { margin: 0 !important; padding: 0 !important; width: 2.5in !important; height: 3.5in !important; background: white !important; }
+  .spell-print-page { display: block; padding: 0; margin: 0; min-height: 0; background: white; }
+  .spell-print-page__controls { display: none !important; }
+  .spell-card { break-inside: avoid; page-break-inside: avoid; }
+}

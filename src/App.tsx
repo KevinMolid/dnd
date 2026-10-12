@@ -32,6 +32,7 @@ import ItemsPage from "./pages/ItemsPage";
 import MonstersPage from "./pages/MonstersPage";
 import EditCharacter from "./pages/EditCharacter";
 import DMWorkspacePage from "./pages/DMWorkspacePage";
+import SpellCardPage from "./features/spellCards/SpellCardPage";
 
 import CampaignGmOutlet from "./features/campaigns/components/CampaignGmOutlet";
 import SpotifyCallbackPage from "./features/spotify/SpotifyCallbackPage";
@@ -118,6 +119,8 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
       <Route index element={<Home />} />
 
       <Route path="/profile" element={<ProfileSettingsPage />} />
+
+          <Route path="/spell-card" element={<SpellCardPage />} />
 
       <Route path="tips" element={<Tips />} />
 
