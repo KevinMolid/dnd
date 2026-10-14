@@ -19,4 +19,4 @@ export {
   rangerDruidicWarriorCantripChoice,
 } from "./rangerChoices";
 
-export { rangerSubclasses } from "./rangerSubclasses";
+export { rangerSubclasses } from "./subclasses";

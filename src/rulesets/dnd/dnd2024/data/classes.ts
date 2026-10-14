@@ -1,5 +1,6 @@
 import type { CharacterClass } from "../types";
 
+import { artificer } from "./classes/artificer";
 import { barbarian } from "./classes/barbarian";
 import { bard } from "./classes/bard";
 import { cleric } from "./classes/cleric";
@@ -13,6 +14,7 @@ import { warlock } from "./classes/warlock";
 import { wizard } from "./classes/wizard";
 
 export const classes: CharacterClass[] = [
+  artificer,
   barbarian,
   bard,
   cleric,

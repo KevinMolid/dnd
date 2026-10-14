@@ -609,6 +609,7 @@ export type SpellId = string;
 export type SpellLevel = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
 export type SpellListId =
+  | "artificer"
   | "wizard"
   | "cleric"
   | "druid"
@@ -726,6 +727,7 @@ export type SpellSlotTableId =
   | "eldritch-knight";
 
 export type CharacterClassId =
+  | "artificer"
   | "barbarian"
   | "bard"
   | "cleric"
@@ -740,6 +742,13 @@ export type CharacterClassId =
   | "wizard";
 
   export type CharacterSubclassId =
+  // Artificer
+  | "alchemist"
+  | "armorer"
+  | "artillerist"
+  | "battle-smith"
+  | "cartographer"
+
   // Barbarian
   | "berserker"
   | "wild-heart"

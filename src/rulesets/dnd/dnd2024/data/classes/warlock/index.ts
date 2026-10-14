@@ -18,4 +18,4 @@ export {
   warlockSubclassChoicesByLevel,
 } from "./warlockChoices";
 
-export { warlockSubclasses } from "./warlockSubclasses";
+export { warlockSubclasses } from "./subclasses";

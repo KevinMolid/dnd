@@ -1,4 +1,4 @@
-import type { CharacterSubclass } from "../../../../types";
+import type { CharacterSubclass } from "../../../types";
 
 export const aberrantSorcery: CharacterSubclass = {
   id: "aberrant-sorcery",
