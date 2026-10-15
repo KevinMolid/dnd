@@ -9,6 +9,7 @@ import type {
 } from "../../types";
 import { spellSlotTables } from "../../spellSlotTables";
 import { spells } from "./spells";
+import { artificerSpellList } from "./artificerSpellList";
 import { bardSpellList } from "./bardSpellList";
 import { clericSpellList } from "./clericSpellList";
 import { druidSpellList } from "./druidSpellList";
@@ -28,6 +29,7 @@ export const spellsById: Record<SpellId, Spell> = Object.fromEntries(
 ) as Record<SpellId, Spell>;
 
 export const spellListsById: Record<SpellListId, SpellId[]> = {
+  artificer: artificerSpellList,
   bard: bardSpellList,
   cleric: clericSpellList,
   druid: druidSpellList,

@@ -11,3 +11,6 @@ export * from "./getArtificerSubclassChoice";
 export * from "./artificerSubclassSpellMap";
 export * from "./getArtificerSubclassGrantedSpells";
 export * from "./mergeArtificerSubclassDerivedSpells";
+
+export * from "./artificerFixedSpells";
+export * from "./artificerReplicationState";

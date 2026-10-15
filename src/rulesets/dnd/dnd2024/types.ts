@@ -747,7 +747,7 @@ export type CharacterClassId =
   | "armorer"
   | "artillerist"
   | "battle-smith"
-  | "cartographer"
+  | "cart"
 
   // Barbarian
   | "berserker"
