@@ -1,10 +1,4 @@
-# Artificer integration — remaining application wiring
-
-This kit provides concrete support modules, not an automatically integrated feature. Import paths assume the same folder depth as Cleric. Verify 2025 final subclass data before release.
-
 ## Types (existing types.ts)
-- Add `"artificer"` to `CharacterClassId` and `SpellListId`.
-- Add `"alchemist" | "armorer" | "artillerist" | "battle-smith" | "cartographer"` to `CharacterSubclassId`.
 - Add `artificerReplication?: ArtificerReplicationState` to `CharacterChoices` if you want strongly typed persistence. Import the type with `import type` to avoid runtime cycles; alternatively use the local `ArtificerChoices` intersection type in the save component.
 
 ## Character creation / level-up

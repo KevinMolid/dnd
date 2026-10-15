@@ -1,4 +1,4 @@
-import type { CharacterSubclass } from "../../../../types";
+import type { CharacterSubclass } from "../../../types";
 import { aberrantSorcery } from "./aberrantSorcery";
 import { clockworkSorcery } from "./clockworkSorcery";
 import { draconicSorcery } from "./draconicSorcery";
