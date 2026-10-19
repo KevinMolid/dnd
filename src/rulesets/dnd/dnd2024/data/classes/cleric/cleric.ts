@@ -221,6 +221,22 @@ export const cleric: CharacterClass = {
           uses: { type: "fixed", value: 2 },
           recharge: "short-rest",
         },
+        actions: [
+          {
+            id: "divine-spark",
+            name: "Divine Spark",
+            activation: "action",
+            description:
+              "As a Magic action, point your Holy Symbol at another creature you can see within 30 feet. Roll 1d8 and add your Wisdom modifier. Either restore Hit Points equal to the total, or force the creature to make a Constitution saving throw. On a failed save, it takes Necrotic or Radiant damage equal to the total (your choice), or half as much on a successful save. The roll increases to 2d8 at Cleric level 7, 3d8 at level 13, and 4d8 at level 18.",
+          },
+          {
+            id: "turn-undead",
+            name: "Turn Undead",
+            activation: "action",
+            description:
+              "As a Magic action, present your Holy Symbol. Each Undead of your choice within 30 feet must make a Wisdom saving throw. On a failed save, it has the Frightened and Incapacitated conditions for 1 minute and tries to move as far away from you as possible. The effect ends early if the creature takes damage, you become Incapacitated, or you die.",
+          },
+        ],
       },
     ],
 
