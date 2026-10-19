@@ -5,6 +5,8 @@ import { Link, useLocation, useParams } from "react-router-dom";
 import {
   collection,
   doc,
+  query,
+  where,
   getDoc,
   onSnapshot,
   runTransaction,
@@ -19,6 +21,7 @@ import { useAuth } from "../context/AuthContext";
 import type { CampaignDoc, CampaignMemberDoc } from "../types/campaign";
 
 import Avatar from "../components/Avatar";
+import { classesById, speciesById } from "../rulesets/dnd/dnd2024/helpers";
 
 import { addLogEntry } from "../features/campaigns/utils/campaignLog";
 
@@ -51,6 +54,22 @@ type PublicCharacterDoc = {
 
   level?: number;
 
+  imageUrl?: string;
+  campaignId?: string | null;
+  buildMode?: string;
+  classId?: string;
+  speciesId?: string;
+  currentHp?: number;
+  maxHp?: number;
+  customStats?: { currentHp?: number; maxHp?: number };
+};
+
+type AvailableCharacter = {
+  id: string;
+  name: string;
+  className?: string;
+  race?: string;
+  level?: number;
   imageUrl?: string;
 };
 
@@ -156,6 +175,11 @@ const CampaignCharactersPage = () => {
 
   const [portraitCharacter, setPortraitCharacter] =
     useState<CampaignCharacter | null>(null);
+
+  const [addExistingOpen, setAddExistingOpen] = useState(false);
+  const [availableCharacters, setAvailableCharacters] = useState<AvailableCharacter[]>([]);
+  const [availableLoading, setAvailableLoading] = useState(false);
+  const [managementError, setManagementError] = useState("");
 
   useEffect(() => {
     const loadAccess = async () => {
@@ -395,6 +419,176 @@ const CampaignCharactersPage = () => {
 
     return () => unsub();
   }, [campaignId, pageState]);
+
+  // Read only the signed-in user's private characters for the add picker.
+  // Missing campaignId is treated as unattached for older characters.
+  useEffect(() => {
+    if (!addExistingOpen || !user || pageState !== "ready") {
+      setAvailableCharacters([]);
+      setAvailableLoading(false);
+      return;
+    }
+
+    setAvailableLoading(true);
+    const unsub = onSnapshot(
+      query(collection(db, "characters"), where("ownerUid", "==", user.uid)),
+      (snapshot) => {
+        const available = snapshot.docs.flatMap((snap) => {
+          const data = snap.data() as PublicCharacterDoc;
+          if (data.campaignId) return [];
+          return [{
+            id: snap.id,
+            name: data.name?.trim() || "Unnamed Character",
+            className: data.className?.trim() ||
+              (data.classId ? classesById[data.classId]?.name : undefined),
+            race: data.speciesName?.trim() || data.race?.trim() ||
+              (data.speciesId ? speciesById[data.speciesId]?.name : undefined),
+            level: data.level,
+            imageUrl: data.imageUrl,
+          }];
+        });
+        available.sort((a, b) => a.name.localeCompare(b.name));
+        setAvailableCharacters(available);
+        setAvailableLoading(false);
+      },
+      (error) => {
+        console.error("Failed to load owned characters:", error);
+        setManagementError("Could not load your characters.");
+        setAvailableLoading(false);
+      },
+    );
+    return () => unsub();
+  }, [addExistingOpen, pageState, user?.uid]);
+
+  const handleAddExisting = async (characterId: string) => {
+    if (!campaignId || !user) return;
+    setBusyCharacterId(characterId);
+    setManagementError("");
+    try {
+      await runTransaction(db, async (tx) => {
+        const characterRef = doc(db, "characters", characterId);
+        const partyRef = doc(db, "campaigns", campaignId, "party", characterId);
+        const membershipRef = doc(db, "campaigns", campaignId, "members", user.uid);
+        const [characterSnap, partySnap, membershipSnap] = await Promise.all([
+          tx.get(characterRef), tx.get(partyRef), tx.get(membershipRef),
+        ]);
+        if (!membershipSnap.exists()) throw new Error("You are not a member of this campaign.");
+        if (!characterSnap.exists()) throw new Error("Character no longer exists.");
+        const data = characterSnap.data() as PublicCharacterDoc;
+        if (data.ownerUid !== user.uid) throw new Error("You do not own this character.");
+        if (data.campaignId) throw new Error("Character is already linked to a campaign.");
+        if (partySnap.exists()) throw new Error("Character is already in the campaign roster.");
+
+        const isCustom = data.buildMode === "custom";
+        const maxHp = isCustom
+          ? (data.customStats?.maxHp ?? data.maxHp ?? 1)
+          : (data.maxHp ?? 1);
+        const currentHp = isCustom
+          ? (data.customStats?.currentHp ?? data.currentHp ?? maxHp)
+          : (data.currentHp ?? maxHp);
+        const now = serverTimestamp();
+        tx.update(characterRef, {
+          campaignId,
+          campaignStatus: "inactive",
+          claimMode: "locked",
+          claimableByUid: null,
+          updatedAt: now,
+        });
+        tx.set(partyRef, {
+          characterId,
+          campaignId,
+          ownerUid: user.uid,
+          createdByUid: data.createdByUid ?? user.uid,
+          campaignStatus: "inactive",
+          claimMode: "locked",
+          claimableByUid: null,
+          name: data.name?.trim() || "Unnamed Character",
+          imageUrl: data.imageUrl ?? null,
+          race: data.speciesName?.trim() || data.race?.trim() ||
+            (data.speciesId ? speciesById[data.speciesId]?.name : undefined) || "",
+          className: data.className?.trim() ||
+            (data.classId ? classesById[data.classId]?.name : undefined) || "",
+          level: data.level ?? 1,
+          currentHp,
+          maxHp,
+          updatedAt: now,
+        });
+      });
+      setAddExistingOpen(false);
+    } catch (error) {
+      console.error("Failed to add existing character:", error);
+      setManagementError(error instanceof Error ? error.message : "Could not add character.");
+    } finally {
+      setBusyCharacterId(null);
+    }
+  };
+
+  const handleRemoveOwned = async (character: CampaignCharacter) => {
+    if (!campaignId || !user || character.ownerUid !== user.uid) return;
+    if (!window.confirm(`Remove "${character.name}" from this campaign? The character will remain in your library.`)) return;
+    setBusyCharacterId(character.id);
+    setManagementError("");
+    try {
+      await runTransaction(db, async (tx) => {
+        const characterRef = doc(db, "characters", character.id);
+        const partyRef = doc(db, "campaigns", campaignId, "party", character.id);
+        const [characterSnap, partySnap] = await Promise.all([tx.get(characterRef), tx.get(partyRef)]);
+        if (!characterSnap.exists() || !partySnap.exists()) throw new Error("Character is no longer in this campaign.");
+        const privateData = characterSnap.data() as PublicCharacterDoc;
+        const publicData = partySnap.data() as PublicCharacterDoc;
+        if (privateData.ownerUid !== user.uid || publicData.ownerUid !== user.uid ||
+            privateData.campaignId !== campaignId) {
+          throw new Error("Ownership or campaign membership has changed.");
+        }
+        tx.update(characterRef, {
+          campaignId: null,
+          campaignStatus: "inactive",
+          claimMode: "locked",
+          claimableByUid: null,
+          updatedAt: serverTimestamp(),
+        });
+        tx.delete(partyRef);
+      });
+    } catch (error) {
+      console.error("Failed to remove owned character:", error);
+      setManagementError(error instanceof Error ? error.message : "Could not remove character.");
+    } finally {
+      setBusyCharacterId(null);
+    }
+  };
+
+  const handleDeleteUnowned = async (character: CampaignCharacter) => {
+    if (!campaignId || !user || !isGm || character.ownerUid !== null) return;
+    if (!window.confirm(`Permanently delete "${character.name}"? This cannot be undone.`)) return;
+    setBusyCharacterId(character.id);
+    setManagementError("");
+    try {
+      await runTransaction(db, async (tx) => {
+        const characterRef = doc(db, "characters", character.id);
+        const partyRef = doc(db, "campaigns", campaignId, "party", character.id);
+        const membershipRef = doc(db, "campaigns", campaignId, "members", user.uid);
+        const [characterSnap, partySnap, membershipSnap] = await Promise.all([
+          tx.get(characterRef), tx.get(partyRef), tx.get(membershipRef),
+        ]);
+        const role = (membershipSnap.data() as CampaignMemberDoc | undefined)?.role;
+        if (role !== "gm" && role !== "co-gm") throw new Error("GM permissions required.");
+        if (!characterSnap.exists() || !partySnap.exists()) throw new Error("Character no longer exists.");
+        const privateData = characterSnap.data() as PublicCharacterDoc;
+        const publicData = partySnap.data() as PublicCharacterDoc;
+        if (privateData.ownerUid != null || publicData.ownerUid != null ||
+            privateData.campaignId !== campaignId) {
+          throw new Error("This character is owned or belongs to another campaign.");
+        }
+        tx.delete(partyRef);
+        tx.delete(characterRef);
+      });
+    } catch (error) {
+      console.error("Failed to delete unowned character:", error);
+      setManagementError(error instanceof Error ? error.message : "Could not delete character.");
+    } finally {
+      setBusyCharacterId(null);
+    }
+  };
 
   const activeCampaignCharacters = useMemo(
     () =>
@@ -984,6 +1178,7 @@ const CampaignCharactersPage = () => {
     const canClaim = canPlayerClaim(character);
 
     const canRelease = character.ownerUid === user?.uid;
+    const canDeleteUnowned = isGm && character.ownerUid === null;
 
     return (
       <div
@@ -1071,6 +1266,30 @@ const CampaignCharactersPage = () => {
               </button>
             ) : null}
 
+            {canRelease ? (
+              <button
+                type="button"
+                onClick={() => void handleRemoveOwned(character)}
+                disabled={isBusy}
+                className="rounded-md border border-rose-500/20 bg-rose-500/[0.06] px-2.5 py-1.5 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/[0.12] disabled:opacity-50"
+                title="Keep character, remove campaign membership"
+              >
+                Remove from campaign
+              </button>
+            ) : null}
+
+            {canDeleteUnowned ? (
+              <button
+                type="button"
+                onClick={() => void handleDeleteUnowned(character)}
+                disabled={isBusy}
+                className="rounded-md border border-rose-500/20 bg-rose-500/[0.06] px-2.5 py-1.5 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/[0.12] disabled:opacity-50"
+                title="Permanently delete unowned character"
+              >
+                Delete
+              </button>
+            ) : null}
+
             {isGm ? (
               <>
                 <button
@@ -1122,14 +1341,24 @@ const CampaignCharactersPage = () => {
       <div className="mb-3 flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-white">Characters</h2>
 
-        {isGm ? (
-          <Link
-            to={`/characters/new?campaignId=${campaign.id}&campaignMode=unassigned`}
-            className="inline-flex rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => { setManagementError(""); setAddExistingOpen(true); }}
+            className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
           >
-            Create campaign character
-          </Link>
-        ) : null}
+            <i className="fa-solid fa-user-plus" aria-hidden="true" />
+            Add existing
+          </button>
+          {isGm ? (
+            <Link
+              to={`/characters/new?campaignId=${campaign.id}&campaignMode=unassigned`}
+              className="inline-flex rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+            >
+              Create campaign character
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       {isGm ? (
@@ -1202,6 +1431,39 @@ const CampaignCharactersPage = () => {
           </div>
         )}
       </section>
+
+      {managementError ? (
+        <div role="alert" className="mb-3 rounded-lg border border-rose-500/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+          {managementError}
+        </div>
+      ) : null}
+
+      {addExistingOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setAddExistingOpen(false); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="add-existing-title" className="flex max-h-[85dvh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-white/15 bg-zinc-950 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+              <h3 id="add-existing-title" className="text-base font-semibold">Add existing character</h3>
+              <button type="button" aria-label="Close" onClick={() => setAddExistingOpen(false)} className="rounded-lg p-2 text-zinc-400 hover:bg-white/10 hover:text-white"><i className="fa-solid fa-xmark" /></button>
+            </div>
+            <p className="px-4 pt-3 text-xs leading-5 text-zinc-400">Only your characters not already assigned to a campaign can be added. New additions start inactive.</p>
+            <div className="workspace-scrollbar min-h-0 flex-1 space-y-2 overflow-y-auto p-4">
+              {availableLoading ? <p className="text-sm text-zinc-400">Loading characters…</p> :
+                availableCharacters.length === 0 ? <p className="text-sm text-zinc-400">No available characters.</p> :
+                availableCharacters.map((entry) => (
+                  <div key={entry.id} className="flex min-w-0 items-center gap-3 rounded-lg border border-white/10 p-2">
+                    <Avatar name={entry.name} src={entry.imageUrl} className="h-11 w-11 shrink-0 rounded-lg" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{entry.name}</p>
+                      <p className="truncate text-xs text-zinc-400">{[entry.level ? `Level ${entry.level}` : null, entry.race, entry.className].filter(Boolean).join(" ")}</p>
+                    </div>
+                    <button type="button" disabled={busyCharacterId !== null} onClick={() => void handleAddExisting(entry.id)} className="rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 disabled:opacity-50">{busyCharacterId === entry.id ? "Adding…" : "Add"}</button>
+                  </div>
+                ))}
+            </div>
+            {managementError ? <p role="alert" className="border-t border-rose-500/20 px-4 py-2 text-xs text-rose-300">{managementError}</p> : null}
+          </div>
+        </div>
+      ) : null}
 
       {portraitCharacter?.imageUrl ? (
         <div
