@@ -332,7 +332,7 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen min-w-0 overflow-x-hidden bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen min-w-0 select-none overflow-x-hidden bg-zinc-950 text-zinc-100">
       <Container>
         <div className="py-6 sm:py-8">
           <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
@@ -340,7 +340,7 @@ const Home = () => {
               CAMPAIGNS
           ===================================================== */}
 
-            <section className="min-w-0 rounded-2xl border border-white/10 bg-zinc-900/35 p-3 sm:p-5">
+            <section className="min-w-0 sm:rounded-2xl sm:border sm:border-white/10 sm:bg-zinc-900/35 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-2 sm:gap-4">
                 <h1 className="text-xl font-semibold text-white sm:text-2xl">
                   Campaigns
@@ -373,89 +373,66 @@ const Home = () => {
                   Create a campaign or accept an invitation from a GM.
                 </EmptyState>
               ) : (
-                <div className="space-y-2.5">
+                <div className="grid min-w-0 gap-3 xl:grid-cols-2">
                   {campaigns.map((campaign) => (
                     <article
                       key={campaign.id}
-                      className="group relative rounded-xl border border-white/[0.08] bg-black/15 p-3 transition hover:border-white/15 hover:bg-white/[0.025]"
+                      className="group relative isolate min-h-[172px] overflow-hidden rounded-xl border border-white/10 bg-zinc-900 shadow-sm transition hover:border-white/25 sm:min-h-[185px]"
                     >
-                      <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-                        <Link
-                          to={`/campaigns/${campaign.id}`}
-                          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:gap-4"
-                          aria-label={`Open ${campaign.name}`}
-                        >
-                          <div className="h-14 w-16 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30 sm:h-[72px] sm:w-28">
-                            {campaign.imageUrl ? (
-                              <img
-                                src={campaign.imageUrl}
-                                alt=""
-                                className="h-full w-full object-cover transition duration-200 group-hover:scale-[1.02]"
-                                style={{
-                                  objectPosition: `${campaign.imagePositionX ?? 50}% ${
-                                    campaign.imagePositionY ?? 50
-                                  }%`,
-                                  transform: `scale(${campaign.imageZoom ?? 1})`,
-                                  transformOrigin: `${campaign.imagePositionX ?? 50}% ${
-                                    campaign.imagePositionY ?? 50
-                                  }%`,
-                                }}
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-zinc-700">
-                                <i className="fa-solid fa-dice-d20 text-2xl" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="min-w-0">
-                              <h2 className="truncate text-base font-semibold text-white">
-                                {campaign.name}
-                              </h2>
-
-                              <div className="mt-1 flex min-w-0 items-center gap-2">
-                                <span className="truncate text-sm text-zinc-500">
-                                  {campaign.system ?? "Tabletop RPG"}
-                                  {campaign.lastPlayed
-                                    ? ` · Last active ${campaign.lastPlayed}`
-                                    : ""}
-                                </span>
-
-                                <span
-                                  className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(
-                                    campaign.role,
-                                  )}`}
-                                >
-                                  {formatRoleLabel(campaign.role)}
-                                </span>
-                              </div>
-                            </div>
-
-                            {campaign.description ? (
-                              <p className="mt-1.5 line-clamp-2 text-sm text-zinc-400">
-                                {campaign.description.length > 100
-                                  ? `${campaign.description.slice(0, 100).trimEnd()}…`
-                                  : campaign.description}
-                              </p>
-                            ) : null}
-                          </div>
-                        </Link>
-
-                        <div className="flex shrink-0 items-center gap-2">
-                          {(campaign.role === "gm" ||
-                            campaign.role === "co-gm") && (
-                            <Link
-                              to={`/campaigns/${campaign.id}/settings`}
-                              aria-label={`Settings for ${campaign.name}`}
-                              title="Campaign settings"
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:h-10 sm:w-10 sm:text-sm"
-                            >
-                              <i className="fa-solid fa-gear" />
-                            </Link>
-                          )}
+                      {/* The link covers the card; settings remains a separate action. */}
+                      <Link
+                        to={`/campaigns/${campaign.id}`}
+                        aria-label={`Open ${campaign.name}`}
+                        className="absolute inset-0 z-10 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
+                      />
+                      {campaign.imageUrl ? (
+                        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                          <img
+                            src={campaign.imageUrl}
+                            alt=""
+                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.035]"
+                            style={{
+                              objectPosition: `${campaign.imagePositionX ?? 50}% ${campaign.imagePositionY ?? 50}%`,
+                              transform: `scale(${campaign.imageZoom ?? 1})`,
+                              transformOrigin: `${campaign.imagePositionX ?? 50}% ${campaign.imagePositionY ?? 50}%`,
+                            }}
+                          />
                         </div>
+                      ) : (
+                        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black text-zinc-700">
+                          <i className="fa-solid fa-dice-d20 text-6xl opacity-40" aria-hidden="true" />
+                        </div>
+                      )}
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/75 to-black/10" />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] p-4 pr-12">
+                        <h2 className="line-clamp-2 text-lg font-bold leading-tight text-white drop-shadow-sm">
+                          {campaign.name}
+                        </h2>
+                        <div className="mt-1.5 flex min-w-0 flex-wrap items-center gap-2">
+                          <span className="text-xs font-medium text-zinc-200">
+                            {campaign.system ?? "Tabletop RPG"}
+                            {campaign.lastPlayed ? ` · Last active ${campaign.lastPlayed}` : ""}
+                          </span>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(campaign.role)}`}>
+                            {formatRoleLabel(campaign.role)}
+                          </span>
+                        </div>
+                        {campaign.description ? (
+                          <p className="mt-2 line-clamp-2 text-xs leading-5 text-zinc-200/90">
+                            {campaign.description}
+                          </p>
+                        ) : null}
                       </div>
+                      {(campaign.role === "gm" || campaign.role === "co-gm") ? (
+                        <Link
+                          to={`/campaigns/${campaign.id}/settings`}
+                          aria-label={`Settings for ${campaign.name}`}
+                          title="Campaign settings"
+                          className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-white/20 bg-black/55 text-sm text-white/85 backdrop-blur-sm transition hover:bg-black/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                        >
+                          <i className="fa-solid fa-gear" aria-hidden="true" />
+                        </Link>
+                      ) : null}
                     </article>
                   ))}
                 </div>
@@ -466,7 +443,7 @@ const Home = () => {
               CHARACTERS
           ===================================================== */}
 
-            <section className="min-w-0 rounded-2xl border border-white/10 bg-zinc-900/35 p-3 sm:p-5">
+            <section className="min-w-0 sm:rounded-2xl sm:border sm:border-white/10 sm:bg-zinc-900/35 sm:p-5">
               <div className="mb-4 flex items-center justify-between gap-4">
                 <h2 className="text-xl font-semibold text-white sm:text-2xl">
                   Characters
@@ -499,65 +476,58 @@ const Home = () => {
                   Create a character now and attach it to a campaign later.
                 </EmptyState>
               ) : (
-                <div className="space-y-2.5">
+                <div className="divide-y divide-white/[0.07] sm:space-y-2.5 sm:divide-y-0">
                   {characters.map((character) => {
                     const summary = getCharacterSummary(character);
 
                     return (
                       <article
                         key={character.id}
-                        className="group rounded-xl border border-white/[0.08] bg-black/15 p-3 transition hover:border-white/15 hover:bg-white/[0.025]"
+                        className="group flex min-w-0 items-center gap-3 py-3 transition hover:bg-white/[0.025] sm:rounded-xl sm:border sm:border-white/[0.08] sm:bg-black/15 sm:p-3 sm:hover:border-white/15"
                       >
-                        <div className="flex items-center gap-3">
-                          <Link
-                            to={`/characters/${character.id}`}
-                            className="flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
-                            aria-label={`Open ${character.name}`}
-                          >
-                            <Avatar
-                              src={character.imageUrl}
-                              name={character.name}
-                              className="h-12 w-12 shrink-0 rounded-lg"
-                            />
-
-                            <div className="min-w-0 flex-1">
-                              <h3 className="truncate text-base font-semibold text-white">
-                                {character.name}
-                              </h3>
-
-                              {summary ? (
-                                <p className="mt-1 text-sm text-zinc-400">
-                                  {summary}
-                                </p>
-                              ) : null}
-
-                              <p className="mt-1 truncate text-sm text-zinc-500">
-                                {character.campaignName ?? "Not assigned"}
+                        <Link
+                          to={`/characters/${character.id}`}
+                          className="flex min-w-0 flex-1 items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30"
+                          aria-label={`Open ${character.name}`}
+                        >
+                          <Avatar
+                            src={character.imageUrl}
+                            name={character.name}
+                            className="h-[76px] w-[76px] shrink-0 rounded-xl object-cover sm:h-[72px] sm:w-[72px]"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <h3 className="truncate text-sm font-semibold text-white sm:text-base">
+                              {character.name}
+                            </h3>
+                            {summary ? (
+                              <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-300 sm:text-sm">
+                                {summary}
                               </p>
-                            </div>
-                          </Link>
-
-                          <div className="flex shrink-0 items-center gap-2">
-                            <Link
-                              to={`/characters/${character.id}/edit`}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:h-10 sm:w-10 sm:text-sm"
-                              aria-label={`Edit ${character.name}`}
-                              title="Edit character"
-                            >
-                              <i className="fa-solid fa-pen-to-square" />
-                            </Link>
-
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCharacter(character)}
-                              disabled={deletingCharacterId === character.id}
-                              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:h-10 sm:w-10 sm:text-sm"
-                              aria-label={`Delete ${character.name}`}
-                              title="Delete character"
-                            >
-                              <i className="fa-solid fa-trash" />
-                            </button>
+                            ) : null}
+                            <p className="mt-1 truncate text-xs text-zinc-500 sm:text-sm">
+                              {character.campaignName ?? "Not assigned"}
+                            </p>
                           </div>
+                        </Link>
+                        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+                          <Link
+                            to={`/characters/${character.id}/edit`}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:bg-white/[0.09] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 sm:h-10 sm:w-10 sm:text-sm"
+                            aria-label={`Edit ${character.name}`}
+                            title="Edit character"
+                          >
+                            <i className="fa-solid fa-pen-to-square" aria-hidden="true" />
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCharacter(character)}
+                            disabled={deletingCharacterId === character.id}
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-xs text-zinc-400 transition hover:bg-white/[0.09] hover:text-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 disabled:opacity-40 sm:h-10 sm:w-10 sm:text-sm"
+                            aria-label={`Delete ${character.name}`}
+                            title="Delete character"
+                          >
+                            <i className="fa-solid fa-trash" aria-hidden="true" />
+                          </button>
                         </div>
                       </article>
                     );
