@@ -208,15 +208,30 @@ const PartyControlSection = ({
                 key={character.id}
                 className="rounded-lg border border-white/[0.08] bg-black/15 px-3 py-2 transition hover:border-white/15 hover:bg-white/[0.025]"
               >
-                <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                  <div className="min-w-0 flex items-center gap-3">
+                <div className="relative">
+                  {isGm ? (
+                    <button
+                      type="button"
+                      className="absolute inset-0 z-0 w-full cursor-pointer rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 md:hidden"
+                      aria-label={`${isExpanded ? "Close" : "Manage"} ${character.name}`}
+                      aria-expanded={isExpanded}
+                      aria-controls={`party-manage-${character.id}`}
+                      onClick={() =>
+                        setExpandedCharacterId((previous) =>
+                          previous === character.id ? null : character.id,
+                        )
+                      }
+                    />
+                  ) : null}
+                  <div className="pointer-events-none relative z-10 flex min-w-0 flex-col gap-2 md:pointer-events-auto md:flex-row md:items-center md:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
                     {character.imageUrl ? (
                       <button
                         type="button"
                         onClick={() => setPortraitCharacter(character)}
                         aria-label={`Enlarge portrait for ${character.name}`}
                         title="Enlarge portrait"
-                        className="group shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+                        className="pointer-events-auto group shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
                       >
                         <Avatar
                           name={character.name}
@@ -256,7 +271,7 @@ const PartyControlSection = ({
                           currentUserId === character.ownerUid && (
                             <button
                               onClick={() => onOpenLevelUp(character)}
-                              className="rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-400/15"
+                              className="pointer-events-auto rounded-md border border-amber-400/20 bg-amber-400/10 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300 transition hover:bg-amber-400/15"
                             >
                               Level up
                             </button>
@@ -277,9 +292,23 @@ const PartyControlSection = ({
                           .join(" ")}
                       </p>
                     </div>
+                    {canOpenCharacter ? (
+                      <Link
+                        to={`/characters/${character.id}`}
+                        state={{
+                          from: `${location.pathname}${location.search}`,
+                          label: "Back to campaign",
+                        }}
+                        aria-label={`Open ${character.name}`}
+                        title={`Open ${character.name}`}
+                        className="pointer-events-auto ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.04] text-zinc-300 transition hover:bg-white/[0.08] hover:text-white md:hidden"
+                      >
+                        <i className="fa-solid fa-arrow-up-right-from-square text-xs" aria-hidden="true" />
+                      </Link>
+                    ) : null}
                   </div>
 
-                  <div className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-end">
+                  <div className="flex min-w-0 flex-col gap-1.5 md:gap-2 md:flex-row md:items-center md:justify-end">
                     {character.heroicInspiration ? (
                       <div
                         title="Heroic Inspiration"
@@ -355,7 +384,7 @@ const PartyControlSection = ({
                       ) : null}
                     </div>
 
-                    <div className="flex w-full shrink-0 items-center justify-end gap-2 border-t border-white/[0.06] pt-2 md:w-auto md:border-t-0 md:pt-0">
+                    <div className="hidden w-full shrink-0 items-center justify-end gap-2 border-t border-white/[0.06] pt-2 md:flex md:w-auto md:border-t-0 md:pt-0">
                       {isGm && (
                         <button
                           onClick={() =>
@@ -384,10 +413,11 @@ const PartyControlSection = ({
                       )}
                     </div>
                   </div>
+                  </div>
                 </div>
 
                 {isGm && isExpanded && (
-                  <div className="mt-2 border-t border-white/[0.06] pt-2.5">
+                  <div id={`party-manage-${character.id}`} className="mt-2 border-t border-white/[0.06] pt-2.5">
                     <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                       <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2.5">
                         <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-zinc-500">
