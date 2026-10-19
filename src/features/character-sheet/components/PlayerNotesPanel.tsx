@@ -120,7 +120,7 @@ const PlayerNotesPanel = ({
 
     editorProps: {
       attributes: {
-        class: "workspace-note-editor min-h-full",
+        class: "workspace-note-editor min-h-[390px] cursor-text",
         spellcheck: "false",
       },
     },

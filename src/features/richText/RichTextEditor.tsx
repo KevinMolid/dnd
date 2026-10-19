@@ -151,6 +151,38 @@ export default function RichTextEditor({
     }
   }, [editor, value]);
 
+  
+const handleEditorMouseDown = (
+  event: React.MouseEvent<HTMLDivElement>
+) => {
+  if (!editor || event.button !== 0) return;
+
+  const target = event.target as HTMLElement;
+
+  // Let buttons and custom interactive elements work normally.
+  if (
+    target.closest(
+      "button, a, input, textarea, select, " +
+      "[data-no-editor-focus], " +
+      ".accordion-header"
+    )
+  ) {
+    return;
+  }
+
+  const proseMirror = target.closest(".ProseMirror");
+
+  if (proseMirror) {
+    // Allow clicks on existing text to select normally.
+    // Clicking the empty editor background should focus the end.
+    if (target !== proseMirror) return;
+  }
+
+  event.preventDefault();
+  editor.chain().focus("end").run();
+};
+
+
   return (
     <div className="rounded-lg border border-white/10 bg-black/20">
       <div
@@ -249,10 +281,14 @@ export default function RichTextEditor({
         ) : null}
       </div>
 
-      <div className="workspace-scrollbar max-h-[520px] overflow-y-auto rounded-b-lg">
+      
+      <div
+        className="workspace-scrollbar max-h-[520px] overflow-y-auto rounded-b-lg cursor-text"
+        onMouseDown={handleEditorMouseDown}
+      >
         <EditorContent
           editor={editor}
-          className={`px-3 py-3 text-sm leading-6 text-zinc-200 ${minHeightClassName}`}
+          className={`workspace-editor-surface px-3 py-3 text-sm leading-6 text-zinc-200 ${minHeightClassName}`}
         />
       </div>
     </div>

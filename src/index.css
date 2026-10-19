@@ -66,7 +66,6 @@ html {
 ------------------------------------------------------- */
 
 .workspace-note-editor {
-  min-height: 100%;
   padding: 0.75rem;
   outline: none;
   color: rgb(228 228 231);
@@ -211,6 +210,32 @@ html {
 .workspace-note-editor .gm-note-title[contenteditable="true"]:focus {
   background: rgba(255, 255, 255, 0.035);
 }
+
+
+/* The wrapper containing the TipTap editor */
+.workspace-editor-surface {
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+  cursor: text;
+}
+
+/* TipTap's EditorContent wrapper */
+.workspace-editor-surface > div {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
+  min-height: inherit;
+}
+
+/* The actual editable ProseMirror element */
+.workspace-editor-surface .workspace-note-editor {
+  flex: 1 0 auto;
+  min-height: inherit;
+  outline: none;
+  cursor: text;
+}
+
 
 /* -------------------------------------------------------
    Entity mentions
