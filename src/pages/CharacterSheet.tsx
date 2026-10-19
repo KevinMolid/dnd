@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState, type TouchEvent } from "react";
+import MobileCharacterNavigation, { type MobileCharacterSection } from "../features/character-sheet/components/MobileCharacterNavigation";
 
 import { Link, useLocation, useParams } from "react-router-dom";
 
@@ -51,6 +52,34 @@ const CharacterSheet = () => {
   const location = useLocation();
 
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
+  const [mobileSection, setMobileSection] = useState<MobileCharacterSection>("live-state");
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const navigateMobile = (section: MobileCharacterSection) => {
+    setMobileSection(section);
+    if (section === "inventory" || section === "features" || section === "character" || section === "notes") {
+      setActiveTab(section);
+    }
+  };
+  const onSwipeStart = (event: TouchEvent<HTMLDivElement>) => {
+    if (window.matchMedia("(min-width: 768px)").matches) return;
+    const t = event.touches[0];
+    if (t) touchStart.current = { x: t.clientX, y: t.clientY };
+  };
+  const onSwipeEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStart.current;
+    touchStart.current = null;
+    if (!start || window.matchMedia("(min-width: 768px)").matches) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button, input, textarea, select, a, [role='dialog'], [data-no-swipe]")) return;
+    const t = event.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+    const sections: MobileCharacterSection[] = ["live-state", "abilities", "skills", "proficiencies", "attacks", "spells", "actions", "inventory", "features", "character", "notes"];
+    const next = sections[sections.indexOf(mobileSection) + (dx < 0 ? 1 : -1)];
+    if (next) navigateMobile(next);
+  };
 
   const [inventoryEditorOpen, setInventoryEditorOpen] = useState(false);
 
@@ -740,7 +769,13 @@ const CharacterSheet = () => {
           }}
         />
 
+        <div className="md:hidden">
+          <MobileCharacterNavigation activeSection={mobileSection} onChange={navigateMobile} />
+        </div>
+
+        <div className="lorebound-mobile-content" onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
         <CharacterQuickStats
+          mobileSection={mobileSection}
           currentHp={derived.currentHp}
           maxHp={derived.maxHp}
           onCurrentHpChange={handleSetCurrentHp}
@@ -805,11 +840,13 @@ const CharacterSheet = () => {
         />
 
         <CharacterSheetWorkspace
+          mobileSection={mobileSection}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           playPanel={
             <OverviewDashboard
               attacks={attacks}
+              mobilePlayTab={mobileSection === "spells" ? "spells" : mobileSection === "actions" ? "actions" : "attacks"}
               twoWeaponNotice={twoWeaponNotice}
               spells={quickSpells}
               spellcasting={{
@@ -841,6 +878,7 @@ const CharacterSheet = () => {
 
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
+        </div>
       </div>
 
       <CharacterInventoryEditorModal

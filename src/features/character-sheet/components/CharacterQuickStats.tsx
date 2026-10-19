@@ -16,6 +16,7 @@ import {
 } from "../../../rulesets/dnd/dnd2024/data/conditions";
 
 import type { AbilityKey } from "../../../rulesets/dnd/dnd2024/types";
+import type { MobileCharacterSection } from "./MobileCharacterNavigation";
 
 type AbilityScores = Record<AbilityKey, number>;
 
@@ -50,6 +51,7 @@ type CharacterProgress = {
 };
 
 type CharacterQuickStatsProps = {
+  mobileSection?: MobileCharacterSection;
   currentHp: number;
 
   maxHp: number;
@@ -149,6 +151,7 @@ const clamp = (value: number, minimum: number, maximum: number) =>
   Math.max(minimum, Math.min(maximum, value));
 
 const CharacterQuickStats = ({
+  mobileSection,
   currentHp,
 
   maxHp,
@@ -228,6 +231,8 @@ const CharacterQuickStats = ({
         <QuickSection
           title="Live State"
           storageId="live-state"
+          mobilePaged={Boolean(mobileSection)}
+          mobileVisible={!mobileSection || mobileSection === "live-state"}
           defaultOpen
           summary={`${currentHp}/${maxHp} HP · AC ${armorClass}`}
           className="xl:col-start-3 xl:row-span-2 xl:row-start-1"
@@ -381,6 +386,8 @@ const CharacterQuickStats = ({
         <QuickSection
           title="Abilities & Saving Throws"
           storageId="abilities"
+          mobilePaged={Boolean(mobileSection)}
+          mobileVisible={!mobileSection || mobileSection === "abilities"}
           defaultOpen={false}
           summary={`STR ${formatModifier(getModifier(abilityScores.str ?? 10))} · DEX ${formatModifier(getModifier(abilityScores.dex ?? 10))} · CON ${formatModifier(getModifier(abilityScores.con ?? 10))}`}
           className="xl:col-start-1 xl:row-start-1"
@@ -444,6 +451,8 @@ const CharacterQuickStats = ({
         <QuickSection
           title="Skills"
           storageId="skills"
+          mobilePaged={Boolean(mobileSection)}
+          mobileVisible={!mobileSection || mobileSection === "skills"}
           defaultOpen={false}
           summary={`${skills.filter((skill) => skill.proficient).length} proficient`}
           className="xl:col-start-2 xl:row-start-1"
@@ -459,6 +468,8 @@ const CharacterQuickStats = ({
         <QuickSection
           title="Proficiencies"
           storageId="proficiencies"
+          mobilePaged={Boolean(mobileSection)}
+          mobileVisible={!mobileSection || mobileSection === "proficiencies"}
           defaultOpen={false}
           summary={`${languages.length} ${languages.length === 1 ? "language" : "languages"}`}
           className="xl:col-span-2 xl:col-start-1 xl:row-start-2"
@@ -479,6 +490,13 @@ const CharacterQuickStats = ({
   );
 };
 
+const quickSectionIcons: Record<string, { icon: string; color: string }> = {
+  "live-state": { icon: "fa-heart-pulse", color: "text-emerald-400" },
+  abilities: { icon: "fa-dice-d20", color: "text-amber-300" },
+  skills: { icon: "fa-list-check", color: "text-sky-400" },
+  proficiencies: { icon: "fa-shield-halved", color: "text-cyan-300" },
+};
+
 type QuickSectionProps = {
   title: string;
 
@@ -493,6 +511,8 @@ type QuickSectionProps = {
   className?: string;
 
   onEdit?: () => void;
+  mobilePaged?: boolean;
+  mobileVisible?: boolean;
 };
 
 const QuickSection = ({
@@ -509,6 +529,8 @@ const QuickSection = ({
   className = "",
 
   onEdit,
+  mobilePaged = false,
+  mobileVisible = true,
 }: QuickSectionProps) => {
   const { characterId } = useParams();
 
@@ -556,21 +578,27 @@ const QuickSection = ({
 
   return (
     <section
-      className={`overflow-hidden rounded-xl border border-white/10 bg-zinc-900/40 ${className}`}
+      className={`overflow-hidden rounded-xl border border-white/10 bg-zinc-900/40 ${mobilePaged && !mobileVisible ? "hidden md:block" : ""} ${className}`}
     >
       <div
         className={`flex w-full items-center gap-2 px-3 ${open ? "py-3" : "py-2.5"}`}
       >
         <button
           type="button"
-          onClick={() => setOpen((current) => !current)}
-          aria-expanded={open}
+          onClick={() => !mobilePaged && setOpen((current) => !current)}
+          aria-expanded={mobilePaged ? true : open}
           className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left transition md:pointer-events-none md:cursor-default"
         >
           <div className="flex min-w-0 items-center gap-3">
+            {quickSectionIcons[storageId] ? (
+              <i
+                className={`fa-solid ${quickSectionIcons[storageId].icon} ${quickSectionIcons[storageId].color} w-3 shrink-0 text-center text-[11px]`}
+                aria-hidden="true"
+              />
+            ) : null}
             <SectionLabel>{title}</SectionLabel>
 
-            {!open && summary ? (
+            {!mobilePaged && !open && summary ? (
               <div className="min-w-0 truncate text-[10px] font-medium text-zinc-500 md:hidden">
                 {summary}
               </div>
@@ -578,7 +606,7 @@ const QuickSection = ({
           </div>
 
           <i
-            className={`fa-solid fa-chevron-down shrink-0 text-[9px] text-zinc-500 transition-transform md:hidden ${
+            className={`fa-solid fa-chevron-down shrink-0 text-[9px] text-zinc-500 transition-transform md:hidden ${mobilePaged ? "hidden" : ""} ${
               open ? "rotate-180" : ""
             }`}
             aria-hidden="true"
@@ -598,7 +626,7 @@ const QuickSection = ({
 
       <div
         className={`border-t border-white/[0.06] px-3 pb-3 ${
-          open ? "block" : "hidden md:block"
+          mobilePaged || open ? "block" : "hidden md:block"
         }`}
       >
         {children}
@@ -1384,7 +1412,7 @@ const ProficiencyRow = ({
 };
 
 const SectionLabel = ({ children }: { children: ReactNode }) => (
-  <h2 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+  <h2 className="text-[11px] font-bold uppercase tracking-[0.12em] text-zinc-200">
     {children}
   </h2>
 );

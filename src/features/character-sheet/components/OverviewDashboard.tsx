@@ -97,6 +97,7 @@ export type OverviewAction = {
 export type PlayTab = "attacks" | "spells" | "actions";
 
 type OverviewDashboardProps = {
+  mobilePlayTab?: PlayTab;
   attacks?: OverviewAttack[];
 
   spells?: OverviewSpell[];
@@ -132,20 +133,27 @@ type AttackRole = "main-hand" | "off-hand" | "two-handed" | "standard";
 
 const playTabs: Array<{
   id: PlayTab;
-
   label: string;
+  icon: string;
+  iconColor: string;
 }> = [
   {
     id: "attacks",
     label: "Attacks",
+    icon: "fa-crosshairs",
+    iconColor: "text-rose-400",
   },
   {
     id: "spells",
     label: "Spells",
+    icon: "fa-wand-magic-sparkles",
+    iconColor: "text-violet-400",
   },
   {
     id: "actions",
     label: "Actions",
+    icon: "fa-bolt",
+    iconColor: "text-amber-400",
   },
 ];
 
@@ -259,6 +267,7 @@ const formatAttackRange = (attack: OverviewAttack) => {
 };
 
 const OverviewDashboard = ({
+  mobilePlayTab,
   attacks = [],
 
   spells = [],
@@ -327,7 +336,7 @@ const OverviewDashboard = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-white/10 bg-black/15 px-2">
+      <div className={`shrink-0 border-b border-white/10 bg-black/15 px-2 ${mobilePlayTab ? "hidden md:block" : ""}`}>
         <div className="flex">
           {playTabs.map((tab) => {
             const active = activePlayTab === tab.id;
@@ -338,10 +347,16 @@ const OverviewDashboard = ({
                 type="button"
                 onClick={() => setActivePlayTab(tab.id)}
                 className={`relative px-3 py-3 text-xs font-semibold transition ${
-                  active ? "text-white" : "text-zinc-500 hover:text-zinc-200"
+                  active ? "text-white" : "text-zinc-400 hover:text-zinc-100"
                 }`}
               >
-                {tab.label}
+                <span className="inline-flex items-center gap-1.5">
+                  <i
+                    className={`fa-solid ${tab.icon} ${tab.iconColor} text-[11px]`}
+                    aria-hidden="true"
+                  />
+                  <span>{tab.label}</span>
+                </span>
 
                 <span
                   className={`absolute inset-x-2 bottom-0 h-0.5 rounded-full ${
@@ -355,6 +370,12 @@ const OverviewDashboard = ({
       </div>
 
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
+        <div className="md:hidden">
+          {mobilePlayTab === "attacks" ? <AttacksPanel attacks={attacks} twoWeaponNotice={twoWeaponNotice} /> : null}
+          {mobilePlayTab === "spells" ? <SpellsPanel spells={spells} spellcasting={spellcasting} onSpellSlotChange={onSpellSlotChange} onAddSpell={onAddSpell} onRemoveSpell={onRemoveSpell} /> : null}
+          {mobilePlayTab === "actions" ? <ActionsPanel actions={actions} bonusActions={bonusActions} reactions={reactions} combatOptions={combatOptions} /> : null}
+        </div>
+        <div className={mobilePlayTab ? "hidden md:block" : ""}>
         {activePlayTab === "attacks" ? (
           <AttacksPanel attacks={attacks} twoWeaponNotice={twoWeaponNotice} />
         ) : null}
@@ -377,6 +398,7 @@ const OverviewDashboard = ({
             combatOptions={combatOptions}
           />
         ) : null}
+        </div>
       </div>
     </div>
   );
