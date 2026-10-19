@@ -30,8 +30,8 @@ const CharacterSheetWorkspace = ({ activeTab, onTabChange, mobileSection, playPa
     try { localStorage.setItem(getStorageKey(characterId), activeTab); } catch { /* storage optional */ }
   }, [characterId, activeTab]);
 
-  const playVisible = mobileSection === "attacks" || mobileSection === "spells" || mobileSection === "actions";
-  const detailsVisible = mobileSection === "inventory" || mobileSection === "features" || mobileSection === "character" || mobileSection === "notes";
+  const playVisible = !mobileSection || mobileSection === "attacks" || mobileSection === "spells" || mobileSection === "actions";
+  const detailsVisible = !mobileSection || mobileSection === "inventory" || mobileSection === "features" || mobileSection === "character" || mobileSection === "notes";
 
   return (
     <div className="grid gap-3 xl:grid-cols-[360px_minmax(0,1fr)]">
