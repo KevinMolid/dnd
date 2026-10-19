@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
-import MobileCharacterNavigation, { mobileSections, type MobileCharacterSection } from "../features/character-sheet/components/MobileCharacterNavigation";
+import { useEffect, useMemo, useRef, useState } from "react";
+import MobileCharacterNavigation, { type MobileCharacterSection } from "../features/character-sheet/components/MobileCharacterNavigation";
+import MobileCharacterSwipeArea from "../features/character-sheet/components/MobileCharacterSwipeArea";
 
 import CharacterInventoryEquipment, {
   type InventorySortMode,
@@ -406,39 +407,11 @@ const CustomCharacterSheet = ({
 }: CustomCharacterSheetProps) => {
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
   const [mobileSection, setMobileSection] = useState<MobileCharacterSection>("live-state");
-  const touchStartRef = useRef<{ x: number; y: number; ignore: boolean } | null>(null);
-
   const navigateMobile = (section: MobileCharacterSection) => {
     setMobileSection(section);
     if (section === "inventory" || section === "features" || section === "character" || section === "notes") {
       setActiveTab(section);
     }
-  };
-
-  const onSwipeStart = (event: TouchEvent<HTMLDivElement>) => {
-    if (window.matchMedia("(min-width: 768px)").matches) return;
-    const touch = event.touches[0];
-    if (!touch) return;
-    const target = event.target as HTMLElement;
-    touchStartRef.current = {
-      x: touch.clientX,
-      y: touch.clientY,
-      ignore: Boolean(target.closest("button, input, textarea, select, a, [role='dialog'], [role='listbox'], [contenteditable='true'], [data-no-swipe]")),
-    };
-  };
-
-  const onSwipeEnd = (event: TouchEvent<HTMLDivElement>) => {
-    const start = touchStartRef.current;
-    touchStartRef.current = null;
-    if (!start || start.ignore || window.matchMedia("(min-width: 768px)").matches) return;
-    const touch = event.changedTouches[0];
-    if (!touch) return;
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
-    if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-    const index = mobileSections.findIndex((section) => section.id === mobileSection);
-    const next = mobileSections[index + (dx < 0 ? 1 : -1)];
-    if (next) navigateMobile(next.id);
   };
 
   const [featuresEditorOpen, setFeaturesEditorOpen] = useState(false);
@@ -1415,7 +1388,7 @@ const CustomCharacterSheet = ({
   );
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-[calc(100dvh-65px)] bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 lg:px-6">
         <CharacterBreadcrumbs
           characterId={characterId}
@@ -1453,7 +1426,7 @@ const CustomCharacterSheet = ({
           <MobileCharacterNavigation activeSection={mobileSection} onChange={navigateMobile} />
         </div>
 
-        <div className="lorebound-mobile-content" onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
+        <MobileCharacterSwipeArea activeSection={mobileSection} onChange={navigateMobile}>
         <CharacterQuickStats
           mobileSection={mobileSection}
           currentHp={currentHp}
@@ -1566,7 +1539,7 @@ const CustomCharacterSheet = ({
 
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
-        </div>
+        </MobileCharacterSwipeArea>
       </div>
 
       <CustomQuickStatsEditorModal

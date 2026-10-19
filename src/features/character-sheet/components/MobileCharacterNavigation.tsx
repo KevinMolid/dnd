@@ -25,9 +25,16 @@ const MobileCharacterNavigation = ({ activeSection, onChange }: Props) => {
   const activeIndex = mobileSections.findIndex((s) => s.id === activeSection);
   const active = mobileSections[activeIndex] ?? mobileSections[0];
   const selectedRef = useRef<HTMLButtonElement | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    selectedRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    const nav = navRef.current;
+    const selected = selectedRef.current;
+    if (!nav || !selected) return;
+    // Change only the icon strip's horizontal scroll position. scrollIntoView
+    // can unintentionally scroll the page vertically as well.
+    const target = selected.offsetLeft + selected.offsetWidth / 2 - nav.clientWidth / 2;
+    nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
   }, [activeSection]);
 
   const move = (delta: number) => {
@@ -39,7 +46,7 @@ const MobileCharacterNavigation = ({ activeSection, onChange }: Props) => {
     <div className="sticky top-0 z-30 mb-3 rounded-xl border border-white/10 bg-zinc-950/95 shadow-lg backdrop-blur">
       <div className="flex items-center justify-between px-2 py-2">
         <button type="button" onClick={() => move(-1)} disabled={activeIndex === 0} aria-label="Previous section" className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-300 disabled:opacity-20">
-          <i className="fa-solid fa-chevron-left" />
+          <i className="fa-solid fa-chevron-left" aria-hidden="true" />
         </button>
         <div className="flex items-center gap-2 text-sm font-bold text-white">
           <i className={`fa-solid ${active.icon} ${active.tone}`} aria-hidden="true" />
@@ -47,10 +54,10 @@ const MobileCharacterNavigation = ({ activeSection, onChange }: Props) => {
           <span className="ml-1 text-[10px] font-medium text-zinc-500">{activeIndex + 1}/{mobileSections.length}</span>
         </div>
         <button type="button" onClick={() => move(1)} disabled={activeIndex === mobileSections.length - 1} aria-label="Next section" className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-300 disabled:opacity-20">
-          <i className="fa-solid fa-chevron-right" />
+          <i className="fa-solid fa-chevron-right" aria-hidden="true" />
         </button>
       </div>
-      <nav aria-label="Character sections" className="workspace-scrollbar flex gap-1 overflow-x-auto border-t border-white/[0.06] px-2 py-1">
+      <nav ref={navRef} aria-label="Character sections" className="workspace-scrollbar flex gap-1 overflow-x-auto border-t border-white/[0.06] px-2 py-1">
         {mobileSections.map((section) => (
           <button key={section.id} ref={section.id === activeSection ? selectedRef : undefined} type="button" title={section.label} aria-label={section.label} aria-current={section.id === activeSection ? "page" : undefined} onClick={() => onChange(section.id)} className={`relative flex h-10 min-w-10 shrink-0 items-center justify-center rounded-lg text-sm transition ${section.id === activeSection ? `bg-white/[0.09] ${section.tone}` : "text-zinc-500"}`}>
             <i className={`fa-solid ${section.icon}`} aria-hidden="true" />

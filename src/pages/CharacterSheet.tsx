@@ -1,5 +1,6 @@
-import { useRef, useState, type TouchEvent } from "react";
+import { useState } from "react";
 import MobileCharacterNavigation, { type MobileCharacterSection } from "../features/character-sheet/components/MobileCharacterNavigation";
+import MobileCharacterSwipeArea from "../features/character-sheet/components/MobileCharacterSwipeArea";
 
 import { Link, useLocation, useParams } from "react-router-dom";
 
@@ -53,32 +54,11 @@ const CharacterSheet = () => {
 
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
   const [mobileSection, setMobileSection] = useState<MobileCharacterSection>("live-state");
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
   const navigateMobile = (section: MobileCharacterSection) => {
     setMobileSection(section);
     if (section === "inventory" || section === "features" || section === "character" || section === "notes") {
       setActiveTab(section);
     }
-  };
-  const onSwipeStart = (event: TouchEvent<HTMLDivElement>) => {
-    if (window.matchMedia("(min-width: 768px)").matches) return;
-    const t = event.touches[0];
-    if (t) touchStart.current = { x: t.clientX, y: t.clientY };
-  };
-  const onSwipeEnd = (event: TouchEvent<HTMLDivElement>) => {
-    const start = touchStart.current;
-    touchStart.current = null;
-    if (!start || window.matchMedia("(min-width: 768px)").matches) return;
-    const target = event.target as HTMLElement;
-    if (target.closest("button, input, textarea, select, a, [role='dialog'], [data-no-swipe]")) return;
-    const t = event.changedTouches[0];
-    if (!t) return;
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-    const sections: MobileCharacterSection[] = ["live-state", "abilities", "skills", "proficiencies", "attacks", "spells", "actions", "inventory", "features", "character", "notes"];
-    const next = sections[sections.indexOf(mobileSection) + (dx < 0 ? 1 : -1)];
-    if (next) navigateMobile(next);
   };
 
   const [inventoryEditorOpen, setInventoryEditorOpen] = useState(false);
@@ -729,7 +709,7 @@ const CharacterSheet = () => {
   );
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-[calc(100dvh-65px)] bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 lg:px-6">
         <CharacterBreadcrumbs
           characterId={characterId}
@@ -773,7 +753,7 @@ const CharacterSheet = () => {
           <MobileCharacterNavigation activeSection={mobileSection} onChange={navigateMobile} />
         </div>
 
-        <div className="lorebound-mobile-content" onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
+        <MobileCharacterSwipeArea activeSection={mobileSection} onChange={navigateMobile}>
         <CharacterQuickStats
           mobileSection={mobileSection}
           currentHp={derived.currentHp}
@@ -878,7 +858,7 @@ const CharacterSheet = () => {
 
           {activeTab === "notes" ? renderNotesTab() : null}
         </CharacterSheetWorkspace>
-        </div>
+        </MobileCharacterSwipeArea>
       </div>
 
       <CharacterInventoryEditorModal

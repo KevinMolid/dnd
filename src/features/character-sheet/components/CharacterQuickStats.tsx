@@ -226,8 +226,8 @@ const CharacterQuickStats = ({
   const hpPercent = clamp((currentHp / safeMaxHp) * 100, 0, 100);
 
   return (
-    <div className="mb-3">
-      <div className="grid gap-2 xl:grid-cols-[250px_minmax(430px,1fr)_360px] xl:grid-rows-[auto_auto]">
+    <div className={mobileSection && !["live-state", "abilities", "skills", "proficiencies"].includes(mobileSection) ? "hidden md:block" : "mb-3 flex-1 md:flex-none"}>
+      <div className="grid h-full gap-2 md:h-auto xl:grid-cols-[250px_minmax(430px,1fr)_360px] xl:grid-rows-[auto_auto]">
         <QuickSection
           title="Live State"
           storageId="live-state"
@@ -578,7 +578,7 @@ const QuickSection = ({
 
   return (
     <section
-      className={`overflow-hidden rounded-xl border border-white/10 bg-zinc-900/40 ${mobilePaged && !mobileVisible ? "hidden md:block" : ""} ${className}`}
+      className={`flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-zinc-900/40 md:h-auto ${mobilePaged && !mobileVisible ? "hidden md:block" : ""} ${className}`}
     >
       <div
         className={`flex w-full items-center gap-2 px-3 ${open ? "py-3" : "py-2.5"}`}
@@ -625,7 +625,7 @@ const QuickSection = ({
       </div>
 
       <div
-        className={`border-t border-white/[0.06] px-3 pb-3 ${
+        className={`flex-1 border-t border-white/[0.06] px-3 pb-3 ${
           mobilePaged || open ? "block" : "hidden md:block"
         }`}
       >
