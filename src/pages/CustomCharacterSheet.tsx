@@ -1428,7 +1428,15 @@ const CustomCharacterSheet = ({
 
         <MobileCharacterSwipeArea activeSection={mobileSection} onChange={navigateMobile}>
         <CharacterQuickStats
-          mobileSection={mobileSection}
+           mobileSection={mobileSection}
+           rest={{
+             hitDieSize: customHitDieSize,
+             hitDiceRemaining: stats.hitDiceRemaining ?? level,
+             hitDiceMax: level,
+             constitutionModifier,
+             onShortRest: handleShortRest,
+             onLongRest: handleLongRest,
+           }}
           currentHp={currentHp}
           maxHp={maxHp}
           onCurrentHpChange={handleSetCurrentHp}

@@ -755,7 +755,20 @@ const CharacterSheet = () => {
 
         <MobileCharacterSwipeArea activeSection={mobileSection} onChange={navigateMobile}>
         <CharacterQuickStats
-          mobileSection={mobileSection}
+           mobileSection={mobileSection}
+           rest={{
+             hitDieSize:
+               typeof classDefinition?.hitDie === "number"
+                 ? classDefinition.hitDie
+                 : Number(classDefinition?.hitDie) || undefined,
+             hitDiceRemaining: character.hitDiceRemaining ?? character.level,
+             hitDiceMax: character.level,
+             constitutionModifier: Math.floor(
+               (derived.finalAbilityScores.con - 10) / 2,
+             ),
+             onShortRest: handleShortRest,
+             onLongRest: handleLongRest,
+           }}
           currentHp={derived.currentHp}
           maxHp={derived.maxHp}
           onCurrentHpChange={handleSetCurrentHp}

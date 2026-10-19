@@ -15,7 +15,6 @@ type CharacterSheetHeaderProps = {
   className?: string | null;
   subclassName?: string | null;
   backgroundName?: string | null;
-
   currentHp?: number;
   maxHp?: number;
   rest?: CharacterRestConfig;
@@ -35,13 +34,12 @@ const CharacterSheetHeader = ({
   rest,
 }: CharacterSheetHeaderProps) => {
   const [portraitOpen, setPortraitOpen] = useState(false);
-
   const classLabel = [className, subclassName].filter(Boolean).join(" · ");
 
   return (
     <>
-      <header className="mb-3 flex flex-col gap-3 border-b border-white/10 pb-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
+      <header className="mb-3 flex flex-col gap-3 border-b border-white/10 pb-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex w-full min-w-0 items-center gap-3 md:w-auto">
           {imageUrl ? (
             <button
               type="button"
@@ -64,54 +62,47 @@ const CharacterSheetHeader = ({
             />
           )}
 
-          <div className="min-w-0">
-            <h1 className="truncate text-2xl font-bold tracking-tight text-white">
-              {name}
-            </h1>
-
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-2">
+              <h1 className="min-w-0 flex-1 truncate text-2xl font-bold tracking-tight text-white">
+                {name}
+              </h1>
+              {characterId ? (
+                <Link
+                  to={`/characters/${characterId}/edit`}
+                  aria-label={`Edit ${name}`}
+                  title="Edit character"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white md:hidden"
+                >
+                  <i className="fa-solid fa-pen-to-square text-[12px]" aria-hidden="true" />
+                </Link>
+              ) : null}
+            </div>
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
               <span className="font-semibold text-zinc-100">Level {level}</span>
-
-              {speciesName ? (
-                <span className="font-medium text-zinc-200">{speciesName}</span>
-              ) : null}
-
-              {classLabel ? (
-                <span className="font-semibold text-zinc-100">
-                  {classLabel}
-                </span>
-              ) : null}
-
+              {speciesName ? <span className="font-medium text-zinc-200">{speciesName}</span> : null}
+              {classLabel ? <span className="font-semibold text-zinc-100">{classLabel}</span> : null}
               {backgroundName ? (
                 <>
                   <span className="mx-0.5 text-zinc-600">•</span>
-
-                  <span className="text-zinc-500">
-                    {backgroundName} background
-                  </span>
+                  <span className="text-zinc-500">{backgroundName} background</span>
                 </>
               ) : null}
             </div>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-          {rest &&
-          typeof currentHp === "number" &&
-          typeof maxHp === "number" ? (
-            <CharacterRestButtons
-              currentHp={currentHp}
-              maxHp={maxHp}
-              {...rest}
-            />
+        {/* Keep the original rest + Edit controls on desktop only. */}
+        <div className="hidden shrink-0 flex-wrap items-center gap-2 md:flex md:justify-end">
+          {rest && typeof currentHp === "number" && typeof maxHp === "number" ? (
+            <CharacterRestButtons currentHp={currentHp} maxHp={maxHp} {...rest} />
           ) : null}
-
           {characterId ? (
             <Link
               to={`/characters/${characterId}/edit`}
               className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
             >
-              <i className="fa-solid fa-pen-to-square text-[11px]" />
+              <i className="fa-solid fa-pen-to-square text-[11px]" aria-hidden="true" />
               Edit
             </Link>
           ) : null}
@@ -132,9 +123,8 @@ const CharacterSheetHeader = ({
             aria-label="Close portrait"
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-black/60 text-zinc-300 transition hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
           >
-            <i className="fa-solid fa-xmark" />
+            <i className="fa-solid fa-xmark" aria-hidden="true" />
           </button>
-
           <img
             src={imageUrl}
             alt={name}

@@ -17,6 +17,7 @@ import {
 
 import type { AbilityKey } from "../../../rulesets/dnd/dnd2024/types";
 import type { MobileCharacterSection } from "./MobileCharacterNavigation";
+import CharacterRestButtons, { type CharacterRestConfig } from "./CharacterRestButtons";
 
 type AbilityScores = Record<AbilityKey, number>;
 
@@ -51,6 +52,7 @@ type CharacterProgress = {
 };
 
 type CharacterQuickStatsProps = {
+  rest?: CharacterRestConfig;
   mobileSection?: MobileCharacterSection;
   currentHp: number;
 
@@ -152,6 +154,7 @@ const clamp = (value: number, minimum: number, maximum: number) =>
 
 const CharacterQuickStats = ({
   mobileSection,
+  rest,
   currentHp,
 
   maxHp,
@@ -379,6 +382,15 @@ const CharacterQuickStats = ({
                   />
                 </div>
               ) : null}
+            </div>
+          ) : null}
+          {rest ? (
+            <div className="mt-3 border-t border-white/[0.06] pt-3 md:hidden">
+              <CharacterRestButtons
+                currentHp={currentHp}
+                maxHp={maxHp}
+                {...rest}
+              />
             </div>
           ) : null}
         </QuickSection>
