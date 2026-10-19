@@ -115,6 +115,7 @@ import { getCharacterMoneyCp } from "../../../rulesets/dnd/dnd2024/money";
 import type {
   CustomCharacter,
   CustomCharacterStats,
+  CustomSpellcasting,
   CustomProficiencies,
   CustomTrait,
 } from "../../../types/customCharacter";
@@ -135,6 +136,8 @@ type CharacterSheetDataHookResultWithFeatureEditing =
       abilityScores: Record<AbilityKey, number>,
       customStats: CustomCharacterStats,
     ) => Promise<void>;
+
+    handleSetCustomSpellcasting: (settings: CustomSpellcasting) => Promise<void>;
 
     handleSetCustomProficiencies: (
       customProficiencies: CustomProficiencies,
@@ -2037,6 +2040,43 @@ const handleRemoveSpell = async (
         };
       });
       setError("Failed to update proficiencies.");
+      throw err;
+    }
+  };
+
+  const handleSetCustomSpellcasting = async (settings: CustomSpellcasting) => {
+    if (!character || !characterId || character.buildMode !== "custom") return;
+
+    const previous = character.customSpellcasting;
+    const spellSlots = Object.fromEntries(
+      Array.from({ length: 9 }, (_, index) => {
+        const level = String(index + 1);
+        const old = previous?.spellSlots?.[level];
+        const incoming = settings.spellSlots?.[level];
+        const max = Math.max(0, Math.floor(Number(incoming?.max ?? 0) || 0));
+        const remaining = Math.min(max, Math.max(0, Math.floor(Number(incoming?.remaining ?? old?.remaining ?? max) || 0)));
+        return [level, { max, remaining }];
+      }),
+    ) as CustomSpellcasting["spellSlots"];
+
+    const next: CustomSpellcasting = {
+      ...settings,
+      enabled: Boolean(settings.enabled),
+      ability: settings.enabled ? settings.ability : settings.ability ?? null,
+      spellSlots,
+      spells: previous?.spells ?? [],
+    };
+    setCharacter((current) => current ? { ...current, customSpellcasting: next } : current);
+    try {
+      await updateDoc(doc(db, "characters", characterId), {
+        "customSpellcasting.enabled": next.enabled,
+        "customSpellcasting.ability": next.ability,
+        "customSpellcasting.spellSlots": next.spellSlots,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (err) {
+      setCharacter((current) => current ? { ...current, customSpellcasting: previous } : current);
+      setError("Failed to update spellcasting settings.");
       throw err;
     }
   };
@@ -4027,6 +4067,8 @@ const nonSpeciesDerivedKnownSpells = [
   handleSetCustomCombat,
 
   handleSetCustomProficiencies,
+
+  handleSetCustomSpellcasting,
 
   handleEquipmentChange,
 

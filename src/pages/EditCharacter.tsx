@@ -3,117 +3,67 @@ import { Link, useParams } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 
 import { db } from "../firebase";
-
-import CustomCharacterCreator from "./CustomCharacterCreator";
-import GuidedDndCharacterEditor from "./GuidedCharacterEditor";
-
-import type { CustomCharacter } from "../types/customCharacter";
-
-type LoadedCharacter = {
-  id: string;
-  buildMode?: string;
-  [key: string]: unknown;
-};
+import CharacterIdentityEditor, {
+  type EditableCharacterIdentity,
+} from "../features/character-sheet/components/CharacterIdentityEditor.tsx";
 
 const EditCharacter = () => {
-  const { characterId } = useParams<{
-    characterId: string;
-  }>();
-
-  const [character, setCharacter] = useState<LoadedCharacter | null>(null);
-
+  const { characterId } = useParams<{ characterId: string }>();
+  const [character, setCharacter] = useState<EditableCharacterIdentity | null>(null);
   const [loading, setLoading] = useState(true);
-
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
     const loadCharacter = async () => {
       if (!characterId) {
         setError("Missing character ID.");
         setLoading(false);
-
         return;
       }
-
+      setLoading(true);
+      setError("");
       try {
-        setLoading(true);
-        setError("");
-
-        const characterSnap = await getDoc(doc(db, "characters", characterId));
-
-        if (!characterSnap.exists()) {
+        const snapshot = await getDoc(doc(db, "characters", characterId));
+        if (cancelled) return;
+        if (!snapshot.exists()) {
           setCharacter(null);
           setError("Character not found.");
-
-          return;
+        } else {
+          setCharacter({
+            ...(snapshot.data() as Omit<EditableCharacterIdentity, "id">),
+            id: snapshot.id,
+          });
         }
-
-        setCharacter({
-          id: characterSnap.id,
-          ...characterSnap.data(),
-        });
-      } catch (err: any) {
-        console.error("Failed to load character:", err);
-
+      } catch (cause) {
+        if (cancelled) return;
+        console.error("Failed to load character:", cause);
         setCharacter(null);
-
-        setError(err?.message || "Failed to load character.");
+        setError(cause instanceof Error ? cause.message : "Failed to load character.");
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
-
-    loadCharacter();
+    void loadCharacter();
+    return () => { cancelled = true; };
   }, [characterId]);
 
   if (loading) {
+    return <div className="min-h-[calc(100dvh-65px)] bg-zinc-950 px-4 py-8 text-sm text-zinc-400">Loading character...</div>;
+  }
+
+  if (!character || error) {
     return (
-      <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-100">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-sm text-zinc-400">Loading character...</p>
+      <div className="min-h-[calc(100dvh-65px)] bg-zinc-950 px-4 py-8 text-zinc-100">
+        <div className="mx-auto max-w-2xl rounded-xl border border-red-500/20 bg-red-500/10 p-5 text-sm text-red-300">
+          {error || "Character not found."}
+          <div className="mt-4"><Link to="/" className="text-zinc-200 underline">Back home</Link></div>
         </div>
       </div>
     );
   }
 
-  if (error || !character) {
-    return (
-      <div className="min-h-screen bg-zinc-950 px-4 py-8 text-zinc-100">
-        <div className="mx-auto max-w-6xl">
-          <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5 text-red-300">
-            {error || "Character not found."}
-          </div>
-
-          <Link
-            to="/"
-            className="mt-4 inline-flex rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-          >
-            Back home
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  /*
-   * Custom characters reuse the same complete
-   * form used during creation.
-   */
-  if (character.buildMode === "custom") {
-    return (
-      <CustomCharacterCreator
-        mode="edit"
-        characterId={character.id}
-        initialCharacter={character as unknown as CustomCharacter}
-      />
-    );
-  }
-
-  /*
-   * All existing guided characters continue
-   * through the old editor unchanged.
-   */
-  return <GuidedDndCharacterEditor />;
+  return <CharacterIdentityEditor key={character.id} character={character} />;
 };
 
 export default EditCharacter;

@@ -117,6 +117,7 @@ const CharacterSheet = () => {
     handleSetCustomCombat,
 
     handleSetCustomProficiencies,
+    handleSetCustomSpellcasting,
 
     handleApplyDecision,
 
@@ -200,6 +201,7 @@ const CharacterSheet = () => {
         handleSetFeatures={handleSetFeatures}
         handleSetCustomCombat={handleSetCustomCombat}
         handleSetCustomProficiencies={handleSetCustomProficiencies}
+        handleSetCustomSpellcasting={handleSetCustomSpellcasting}
         handleShortRest={handleShortRest}
         handleLongRest={handleLongRest}
       />
@@ -755,20 +757,7 @@ const CharacterSheet = () => {
 
         <MobileCharacterSwipeArea activeSection={mobileSection} onChange={navigateMobile}>
         <CharacterQuickStats
-           mobileSection={mobileSection}
-           rest={{
-             hitDieSize:
-               typeof classDefinition?.hitDie === "number"
-                 ? classDefinition.hitDie
-                 : Number(classDefinition?.hitDie) || undefined,
-             hitDiceRemaining: character.hitDiceRemaining ?? character.level,
-             hitDiceMax: character.level,
-             constitutionModifier: Math.floor(
-               (derived.finalAbilityScores.con - 10) / 2,
-             ),
-             onShortRest: handleShortRest,
-             onLongRest: handleLongRest,
-           }}
+          mobileSection={mobileSection}
           currentHp={derived.currentHp}
           maxHp={derived.maxHp}
           onCurrentHpChange={handleSetCurrentHp}

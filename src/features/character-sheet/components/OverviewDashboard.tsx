@@ -112,6 +112,7 @@ type OverviewDashboardProps = {
   onAddSpell?: (spell: CustomSpellEntry) => void | Promise<void>;
 
   onRemoveSpell?: (spellId: string) => void | Promise<void>;
+  onEditSpellcasting?: () => void;
 
   actions?: OverviewAction[];
 
@@ -279,6 +280,7 @@ const OverviewDashboard = ({
   onAddSpell,
 
   onRemoveSpell,
+  onEditSpellcasting,
 
   actions = [],
 
@@ -372,7 +374,7 @@ const OverviewDashboard = ({
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
         <div className="md:hidden">
           {mobilePlayTab === "attacks" ? <AttacksPanel attacks={attacks} twoWeaponNotice={twoWeaponNotice} /> : null}
-          {mobilePlayTab === "spells" ? <SpellsPanel spells={spells} spellcasting={spellcasting} onSpellSlotChange={onSpellSlotChange} onAddSpell={onAddSpell} onRemoveSpell={onRemoveSpell} /> : null}
+          {mobilePlayTab === "spells" ? <SpellsPanel spells={spells} spellcasting={spellcasting} onSpellSlotChange={onSpellSlotChange} onAddSpell={onAddSpell} onRemoveSpell={onRemoveSpell} onEditSpellcasting={onEditSpellcasting} /> : null}
           {mobilePlayTab === "actions" ? <ActionsPanel actions={actions} bonusActions={bonusActions} reactions={reactions} combatOptions={combatOptions} /> : null}
         </div>
         <div className={mobilePlayTab ? "hidden md:block" : ""}>
@@ -387,6 +389,7 @@ const OverviewDashboard = ({
             onSpellSlotChange={onSpellSlotChange}
             onAddSpell={onAddSpell}
             onRemoveSpell={onRemoveSpell}
+            onEditSpellcasting={onEditSpellcasting}
           />
         ) : null}
 
@@ -608,6 +611,7 @@ const SpellsPanel = ({
   onSpellSlotChange,
   onAddSpell,
   onRemoveSpell,
+  onEditSpellcasting,
 }: {
   spells: OverviewSpell[];
   spellcasting?: OverviewSpellcasting;
@@ -617,6 +621,7 @@ const SpellsPanel = ({
   ) => void | Promise<void>;
   onAddSpell?: (spell: CustomSpellEntry) => void | Promise<void>;
   onRemoveSpell?: (spellId: string) => void | Promise<void>;
+  onEditSpellcasting?: () => void;
 }) => {
   const [spellPickerOpen, setSpellPickerOpen] = useState(false);
   const [removeMode, setRemoveMode] = useState(false);
@@ -736,6 +741,11 @@ const SpellsPanel = ({
             </span>
 
             <div className="flex items-center gap-1.5">
+              {onEditSpellcasting ? (
+                <button type="button" onClick={onEditSpellcasting} aria-label="Edit spellcasting" className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white">
+                  <i className="fa-solid fa-pen-to-square text-[9px]" aria-hidden="true" /> Edit
+                </button>
+              ) : null}
               {onAddSpell ? (
                 <button
                   type="button"
