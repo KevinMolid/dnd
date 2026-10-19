@@ -1421,7 +1421,7 @@ const CustomCharacterSheet = ({
   );
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="min-h-screen select-none bg-zinc-950 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-5 lg:px-6">
         <CharacterBreadcrumbs
           characterId={characterId}

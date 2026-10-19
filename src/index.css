@@ -370,3 +370,15 @@ html {
   font-size: 0.75rem;
   color: rgb(113 113 122);
 }
+
+
+
+/* Character sheet: allow selection in editable content */
+
+input,
+textarea,
+[contenteditable="true"],
+.ProseMirror {
+  -webkit-user-select: text;
+  user-select: text;
+}

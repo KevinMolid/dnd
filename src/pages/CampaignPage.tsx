@@ -167,7 +167,7 @@ const CampaignPage = () => {
 
   if (pageState === "loading") {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="min-h-screen select-none bg-zinc-950 text-zinc-100">
         <div className="mx-auto max-w-7xl py-6 sm:py-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             <p className="text-sm text-zinc-400">Loading campaign...</p>
@@ -179,7 +179,7 @@ const CampaignPage = () => {
 
   if (pageState === "not-found") {
     return (
-      <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <div className="min-h-screen select-none bg-zinc-950 text-zinc-100">
         <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
           <div className="rounded-3xl border border-white/10 bg-white/5 p-8 text-center">
             <h1 className="text-2xl font-bold text-white">
@@ -285,7 +285,7 @@ const CampaignPage = () => {
         </div>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
+      <div className="grid select-none gap-3 lg:grid-cols-[minmax(0,1.55fr)_minmax(300px,0.85fr)]">
         <div className="space-y-3">
           {isGm && (
             <CampaignQuickActions
