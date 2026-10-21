@@ -4,6 +4,7 @@ import { bardSubclasses } from "./classes/bard/subclasses";
 import { clericSubclasses } from "./classes/cleric";
 import { druidSubclasses } from "./classes/druid/subclasses";
 import { fighterSubclasses } from "./classes/fighter/subclasses";
+import { monkSubclasses } from "./classes/monk/subclasses";
 import { paladinSubclasses } from "./classes/paladin/subclasses";
 import { rangerSubclasses} from "./classes/ranger/subclasses";
 import { rogueSubclasses } from "./classes/rogue/subclasses";
@@ -19,6 +20,7 @@ export const subclasses = [
   ...clericSubclasses,
   ...druidSubclasses,
   ...fighterSubclasses,
+  ...monkSubclasses,
   ...paladinSubclasses,
   ...rangerSubclasses,
   ...rogueSubclasses,

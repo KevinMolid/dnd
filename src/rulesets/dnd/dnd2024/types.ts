@@ -467,6 +467,9 @@ export type ArmorTrainingId =
 
 export type WeaponProficiencyId =
   | "simple-weapons"
+  | "simple-melee"
+  | "simple-ranged"
+  | "martial-light"
   | "martial-weapons"
   | "unarmed-strikes"
   | "martial-finesse-or-light";
