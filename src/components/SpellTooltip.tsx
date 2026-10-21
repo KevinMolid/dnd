@@ -238,6 +238,12 @@ export default function SpellTooltip({
       localStorage.setItem(`${SPELL_CARD_STORAGE_PREFIX}${token}`, JSON.stringify(card));
       const url = new URL(`${import.meta.env.BASE_URL}spell-card`, window.location.origin);
       url.searchParams.set("card", token);
+      // Preserve campaign context when opened from a character sheet.
+      const match = window.location.pathname.match(/\/characters\/([^/]+)(?:\/|$)/);
+      if (match) url.searchParams.set("characterId", decodeURIComponent(match[1]));
+      // Allow direct opening from a campaign-scoped view too.
+      const campaignMatch = window.location.pathname.match(/\/campaigns\/([^/]+)(?:\/|$)/);
+      if (campaignMatch) url.searchParams.set("campaignId", decodeURIComponent(campaignMatch[1]));
       window.open(url.toString(), "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error("Unable to open spell card:", error);

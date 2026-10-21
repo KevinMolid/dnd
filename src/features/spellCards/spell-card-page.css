@@ -1,0 +1,127 @@
+/* Supplements the existing spell-card.css; does not change the card design. */
+.spell-card-page__toolbar { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
+.spell-card-page__heading { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.spell-card-page__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.spell-card-page__actions button, .spell-card-page__modal button { cursor: pointer; }
+.spell-card-page button:disabled { cursor: not-allowed; opacity: 0.55; }
+.spell-card-page__grid { display: grid; grid-template-columns: repeat(auto-fit, 2.5in); gap: 14px; justify-content: center; margin: 24px auto; width: 100%; }
+.spell-card-page__item { width: 2.5in; height: 3.5in; position: relative; }
+.spell-card-page__remove { position: absolute; top: -9px; right: -9px; z-index: 2; border-radius: 50%; width: 24px; height: 24px; background: #222; color: white; border: 1px solid white; cursor: pointer; }
+.spell-card-page__empty { text-align: center; padding: 36px 10px; }
+.spell-card-page__modal-overlay { position: fixed; z-index: 9999; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgb(0 0 0 / 60%); }
+.spell-card-page__modal { display: flex; flex-direction: column; gap: 14px; width: min(100%, 540px); max-height: min(85vh, 700px); overflow: auto; background: white; color: #171717; padding: 22px; border-radius: 12px; box-shadow: 0 12px 40px rgb(0 0 0 / 25%); }
+.spell-card-page__modal-header, .spell-card-page__modal-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.spell-card-page__modal-header h2 { margin: 0; font-size: 20px; }
+.spell-card-page__modal-header button { font-size: 24px; }
+.spell-card-page__modal-footer { justify-content: flex-end; }
+.spell-card-page__modal input[type="search"], .spell-card-page__modal select { width: 100%; border: 1px solid #bbb; padding: 9px; border-radius: 6px; }
+.spell-card-page__choices { display: flex; flex-direction: column; gap: 3px; max-height: 340px; overflow: auto; }
+.spell-card-page__choice { display: flex; align-items: center; gap: 10px; padding: 7px; border-bottom: 1px solid #eee; cursor: pointer; }
+.spell-card-page__choice span { flex: 1; }
+.spell-card-page__choice small { color: #777; }
+.spell-card-page__field-label { font-weight: 600; }
+
+/* A screen preview can flow freely; explicit sheets are only sized to A4 for printing. */
+.spell-card-page__sheets { width: 100%; }
+.spell-card-page__sheet { width: 100%; }
+
+@page {
+  size: A4 portrait;
+  margin: 0;
+}
+
+@media print {
+  html, body, #root {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: white !important;
+  }
+
+  /* Hide Lorebound's header, toolbars and any other application UI. */
+  body * { visibility: hidden !important; }
+  .spell-card-page__sheets,
+  .spell-card-page__sheets * { visibility: visible !important; }
+
+  .spell-print-page.spell-card-page {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 210mm !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    transform: none !important;
+  }
+
+  .spell-card-page__toolbar,
+  .spell-card-page__empty,
+  .spell-card-page__remove,
+  .spell-card-page__modal-overlay { display: none !important; }
+
+  .spell-card-page__sheets {
+    display: block !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Each 9-card group occupies exactly one A4 sheet. */
+  .spell-card-page__sheet {
+    display: flex !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    min-height: 297mm !important;
+    max-height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+  .spell-card-page__sheet:last-child {
+    break-after: auto !important;
+    page-break-after: auto !important;
+  }
+
+  /* The grid always occupies all nine card positions, including empty slots.
+     Three 63.5mm columns + two 2mm gaps = 194.5mm;
+     three 88.9mm rows + two 2mm gaps = 270.7mm.
+     Centering this fixed rectangle gives consistent A4 margins. */
+  .spell-card-page__grid {
+    display: grid !important;
+    flex: none !important;
+    width: 194.5mm !important;
+    max-width: none !important;
+    /* Fixed 3-row footprint: sparse pages stay aligned to the full sheet. */
+    height: 270.7mm !important;
+    min-height: 270.7mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    grid-template-columns: repeat(3, 63.5mm) !important;
+    grid-auto-rows: 88.9mm !important;
+    column-gap: 2mm !important;
+    row-gap: 2mm !important;
+    justify-content: start !important;
+    align-content: start !important;
+  }
+
+  .spell-card-page__item,
+  .spell-card-page__item .spell-card {
+    width: 63.5mm !important;
+    height: 88.9mm !important;
+    box-sizing: border-box !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}

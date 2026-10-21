@@ -120,7 +120,7 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
 
       <Route path="/profile" element={<ProfileSettingsPage />} />
 
-          <Route path="/spell-card" element={<SpellCardPage />} />
+      <Route path="/spell-card" element={<SpellCardPage />} />
 
       <Route path="tips" element={<Tips />} />
 
