@@ -14,6 +14,7 @@ import Login from "./pages/Login";
 import LandingPage from "./pages/LandingPage";
 import NewCharacter from "./pages/NewCharacter.tsx";
 import CharacterSheet from "./pages/CharacterSheet";
+import CharacterSheetPrintPage from "./pages/CharacterSheetPrintPage";
 import NewCampaign from "./pages/NewCampaign";
 import CampaignPage from "./pages/CampaignPage";
 import CampaignLayout from "./pages/CampaignLayout";
@@ -52,20 +53,15 @@ import {
 } from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
-
 import { WorkspaceProvider } from "./features/workspace/WorkspaceContext";
 
 type AuthModalMode = "login" | "signup";
 
 function CampaignEncounterScope({ children }: { children: ReactNode }) {
-  const { campaignId } = useParams<{
-    campaignId: string;
-  }>();
-
+  const { campaignId } = useParams<{ campaignId: string }>();
   if (!campaignId) {
     return <div className="p-6 text-rose-400">No campaign selected.</div>;
   }
-
   return (
     <EncounterProvider key={campaignId} campaignId={campaignId}>
       {children}
@@ -75,17 +71,12 @@ function CampaignEncounterScope({ children }: { children: ReactNode }) {
 
 type AppRoutesProps = {
   user: ReturnType<typeof useAuth>["user"];
-
   openLoginModal: () => void;
-
   openSignupModal: () => void;
 };
 
 function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
-  /*
-   * Spotify OAuth must be able to finish before Lorebound's own auth-route
-   * fallback runs. The PKCE verifier is stored in sessionStorage.
-   */
+  /* Spotify OAuth must finish before the auth-route fallback runs. */
   if (window.location.pathname === "/spotify/callback") {
     return (
       <Routes>
@@ -106,9 +97,7 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
             />
           }
         />
-
         <Route path="/invite/:inviteToken" element={<InvitePage />} />
-
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
@@ -117,45 +106,28 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
   return (
     <Routes>
       <Route index element={<Home />} />
-
       <Route path="/profile" element={<ProfileSettingsPage />} />
-
       <Route path="/spell-card" element={<SpellCardPage />} />
-
       <Route path="tips" element={<Tips />} />
-
       <Route path="reglene" element={<Reglene />} />
-
       <Route path="karakterer" element={<Karakterer />} />
-
       <Route path="stats" element={<Stats />} />
-
       <Route path="/quests" element={<Quests />} />
-
       <Route path="/characters/new" element={<NewCharacter />} />
-
       <Route path="/characters/:characterId" element={<CharacterSheet />} />
-
+      <Route path="/characters/:characterId/print" element={<CharacterSheetPrintPage />} />
       <Route path="/characters/:characterId/edit" element={<EditCharacter />} />
-
       <Route path="/campaigns/new" element={<NewCampaign />} />
-
       <Route path="/invite/:inviteToken" element={<InvitePage />} />
 
       {/* Player-facing campaign shell */}
-
       <Route path="/campaigns/:campaignId" element={<CampaignLayout />}>
         <Route index element={<CampaignPage />} />
-
         <Route path="handouts" element={<HandoutsPage />} />
-
         <Route path="characters" element={<CampaignCharactersPage />} />
-
         <Route path="journal" element={<CampaignJournalPage />} />
-
         <Route element={<CampaignGmOutlet />}>
           <Route path="maps" element={<CampaignMapsPage />} />
-
           <Route
             path="maps/:mapId"
             element={
@@ -164,18 +136,15 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
               </CampaignEncounterScope>
             }
           />
-
           <Route path="members" element={<CampaignMembersPage />} />
         </Route>
       </Route>
 
       {/* Full-page campaign tools */}
-
       <Route
         path="/campaigns/:campaignId/settings"
         element={<CampaignSettingsPage />}
       />
-
       <Route
         path="/campaigns/:campaignId/encounter"
         element={
@@ -184,21 +153,10 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
           </CampaignEncounterScope>
         }
       />
-
       <Route path="/campaigns/:campaignId/npcs" element={<NPCsPage />} />
-
-      <Route
-        path="/campaigns/:campaignId/npcs/:npcId"
-        element={<NpcDetailPage />}
-      />
-
-      <Route
-        path="/campaigns/:campaignId/monsters"
-        element={<MonstersPage />}
-      />
-
+      <Route path="/campaigns/:campaignId/npcs/:npcId" element={<NpcDetailPage />} />
+      <Route path="/campaigns/:campaignId/monsters" element={<MonstersPage />} />
       <Route path="/campaigns/:campaignId/items" element={<ItemsPage />} />
-
       <Route
         path="/campaigns/:campaignId/workspace"
         element={
@@ -215,19 +173,12 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
 
 type AppShellProps = {
   user: ReturnType<typeof useAuth>["user"];
-
   authModalOpen: boolean;
-
   authModalTitle: string;
-
   authMode: AuthModalMode;
-
   setAuthModalOpen: (open: boolean) => void;
-
   setAuthMode: (mode: AuthModalMode) => void;
-
   openLoginModal: () => void;
-
   openSignupModal: () => void;
 };
 
@@ -242,16 +193,13 @@ function AppShell({
   openSignupModal,
 }: AppShellProps) {
   const location = useLocation();
-
-  const isWorkspaceRoute = /^\/campaigns\/[^/]+\/workspace\/?$/.test(
-    location.pathname,
-  );
-
+  const isWorkspaceRoute = /^\/campaigns\/[^/]+\/workspace\/?$/.test(location.pathname);
   const isSpotifyCallback = location.pathname === "/spotify/callback";
+  const isCharacterPrint = /^\/characters\/[^/]+\/print\/?$/.test(location.pathname);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      {!isWorkspaceRoute && !isSpotifyCallback ? (
+      {!isWorkspaceRoute && !isSpotifyCallback && !isCharacterPrint ? (
         <Header onOpenLogin={openLoginModal} onOpenSignup={openSignupModal} />
       ) : null}
 
@@ -263,7 +211,7 @@ function AppShell({
         />
       </main>
 
-      {!isSpotifyCallback ? (
+      {!isSpotifyCallback && !isCharacterPrint ? (
         <AuthModal
           open={authModalOpen}
           title={authModalTitle}
@@ -280,34 +228,24 @@ function AppShell({
 
 function App() {
   const { user, loading } = useAuth();
-
   const [authModalOpen, setAuthModalOpen] = useState(false);
-
   const [authMode, setAuthMode] = useState<AuthModalMode>("login");
-
-  const authModalTitle = useMemo(() => {
-    return authMode === "login" ? "Log in to Lorebound" : "Create your account";
-  }, [authMode]);
-
+  const authModalTitle = useMemo(
+    () => authMode === "login" ? "Log in to Lorebound" : "Create your account",
+    [authMode],
+  );
   const openLoginModal = () => {
     setAuthMode("login");
-
     setAuthModalOpen(true);
   };
-
   const openSignupModal = () => {
     setAuthMode("signup");
-
     setAuthModalOpen(true);
   };
 
-  /*
-   * Do not block the Spotify callback on Firebase auth restoration.
-   */
+  /* Do not block Spotify callback on Firebase auth restoration. */
   if (loading && window.location.pathname !== "/spotify/callback") {
-    return (
-      <div className="min-h-screen bg-zinc-950 p-6 text-white">Loading...</div>
-    );
+    return <div className="min-h-screen bg-zinc-950 p-6 text-white">Loading...</div>;
   }
 
   return (

@@ -68,14 +68,26 @@ const CharacterSheetHeader = ({
                 {name}
               </h1>
               {characterId ? (
-                <Link
-                  to={`/characters/${characterId}/edit`}
-                  aria-label={`Edit ${name}`}
-                  title="Edit character"
-                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white md:hidden"
-                >
-                  <i className="fa-solid fa-pen-to-square text-[12px]" aria-hidden="true" />
-                </Link>
+                <>
+                  <Link
+                    to={`/characters/${characterId}/print`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Print ${name}`}
+                    title="Print character sheet"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white md:hidden"
+                  >
+                    <i className="fa-solid fa-print text-[12px]" aria-hidden="true" />
+                  </Link>
+                  <Link
+                    to={`/characters/${characterId}/edit`}
+                    aria-label={`Edit ${name}`}
+                    title="Edit character"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.05] text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white md:hidden"
+                  >
+                    <i className="fa-solid fa-pen-to-square text-[12px]" aria-hidden="true" />
+                  </Link>
+                </>
               ) : null}
             </div>
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-xs">
@@ -92,19 +104,32 @@ const CharacterSheetHeader = ({
           </div>
         </div>
 
-        {/* Keep the original rest + Edit controls on desktop only. */}
+        {/* Keep rest + action buttons on desktop; mobile uses icons above. */}
         <div className="hidden shrink-0 flex-wrap items-center gap-2 md:flex md:justify-end">
           {rest && typeof currentHp === "number" && typeof maxHp === "number" ? (
             <CharacterRestButtons currentHp={currentHp} maxHp={maxHp} {...rest} />
           ) : null}
           {characterId ? (
-            <Link
-              to={`/characters/${characterId}/edit`}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
-            >
-              <i className="fa-solid fa-pen-to-square text-[11px]" aria-hidden="true" />
-              Edit
-            </Link>
+            <>
+              <Link
+                to={`/characters/${characterId}/print`}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Print ${name}`}
+                title="Print character sheet"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
+              >
+                <i className="fa-solid fa-print text-[11px]" aria-hidden="true" />
+                Print
+              </Link>
+              <Link
+                to={`/characters/${characterId}/edit`}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/[0.09] hover:text-white"
+              >
+                <i className="fa-solid fa-pen-to-square text-[11px]" aria-hidden="true" />
+                Edit
+              </Link>
+            </>
           ) : null}
         </div>
       </header>
