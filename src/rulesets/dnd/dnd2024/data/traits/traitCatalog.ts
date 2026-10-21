@@ -260,19 +260,3 @@ export const getCatalogTraits = (
   getTraitCatalogEntries(catalogIds).map(
     (entry) => entry.trait,
   );
-
-  console.log(
-  "Registered classes:",
-  classes.map((c) => ({
-    id: c.id,
-    name: c.name,
-    features: Object.values(c.featuresByLevel).flat().length,
-  })),
-);
-
-console.log(
-  "Monk traits:",
-  traitCatalog.filter(
-    (entry) => entry.classId === "monk",
-  ),
-);
