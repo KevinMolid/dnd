@@ -3573,5 +3573,58 @@ export const dragons: MonsterDefinition[] = [
         "text": "Constitution Saving Throw: DC 12, one creature the pseudodragon can see within 5 feet. Failure: 5 (2d4) Poison damage, and the target has the Poisoned condition for 1 hour. Failure by 5 or More: While Poisoned, the target also has the Unconscious condition, which ends early if the target takes damage or a creature within 5 feet of it takes an action to wake it."
       }
     ]
-  }
+  },
+  
+{
+  "id": "kobold-warrior",
+  "name": "Kobold Warrior",
+  "type": "Dragon",
+  "size": "Small",
+  "alignment": "Neutral",
+  "armorClass": 14,
+  "hp": 7,
+  "hitDice": "3d6 - 3",
+  "initiative": {
+    "modifier": 2,
+    "score": 12
+  },
+  "speed": {
+    "walk": 30
+  },
+  "stats": {
+    "str": 7,
+    "dex": 15,
+    "con": 9,
+    "int": 8,
+    "wis": 7,
+    "cha": 8
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 8
+  },
+  "languages": [
+    "Common",
+    "Draconic"
+  ],
+  "challengeRating": "1/8",
+  "xp": 25,
+  "proficiencyBonus": 2,
+  "traits": [
+    {
+      "name": "Pack Tactics",
+      "text": "The kobold has Advantage on an attack roll against a creature if at least one of the kobold's allies is within 5 feet of the creature and the ally doesn't have the Incapacitated condition."
+    },
+    {
+      "name": "Sunlight Sensitivity",
+      "text": "While in sunlight, the kobold has Disadvantage on ability checks and attack rolls."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Dagger",
+      "text": "Melee or Ranged Attack Roll: +4, reach 5 ft. or range 20/60 ft. Hit: 4 (1d4 + 2) Piercing damage."
+    }
+  ]
+},
 ];
