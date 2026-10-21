@@ -55,6 +55,7 @@ import { getTraitCatalogEntries } from "../rulesets/dnd/dnd2024/data/traits/trai
 import { getXpProgressWithinLevel } from "../rulesets/dnd/dnd2024/xpProgression";
 
 import { getTwoWeaponCombatActions } from "../rulesets/dnd/dnd2024/getTwoWeaponCombatActions";
+import { getUnarmedStrikeAttack } from "../rulesets/dnd/dnd2024/getUnarmedStrikeAttack";
 
 import {
   createEmptyCustomSkills,
@@ -678,31 +679,18 @@ const CustomCharacterSheet = ({
 
     ========================================================= */
 
-  const unarmedStrengthModifier = getModifier(abilityScores.str);
-
-  const unarmedSaveDc = 8 + proficiencyBonus + unarmedStrengthModifier;
-
-  const unarmedAttack = {
-    id: "unarmed-strike",
-
-    name: "Unarmed Strike",
-
-    attackBonus: unarmedStrengthModifier + proficiencyBonus,
-
-    damage: `${Math.max(0, 1 + unarmedStrengthModifier)} bludgeoning`,
-
-    properties: [`Grapple DC ${unarmedSaveDc}`, `Shove DC ${unarmedSaveDc}`],
-
-    ability: "str" as AbilityKey,
-
-    isOffHand: false,
-
-    isTwoHanded: false,
-
-    isThrown: false,
-
-    range: null,
-  };
+  const unarmedAttack = getUnarmedStrikeAttack({
+    abilityScores,
+    proficiencyBonus,
+    level,
+    traits: [
+      ...getTraitCatalogEntries(character.catalogTraitIds).map((entry) => entry.trait),
+      ...(character.customTraits ?? []),
+    ],
+    equipment: character.equipment ?? [],
+    resolveItem: (entry) =>
+      resolveItemFromEquipmentEntry(entry, campaignItemsById),
+  });
 
   const weaponAttacks = (character.equipment ?? [])
 

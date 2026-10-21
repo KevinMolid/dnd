@@ -46,6 +46,8 @@ import { abilityFullLabels } from "../features/character-sheet/utils/characterSh
 import { formatLabel } from "../features/character-sheet/utils/characterSheetHelpers";
 
 import { getTwoWeaponCombatActions } from "../rulesets/dnd/dnd2024/getTwoWeaponCombatActions";
+import { getUnarmedStrikeAttack } from "../rulesets/dnd/dnd2024/getUnarmedStrikeAttack";
+import { resolveItemFromEquipmentEntry } from "../rulesets/dnd/dnd2024/resolveItem";
 
 const CharacterSheet = () => {
   const { characterId } = useParams();
@@ -317,55 +319,15 @@ const CharacterSheet = () => {
       : null,
   }));
 
-  /*
-
-   * D&D 2024 characters can always make an Unarmed Strike.
-
-   *
-
-   * Base damage is 1 + Strength modifier bludgeoning damage.
-
-   * The attack roll uses Strength + Proficiency Bonus.
-
-   *
-
-   * Grapple and Shove use the same Unarmed Strike but force a
-
-   * Strength or Dexterity saving throw against:
-
-   * 8 + Strength modifier + Proficiency Bonus.
-
-   */
-
-  const unarmedStrengthModifier = Math.floor(
-    (derived.finalAbilityScores.str - 10) / 2,
-  );
-
-  const unarmedSaveDc = 8 + derived.proficiencyBonus + unarmedStrengthModifier;
-
-  const unarmedAttack = {
-    id: "unarmed-strike",
-
-    name: "Unarmed Strike",
-
-    attackBonus: derived.genericAttackBonuses.unarmed,
-
-    damage: `${Math.max(0, 1 + unarmedStrengthModifier)} bludgeoning`,
-
-    isOffHand: false,
-
-    isThrown: false,
-
-    isTwoHanded: false,
-
-    properties: [`Grapple DC ${unarmedSaveDc}`, `Shove DC ${unarmedSaveDc}`],
-
-    ability: "str" as AbilityKey,
-
-    mastery: undefined,
-
-    range: null,
-  };
+  const unarmedAttack = getUnarmedStrikeAttack({
+    abilityScores: derived.finalAbilityScores,
+    proficiencyBonus: derived.proficiencyBonus,
+    level: character.level,
+    traits: derived.traitGroups.flatMap((group) => group.traits),
+    equipment: character.equipment ?? [],
+    resolveItem: (entry) =>
+      resolveItemFromEquipmentEntry(entry, campaignItemsById),
+  });
 
   const specialAttacks =
     derived.dragonbornAncestryName && derived.dragonbornDamageType
