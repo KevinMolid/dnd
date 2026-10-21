@@ -31,7 +31,6 @@ const signed = (n: number) => `${n >= 0 ? "+" : ""}${n}`;
 const label = (v: unknown) => String(v ?? "").replace(/[-_]/g, " ").trim();
 const list = (v: unknown) => Array.isArray(v) ? v.map(label).filter(Boolean).join(", ") : label(v);
 const normalize = (v: string) => v.toLowerCase().replace(/[^a-z0-9]/g, "");
-const moneyText = (m: any) => ["cp", "sp", "ep", "gp", "pp"].map(k => `${k.toUpperCase()}: ${m?.[k] ?? 0}`).join("  ");
 const safeNumber = (v: unknown, fallback = 0) => typeof v === "number" && Number.isFinite(v) ? v : fallback;
 
 /** The browser preview and exported file use the exact same finished A4 PDF. */
