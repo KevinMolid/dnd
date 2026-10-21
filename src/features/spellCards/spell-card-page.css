@@ -1,11 +1,20 @@
-/* Supplements the existing spell-card.css; does not change the card design. */
+/* Supplements the existing spell-card.css; does not change the card design.
+   Large uses the exact same card artwork scaled uniformly by 92 / 63.5. */
+.spell-card-page { --card-scale: 1; --card-width: 63.5mm; --card-height: 88.9mm; }
+.spell-card-page--large { --card-scale: 1.4488188976; --card-width: 92mm; --card-height: 128.8mm; }
+.spell-card-page__size-label { align-self: center; font-size: 0.875rem; }
+.spell-card-page__size-select { color: #161616; background: white; border-radius: 6px; border: 1px solid #a1a1aa; padding: 5px 9px; }
+/* Keep the base card layout unchanged; scale both geometry and typography. */
+.spell-card-page__item { width: var(--card-width); height: var(--card-height); }
+.spell-card-page__item > .spell-card { transform-origin: 0 0; transform: scale(var(--card-scale)); }
+
 .spell-card-page__toolbar { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; }
 .spell-card-page__heading { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .spell-card-page__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .spell-card-page__actions button, .spell-card-page__modal button { cursor: pointer; }
 .spell-card-page button:disabled { cursor: not-allowed; opacity: 0.55; }
-.spell-card-page__grid { display: grid; grid-template-columns: repeat(auto-fit, 2.5in); gap: 14px; justify-content: center; margin: 24px auto; width: 100%; }
-.spell-card-page__item { width: 2.5in; height: 3.5in; position: relative; }
+.spell-card-page__grid { display: grid; grid-template-columns: repeat(auto-fit, var(--card-width)); gap: 14px; justify-content: center; margin: 24px auto; width: 100%; }
+.spell-card-page__item { width: var(--card-width); height: var(--card-height); position: relative; }
 .spell-card-page__remove { position: absolute; top: -9px; right: -9px; z-index: 2; border-radius: 50%; width: 24px; height: 24px; background: #222; color: white; border: 1px solid white; cursor: pointer; }
 .spell-card-page__empty { text-align: center; padding: 36px 10px; }
 .spell-card-page__modal-overlay { position: fixed; z-index: 9999; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgb(0 0 0 / 60%); }
@@ -123,5 +132,34 @@
     padding: 0 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
+  }
+}
+
+/* Large format: 2 × 2 cards centered inside exactly the same A4 sheet.
+   Footprint: (92 × 2 + 3) × (128.8 × 2 + 3) = 187 × 260.6 mm.
+   The fixed empty grid positions keep partial sheets aligned from top-left. */
+@media print {
+  .spell-card-page--large .spell-card-page__grid {
+    width: 187mm !important;
+    height: 260.6mm !important;
+    min-height: 260.6mm !important;
+    grid-template-columns: repeat(2, 92mm) !important;
+    grid-auto-rows: 128.8mm !important;
+    column-gap: 3mm !important;
+    row-gap: 3mm !important;
+  }
+  .spell-card-page--large .spell-card-page__item {
+    width: 92mm !important;
+    height: 128.8mm !important;
+  }
+  /* Preserve original card design and proportions by scaling the full card. */
+  .spell-card-page--large .spell-card-page__item .spell-card {
+    width: 63.5mm !important;
+    height: 88.9mm !important;
+    transform: scale(1.4488188976) !important;
+    transform-origin: top left !important;
+  }
+  .spell-card-page--standard .spell-card-page__item .spell-card {
+    transform: none !important;
   }
 }

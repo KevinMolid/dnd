@@ -139,6 +139,8 @@ export default function SpellCardPage({ spell }: SpellCardPageProps) {
     const initial = readInitialSpell(spell);
     return initial ? [initial] : [];
   });
+  const [cardSize, setCardSize] = useState<"standard" | "large">("standard");
+  const cardsPerSheet = cardSize === "large" ? 4 : 9;
   const [dialog, setDialog] = useState<"spells" | "characters" | null>(null);
   const [selectedCharacterId, setSelectedCharacterId] = useState("");
   const [activeCharacterName, setActiveCharacterName] = useState("");
@@ -177,7 +179,7 @@ export default function SpellCardPage({ spell }: SpellCardPageProps) {
     for (const card of sorted) {
       if (
         currentSheet.length > 0 &&
-        (card.level !== currentLevel || currentSheet.length === 9)
+        (card.level !== currentLevel || currentSheet.length === cardsPerSheet)
       ) {
         sheets.push(currentSheet);
         currentSheet = [];
@@ -187,20 +189,25 @@ export default function SpellCardPage({ spell }: SpellCardPageProps) {
     }
     if (currentSheet.length > 0) sheets.push(currentSheet);
     return sheets;
-  }, [cards]);
+  }, [cards, cardsPerSheet]);
 
   function addCards(next: SpellCardData[]) {
     setCards((current) => uniqueSpells([...current, ...next]));
   }
 
   return (
-    <main className="spell-print-page spell-card-page">
+    <main className={`spell-print-page spell-card-page spell-card-page--${cardSize}`}>
       <div className="spell-print-page__controls spell-card-page__toolbar">
         <div className="spell-card-page__heading">
           <strong>Spell Cards</strong>
-          <span>{cards.length} {cards.length === 1 ? "card" : "cards"} · 2.5 × 3.5 in / 63.5 × 88.9 mm</span>
+          <span>{cards.length} {cards.length === 1 ? "card" : "cards"} · {cardSize === "large" ? "Large · 2×2 per A4" : "Standard · 3×3 per A4 · 63.5 × 88.9 mm"}</span>
         </div>
         <div className="spell-card-page__actions">
+          <label className="spell-card-page__size-label" htmlFor="spell-card-size">Card size</label>
+          <select id="spell-card-size" className="spell-card-page__size-select" value={cardSize} onChange={(event) => setCardSize(event.target.value as "standard" | "large")}>
+            <option value="standard">Standard (3×3)</option>
+            <option value="large">Large (2×2)</option>
+          </select>
           <button type="button" onClick={() => setDialog("spells")}>+ Add Spells</button>
           <button type="button" onClick={() => { setSelectedCharacterId(""); setDialog("characters"); }}>+ Add Character Spells</button>
           <button type="button" onClick={() => setCards([])} disabled={!cards.length}>Clear All</button>
