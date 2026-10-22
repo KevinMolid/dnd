@@ -385,6 +385,61 @@ export const monstrosities: MonsterDefinition[] = [
       }
     ]
   },
+  
+{
+  "id": "displacer-beast",
+  "name": "Displacer Beast",
+  "type": "Monstrosity",
+  "size": "Large",
+  "alignment": "Lawful Evil",
+  "armorClass": 13,
+  "initiative": {
+    "modifier": 2,
+    "score": 12
+  },
+  "hp": 85,
+  "hitDice": "10d10 + 30",
+  "speed": {
+    "walk": 40
+  },
+  "stats": {
+    "str": 18,
+    "dex": 15,
+    "con": 16,
+    "int": 6,
+    "wis": 12,
+    "cha": 8
+  },
+  "senses": {
+    "darkvision": 60,
+    "passivePerception": 11
+  },
+  "languages": [],
+  "challengeRating": "3",
+  "xp": 700,
+  "proficiencyBonus": 2,
+  "traits": [
+    {
+      "name": "Avoidance",
+      "text": "If the displacer beast is subjected to an effect that allows it to make a saving throw to take only half damage, it instead takes no damage if it succeeds on the saving throw and only half damage if it fails."
+    },
+    {
+      "name": "Displacement",
+      "text": "The displacer beast projects a magical illusion that makes it appear to be standing near its actual location. Attack rolls against it have Disadvantage. If it is hit by an attack roll, this trait is disrupted until the end of its next turn. This trait is also disrupted while the displacer beast has the Incapacitated condition or its Speed is 0."
+    }
+  ],
+  "actions": [
+    {
+      "name": "Multiattack",
+      "text": "The displacer beast makes two Tentacle attacks."
+    },
+    {
+      "name": "Tentacle",
+      "text": "Melee Attack Roll: +6, reach 10 ft. Hit: 7 (1d6 + 4) Bludgeoning damage plus 3 (1d6) Piercing damage."
+    }
+  ]
+},
+
   {
     "id": "doppelganger",
     "name": "Doppelganger",
