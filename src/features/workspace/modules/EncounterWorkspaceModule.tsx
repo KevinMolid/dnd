@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import Avatar from "../../../components/Avatar";
 import NumberStepper from "../../../components/NumberStepper";
@@ -181,6 +182,7 @@ export default function EncounterWorkspaceModule({
     clearEncounter,
 
     rollInitiative,
+    rollInitiativeWithPlayerRolls,
   } = useEncounter();
 
   const {
@@ -220,6 +222,48 @@ export default function EncounterWorkspaceModule({
   const [monsterSearch, setMonsterSearch] = useState("");
 
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+
+  const [initiativeMode, setInitiativeMode] = useState<"auto" | "manual">("auto");
+  const [showManualInitiative, setShowManualInitiative] = useState(false);
+  const [manualInitiative, setManualInitiative] = useState<Record<string, string>>({});
+
+  const encounterPlayers = useMemo(
+    () => encounter.filter((entry) => entry.entityKind === "player"),
+    [encounter],
+  );
+
+  const openInitiativeRoll = () => {
+    if (initiativeMode === "auto" || encounterPlayers.length === 0) {
+      rollInitiative();
+      return;
+    }
+
+    setManualInitiative(
+      Object.fromEntries(
+        encounterPlayers.map((entry) => [
+          entry.id,
+          entry.initiative === "" ? "" : String(entry.initiative),
+        ]),
+      ),
+    );
+    setShowManualInitiative(true);
+  };
+
+  const manualRollsValid = encounterPlayers.length > 0 && encounterPlayers.every((entry) => {
+    const text = manualInitiative[entry.id]?.trim() ?? "";
+    return /^-?\d+$/.test(text) && Number.isSafeInteger(Number(text));
+  });
+
+  const confirmManualInitiative = () => {
+    if (!manualRollsValid) return;
+
+    rollInitiativeWithPlayerRolls(
+      Object.fromEntries(
+        encounterPlayers.map((entry) => [entry.id, Number(manualInitiative[entry.id])]),
+      ),
+    );
+    setShowManualInitiative(false);
+  };
 
   const sortedEncounter = useMemo(() => sortEncounter(encounter), [encounter]);
 
@@ -691,13 +735,36 @@ export default function EncounterWorkspaceModule({
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            onClick={rollInitiative}
+            onClick={openInitiativeRoll}
             disabled={encounter.length === 0}
             className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-2.5 py-1.5 text-xs font-semibold text-blue-300 transition hover:bg-blue-500/15 disabled:cursor-default disabled:opacity-30"
           >
             <i className="fa-solid fa-dice-d20 mr-1.5" />
             Roll Initiative
           </button>
+
+          <div
+            className="flex h-8 shrink-0 items-center rounded-lg border border-white/10 bg-white/5 p-0.5"
+            role="group"
+            aria-label="Player initiative mode"
+          >
+            {(["auto", "manual"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => setInitiativeMode(mode)}
+                aria-pressed={initiativeMode === mode}
+                title={mode === "auto" ? "Automatically roll player initiative" : "Enter player initiative manually"}
+                className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${
+                  initiativeMode === mode
+                    ? "bg-blue-500/20 text-blue-200"
+                    : "text-zinc-500 hover:text-white"
+                }`}
+              >
+                {mode === "auto" ? "Auto" : "Manual"}
+              </button>
+            ))}
+          </div>
 
           <button
             type="button"
@@ -777,6 +844,106 @@ export default function EncounterWorkspaceModule({
           </div>
         </div>
       </div>
+
+      {showManualInitiative && createPortal(
+        <div
+          className="workspace-no-drag fixed inset-0 z-[1000] flex items-center justify-center overflow-y-auto bg-black/75 p-3 sm:p-4"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowManualInitiative(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="manual-initiative-title"
+            className="flex w-full max-w-md min-h-0 max-h-[calc(100dvh-1.5rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 p-3 text-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:p-4"
+            onKeyDown={(event) => {
+              if (event.key === "Escape") setShowManualInitiative(false);
+            }}
+          >
+            <div className="flex shrink-0 items-start justify-between gap-3">
+              <div>
+                <h3 id="manual-initiative-title" className="text-base font-bold">
+                  Player Initiative
+                </h3>
+                <p className="mt-1 text-xs text-zinc-400">
+                  Enter each player's final initiative result (including modifiers).
+                  Monsters roll automatically when you confirm.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowManualInitiative(false)}
+                aria-label="Close initiative dialog"
+                className="rounded-lg p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
+              >
+                <i className="fa-solid fa-xmark" />
+              </button>
+            </div>
+
+            <form
+              className="flex min-h-0 flex-1 flex-col"
+              onSubmit={(event) => {
+                event.preventDefault();
+                confirmManualInitiative();
+              }}
+            >
+              <div className="workspace-scrollbar mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto overscroll-contain pr-1">
+                {encounterPlayers.map((entry) => (
+                  <label
+                    key={entry.id}
+                    className="flex min-h-10 items-center gap-2 rounded-lg border border-white/10 bg-black/20 px-2 py-1"
+                  >
+                    <Avatar
+                      name={entry.displayName}
+                      src={getEntryImage(entry)}
+                      size="sm"
+                    />
+                    <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                      {entry.displayName}
+                    </span>
+                    <input
+                      type="number"
+                      step="1"
+                      required
+                      autoFocus={entry.id === encounterPlayers[0]?.id}
+                      aria-label={`${entry.displayName} initiative`}
+                      value={manualInitiative[entry.id] ?? ""}
+                      onChange={(event) =>
+                        setManualInitiative((current) => ({
+                          ...current,
+                          [entry.id]: event.target.value,
+                        }))
+                      }
+                      placeholder="—"
+                      className="h-8 w-16 shrink-0 rounded-md border border-white/15 bg-zinc-950 px-1 text-center text-xs font-bold text-white outline-none focus:border-blue-400/50"
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="mt-3 flex shrink-0 flex-wrap justify-end gap-2 border-t border-white/10 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowManualInitiative(false)}
+                  className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-300 hover:bg-white/10"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!manualRollsValid}
+                  className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <i className="fa-solid fa-dice-d20 mr-1.5" />
+                  Confirm &amp; Roll Monsters
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {/* Manage combatants */}
 
