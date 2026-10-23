@@ -1,421 +1,334 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { awardExperienceToMultipleCharacters } from "../rulesets/dnd/dnd2024/awardExperience";
-import { db } from "../firebase";
-import NumberStepper from "./NumberStepper";
-
-import { useAuth } from "../context/AuthContext";
 import { addLogEntry } from "../features/campaigns/utils/campaignLog";
+import { db } from "../firebase";
+import { useAuth } from "../context/AuthContext";
 
-type CharacterOption = {
-  id: string;
-  name: string;
-  level: number;
-};
-
-type AwardXpResult = {
-  characterId: string;
-  oldLevel: number;
-  newLevel: number;
-  leveledUp?: boolean;
-};
-
+type CharacterOption = { id: string; name: string; level: number };
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  campaignId?: string;
   characters: CharacterOption[];
+  campaignId?: string;
 };
+type DistributionMode = "total" | "each" | "manual";
 
-const AwardXpModal = ({ isOpen, onClose, campaignId, characters }: Props) => {
+const parseXp = (input: string) => Math.max(0, Math.floor(Number(input) || 0));
+
+const AwardXpModal = ({ isOpen, onClose, characters, campaignId }: Props) => {
   const { user } = useAuth();
-  const [xp, setXp] = useState<number>(0);
   const [selected, setSelected] = useState<string[]>([]);
-  const [splitEvenly, setSplitEvenly] = useState(true);
-  const [manualAmounts, setManualAmounts] = useState<Record<string, number>>(
-    {},
-  );
+  const [mode, setMode] = useState<DistributionMode>("total");
+  const [xpInput, setXpInput] = useState("0");
+  const [manualInputs, setManualInputs] = useState<Record<string, string>>({});
+  const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState<AwardXpResult[]>([]);
+  const [error, setError] = useState("");
 
-  const selectedCharacterMap = useMemo(() => {
-    return new Map(characters.map((char) => [char.id, char]));
-  }, [characters]);
+  useEffect(() => {
+    if (!isOpen) return;
+    setSelected([]);
+    setMode("total");
+    setXpInput("0");
+    setManualInputs({});
+    setReason("");
+    setLoading(false);
+    setError("");
+  }, [isOpen]);
 
   const selectedCharacters = useMemo(
-    () => characters.filter((char) => selected.includes(char.id)),
+    () => characters.filter((character) => selected.includes(character.id)),
     [characters, selected],
   );
 
-  const evenSplitAmount = useMemo(() => {
-    if (!splitEvenly) return 0;
-    if (selectedCharacters.length === 0) return 0;
-    if (xp <= 0) return 0;
-    return Math.floor(xp / selectedCharacters.length);
-  }, [splitEvenly, xp, selectedCharacters.length]);
+  const awards = useMemo(() => {
+    const recipients = selectedCharacters.length;
+    const total = parseXp(xpInput);
+    const values: Record<string, number> = {};
+    selectedCharacters.forEach((character, index) => {
+      values[character.id] =
+        mode === "total"
+          ? Math.floor(total / recipients) +
+            (index < total % recipients ? 1 : 0)
+          : mode === "each"
+            ? total
+            : parseXp(manualInputs[character.id] ?? "0");
+    });
+    return values;
+  }, [selectedCharacters, mode, xpInput, manualInputs]);
 
-  const previewAmounts = useMemo(() => {
-    const next: Record<string, number> = {};
-
-    for (const char of selectedCharacters) {
-      next[char.id] = splitEvenly
-        ? evenSplitAmount
-        : Math.max(0, Math.floor(manualAmounts[char.id] ?? 0));
-    }
-
-    return next;
-  }, [selectedCharacters, splitEvenly, evenSplitAmount, manualAmounts]);
-
-  const totalPreview = useMemo(() => {
-    return Object.values(previewAmounts).reduce((sum, value) => sum + value, 0);
-  }, [previewAmounts]);
-
-  const hasAnyXpToAward = useMemo(() => {
-    return selectedCharacters.some(
-      (char) => (previewAmounts[char.id] ?? 0) > 0,
-    );
-  }, [selectedCharacters, previewAmounts]);
+  const totalAward = Object.values(awards).reduce(
+    (sum, amount) => sum + amount,
+    0,
+  );
+  const canAward = !loading && selectedCharacters.length > 0 && totalAward > 0;
 
   if (!isOpen) return null;
 
   const toggleCharacter = (id: string) => {
-    setSelected((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    setSelected((previous) =>
+      previous.includes(id)
+        ? previous.filter((selectedId) => selectedId !== id)
+        : [...previous, id],
     );
   };
 
-  const toggleAll = () => {
-    if (selected.length === characters.length) {
-      setSelected([]);
-      return;
-    }
-
-    setSelected(characters.map((char) => char.id));
-  };
-
-  const handleManualAmountChange = (id: string, value: number) => {
-    setManualAmounts((prev) => ({
-      ...prev,
-      [id]: Math.max(0, Math.floor(value)),
-    }));
-  };
-
-  const handleAwardXp = async () => {
-    if (selectedCharacters.length === 0 || !hasAnyXpToAward) return;
+  const handleAward = async () => {
+    if (!canAward) return;
+    setLoading(true);
+    setError("");
+    const cleanReason = reason.trim().slice(0, 100);
 
     try {
-      setLoading(true);
-      setResults([]);
+      // Apply the exact amount to each character. Log a single campaign event
+      // only after every award has succeeded.
+      const awarded = selectedCharacters
+        .map((character) => ({
+          character,
+          amount: awards[character.id] ?? 0,
+        }))
+        .filter(({ amount }) => amount > 0);
 
-      const selectedIds = selectedCharacters.map((char) => char.id);
-
-      if (splitEvenly) {
-        if (evenSplitAmount <= 0) return;
-
-        const res = await awardExperienceToMultipleCharacters(
-          db,
-          selectedIds,
-          evenSplitAmount,
-        );
-
-        if (campaignId) {
-          await addLogEntry({
-            campaignId,
-            type: "xp_awarded",
-            createdByUid: user?.uid ?? null,
-            characterId: null,
-            characterName: null,
-            payload: {
-              amount: evenSplitAmount,
-              recipientCount: res.length,
-            },
-          });
-        }
-
-        setResults(res as AwardXpResult[]);
-      } else {
-        const allResults: AwardXpResult[] = [];
-        let totalAwarded = 0;
-
-        for (const char of selectedCharacters) {
-          const amount = previewAmounts[char.id] ?? 0;
-
-          if (amount <= 0) continue;
-
-          const res = await awardExperienceToMultipleCharacters(
-            db,
-            [char.id],
-            amount,
-          );
-
-          totalAwarded += amount;
-          allResults.push(...(res as AwardXpResult[]));
-        }
-
-        if (campaignId && allResults.length > 0) {
-          await addLogEntry({
-            campaignId,
-            type: "xp_awarded",
-            createdByUid: user?.uid ?? null,
-            characterId: null,
-            characterName: null,
-            payload: {
-              totalAmount: totalAwarded,
-              recipientCount: allResults.length,
-              mixedAmounts: true,
-            },
-          });
-        }
-
-        setResults(allResults);
+      for (const { character, amount } of awarded) {
+        await awardExperienceToMultipleCharacters(db, [character.id], amount);
       }
-    } catch (err) {
-      console.error(err);
+
+      if (campaignId && awarded.length > 0) {
+        const amounts = awarded.map(({ amount }) => amount);
+        const allSameAmount = amounts.every((amount) => amount === amounts[0]);
+        const totalAmount = amounts.reduce((sum, amount) => sum + amount, 0);
+        const singleRecipient = awarded.length === 1 ? awarded[0] : null;
+
+        await addLogEntry({
+          campaignId,
+          type: "xp_awarded",
+          createdByUid: user?.uid ?? null,
+          ...(singleRecipient
+            ? {
+                characterId: singleRecipient.character.id,
+                characterName: singleRecipient.character.name,
+              }
+            : {}),
+          payload: {
+            recipientCount: awarded.length,
+            totalAmount,
+            mixedAmounts: !allSameAmount,
+            ...(allSameAmount ? { amount: amounts[0] } : {}),
+            ...(cleanReason ? { reason: cleanReason } : {}),
+          },
+        });
+      }
+      onClose();
+    } catch (cause) {
+      console.error("Failed to award XP:", cause);
+      setError(
+        "Could not finish all rewards. Some characters may already have received XP. Check the activity log before retrying.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const leveledUp = results.filter((r) => r.leveledUp);
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70">
-      <div className="flex min-h-full items-start justify-center px-4 py-6 sm:items-center sm:py-8">
-        <div className="w-full max-w-5xl rounded-3xl border border-white/10 bg-zinc-900 p-5 shadow-2xl sm:p-6">
-          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h2 className="text-2xl font-semibold text-white">Award XP</h2>
-              <p className="mt-1 text-sm text-zinc-400">
-                Select the characters who should receive experience, then
-                preview the amount before applying it.
-              </p>
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-3 sm:p-4"
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="award-xp-title"
+        className="flex max-h-[90dvh] w-full max-w-[760px] flex-col overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 text-zinc-100 shadow-2xl"
+      >
+        <div className="flex shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-3">
+          <h2 id="award-xp-title" className="text-sm font-bold text-white">
+            Award XP
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            aria-label="Close"
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-zinc-300 hover:bg-white/10 disabled:opacity-50"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-semibold text-zinc-200">
+              Characters{" "}
+              <span className="ml-1 font-normal text-zinc-400">
+                {selected.length}/{characters.length}
+              </span>
             </div>
+            <button
+              type="button"
+              onClick={() =>
+                setSelected(
+                  selected.length === characters.length
+                    ? []
+                    : characters.map((character) => character.id),
+                )
+              }
+              className="text-[11px] font-medium text-zinc-300 hover:text-white"
+            >
+              {selected.length === characters.length && characters.length > 0
+                ? "Clear all"
+                : "Select all"}
+            </button>
+          </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={toggleAll}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white transition hover:bg-white/10"
-              >
-                {selected.length === characters.length
-                  ? "Clear all"
-                  : "Select all"}
-              </button>
+          <div className="mb-5 flex flex-wrap gap-1.5">
+            {characters.map((character) => {
+              const checked = selected.includes(character.id);
+              return (
+                <button
+                  key={character.id}
+                  type="button"
+                  onClick={() => toggleCharacter(character.id)}
+                  aria-pressed={checked}
+                  className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition ${checked ? "border-emerald-400/35 bg-emerald-500/10 text-emerald-200" : "border-white/10 bg-zinc-900 text-zinc-300 hover:bg-white/10"}`}
+                >
+                  {checked ? "✓ " : ""}
+                  {character.name}
+                </button>
+              );
+            })}
+            {characters.length === 0 && (
+              <span className="text-xs text-zinc-400">
+                No characters available.
+              </span>
+            )}
+          </div>
 
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-zinc-300 transition hover:bg-white/10 hover:text-white"
-              >
-                Close
-              </button>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.08] pt-4">
+            <label
+              htmlFor="award-xp-amount"
+              className="text-xs font-semibold text-zinc-200"
+            >
+              XP
+            </label>
+            <div
+              role="group"
+              aria-label="XP distribution"
+              className="inline-flex rounded-lg border border-white/10 bg-zinc-900 p-0.5 text-[11px]"
+            >
+              {(
+                [
+                  ["total", "Total"],
+                  ["each", "Per character"],
+                  ["manual", "Manual"],
+                ] as const
+              ).map(([value, name]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setMode(value)}
+                  aria-pressed={mode === value}
+                  className={`rounded-md px-2.5 py-1.5 transition ${mode === value ? "bg-zinc-700 text-white" : "text-zinc-400 hover:text-zinc-200"}`}
+                >
+                  {name}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <p className="text-xs font-medium text-zinc-400">
-                {splitEvenly ? "Total XP" : "Distribution Mode"}
-              </p>
-
-              {splitEvenly ? (
-                <div className="mt-3">
-                  <NumberStepper
-                    value={xp}
+          {mode !== "manual" ? (
+            <input
+              id="award-xp-amount"
+              type="number"
+              min={0}
+              step={1}
+              value={xpInput}
+              onChange={(event) => setXpInput(event.target.value)}
+              className="h-9 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 text-sm font-semibold text-white outline-none focus:border-emerald-500/50"
+            />
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {selectedCharacters.map((character) => (
+                <label
+                  key={character.id}
+                  className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-200"
+                >
+                  <span className="truncate">{character.name}</span>
+                  <input
+                    type="number"
                     min={0}
-                    onChange={setXp}
-                    ariaLabel="Total XP"
-                    size="default"
-                    width="full"
+                    step={1}
+                    aria-label={`${character.name} XP`}
+                    value={manualInputs[character.id] ?? "0"}
+                    onChange={(event) =>
+                      setManualInputs((previous) => ({
+                        ...previous,
+                        [character.id]: event.target.value,
+                      }))
+                    }
+                    className="w-24 rounded-md border border-white/10 bg-zinc-950 px-2 py-1.5 text-right text-xs text-white outline-none"
                   />
-                </div>
-              ) : (
-                <div className="mt-3 rounded-xl border border-white/10 bg-zinc-950/60 px-3 py-3 text-sm text-zinc-300">
-                  Enter a separate amount for each selected character.
-                </div>
-              )}
-
-              <label className="mt-4 flex items-center gap-2 text-sm text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={splitEvenly}
-                  onChange={(e) => setSplitEvenly(e.target.checked)}
-                />
-                Split evenly
-              </label>
-
-              <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-zinc-950/60 p-3 text-xs text-zinc-400">
-                <div className="flex items-center justify-between gap-3">
-                  <span>Selected</span>
-                  <span className="text-zinc-200">
-                    {selectedCharacters.length}
-                  </span>
-                </div>
-
-                {splitEvenly && (
-                  <div className="flex items-center justify-between gap-3">
-                    <span>Each gets</span>
-                    <span className="text-zinc-200">{evenSplitAmount} XP</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between gap-3">
-                  <span>Total preview</span>
-                  <span className="text-zinc-200">{totalPreview} XP</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleAwardXp}
-                disabled={
-                  loading || selectedCharacters.length === 0 || !hasAnyXpToAward
-                }
-                className="mt-4 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {loading ? "Awarding..." : "Apply XP"}
-              </button>
-            </div>
-
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-white">Characters</p>
-                <p className="text-xs text-zinc-500">
-                  Click cards to select recipients
+                </label>
+              ))}
+              {selectedCharacters.length === 0 && (
+                <p className="text-xs text-zinc-400">
+                  Select characters to enter XP.
                 </p>
-              </div>
-
-              {characters.length === 0 ? (
-                <p className="text-sm text-zinc-500">
-                  No characters available.
-                </p>
-              ) : (
-                <div className="grid max-h-[420px] gap-2 overflow-y-auto pr-1 md:grid-cols-2 xl:grid-cols-3">
-                  {characters.map((char) => {
-                    const isSelected = selected.includes(char.id);
-                    const preview = previewAmounts[char.id] ?? 0;
-
-                    return (
-                      <div
-                        key={char.id}
-                        className={`rounded-xl border p-3 transition ${
-                          isSelected
-                            ? "border-white/30 bg-white/15 text-white"
-                            : "border-white/10 bg-zinc-950/50 text-zinc-200 hover:bg-white/10"
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => toggleCharacter(char.id)}
-                          className="w-full text-left"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium">
-                                {char.name}
-                              </p>
-                              <p className="mt-1 text-xs text-zinc-500">
-                                Level {char.level}
-                              </p>
-                            </div>
-
-                            <div
-                              className={`rounded-full border px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] ${
-                                isSelected
-                                  ? "border-white/30 bg-white/10 text-white"
-                                  : "border-white/10 bg-white/5 text-zinc-400"
-                              }`}
-                            >
-                              {isSelected ? "Selected" : "Select"}
-                            </div>
-                          </div>
-                        </button>
-
-                        {isSelected && (
-                          <div className="mt-3 border-t border-white/10 pt-3">
-                            {splitEvenly ? (
-                              <div className="rounded-lg border border-white/10 bg-zinc-950/60 px-3 py-2">
-                                <p className="text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-                                  Preview
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-white">
-                                  {preview} XP
-                                </p>
-                              </div>
-                            ) : (
-                              <div>
-                                <label className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-                                  XP amount
-                                </label>
-                                <NumberStepper
-                                  value={manualAmounts[char.id] ?? 0}
-                                  min={0}
-                                  onChange={(value) =>
-                                    handleManualAmountChange(char.id, value)
-                                  }
-                                  ariaLabel={`${char.name} XP amount`}
-                                  size="default"
-                                  width="full"
-                                />
-                                <p className="mt-2 text-xs text-zinc-500">
-                                  Preview: {preview} XP
-                                </p>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
               )}
-            </div>
-          </div>
-
-          {results.length > 0 && (
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-white">Results</p>
-
-                {leveledUp.length > 0 && (
-                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-300">
-                    {leveledUp.length} leveled up
-                  </span>
-                )}
-              </div>
-
-              <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-                {results.map((result) => {
-                  const character = selectedCharacterMap.get(
-                    result.characterId,
-                  );
-
-                  return (
-                    <div
-                      key={result.characterId}
-                      className="rounded-xl border border-white/10 bg-zinc-950/60 p-3"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-white">
-                            {character?.name ?? result.characterId}
-                          </p>
-                          <p className="mt-1 text-xs text-zinc-500">
-                            Level {result.oldLevel} → {result.newLevel}
-                          </p>
-                        </div>
-
-                        {result.leveledUp && (
-                          <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-emerald-300">
-                            Level up
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
           )}
+
+          <p className="mt-2 text-[11px] text-zinc-400">
+            {selectedCharacters.length} characters · {totalAward} XP total
+            {mode === "total" && selectedCharacters.length > 0
+              ? ` · ${Math.floor(totalAward / selectedCharacters.length)} XP each${totalAward % selectedCharacters.length ? ", remainder distributed" : ""}`
+              : ""}
+          </p>
+
+          <label
+            htmlFor="award-xp-reason"
+            className="mt-5 block text-xs font-semibold text-zinc-200"
+          >
+            Reason <span className="font-normal text-zinc-400">· optional</span>
+          </label>
+          <input
+            id="award-xp-reason"
+            type="text"
+            maxLength={100}
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="e.g. for defeating the goblins"
+            className="mt-2 h-9 w-full rounded-lg border border-white/10 bg-zinc-900 px-3 text-xs text-white outline-none placeholder:text-zinc-500 focus:border-emerald-500/50"
+          />
+
+          {error && (
+            <p role="alert" className="mt-3 text-xs text-red-300">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-white/[0.08] px-4 py-3">
+          <span className="text-[11px] text-zinc-400">
+            {selectedCharacters.length} characters · {totalAward} XP
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={loading}
+              className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/10 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAward}
+              disabled={!canAward}
+              className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-zinc-950 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {loading ? "Awarding…" : "Award XP"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

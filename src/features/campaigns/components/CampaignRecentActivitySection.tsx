@@ -203,36 +203,31 @@ const getActivityPresentation = (
         readNumber(payload, "amountXp");
 
       const recipientCount = readNumber(payload, "recipientCount");
-
       const totalAmount = readNumber(payload, "totalAmount");
-
       const mixedAmounts = payload.mixedAmounts === true;
+      const reason = readString(payload, "reason");
+      const reasonSuffix = reason ? ` ${reason}` : "";
 
       if (recipientCount !== undefined && recipientCount > 1) {
+        const title =
+          mixedAmounts && totalAmount !== undefined
+            ? `${recipientCount} players received ${totalAmount} XP total`
+            : amount !== undefined
+              ? `${recipientCount} players received ${amount} XP each`
+              : `${recipientCount} players received XP`;
+
         return {
           icon: "fa-star",
-
           iconClassName:
             "border-violet-400/15 bg-violet-500/10 text-violet-300",
-
-          title:
-            mixedAmounts && totalAmount !== undefined
-              ? `${recipientCount} characters received ${totalAmount} XP total`
-              : amount !== undefined
-                ? `${recipientCount} characters received ${amount} XP each`
-                : `${recipientCount} characters received XP`,
+          title: `${title}${reasonSuffix}`,
         };
       }
 
       return {
         icon: "fa-star",
-
         iconClassName: "border-violet-400/15 bg-violet-500/10 text-violet-300",
-
-        title:
-          amount !== undefined
-            ? `${characterName} received ${amount} XP`
-            : `${characterName} received XP`,
+        title: `${characterName} received ${amount !== undefined ? `${amount} XP` : "XP"}${reasonSuffix}`,
       };
     }
 
