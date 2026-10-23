@@ -396,7 +396,7 @@ const CharacterQuickStats = ({
             </div>
           ) : null}
           {rest ? (
-            <div className="mt-3 border-t border-white/[0.06] pt-3">
+            <div className="mt-3 border-t border-white/[0.06] pt-3 md:hidden">
               <CharacterRestButtons
                 currentHp={currentHp}
                 maxHp={maxHp}

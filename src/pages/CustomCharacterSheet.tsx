@@ -1539,9 +1539,12 @@ const CustomCharacterSheet = ({
             progress={{
               level: xpProgress.level,
 
-              xp,
+              xp: Math.max(0, xp - xpProgress.currentLevelXp),
 
-              nextLevelXp: xpProgress.nextLevelXp,
+              nextLevelXp:
+                xpProgress.nextLevelXp === null
+                  ? null
+                  : xpProgress.nextLevelXp - xpProgress.currentLevelXp,
 
               progressPercent: xpProgress.progressPercent,
             }}
