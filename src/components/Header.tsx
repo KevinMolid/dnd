@@ -80,7 +80,7 @@ function Header({ onOpenLogin, onOpenSignup }: HeaderProps) {
           <Link
             to="/"
             aria-label="Lorebound home"
-            className="flex min-w-0 items-center gap-2 sm:gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
+            className="flex min-w-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/35"
           >
             <img
               src={logo}
