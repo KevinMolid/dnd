@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
+  addDoc,
   collection,
   deleteDoc,
   doc,
@@ -9,6 +11,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   writeBatch,
   type Timestamp,
 } from "firebase/firestore";
@@ -23,7 +26,16 @@ type Props = {
   isGm: boolean;
 };
 
-type StoredCampaignLogEntry = Omit<CampaignLogEntry, "createdAt"> & {
+type CustomCampaignLogEntry = {
+  type: "custom";
+  characterName?: string;
+  payload: { text: string; icon: string };
+};
+
+type StoredCampaignLogEntry = (
+  | Omit<CampaignLogEntry, "createdAt">
+  | CustomCampaignLogEntry
+) & {
   createdAt?: Timestamp | null;
 };
 
@@ -42,6 +54,71 @@ type ActivityPresentation = {
 };
 
 const MAX_ACTIVITY_ENTRIES = 20;
+
+const CUSTOM_ICONS = [
+  {
+    icon: "fa-scroll",
+    label: "Story",
+    style: "border-amber-400/15 bg-amber-500/10 text-amber-300",
+  },
+  {
+    icon: "fa-star",
+    label: "Achievement",
+    style: "border-violet-400/15 bg-violet-500/10 text-violet-300",
+  },
+  {
+    icon: "fa-flag",
+    label: "Milestone",
+    style: "border-sky-400/15 bg-sky-500/10 text-sky-300",
+  },
+  {
+    icon: "fa-skull",
+    label: "Danger",
+    style: "border-red-400/15 bg-red-500/10 text-red-300",
+  },
+  {
+    icon: "fa-gem",
+    label: "Treasure",
+    style: "border-cyan-400/15 bg-cyan-500/10 text-cyan-300",
+  },
+  {
+    icon: "fa-coins",
+    label: "Reward",
+    style: "border-yellow-400/15 bg-yellow-500/10 text-yellow-300",
+  },
+  {
+    icon: "fa-shield-halved",
+    label: "Defense",
+    style: "border-emerald-400/15 bg-emerald-500/10 text-emerald-300",
+  },
+  {
+    icon: "fa-dragon",
+    label: "Monster",
+    style: "border-orange-400/15 bg-orange-500/10 text-orange-300",
+  },
+  {
+    icon: "fa-location-dot",
+    label: "Location",
+    style: "border-green-400/15 bg-green-500/10 text-green-300",
+  },
+  {
+    icon: "fa-book-open",
+    label: "Discovery",
+    style: "border-indigo-400/15 bg-indigo-500/10 text-indigo-300",
+  },
+  {
+    icon: "fa-heart",
+    label: "Character",
+    style: "border-rose-400/15 bg-rose-500/10 text-rose-300",
+  },
+  {
+    icon: "fa-bolt",
+    label: "Event",
+    style: "border-fuchsia-400/15 bg-fuchsia-500/10 text-fuchsia-300",
+  },
+] as const;
+
+type CustomIcon = (typeof CUSTOM_ICONS)[number]["icon"];
 
 const readNumber = (
   payload: Record<string, unknown>,
@@ -104,9 +181,21 @@ const getActivityPresentation = (
 ): ActivityPresentation => {
   const characterName = entry.characterName?.trim() || "A character";
 
-  const payload = entry.payload ?? {};
+  const payload: Record<string, unknown> = entry.payload ?? {};
 
   switch (entry.type) {
+    case "custom": {
+      const savedIcon = readString(payload, "icon");
+      const chosen =
+        CUSTOM_ICONS.find((option) => option.icon === savedIcon) ??
+        CUSTOM_ICONS[0];
+      return {
+        icon: chosen.icon,
+        iconClassName: chosen.style,
+        title: readString(payload, "text") ?? "Campaign event",
+      };
+    }
+
     case "xp_awarded": {
       const amount =
         readNumber(payload, "amount") ??
@@ -322,14 +411,10 @@ const getActivityPresentation = (
     }
 
     default: {
-      const exhaustiveType: never = entry.type;
-
       return {
         icon: "fa-clock-rotate-left",
-
         iconClassName: "border-white/10 bg-white/[0.04] text-zinc-400",
-
-        title: exhaustiveType,
+        title: "Unknown activity",
       };
     }
   }
@@ -442,6 +527,10 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
 
   const [clearing, setClearing] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [customText, setCustomText] = useState("");
+  const [customIcon, setCustomIcon] = useState<CustomIcon>("fa-scroll");
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -500,6 +589,31 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
 
     [entries],
   );
+
+  const handleAddActivity = async () => {
+    const message = customText.trim();
+    if (!isGm || !campaignId || adding || !message) return;
+    try {
+      setAdding(true);
+      setActionError(null);
+      await addDoc(collection(db, "campaigns", campaignId, "logEntries"), {
+        type: "custom",
+        characterName: "",
+        payload: { text: message, icon: customIcon },
+        createdAt: serverTimestamp(),
+      });
+      setAddOpen(false);
+      setCustomText("");
+      setCustomIcon("fa-scroll");
+    } catch (error) {
+      console.error("Failed to add campaign activity:", error);
+      setActionError(
+        "Could not add activity. Check your permissions and try again.",
+      );
+    } finally {
+      setAdding(false);
+    }
+  };
 
   const handleDeleteActivity = async (entry: ActivityEntry) => {
     if (!isGm || !campaignId || clearing || deletingId) return;
@@ -570,15 +684,29 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
           <h2 className="text-sm font-semibold text-white">Recent Activity</h2>
         </div>
 
-        {isGm && entries.length > 0 ? (
-          <button
-            type="button"
-            onClick={handleClearActivity}
-            disabled={clearing || deletingId !== null}
-            className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-zinc-400 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {clearing ? "Clearing…" : "Clear"}
-          </button>
+        {isGm ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActionError(null);
+                setAddOpen(true);
+              }}
+              className="rounded-md border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+            >
+              <i className="fa-solid fa-plus mr-1" /> Add
+            </button>
+            {entries.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleClearActivity}
+                disabled={clearing || deletingId !== null}
+                className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-zinc-400 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {clearing ? "Clearing…" : "Clear"}
+              </button>
+            ) : null}
+          </div>
         ) : null}
       </div>
 
@@ -618,6 +746,97 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
           </div>
         )}
       </div>
+      {isGm &&
+        addOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget && !adding)
+                setAddOpen(false);
+            }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="custom-activity-title"
+              className="flex w-full max-w-md flex-col gap-4 rounded-2xl border border-white/10 bg-zinc-950 p-5 text-zinc-100 shadow-2xl"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h3
+                  id="custom-activity-title"
+                  className="text-base font-semibold"
+                >
+                  Add custom activity
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(false)}
+                  disabled={adding}
+                  aria-label="Close"
+                  className="rounded-md p-1.5 text-zinc-400 hover:bg-white/10 hover:text-white"
+                >
+                  <i className="fa-solid fa-xmark" />
+                </button>
+              </div>
+              <div>
+                <p className="mb-2 text-xs font-semibold text-zinc-300">
+                  Choose an icon
+                </p>
+                <div className="grid grid-cols-6 gap-2">
+                  {CUSTOM_ICONS.map((option) => (
+                    <button
+                      key={option.icon}
+                      type="button"
+                      title={option.label}
+                      aria-label={option.label}
+                      aria-pressed={customIcon === option.icon}
+                      onClick={() => setCustomIcon(option.icon)}
+                      className={`flex h-10 items-center justify-center rounded-lg border transition ${option.style} ${customIcon === option.icon ? "ring-2 ring-emerald-400 ring-offset-2 ring-offset-zinc-950" : "hover:brightness-125"}`}
+                    >
+                      <i className={`fa-solid ${option.icon}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label
+                className="block text-xs font-semibold text-zinc-300"
+                htmlFor="custom-activity-text"
+              >
+                Event text
+              </label>
+              <textarea
+                id="custom-activity-text"
+                autoFocus
+                rows={3}
+                maxLength={500}
+                value={customText}
+                onChange={(event) => setCustomText(event.target.value)}
+                placeholder="The party discovered an ancient shrine…"
+                className="w-full resize-y rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-emerald-500/50"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(false)}
+                  disabled={adding}
+                  className="rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddActivity}
+                  disabled={adding || !customText.trim()}
+                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {adding ? "Saving…" : "Add activity"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 };
