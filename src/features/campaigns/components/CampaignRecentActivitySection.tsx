@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   collection,
+  deleteDoc,
+  doc,
   getDocs,
   limit,
   onSnapshot,
@@ -375,7 +377,17 @@ const formatActivityTime = (timestamp?: Timestamp | null) => {
   });
 };
 
-const ActivityRow = ({ entry }: { entry: ActivityEntry }) => {
+const ActivityRow = ({
+  entry,
+  canDelete,
+  deleting,
+  onDelete,
+}: {
+  entry: ActivityEntry;
+  canDelete: boolean;
+  deleting: boolean;
+  onDelete: (entry: ActivityEntry) => void;
+}) => {
   const presentation = getActivityPresentation(entry);
 
   const time = formatActivityTime(entry.createdAt);
@@ -407,6 +419,21 @@ const ActivityRow = ({ entry }: { entry: ActivityEntry }) => {
           </p>
         ) : null}
       </div>
+
+      {canDelete ? (
+        <button
+          type="button"
+          aria-label={`Delete activity: ${presentation.title}`}
+          title="Delete activity"
+          onClick={() => onDelete(entry)}
+          disabled={deleting}
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-transparent text-zinc-600 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-400 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <i
+            className={`fa-solid ${deleting ? "fa-spinner fa-spin" : "fa-trash-can"} text-[11px]`}
+          />
+        </button>
+      ) : null}
     </div>
   );
 };
@@ -415,6 +442,10 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
   const [entries, setEntries] = useState<ActivityEntry[]>([]);
 
   const [clearing, setClearing] = useState(false);
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
 
@@ -470,8 +501,33 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
     [entries],
   );
 
+  const handleDeleteActivity = async (entry: ActivityEntry) => {
+    if (!isGm || !campaignId || clearing || deletingId) return;
+
+    const title = getActivityPresentation(entry).title;
+    if (
+      !window.confirm(
+        `Delete this activity?\n\n${title}\n\nThis cannot be undone.`,
+      )
+    )
+      return;
+
+    try {
+      setActionError(null);
+      setDeletingId(entry.id);
+      await deleteDoc(doc(db, "campaigns", campaignId, "logEntries", entry.id));
+    } catch (error) {
+      console.error("Failed to delete campaign activity:", error);
+      setActionError(
+        "Could not delete this activity. Check your permissions and try again.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const handleClearActivity = async () => {
-    if (!campaignId || clearing) return;
+    if (!isGm || !campaignId || clearing || deletingId) return;
 
     const confirmed = window.confirm(
       "Clear the entire activity log? This cannot be undone.",
@@ -480,21 +536,26 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
     if (!confirmed) return;
 
     try {
+      setActionError(null);
       setClearing(true);
 
       const snapshot = await getDocs(
         collection(db, "campaigns", campaignId, "logEntries"),
       );
 
-      const batch = writeBatch(db);
-
-      snapshot.docs.forEach((docSnap) => {
-        batch.delete(docSnap.ref);
-      });
-
-      await batch.commit();
+      // Firestore write batches allow at most 500 writes per commit.
+      for (let i = 0; i < snapshot.docs.length; i += 450) {
+        const batch = writeBatch(db);
+        snapshot.docs.slice(i, i + 450).forEach((docSnap) => {
+          batch.delete(docSnap.ref);
+        });
+        await batch.commit();
+      }
     } catch (error) {
       console.error("Failed to clear campaign activity:", error);
+      setActionError(
+        "Could not clear the activity log. Check your permissions and try again.",
+      );
     } finally {
       setClearing(false);
     }
@@ -513,13 +574,22 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
           <button
             type="button"
             onClick={handleClearActivity}
-            disabled={clearing}
+            disabled={clearing || deletingId !== null}
             className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-zinc-400 transition hover:border-red-400/20 hover:bg-red-500/10 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {clearing ? "Clearing…" : "Clear"}
           </button>
         ) : null}
       </div>
+
+      {actionError ? (
+        <p
+          role="alert"
+          className="border-b border-red-500/10 px-4 py-2 text-xs text-red-300"
+        >
+          {actionError}
+        </p>
+      ) : null}
 
       <div className="px-4 py-2.5">
         {loading ? (
@@ -536,7 +606,13 @@ const CampaignRecentActivitySection = ({ campaignId, isGm }: Props) => {
           <div className="workspace-scrollbar max-h-[410px] overflow-y-auto pr-3">
             <div className="divide-y divide-white/[0.06]">
               {visibleEntries.map((entry) => (
-                <ActivityRow key={entry.id} entry={entry} />
+                <ActivityRow
+                  key={entry.id}
+                  entry={entry}
+                  canDelete={isGm}
+                  deleting={clearing || deletingId === entry.id}
+                  onDelete={handleDeleteActivity}
+                />
               ))}
             </div>
           </div>
