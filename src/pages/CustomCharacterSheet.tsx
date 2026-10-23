@@ -627,6 +627,23 @@ const CustomCharacterSheet = ({
 
   const dexModifier = getModifier(abilityScores.dex);
 
+  const hasAlert = [
+    ...getTraitCatalogEntries(character.catalogTraitIds ?? []).map(
+      (entry) => entry.trait,
+    ),
+    ...(character.customTraits ?? []),
+  ].some(
+    (trait) =>
+      trait.id?.toLowerCase() === "alert" ||
+      trait.name?.trim().toLowerCase() === "alert",
+  );
+
+  const initiativeBonus = dexModifier + (hasAlert ? 5 : 0);
+
+  const initiativeBreakdown = hasAlert
+    ? `DEX ${dexModifier >= 0 ? "+" : ""}${dexModifier} · Alert +5`
+    : `DEX ${dexModifier >= 0 ? "+" : ""}${dexModifier}`;
+
   const perceptionBonus =
     getModifier(abilityScores.wis) +
     proficiencyBonus * getProficiencyMultiplier(skills.perception);
@@ -1495,7 +1512,8 @@ const CustomCharacterSheet = ({
             maxHp={maxHp}
             onCurrentHpChange={handleSetCurrentHp}
             armorClass={armorClass}
-            initiative={dexModifier}
+            initiative={initiativeBonus}
+            initiativeSubValue={initiativeBreakdown}
             speed={speed}
             proficiencyBonus={proficiencyBonus}
             passivePerception={passivePerception}

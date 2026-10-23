@@ -1,5 +1,7 @@
 import { useState } from "react";
-import MobileCharacterNavigation, { type MobileCharacterSection } from "../features/character-sheet/components/MobileCharacterNavigation";
+import MobileCharacterNavigation, {
+  type MobileCharacterSection,
+} from "../features/character-sheet/components/MobileCharacterNavigation";
 import MobileCharacterSwipeArea from "../features/character-sheet/components/MobileCharacterSwipeArea";
 
 import { Link, useLocation, useParams } from "react-router-dom";
@@ -55,10 +57,16 @@ const CharacterSheet = () => {
   const location = useLocation();
 
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
-  const [mobileSection, setMobileSection] = useState<MobileCharacterSection>("live-state");
+  const [mobileSection, setMobileSection] =
+    useState<MobileCharacterSection>("live-state");
   const navigateMobile = (section: MobileCharacterSection) => {
     setMobileSection(section);
-    if (section === "inventory" || section === "features" || section === "character" || section === "notes") {
+    if (
+      section === "inventory" ||
+      section === "features" ||
+      section === "character" ||
+      section === "notes"
+    ) {
       setActiveTab(section);
     }
   };
@@ -221,6 +229,39 @@ const CharacterSheet = () => {
       </div>
     );
   }
+
+  // Alert grants +5 Initiative. Check saved feat choices and resolved traits.
+  // The bonus is only added here if it is not already included in the
+  // derived initiative breakdown, preventing duplicate application.
+  const alertChoiceData = character as typeof character & {
+    originFeatId?: string | null;
+    featIds?: string[];
+    choices?: { levelUpDecisions?: Record<string, { featId?: string | null }> };
+  };
+
+  const hasAlertFeat =
+    alertChoiceData.originFeatId === "alert" ||
+    alertChoiceData.featIds?.includes("alert") === true ||
+    Object.values(alertChoiceData.choices?.levelUpDecisions ?? {}).some(
+      (decision) => decision?.featId === "alert",
+    ) ||
+    derived.traitGroups.some((group) =>
+      group.traits.some(
+        (trait) =>
+          trait.id?.toLowerCase() === "alert" ||
+          trait.name?.trim().toLowerCase() === "alert",
+      ),
+    );
+
+  const alertAlreadyIncluded = /\balert\b/i.test(
+    derived.initiativeBreakdown ?? "",
+  );
+  const initiativeBonus =
+    derived.initiativeBonus + (hasAlertFeat && !alertAlreadyIncluded ? 5 : 0);
+  const initiativeBreakdown =
+    hasAlertFeat && !alertAlreadyIncluded
+      ? `${derived.initiativeBreakdown || "Base Initiative"} · Alert +5`
+      : derived.initiativeBreakdown;
 
   const classDefinition = classesById[character.classId] as any;
 
@@ -714,114 +755,126 @@ const CharacterSheet = () => {
         />
 
         <div className="md:hidden">
-          <MobileCharacterNavigation activeSection={mobileSection} onChange={navigateMobile} />
+          <MobileCharacterNavigation
+            activeSection={mobileSection}
+            onChange={navigateMobile}
+          />
         </div>
 
-        <MobileCharacterSwipeArea activeSection={mobileSection} onChange={navigateMobile}>
-        <CharacterQuickStats
-          mobileSection={mobileSection}
-          currentHp={derived.currentHp}
-          maxHp={derived.maxHp}
-          onCurrentHpChange={handleSetCurrentHp}
-          armorClass={derived.armorClass}
-          initiative={derived.initiativeBonus}
-          initiativeSubValue={derived.initiativeBreakdown}
-          speed={derived.speed}
-          proficiencyBonus={derived.proficiencyBonus}
-          passivePerception={derived.passivePerception}
-          passiveInsight={insight ? 10 + insight.total : undefined}
-          passiveInvestigation={
-            investigation ? 10 + investigation.total : undefined
-          }
-          abilityScores={derived.finalAbilityScores}
-          savingThrowProficiencies={savingThrowProficiencies}
-          skills={derived.skillRows.map((skill) => ({
-            id: skill.id,
-
-            name: skill.name,
-
-            ability: skill.ability.toUpperCase(),
-
-            bonus: skill.total,
-
-            proficient: skill.proficient,
-
-            expertise: skill.expertise,
-          }))}
-          conditions={character.conditions ?? []}
-          onConditionsChange={handleSetConditions}
-          defenses={defenses}
-          lockedDefenses={derivedDefenses}
-          onDefensesChange={handleSetDefenses}
-          heroicInspiration={character.heroicInspiration ?? false}
-          onHeroicInspirationChange={handleSetHeroicInspiration}
-          deathSaves={{
-            successes:
-              character.deathSaves?.successes ??
-              character.deathSaveSuccesses ??
-              0,
-
-            failures:
-              character.deathSaves?.failures ??
-              character.deathSaveFailures ??
-              0,
-          }}
-          onDeathSavesChange={handleSetDeathSaves}
-          hitDiceLabel={hitDiceLabel}
-          progress={{
-            level: derived.xpProgress.level,
-
-            xp: derived.xp,
-
-            nextLevelXp: derived.xpProgress.nextLevelXp,
-
-            progressPercent: derived.xpProgress.progressPercent,
-          }}
-          languages={derived.languages}
-          armorProficiencies={armorProficiencies}
-          weaponProficiencies={weaponProficiencies}
-          toolProficiencies={derived.toolProficiencies}
-        />
-
-        <CharacterSheetWorkspace
-          mobileSection={mobileSection}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          playPanel={
-            <OverviewDashboard
-              attacks={attacks}
-              mobilePlayTab={mobileSection === "spells" ? "spells" : mobileSection === "actions" ? "actions" : "attacks"}
-              twoWeaponNotice={twoWeaponNotice}
-              spells={quickSpells}
-              spellcasting={{
-                abilityLabel: derived.spellcastingAbility
-                  ? abilityFullLabels[derived.spellcastingAbility]
-                  : undefined,
-
-                saveDc: derived.spellSaveDc,
-
-                attackBonus: derived.spellAttackBonus,
-
-                slots: guidedSpellSlots,
-              }}
-              onSpellSlotChange={handleSetSpellSlotRemaining}
-              onAddSpell={handleAddSpell}
-              onRemoveSpell={handleRemoveSpell}
-              actions={playActions}
-              bonusActions={playBonusActions}
-              reactions={characterReactions}
-              combatOptions={combatOptions}
-            />
-          }
+        <MobileCharacterSwipeArea
+          activeSection={mobileSection}
+          onChange={navigateMobile}
         >
-          {activeTab === "inventory" ? renderInventoryTab() : null}
+          <CharacterQuickStats
+            mobileSection={mobileSection}
+            currentHp={derived.currentHp}
+            maxHp={derived.maxHp}
+            onCurrentHpChange={handleSetCurrentHp}
+            armorClass={derived.armorClass}
+            initiative={initiativeBonus}
+            initiativeSubValue={initiativeBreakdown}
+            speed={derived.speed}
+            proficiencyBonus={derived.proficiencyBonus}
+            passivePerception={derived.passivePerception}
+            passiveInsight={insight ? 10 + insight.total : undefined}
+            passiveInvestigation={
+              investigation ? 10 + investigation.total : undefined
+            }
+            abilityScores={derived.finalAbilityScores}
+            savingThrowProficiencies={savingThrowProficiencies}
+            skills={derived.skillRows.map((skill) => ({
+              id: skill.id,
 
-          {activeTab === "features" ? renderFeaturesTab() : null}
+              name: skill.name,
 
-          {activeTab === "character" ? renderCharacterTab() : null}
+              ability: skill.ability.toUpperCase(),
 
-          {activeTab === "notes" ? renderNotesTab() : null}
-        </CharacterSheetWorkspace>
+              bonus: skill.total,
+
+              proficient: skill.proficient,
+
+              expertise: skill.expertise,
+            }))}
+            conditions={character.conditions ?? []}
+            onConditionsChange={handleSetConditions}
+            defenses={defenses}
+            lockedDefenses={derivedDefenses}
+            onDefensesChange={handleSetDefenses}
+            heroicInspiration={character.heroicInspiration ?? false}
+            onHeroicInspirationChange={handleSetHeroicInspiration}
+            deathSaves={{
+              successes:
+                character.deathSaves?.successes ??
+                character.deathSaveSuccesses ??
+                0,
+
+              failures:
+                character.deathSaves?.failures ??
+                character.deathSaveFailures ??
+                0,
+            }}
+            onDeathSavesChange={handleSetDeathSaves}
+            hitDiceLabel={hitDiceLabel}
+            progress={{
+              level: derived.xpProgress.level,
+
+              xp: derived.xp,
+
+              nextLevelXp: derived.xpProgress.nextLevelXp,
+
+              progressPercent: derived.xpProgress.progressPercent,
+            }}
+            languages={derived.languages}
+            armorProficiencies={armorProficiencies}
+            weaponProficiencies={weaponProficiencies}
+            toolProficiencies={derived.toolProficiencies}
+          />
+
+          <CharacterSheetWorkspace
+            mobileSection={mobileSection}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            playPanel={
+              <OverviewDashboard
+                attacks={attacks}
+                mobilePlayTab={
+                  mobileSection === "spells"
+                    ? "spells"
+                    : mobileSection === "actions"
+                      ? "actions"
+                      : "attacks"
+                }
+                twoWeaponNotice={twoWeaponNotice}
+                spells={quickSpells}
+                spellcasting={{
+                  abilityLabel: derived.spellcastingAbility
+                    ? abilityFullLabels[derived.spellcastingAbility]
+                    : undefined,
+
+                  saveDc: derived.spellSaveDc,
+
+                  attackBonus: derived.spellAttackBonus,
+
+                  slots: guidedSpellSlots,
+                }}
+                onSpellSlotChange={handleSetSpellSlotRemaining}
+                onAddSpell={handleAddSpell}
+                onRemoveSpell={handleRemoveSpell}
+                actions={playActions}
+                bonusActions={playBonusActions}
+                reactions={characterReactions}
+                combatOptions={combatOptions}
+              />
+            }
+          >
+            {activeTab === "inventory" ? renderInventoryTab() : null}
+
+            {activeTab === "features" ? renderFeaturesTab() : null}
+
+            {activeTab === "character" ? renderCharacterTab() : null}
+
+            {activeTab === "notes" ? renderNotesTab() : null}
+          </CharacterSheetWorkspace>
         </MobileCharacterSwipeArea>
       </div>
 
