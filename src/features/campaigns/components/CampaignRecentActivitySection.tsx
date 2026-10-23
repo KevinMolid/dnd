@@ -381,13 +381,14 @@ const getActivityPresentation = (
         "an item";
 
       const quantity = readNumber(payload, "quantity");
+      const reason = readString(payload, "reason");
 
       return {
         icon: "fa-gem",
 
         iconClassName: "border-sky-400/15 bg-sky-500/10 text-sky-300",
 
-        title: `${characterName} received ${itemName}`,
+        title: `${characterName} received ${itemName}${reason ? ` ${reason}` : ""}`,
 
         detail:
           quantity !== undefined && quantity > 1
@@ -398,6 +399,7 @@ const getActivityPresentation = (
 
     case "gold_received": {
       const amount = formatMoney(payload);
+      const reason = readString(payload, "reason");
 
       return {
         icon: "fa-coins",
@@ -405,8 +407,8 @@ const getActivityPresentation = (
         iconClassName: "border-yellow-400/15 bg-yellow-500/10 text-yellow-300",
 
         title: amount
-          ? `${characterName} received ${amount}`
-          : `${characterName} received currency`,
+          ? `${characterName} received ${amount}${reason ? ` ${reason}` : ""}`
+          : `${characterName} received currency${reason ? ` ${reason}` : ""}`,
       };
     }
 

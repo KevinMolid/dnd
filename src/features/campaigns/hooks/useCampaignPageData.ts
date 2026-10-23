@@ -700,6 +700,8 @@ type RewardPayload = {
   money?: RewardMoneyInput;
 
   items?: RewardItemInput[];
+
+  reason?: string;
 };
 
 const normalizeRewardMoneyInput = (
@@ -2524,6 +2526,8 @@ export const useCampaignPageData = (
         money,
 
         items = [],
+
+        reason,
       }: RewardPayload) => {
         if (
           !campaignId ||
@@ -2531,6 +2535,8 @@ export const useCampaignPageData = (
         ) {
           return;
         }
+
+        const rewardReason = reason?.trim().slice(0, 100) ?? "";
 
         const normalizedMoney =
           normalizeRewardMoneyInput(
@@ -2848,6 +2854,8 @@ export const useCampaignPageData = (
 
                         amountCp:
                           result.rewardedMoneyCp,
+
+                        ...(rewardReason ? { reason: rewardReason } : {}),
                       },
                     }),
                   );
@@ -2888,6 +2896,8 @@ export const useCampaignPageData = (
 
                             quantity:
                               item.quantity,
+
+                            ...(rewardReason ? { reason: rewardReason } : {}),
                           },
                         }),
                       );
@@ -2924,6 +2934,8 @@ export const useCampaignPageData = (
 
                             quantity:
                               item.quantity,
+
+                            ...(rewardReason ? { reason: rewardReason } : {}),
                           },
                         }),
                       );
