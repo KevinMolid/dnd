@@ -761,9 +761,13 @@ async function generate(
     );
     const verticalCenter = item.align === "center";
     const textHeight = lines.length * lineHeight;
+    // Spell lines in the template sit directly below their short form fields.
+    // Lift the text baseline so glyphs rest above the ruled line instead of
+    // crossing through it. Keep the existing 10.5pt font size unchanged.
+    const spellBaselineLift = item.name.startsWith("Spells ") ? 7.5 : 0;
     const top = verticalCenter
       ? rect.y + rect.height / 2 + textHeight / 2 - item.size
-      : rect.y + rect.height - 5 - item.size;
+      : rect.y + rect.height - 5 - item.size + spellBaselineLift;
     const pageIndex =
       item.page ??
       ([
