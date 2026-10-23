@@ -1,11 +1,89 @@
-.character-print-page { min-height: 100vh; background: #09090b; color: white; padding: 20px; }
-.character-print-toolbar { max-width: 1100px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
-.character-print-toolbar strong { font-size: 17px; }
-.character-print-toolbar p { color: #a1a1aa; font-size: 12px; margin-top: 3px; }
-.character-print-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.character-print-actions button { padding: 9px 15px; border: 1px solid #3f3f46; background: #27272a; border-radius: 8px; font-size: 12px; font-weight: 600; }
-.character-print-actions button:hover:not(:disabled) { background: #3f3f46; }
-.character-print-actions button:disabled { opacity: .45; cursor: not-allowed; }
-.character-print-preview { display: block; width: min(100%, 1100px); height: calc(100vh - 120px); min-height: 650px; margin: auto; background: #fff; border: none; border-radius: 8px; }
-.character-print-error { color: #fda4af; text-align: center; padding: 20px; }
-.character-print-loading { color: #a1a1aa; text-align: center; padding: 20px; }
+.character-print-page {
+  min-height: 100vh;
+  background: #09090b;
+  color: white;
+  padding: 20px;
+  overflow-y: auto;
+}
+.character-print-toolbar {
+  max-width: 1100px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.character-print-toolbar strong {
+  font-size: 17px;
+}
+.character-print-toolbar p {
+  color: #a1a1aa;
+  font-size: 12px;
+  margin-top: 3px;
+}
+.character-print-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.character-print-actions button {
+  padding: 9px 15px;
+  border: 1px solid #3f3f46;
+  background: #27272a;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fafafa;
+}
+.character-print-actions button:hover:not(:disabled) {
+  background: #3f3f46;
+}
+.character-print-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.character-print-preview {
+  display: block;
+  width: min(100%, 1100px);
+  height: calc(100dvh - 128px);
+  min-height: 480px;
+  margin: auto;
+  background: #fff;
+  border: none;
+  border-radius: 8px;
+}
+.character-print-error {
+  color: #fda4af;
+  text-align: center;
+  padding: 20px;
+}
+.character-print-loading {
+  color: #a1a1aa;
+  text-align: center;
+  padding: 20px;
+}
+/* The native PDF viewer inside the iframe owns its own scrollbars. */
+.character-print-page::-webkit-scrollbar {
+  width: 8px;
+}
+.character-print-page::-webkit-scrollbar-track {
+  background: #09090b;
+}
+.character-print-page::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #52525b;
+}
+.character-print-page {
+  scrollbar-color: #52525b #09090b;
+  scrollbar-width: thin;
+}
+@media (max-width: 640px) {
+  .character-print-page {
+    padding: 12px;
+  }
+  .character-print-preview {
+    height: calc(100dvh - 165px);
+    min-height: 420px;
+  }
+}
