@@ -226,6 +226,20 @@ async function generate(
   const scores: Record<string, number> = custom
     ? (character.abilityScores ?? {})
     : (derived?.finalAbilityScores ?? {});
+  // Custom characters bypass the guided derived initiative calculation.
+  // Resolve Alert from catalog feats and custom traits, matching CustomCharacterSheet.
+  const hasCustomAlert =
+    custom &&
+    [
+      ...getTraitCatalogEntries(character.catalogTraitIds ?? []).map(
+        (entry) => entry.trait,
+      ),
+      ...(character.customTraits ?? []),
+    ].some(
+      (trait) =>
+        trait.id?.toLowerCase() === "alert" ||
+        trait.name?.trim().toLowerCase() === "alert",
+    );
   const level = safeNumber(character.level, 1);
   const proficiency = custom
     ? safeNumber(cs.proficiencyBonus, 2)
@@ -335,7 +349,7 @@ async function generate(
     "Initiative",
     signed(
       custom
-        ? mod(safeNumber(scores.dex, 10))
+        ? mod(safeNumber(scores.dex, 10)) + (hasCustomAlert ? 5 : 0)
         : safeNumber(derived?.initiativeBonus),
     ),
     17,
@@ -518,6 +532,8 @@ async function generate(
           safeNumber(entry.attackBonus),
         damage: damageText,
         equipped: Boolean(entry.equipped || (entry.equippedSlots ?? []).length),
+        range: item.weapon.range ?? null,
+        isRanged,
       };
     })
     .filter((attack: any) => Boolean(attack));
@@ -533,7 +549,24 @@ async function generate(
     : fallbackWeaponAttacks.sort(
         (a: any, b: any) => Number(b.equipped) - Number(a.equipped),
       );
-  const attacks: any[] = [unarmedAttack, ...weaponAttacks].filter(Boolean);
+  // Avoid printing the same attack twice if both equipment and derived data
+  // happen to include the same profile.
+  const seenAttackProfiles = new Set<string>();
+  const attacks: any[] = [unarmedAttack, ...weaponAttacks].filter((attack) => {
+    if (!attack) return false;
+    const key = [
+      String(attack.name ?? "Unarmed Strike")
+        .trim()
+        .toLowerCase(),
+      attack.attackBonus ?? attack.toHitBonus ?? attack.bonus ?? "",
+      typeof attack.damage === "string"
+        ? attack.damage
+        : (attack.damageText ?? ""),
+    ].join("|");
+    if (seenAttackProfiles.has(key)) return false;
+    seenAttackProfiles.add(key);
+    return true;
+  });
   const attackNameFields = ["Wpn Name", "Wpn Name 2", "Wpn Name 3"];
   const attackBonusFields = [
     "Wpn1 AtkBonus",
@@ -570,7 +603,11 @@ async function generate(
       7.8,
     );
   });
-  text("AttacksSpellcasting", "");
+  // Keep overflow attacks in the same three-column layout as the template
+  // rows above. Draw directly into the unused box so each entry shares the
+  // exact font sizes and horizontal positions of the existing attack cells.
+  const additionalAttacks = attacks.slice(3);
+  overlay("AttacksSpellcasting", "", 8.25);
   const features: any[] = custom
     ? [
         ...getTraitCatalogEntries(character.catalogTraitIds ?? []).map(
@@ -743,6 +780,16 @@ async function generate(
     overlays.map((item) => [item.name, rectFor(item.name)]),
   );
   form.flatten();
+  // Use a shared visible-glyph baseline for every attack cell, including
+  // continuation rows, so different font sizes align on the same row center.
+  const attackCellFields = [
+    ...attackNameFields,
+    ...attackBonusFields,
+    ...attackDamageFields,
+  ];
+  const attackCellBaseline = (rowCenterY: number, fontSize: number) =>
+    rowCenterY - font.heightAtSize(fontSize, { descender: false }) / 2;
+
   // Draw all larger, centered statistics and all bounded text on the flattened PDF.
   // This prevents PDF viewer differences in auto-sized form fields.
   for (const item of overlays) {
@@ -765,9 +812,19 @@ async function generate(
     // Lift the text baseline so glyphs rest above the ruled line instead of
     // crossing through it. Keep the existing 10.5pt font size unchanged.
     const spellBaselineLift = item.name.startsWith("Spells ") ? 7.5 : 0;
-    const top = verticalCenter
-      ? rect.y + rect.height / 2 + textHeight / 2 - item.size
-      : rect.y + rect.height - 5 - item.size + spellBaselineLift;
+    const attackRowIndex = attackCellFields.indexOf(item.name);
+    const attackNameRect =
+      attackRowIndex >= 0
+        ? overlayRects.get(attackNameFields[attackRowIndex % 3])
+        : null;
+    const top = attackNameRect
+      ? attackCellBaseline(
+          attackNameRect.y + attackNameRect.height / 2,
+          item.size,
+        )
+      : verticalCenter
+        ? rect.y + rect.height / 2 + textHeight / 2 - item.size
+        : rect.y + rect.height - 5 - item.size + spellBaselineLift;
     const pageIndex =
       item.page ??
       ([
@@ -795,6 +852,75 @@ async function generate(
       });
     }
   }
+  // Extra attack rows: reuse the NAME / ATK BONUS / DAMAGE columns.
+  // Only draw complete rows that fit inside the Attacks & Spellcasting box.
+  const extraRect = overlayRects.get("AttacksSpellcasting");
+  const nameRect = overlayRects.get("Wpn Name");
+  const bonusRect = overlayRects.get("Wpn1 AtkBonus");
+  const damageRect = overlayRects.get("Wpn1 Damage");
+  if (extraRect && nameRect && bonusRect && damageRect) {
+    const page = source.getPage(0);
+    const rowHeight = 16;
+    const topPadding = 9;
+    const bottomPadding = 8;
+    const maxRows = Math.max(
+      0,
+      Math.floor((extraRect.height - topPadding - bottomPadding) / rowHeight),
+    );
+
+    const drawCell = (
+      value: string,
+      rect: { x: number; width: number },
+      rowCenterY: number,
+      size: number,
+      center = false,
+    ) => {
+      const padding = center ? 1 : 5;
+      const available = Math.max(0, rect.width - 2 * padding);
+      let content = value;
+      while (content && font.widthOfTextAtSize(content, size) > available) {
+        content = content.slice(0, -1);
+      }
+      if (content !== value && content.length > 1) {
+        content = content.slice(0, -1) + ".";
+      }
+      if (!content) return;
+      const textWidth = font.widthOfTextAtSize(content, size);
+      page.drawText(content, {
+        x: center ? rect.x + (rect.width - textWidth) / 2 : rect.x + padding,
+        y: attackCellBaseline(rowCenterY, size),
+        size,
+        font,
+        color: rgb(0.06, 0.06, 0.07),
+      });
+    };
+
+    additionalAttacks.slice(0, maxRows).forEach((attack: any, index) => {
+      const rowCenterY =
+        extraRect.y +
+        extraRect.height -
+        topPadding -
+        rowHeight / 2 -
+        index * rowHeight;
+      const bonus = attack.attackBonus ?? attack.toHitBonus ?? attack.bonus;
+      const damage =
+        typeof attack.damage === "string"
+          ? attack.damage
+          : typeof attack.damageText === "string"
+            ? attack.damageText
+            : "";
+      drawCell(String(attack.name ?? "Attack"), nameRect, rowCenterY, 8.3);
+      drawCell(
+        typeof bonus === "number" ? signed(bonus) : "",
+        bonusRect,
+        rowCenterY,
+        9.2,
+        true,
+      );
+      drawCell(damage, damageRect, rowCenterY, 7.8);
+    });
+  }
+
   return source.save();
 }
 
