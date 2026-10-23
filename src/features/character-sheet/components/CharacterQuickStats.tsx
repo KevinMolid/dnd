@@ -17,7 +17,9 @@ import {
 
 import type { AbilityKey } from "../../../rulesets/dnd/dnd2024/types";
 import type { MobileCharacterSection } from "./MobileCharacterNavigation";
-import CharacterRestButtons, { type CharacterRestConfig } from "./CharacterRestButtons";
+import CharacterRestButtons, {
+  type CharacterRestConfig,
+} from "./CharacterRestButtons";
 
 type AbilityScores = Record<AbilityKey, number>;
 
@@ -229,7 +231,16 @@ const CharacterQuickStats = ({
   const hpPercent = clamp((currentHp / safeMaxHp) * 100, 0, 100);
 
   return (
-    <div className={mobileSection && !["live-state", "abilities", "skills", "proficiencies"].includes(mobileSection) ? "hidden md:block" : "mb-3 flex-1 md:flex-none"}>
+    <div
+      className={
+        mobileSection &&
+        !["live-state", "abilities", "skills", "proficiencies"].includes(
+          mobileSection,
+        )
+          ? "hidden md:block"
+          : "mb-3 flex-1 md:flex-none"
+      }
+    >
       <div className="grid h-full gap-2 md:h-auto xl:grid-cols-[250px_minmax(430px,1fr)_360px] xl:grid-rows-[auto_auto]">
         <QuickSection
           title="Live State"
@@ -385,7 +396,7 @@ const CharacterQuickStats = ({
             </div>
           ) : null}
           {rest ? (
-            <div className="mt-3 border-t border-white/[0.06] pt-3 md:hidden">
+            <div className="mt-3 border-t border-white/[0.06] pt-3">
               <CharacterRestButtons
                 currentHp={currentHp}
                 maxHp={maxHp}

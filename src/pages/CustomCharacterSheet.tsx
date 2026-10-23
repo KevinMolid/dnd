@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
-import MobileCharacterNavigation, { mobileSections, type MobileCharacterSection } from "../features/character-sheet/components/MobileCharacterNavigation";
+import MobileCharacterNavigation, {
+  mobileSections,
+  type MobileCharacterSection,
+} from "../features/character-sheet/components/MobileCharacterNavigation";
 
 import CharacterInventoryEquipment, {
   type InventorySortMode,
@@ -412,12 +415,22 @@ const CustomCharacterSheet = ({
 }: CustomCharacterSheetProps) => {
   const [spellcastingEditorOpen, setSpellcastingEditorOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<CharacterSheetTab>("inventory");
-  const [mobileSection, setMobileSection] = useState<MobileCharacterSection>("live-state");
-  const touchStartRef = useRef<{ x: number; y: number; ignore: boolean } | null>(null);
+  const [mobileSection, setMobileSection] =
+    useState<MobileCharacterSection>("live-state");
+  const touchStartRef = useRef<{
+    x: number;
+    y: number;
+    ignore: boolean;
+  } | null>(null);
 
   const navigateMobile = (section: MobileCharacterSection) => {
     setMobileSection(section);
-    if (section === "inventory" || section === "features" || section === "character" || section === "notes") {
+    if (
+      section === "inventory" ||
+      section === "features" ||
+      section === "character" ||
+      section === "notes"
+    ) {
       setActiveTab(section);
     }
   };
@@ -430,20 +443,31 @@ const CustomCharacterSheet = ({
     touchStartRef.current = {
       x: touch.clientX,
       y: touch.clientY,
-      ignore: Boolean(target.closest("button, input, textarea, select, a, [role='dialog'], [role='listbox'], [contenteditable='true'], [data-no-swipe]")),
+      ignore: Boolean(
+        target.closest(
+          "button, input, textarea, select, a, [role='dialog'], [role='listbox'], [contenteditable='true'], [data-no-swipe]",
+        ),
+      ),
     };
   };
 
   const onSwipeEnd = (event: TouchEvent<HTMLDivElement>) => {
     const start = touchStartRef.current;
     touchStartRef.current = null;
-    if (!start || start.ignore || window.matchMedia("(min-width: 768px)").matches) return;
+    if (
+      !start ||
+      start.ignore ||
+      window.matchMedia("(min-width: 768px)").matches
+    )
+      return;
     const touch = event.changedTouches[0];
     if (!touch) return;
     const dx = touch.clientX - start.x;
     const dy = touch.clientY - start.y;
     if (Math.abs(dx) < 65 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-    const index = mobileSections.findIndex((section) => section.id === mobileSection);
+    const index = mobileSections.findIndex(
+      (section) => section.id === mobileSection,
+    );
     const next = mobileSections[index + (dx < 0 ? 1 : -1)];
     if (next) navigateMobile(next.id);
   };
@@ -684,7 +708,9 @@ const CustomCharacterSheet = ({
     proficiencyBonus,
     level,
     traits: [
-      ...getTraitCatalogEntries(character.catalogTraitIds).map((entry) => entry.trait),
+      ...getTraitCatalogEntries(character.catalogTraitIds).map(
+        (entry) => entry.trait,
+      ),
       ...(character.customTraits ?? []),
     ],
     equipment: character.equipment ?? [],
@@ -1444,123 +1470,146 @@ const CustomCharacterSheet = ({
         />
 
         <div className="md:hidden">
-          <MobileCharacterNavigation activeSection={mobileSection} onChange={navigateMobile} />
+          <MobileCharacterNavigation
+            activeSection={mobileSection}
+            onChange={navigateMobile}
+          />
         </div>
 
-        <div className="lorebound-mobile-content" onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd}>
-        <CharacterQuickStats
-          mobileSection={mobileSection}
-          currentHp={currentHp}
-          maxHp={maxHp}
-          onCurrentHpChange={handleSetCurrentHp}
-          armorClass={armorClass}
-          initiative={dexModifier}
-          speed={speed}
-          proficiencyBonus={proficiencyBonus}
-          passivePerception={passivePerception}
-          passiveInsight={10 + getSkillBonus("wis", skills.insight)}
-          passiveInvestigation={10 + getSkillBonus("int", skills.investigation)}
-          abilityScores={abilityScores}
-          savingThrowProficiencies={savingThrows}
-          skills={customSkillDefinitions.map((skill) => {
-            const proficiency = skills[skill.id];
-
-            return {
-              id: skill.id,
-
-              name: skill.name,
-
-              ability: skill.ability.toUpperCase(),
-
-              bonus: getSkillBonus(skill.ability, proficiency),
-
-              proficient:
-                proficiency === "proficient" || proficiency === "expertise",
-
-              expertise: proficiency === "expertise",
-            };
-          })}
-          conditions={character.conditions ?? []}
-          onConditionsChange={handleSetConditions}
-          defenses={character.defenses ?? []}
-          onDefensesChange={handleSetDefenses}
-          heroicInspiration={character.heroicInspiration ?? false}
-          onHeroicInspirationChange={handleSetHeroicInspiration}
-          deathSaves={{
-            successes: character.deathSaves?.successes ?? 0,
-
-            failures: character.deathSaves?.failures ?? 0,
-          }}
-          onDeathSavesChange={handleSetDeathSaves}
-          hitDiceLabel={hitDiceLabel}
-          progress={{
-            level: xpProgress.level,
-
-            xp,
-
-            nextLevelXp: xpProgress.nextLevelXp,
-
-            progressPercent: xpProgress.progressPercent,
-          }}
-          languages={customProficiencies?.languages ?? []}
-          armorProficiencies={(customProficiencies?.armor ?? []).map(
-            formatCustomProficiency,
-          )}
-          weaponProficiencies={(customProficiencies?.weapons ?? []).map(
-            formatCustomProficiency,
-          )}
-          toolProficiencies={customProficiencies?.tools ?? []}
-          onEditCombat={() => setQuickStatsEditor("combat")}
-          onEditSavingThrows={() => setQuickStatsEditor("saving-throws")}
-          onEditSkills={() => setQuickStatsEditor("skills")}
-          onEditProficiencies={() => setQuickStatsEditor("proficiencies")}
-        />
-
-        <CharacterSheetWorkspace
-          mobileSection={mobileSection}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          playPanel={
-            <OverviewDashboard
-              mobilePlayTab={mobileSection === "spells" ? "spells" : mobileSection === "actions" ? "actions" : "attacks"}
-              attacks={customAttacks}
-              twoWeaponNotice={twoWeaponNotice}
-              spells={spellcasting.enabled ? quickSpells : []}
-              spellcasting={
-                spellcasting.enabled
-                  ? {
-                      abilityLabel: spellcasting.ability
-                        ? abilityLabels[spellcasting.ability]
-                        : undefined,
-
-                      saveDc: spellSaveDc,
-
-                      attackBonus: spellAttackBonus,
-
-                      slots: customSpellSlots,
-                    }
-                  : undefined
-              }
-              onEditSpellcasting={() => setSpellcastingEditorOpen(true)}
-              onSpellSlotChange={handleSetSpellSlotRemaining}
-              onAddSpell={spellcasting.enabled ? handleAddSpell : undefined}
-              onRemoveSpell={
-                spellcasting.enabled ? handleRemoveSpell : undefined
-              }
-              actions={characterActions}
-              bonusActions={characterBonusActions}
-              reactions={featureReactions}
-            />
-          }
+        <div
+          className="lorebound-mobile-content"
+          onTouchStart={onSwipeStart}
+          onTouchEnd={onSwipeEnd}
         >
-          {activeTab === "inventory" ? renderInventoryTab() : null}
+          <CharacterQuickStats
+            mobileSection={mobileSection}
+            rest={{
+              hitDieSize: customHitDieSize,
+              hitDiceRemaining: stats.hitDiceRemaining ?? level,
+              hitDiceMax: level,
+              constitutionModifier,
+              onShortRest: handleShortRest,
+              onLongRest: handleLongRest,
+            }}
+            currentHp={currentHp}
+            maxHp={maxHp}
+            onCurrentHpChange={handleSetCurrentHp}
+            armorClass={armorClass}
+            initiative={dexModifier}
+            speed={speed}
+            proficiencyBonus={proficiencyBonus}
+            passivePerception={passivePerception}
+            passiveInsight={10 + getSkillBonus("wis", skills.insight)}
+            passiveInvestigation={
+              10 + getSkillBonus("int", skills.investigation)
+            }
+            abilityScores={abilityScores}
+            savingThrowProficiencies={savingThrows}
+            skills={customSkillDefinitions.map((skill) => {
+              const proficiency = skills[skill.id];
 
-          {activeTab === "features" ? renderFeaturesTab() : null}
+              return {
+                id: skill.id,
 
-          {activeTab === "character" ? renderCharacterTab() : null}
+                name: skill.name,
 
-          {activeTab === "notes" ? renderNotesTab() : null}
-        </CharacterSheetWorkspace>
+                ability: skill.ability.toUpperCase(),
+
+                bonus: getSkillBonus(skill.ability, proficiency),
+
+                proficient:
+                  proficiency === "proficient" || proficiency === "expertise",
+
+                expertise: proficiency === "expertise",
+              };
+            })}
+            conditions={character.conditions ?? []}
+            onConditionsChange={handleSetConditions}
+            defenses={character.defenses ?? []}
+            onDefensesChange={handleSetDefenses}
+            heroicInspiration={character.heroicInspiration ?? false}
+            onHeroicInspirationChange={handleSetHeroicInspiration}
+            deathSaves={{
+              successes: character.deathSaves?.successes ?? 0,
+
+              failures: character.deathSaves?.failures ?? 0,
+            }}
+            onDeathSavesChange={handleSetDeathSaves}
+            hitDiceLabel={hitDiceLabel}
+            progress={{
+              level: xpProgress.level,
+
+              xp,
+
+              nextLevelXp: xpProgress.nextLevelXp,
+
+              progressPercent: xpProgress.progressPercent,
+            }}
+            languages={customProficiencies?.languages ?? []}
+            armorProficiencies={(customProficiencies?.armor ?? []).map(
+              formatCustomProficiency,
+            )}
+            weaponProficiencies={(customProficiencies?.weapons ?? []).map(
+              formatCustomProficiency,
+            )}
+            toolProficiencies={customProficiencies?.tools ?? []}
+            onEditCombat={() => setQuickStatsEditor("combat")}
+            onEditSavingThrows={() => setQuickStatsEditor("saving-throws")}
+            onEditSkills={() => setQuickStatsEditor("skills")}
+            onEditProficiencies={() => setQuickStatsEditor("proficiencies")}
+          />
+
+          <CharacterSheetWorkspace
+            mobileSection={mobileSection}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            playPanel={
+              <OverviewDashboard
+                mobilePlayTab={
+                  mobileSection === "spells"
+                    ? "spells"
+                    : mobileSection === "actions"
+                      ? "actions"
+                      : "attacks"
+                }
+                attacks={customAttacks}
+                twoWeaponNotice={twoWeaponNotice}
+                spells={spellcasting.enabled ? quickSpells : []}
+                spellcasting={
+                  spellcasting.enabled
+                    ? {
+                        abilityLabel: spellcasting.ability
+                          ? abilityLabels[spellcasting.ability]
+                          : undefined,
+
+                        saveDc: spellSaveDc,
+
+                        attackBonus: spellAttackBonus,
+
+                        slots: customSpellSlots,
+                      }
+                    : undefined
+                }
+                onEditSpellcasting={() => setSpellcastingEditorOpen(true)}
+                onSpellSlotChange={handleSetSpellSlotRemaining}
+                onAddSpell={spellcasting.enabled ? handleAddSpell : undefined}
+                onRemoveSpell={
+                  spellcasting.enabled ? handleRemoveSpell : undefined
+                }
+                actions={characterActions}
+                bonusActions={characterBonusActions}
+                reactions={featureReactions}
+              />
+            }
+          >
+            {activeTab === "inventory" ? renderInventoryTab() : null}
+
+            {activeTab === "features" ? renderFeaturesTab() : null}
+
+            {activeTab === "character" ? renderCharacterTab() : null}
+
+            {activeTab === "notes" ? renderNotesTab() : null}
+          </CharacterSheetWorkspace>
         </div>
       </div>
 
