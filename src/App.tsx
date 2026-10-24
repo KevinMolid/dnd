@@ -34,6 +34,7 @@ import MonstersPage from "./pages/MonstersPage";
 import EditCharacter from "./pages/EditCharacter";
 import DMWorkspacePage from "./pages/DMWorkspacePage";
 import SpellCardPage from "./features/spellCards/SpellCardPage";
+import WildShapeCardPage from "./features/wild-shape/WildShapeCardPage";
 
 import CampaignGmOutlet from "./features/campaigns/components/CampaignGmOutlet";
 import SpotifyCallbackPage from "./features/spotify/SpotifyCallbackPage";
@@ -108,6 +109,7 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
       <Route index element={<Home />} />
       <Route path="/profile" element={<ProfileSettingsPage />} />
       <Route path="/spell-card" element={<SpellCardPage />} />
+      <Route path="/wild-shape-cards" element={<WildShapeCardPage />} />
       <Route path="tips" element={<Tips />} />
       <Route path="reglene" element={<Reglene />} />
       <Route path="karakterer" element={<Karakterer />} />
@@ -115,7 +117,10 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
       <Route path="/quests" element={<Quests />} />
       <Route path="/characters/new" element={<NewCharacter />} />
       <Route path="/characters/:characterId" element={<CharacterSheet />} />
-      <Route path="/characters/:characterId/print" element={<CharacterSheetPrintPage />} />
+      <Route
+        path="/characters/:characterId/print"
+        element={<CharacterSheetPrintPage />}
+      />
       <Route path="/characters/:characterId/edit" element={<EditCharacter />} />
       <Route path="/campaigns/new" element={<NewCampaign />} />
       <Route path="/invite/:inviteToken" element={<InvitePage />} />
@@ -154,8 +159,14 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
         }
       />
       <Route path="/campaigns/:campaignId/npcs" element={<NPCsPage />} />
-      <Route path="/campaigns/:campaignId/npcs/:npcId" element={<NpcDetailPage />} />
-      <Route path="/campaigns/:campaignId/monsters" element={<MonstersPage />} />
+      <Route
+        path="/campaigns/:campaignId/npcs/:npcId"
+        element={<NpcDetailPage />}
+      />
+      <Route
+        path="/campaigns/:campaignId/monsters"
+        element={<MonstersPage />}
+      />
       <Route path="/campaigns/:campaignId/items" element={<ItemsPage />} />
       <Route
         path="/campaigns/:campaignId/workspace"
@@ -193,9 +204,13 @@ function AppShell({
   openSignupModal,
 }: AppShellProps) {
   const location = useLocation();
-  const isWorkspaceRoute = /^\/campaigns\/[^/]+\/workspace\/?$/.test(location.pathname);
+  const isWorkspaceRoute = /^\/campaigns\/[^/]+\/workspace\/?$/.test(
+    location.pathname,
+  );
   const isSpotifyCallback = location.pathname === "/spotify/callback";
-  const isCharacterPrint = /^\/characters\/[^/]+\/print\/?$/.test(location.pathname);
+  const isCharacterPrint = /^\/characters\/[^/]+\/print\/?$/.test(
+    location.pathname,
+  );
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -231,7 +246,8 @@ function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<AuthModalMode>("login");
   const authModalTitle = useMemo(
-    () => authMode === "login" ? "Log in to Lorebound" : "Create your account",
+    () =>
+      authMode === "login" ? "Log in to Lorebound" : "Create your account",
     [authMode],
   );
   const openLoginModal = () => {
@@ -245,7 +261,9 @@ function App() {
 
   /* Do not block Spotify callback on Firebase auth restoration. */
   if (loading && window.location.pathname !== "/spotify/callback") {
-    return <div className="min-h-screen bg-zinc-950 p-6 text-white">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-zinc-950 p-6 text-white">Loading...</div>
+    );
   }
 
   return (

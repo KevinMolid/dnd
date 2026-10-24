@@ -129,13 +129,29 @@ export default function WildShapePicker({
               Known forms: {keys.length}/{max}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setEditing(true)}
-            className="rounded-md border border-white/10 px-2 py-1 text-xs text-zinc-200 hover:bg-white/10"
-          >
-            Edit forms
-          </button>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                window.open(
+                  `/wild-shape-cards?characterId=${encodeURIComponent(characterId)}`,
+                  "_blank",
+                  "noopener,noreferrer",
+                )
+              }
+              className="rounded-md border border-white/10 px-2 py-1 text-xs text-zinc-200 hover:bg-white/10"
+            >
+              <i className="fa-solid fa-print mr-1" />
+              Print
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-md border border-white/10 px-2 py-1 text-xs text-zinc-200 hover:bg-white/10"
+            >
+              Edit forms
+            </button>
+          </div>
         </div>
         {keys.length ? (
           <div className="mt-2 grid grid-cols-2 gap-1.5">
