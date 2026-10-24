@@ -1,32 +1,9 @@
 import { Link } from "react-router-dom";
 
 import Avatar from "../../../components/Avatar";
+import RichTextContent from "../../richText/RichTextContent";
 import { getJournalTypeLabel } from "../../journal/types";
 import type { CampaignJournalPreview } from "../hooks/useCampaignPageData";
-
-const stripHtml = (value: string) => {
-  if (!value) return "";
-
-  const doc = new DOMParser().parseFromString(value, "text/html");
-
-  doc.querySelectorAll("br").forEach((element) => {
-    element.replaceWith("\n");
-  });
-
-  doc
-    .querySelectorAll("h1, h2, h3, h4, h5, h6, p, div, li")
-    .forEach((element) => {
-      element.append("\n");
-    });
-
-  return (doc.body.textContent ?? "")
-    .replace(/\u00a0/g, " ")
-    .split("\n")
-    .map((line) => line.replace(/[ \t]+/g, " ").trim())
-    .filter(Boolean)
-    .join("\n")
-    .trim();
-};
 
 type CampaignLatestJournalSectionProps = {
   campaignId: string;
@@ -124,9 +101,31 @@ const CampaignLatestJournalSection = ({
               </div>
 
               {latestJournalEntry.content ? (
-                <p className="mt-2 line-clamp-5 whitespace-pre-line text-xs leading-5 text-zinc-400">
-                  {stripHtml(latestJournalEntry.content)}
-                </p>
+                <div
+                  className="
+                    journal-entry-content
+                    relative mt-3 max-h-[260px] overflow-hidden
+                    text-xs leading-relaxed text-zinc-300
+                    [&_h1]:!mb-2 [&_h1]:!mt-4
+                    [&_h1]:!text-base [&_h1]:!font-bold [&_h1]:!text-white
+                    [&_h2]:!mb-1.5 [&_h2]:!mt-3
+                    [&_h2]:!text-sm [&_h2]:!font-bold [&_h2]:!text-white
+                    [&_h3]:!mb-1 [&_h3]:!mt-2
+                    [&_h3]:!text-[13px] [&_h3]:!font-semibold [&_h3]:!text-zinc-100
+                    [&_p]:!my-1.5
+                    [&_strong]:!font-bold [&_strong]:!text-zinc-100
+                    [&_ul]:!my-2 [&_ul]:!list-disc [&_ul]:!pl-5
+                    [&_ol]:!my-2 [&_ol]:!list-decimal [&_ol]:!pl-5
+                    [&_li]:!my-0.5
+                    [&_.workspace-note-editor]:!m-0
+                    [&_.workspace-note-editor]:!p-0
+                    [&_.workspace-note-editor]:!text-xs
+                    [&_.workspace-note-editor]:!leading-relaxed
+                    [&_.workspace-note-editor>p:first-child]:!mt-0
+                  "
+                >
+                  <RichTextContent value={latestJournalEntry.content} />
+                </div>
               ) : null}
             </div>
 
