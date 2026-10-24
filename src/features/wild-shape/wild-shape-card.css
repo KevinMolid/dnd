@@ -25,3 +25,10 @@
 @page { size:A4 portrait; margin:0; }
 @media print { html,body,#root { background:#fff!important; margin:0!important; padding:0!important; width:auto!important; height:auto!important; } .wild-print { margin:0; padding:0; background:#fff!important; min-height:0; } .wild-print__toolbar,.wild-print__message,.wild-print__picker,.wild-print__remove { display:none!important; } .wild-print__sheets { display:block; margin:0; gap:0; }.wild-print__sheet { margin:0; box-shadow:none; break-after:page; page-break-after:always; print-color-adjust:exact; -webkit-print-color-adjust:exact; }.wild-print__sheet:last-child { break-after:auto; page-break-after:auto; }.wild-card { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }
 @media screen and (max-width:850px) { .wild-print__sheets { align-items:flex-start; overflow-x:auto; } }
+
+/* Bulk selection controls */
+.wild-print__bulk-select { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.wild-print__bulk-select label, .wild-print__bulk-select span { color:#d4d4d8; font-size:12px; }
+.wild-print__bulk-select select, .wild-print__bulk-select button { border:1px solid #3f3f46; border-radius:7px; background:#27272a; color:#f4f4f5; padding:8px 10px; font-size:12px; }
+.wild-print__bulk-select button:hover { background:#3f3f46; }
+@media print { .wild-print__sheet { break-inside:avoid; page-break-inside:avoid; } }

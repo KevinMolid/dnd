@@ -4,10 +4,28 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import useMonsterLibrary from "../../hooks/useMonsterLibrary";
 import "./wild-shape-card.css";
+import printStyles from "./wild-shape-card.css?raw";
 
 type Monster = ReturnType<typeof useMonsterLibrary>["allMonsters"][number];
 type MonsterRecord = Monster & Record<string, unknown>;
 type CardSize = "standard" | "large";
+
+const crAsNumber = (value: unknown): number | null => {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  const fraction = normalized.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (fraction) {
+    const denominator = Number(fraction[2]);
+    return denominator ? Number(fraction[1]) / denominator : null;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const maxCrOptions = ["0", "1/8", "1/4", "1/2", "1", "2", "3", "4", "5", "6", "7", "8"];
+
 
 const numberOrDash = (value: unknown) =>
   typeof value === "number" || typeof value === "string" ? String(value) : "—";
@@ -164,6 +182,7 @@ export default function WildShapeCardPage() {
   const [size, setSize] = useState<CardSize>("standard");
   const [selected, setSelected] = useState<string[]>([]);
   const [search, setSearch] = useState("");
+  const [maxCr, setMaxCr] = useState("");
   const { allMonsters, loading: loadingMonsters } = useMonsterLibrary(
     campaignId || undefined,
   );
@@ -246,6 +265,71 @@ export default function WildShapeCardPage() {
     );
   const busy = loadingCharacter || loadingMonsters;
 
+  const selectThroughCr = (value: string) => {
+    setMaxCr(value);
+    const limit = crAsNumber(value);
+    if (limit === null) return;
+    // Replace the print selection only; never modify known Wild Shape forms.
+    setSelected(
+      allMonsters
+        .filter((monster) => {
+          const raw = monster as MonsterRecord;
+          const cr = crAsNumber(monster.challengeRating);
+          return String(raw.type ?? raw.creatureType ?? "").toLowerCase() === "beast" &&
+            cr !== null && cr <= limit;
+        })
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((monster) => `${monster.source}:${monster.id}`),
+    );
+  };
+
+  const printCards = async () => {
+    const sheetElement = document.querySelector<HTMLElement>(".wild-print__sheets");
+    if (!sheetElement || !resolved.length) return;
+
+    // An isolated print document avoids global app @media print rules that
+    // may hide the React root, main content, or the cards themselves.
+    const iframe = document.createElement("iframe");
+    iframe.setAttribute("title", "Wild Shape cards print document");
+    iframe.setAttribute("aria-hidden", "true");
+    Object.assign(iframe.style, {
+      position: "fixed",
+      right: "0",
+      bottom: "0",
+      width: "1px",
+      height: "1px",
+      opacity: "0",
+      border: "0",
+      pointerEvents: "none",
+    });
+    document.body.appendChild(iframe);
+
+    const printDoc = iframe.contentDocument;
+    if (!printDoc) {
+      iframe.remove();
+      return;
+    }
+    const printContents = sheetElement.cloneNode(true) as HTMLElement;
+    printContents.querySelectorAll("button").forEach((button) => button.remove());
+    printDoc.open();
+    printDoc.write(`<!doctype html><html><head><meta charset="utf-8" /><title>Wild Shape Cards</title><style>${printStyles}</style></head><body><main class="wild-print wild-print--${size}">${printContents.outerHTML}</main></body></html>`);
+    printDoc.close();
+
+    try {
+      await printDoc.fonts.ready;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+    } catch (error) {
+      console.error("Wild Shape printing failed:", error);
+    }
+
+    // Do not remove the frame while the browser is preparing the print preview.
+    // Cleanup after printing, or retain briefly as a fallback.
+    iframe.contentWindow?.addEventListener("afterprint", () => iframe.remove(), { once: true });
+    window.setTimeout(() => iframe.remove(), 120000);
+  };
+
   return (
     <main className={`wild-print wild-print--${size}`}>
       <header className="wild-print__toolbar">
@@ -268,7 +352,7 @@ export default function WildShapeCardPage() {
           </select>
           <button
             type="button"
-            onClick={() => window.print()}
+            onClick={() => void printCards()}
             disabled={!resolved.length}
           >
             Print Cards
@@ -326,6 +410,23 @@ export default function WildShapeCardPage() {
             Selected Wild Shape forms are included automatically. You can add
             more for printing without changing the character's known forms.
           </p>
+        </div>
+        <div className="wild-print__bulk-select">
+          <label htmlFor="wild-max-cr">Select all Beasts up to CR</label>
+          <select
+            id="wild-max-cr"
+            value={maxCr}
+            onChange={(event) => selectThroughCr(event.target.value)}
+          >
+            <option value="">Max CR…</option>
+            {maxCrOptions.map((cr) => (
+              <option key={cr} value={cr}>CR {cr}</option>
+            ))}
+          </select>
+          <button type="button" onClick={() => { setSelected([]); setMaxCr(""); }}>
+            Clear selection
+          </button>
+          <span>{selected.length} selected</span>
         </div>
         <input
           value={search}
