@@ -43,6 +43,7 @@ import TraitGroupSection from "../features/character-sheet/components/TraitGroup
 import CharacterProfilePanel from "../features/character-sheet/components/CharacterProfilePanel";
 
 import { collectFeatureActions } from "../features/character-sheet/utils/featureActionHelpers";
+import { getFightingStyleReactions } from "../features/character-sheet/utils/fightingStyleReactions";
 
 import PlayerNotesPanel from "../features/character-sheet/components/PlayerNotesPanel";
 
@@ -508,7 +509,14 @@ const CharacterSheet = () => {
 
   const characterBonusActions = collectedFeatureActions.bonusActions;
 
-  const characterReactions = collectedFeatureActions.reactions;
+  const characterReactions = [
+    ...collectedFeatureActions.reactions,
+    ...getFightingStyleReactions(fightingStyleId).filter(
+      (reaction) => !collectedFeatureActions.reactions.some(
+        (existing) => existing.name.toLowerCase() === reaction.name.toLowerCase(),
+      ),
+    ),
+  ];
 
   const twoWeaponCombatActions = getTwoWeaponCombatActions({
     attacks: styledWeaponAttacks,

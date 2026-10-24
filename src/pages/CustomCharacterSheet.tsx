@@ -35,6 +35,7 @@ import PlayerNotesPanel from "../features/character-sheet/components/PlayerNotes
 import CustomFeatureTooltip from "../features/character-sheet/components/CustomFeatureTooltip";
 
 import { collectFeatureActions } from "../features/character-sheet/utils/featureActionHelpers";
+import { getFightingStyleReactions } from "../features/character-sheet/utils/fightingStyleReactions";
 
 import { calculateArmorClass } from "../rulesets/dnd/dnd2024/armorClass";
 
@@ -1177,7 +1178,14 @@ const CustomCharacterSheet = ({
 
   const featureBonusActions = collectedFeatureActions.bonusActions;
 
-  const featureReactions = collectedFeatureActions.reactions;
+  const featureReactions = [
+    ...collectedFeatureActions.reactions,
+    ...getFightingStyleReactions(fightingStyleId).filter(
+      (reaction) => !collectedFeatureActions.reactions.some(
+        (existing) => existing.name.toLowerCase() === reaction.name.toLowerCase(),
+      ),
+    ),
+  ];
 
   const twoWeaponCombatActions = useMemo(
     () =>
