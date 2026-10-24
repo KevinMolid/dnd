@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
 import {
   PDFDocument,
   PDFTextField,
@@ -74,6 +76,7 @@ async function generate(
   character: any,
   derived: any,
   campaignItemsById: Record<string, any>,
+  playerName: string,
 ): Promise<Uint8Array> {
   const response = await fetch(templateUrl);
   if (!response.ok)
@@ -275,7 +278,7 @@ async function generate(
   overlay("Race ", custom ? character.speciesName : derived?.speciesName, 10.5);
   overlay("Alignment", character.alignment, 10.5);
   overlay("XP", custom ? character.xp : (derived?.xp ?? character.xp), 10.5);
-  overlay("PlayerName", character.playerName ?? "", 10.5);
+  overlay("PlayerName", playerName, 10.5);
   text("Inspiration", character.heroicInspiration ? "Yes" : "");
   overlay("ProfBonus", signed(proficiency), 14, "center");
   abilityKeys.forEach((ability, i) => {
@@ -924,6 +927,42 @@ async function generate(
   return source.save();
 }
 
+/** Resolve the character owner's display name using campaign roster ownership. */
+async function resolvePlayerName(
+  character: any,
+  characterId?: string,
+): Promise<string> {
+  const fallback = String(character.playerName ?? "").trim();
+  const campaignId = String(character.campaignId ?? "").trim();
+  let ownerUid = String(character.ownerUid ?? "").trim();
+
+  if (campaignId && characterId) {
+    try {
+      const party = await getDoc(
+        doc(db, "campaigns", campaignId, "party", characterId),
+      );
+      if (party.exists()) {
+        ownerUid = String(party.data().ownerUid ?? ownerUid).trim();
+      }
+    } catch (error) {
+      console.warn("Could not read campaign owner for PDF player name", error);
+    }
+  }
+
+  if (ownerUid) {
+    try {
+      const profile = await getDoc(doc(db, "users", ownerUid));
+      if (profile.exists()) {
+        const displayName = String(profile.data().displayName ?? "").trim();
+        if (displayName) return displayName;
+      }
+    } catch (error) {
+      console.warn("Could not read player display name for PDF", error);
+    }
+  }
+  return fallback;
+}
+
 export default function CharacterSheetPrintPage() {
   const { characterId } = useParams();
   const navigate = useNavigate();
@@ -937,7 +976,10 @@ export default function CharacterSheetPrintPage() {
     let cancelled = false;
     let nextUrl = "";
     setBuildError("");
-    generate(character, derived, campaignItemsById ?? {})
+    resolvePlayerName(character, characterId)
+      .then((playerName) =>
+        generate(character, derived, campaignItemsById ?? {}, playerName),
+      )
       .then((bytes) => {
         if (cancelled) return;
         nextUrl = URL.createObjectURL(
@@ -954,7 +996,7 @@ export default function CharacterSheetPrintPage() {
       cancelled = true;
       if (nextUrl) URL.revokeObjectURL(nextUrl);
     };
-  }, [character, derived, campaignItemsById, loading]);
+  }, [character, characterId, derived, campaignItemsById, loading]);
   const fileName = useMemo(
     () =>
       `${(character?.name ?? "character").replace(/[^a-z0-9-_ ]/gi, "")}-character-sheet.pdf`,
