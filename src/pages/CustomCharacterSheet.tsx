@@ -16,6 +16,7 @@ import CustomSpellcastingEditorModal from "../features/character-sheet/component
 import CharacterFeaturesEditorModal from "../components/character/CharacterFeaturesEditorModal";
 
 import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
+import WildShapePicker from "../features/character-sheet/components/WildShapePicker";
 
 import CharacterSheetWorkspace from "../features/character-sheet/components/CharacterSheetWorkspace";
 
@@ -900,6 +901,15 @@ const CustomCharacterSheet = ({
    */
 
   const customAttacks = [unarmedAttack, ...weaponAttacks];
+  const wildShapeFormKeys =
+    (character as CustomCharacter & { wildShapeFormKeys?: string[] })
+      .wildShapeFormKeys ?? [];
+  const hasWildShape = [
+    ...getTraitCatalogEntries(character.catalogTraitIds ?? []).map(
+      (entry) => entry.trait,
+    ),
+    ...(character.customTraits ?? []),
+  ].some((trait) => trait.id === "wild-shape" || trait.name === "Wild Shape");
 
   /* =========================================================
 
@@ -1618,6 +1628,16 @@ const CustomCharacterSheet = ({
                   spellcasting.enabled ? handleRemoveSpell : undefined
                 }
                 actions={characterActions}
+                wildShapeContent={
+                  hasWildShape && characterId ? (
+                    <WildShapePicker
+                      characterId={characterId}
+                      campaignId={character.campaignId}
+                      level={level}
+                      knownFormKeys={wildShapeFormKeys}
+                    />
+                  ) : null
+                }
                 bonusActions={characterBonusActions}
                 reactions={featureReactions}
               />

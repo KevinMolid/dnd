@@ -212,36 +212,30 @@ export const druid: CharacterClass = {
       },
     ],
     2: [
-      {
-        id: "wild-shape",
-        name: "Wild Shape",
-        level: 2,
-        activation: "bonus-action",
-        description:
-          "The power of nature allows you to assume the form of an animal.",
-        notes: [
-          "As a Bonus Action, you shape-shift into a Beast form that you have learned for this feature.",
-          "You stay in that form for a number of hours equal to half your Druid level, or until you use Wild Shape again, have the Incapacitated condition, or die.",
-          "You can also leave the form early as a Bonus Action.",
-          "You can use Wild Shape twice at level 2.",
-          "You regain one expended use when you finish a Short Rest, and all expended uses when you finish a Long Rest.",
-          "You know four Beast forms at level 2, chosen from Beast stat blocks with a maximum CR of 1/4 and no Fly Speed.",
-          "The Rat, Riding Horse, Spider, and Wolf are recommended.",
-          "Whenever you finish a Long Rest, you can replace one of your known forms with another eligible form.",
-          "While in a form, you retain your personality, memories, and ability to speak.",
-          "When you assume a Wild Shape form, you gain Temporary Hit Points equal to your Druid level.",
-          "Your game statistics are replaced by the Beast’s stat block, but you retain your creature type, Hit Points, Hit Point Dice, Intelligence, Wisdom, and Charisma scores, class features, languages, and feats.",
-          "You also retain your skill and saving throw proficiencies and use your Proficiency Bonus, in addition to any proficiencies of the creature.",
-          "If a skill or saving throw modifier in the Beast’s stat block is higher than yours, use that one instead.",
-          "You can’t cast spells while in Wild Shape, but shape-shifting doesn’t break Concentration or otherwise interfere with a spell you’ve already cast.",
-          "You choose whether your equipment falls in your space, merges into your new form, or is worn by it.",
-        ],
-        usage: {
-          type: "limited",
-          uses: { type: "fixed", value: 2 },
-          recharge: "short-rest",
-        },
-      },
+      
+{
+  id: "wild-shape",
+  name: "Wild Shape",
+  level: 2,
+  activation: "bonus-action",
+  description:
+    "As a Bonus Action, you transform into a known Beast form for a number of hours equal to half your Druid level.",
+  notes: [
+    "You know 4 Beast forms (max CR 1/4, no Fly Speed). After a Long Rest, you can replace one known form.",
+    "The transformation ends if you transform again, become Incapacitated, die, or dismiss it as a Bonus Action.",
+    "You gain Temporary HP equal to your Druid level.",
+    "You use the Beast's statistics but retain your creature type, HP, Hit Dice, INT, WIS, CHA, personality, memories, languages, feats, and class features.",
+    "You retain your skill and saving throw proficiencies and Proficiency Bonus, using the Beast's modifier if higher.",
+    "You can't cast spells, but you can maintain Concentration.",
+    "Your equipment can be dropped, merged into your form, or worn.",
+  ],
+  usage: {
+    type: "limited",
+    uses: { type: "fixed", value: 2 },
+    recharge: "short-rest",
+  },
+},
+
       {
         id: "wild-companion",
         name: "Wild Companion",

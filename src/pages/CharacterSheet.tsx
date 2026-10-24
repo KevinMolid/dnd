@@ -34,6 +34,7 @@ import CharacterQuickStats from "../features/character-sheet/components/Characte
 import CharacterSheetWorkspace from "../features/character-sheet/components/CharacterSheetWorkspace";
 
 import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
+import WildShapePicker from "../features/character-sheet/components/WildShapePicker";
 
 import TraitGroupSection from "../features/character-sheet/components/TraitGroupSection";
 
@@ -262,6 +263,15 @@ const CharacterSheet = () => {
     hasAlertFeat && !alertAlreadyIncluded
       ? `${derived.initiativeBreakdown || "Base Initiative"} · Alert +5`
       : derived.initiativeBreakdown;
+
+  const wildShapeFormKeys =
+    (character as typeof character & { wildShapeFormKeys?: string[] })
+      .wildShapeFormKeys ?? [];
+  const hasWildShape = derived.traitGroups.some((group) =>
+    group.traits.some(
+      (trait) => trait.id === "wild-shape" || trait.name === "Wild Shape",
+    ),
+  );
 
   const classDefinition = classesById[character.classId] as any;
 
@@ -861,6 +871,16 @@ const CharacterSheet = () => {
                 onAddSpell={handleAddSpell}
                 onRemoveSpell={handleRemoveSpell}
                 actions={playActions}
+                wildShapeContent={
+                  hasWildShape && characterId ? (
+                    <WildShapePicker
+                      characterId={characterId}
+                      campaignId={character.campaignId}
+                      level={character.level}
+                      knownFormKeys={wildShapeFormKeys}
+                    />
+                  ) : null
+                }
                 bonusActions={playBonusActions}
                 reactions={characterReactions}
                 combatOptions={combatOptions}

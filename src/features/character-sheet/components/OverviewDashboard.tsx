@@ -117,6 +117,7 @@ type OverviewDashboardProps = {
   actions?: OverviewAction[];
 
   bonusActions?: OverviewAction[];
+  wildShapeContent?: ReactNode;
 
   reactions?: OverviewAction[];
 
@@ -285,6 +286,7 @@ const OverviewDashboard = ({
   actions = [],
 
   bonusActions = [],
+  wildShapeContent,
 
   reactions = [],
 
@@ -338,7 +340,9 @@ const OverviewDashboard = ({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className={`shrink-0 border-b border-white/10 bg-black/15 px-2 ${mobilePlayTab ? "hidden md:block" : ""}`}>
+      <div
+        className={`shrink-0 border-b border-white/10 bg-black/15 px-2 ${mobilePlayTab ? "hidden md:block" : ""}`}
+      >
         <div className="flex">
           {playTabs.map((tab) => {
             const active = activePlayTab === tab.id;
@@ -373,34 +377,54 @@ const OverviewDashboard = ({
 
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
         <div className="md:hidden">
-          {mobilePlayTab === "attacks" ? <AttacksPanel attacks={attacks} twoWeaponNotice={twoWeaponNotice} /> : null}
-          {mobilePlayTab === "spells" ? <SpellsPanel spells={spells} spellcasting={spellcasting} onSpellSlotChange={onSpellSlotChange} onAddSpell={onAddSpell} onRemoveSpell={onRemoveSpell} onEditSpellcasting={onEditSpellcasting} /> : null}
-          {mobilePlayTab === "actions" ? <ActionsPanel actions={actions} bonusActions={bonusActions} reactions={reactions} combatOptions={combatOptions} /> : null}
+          {mobilePlayTab === "attacks" ? (
+            <AttacksPanel attacks={attacks} twoWeaponNotice={twoWeaponNotice} />
+          ) : null}
+          {mobilePlayTab === "spells" ? (
+            <SpellsPanel
+              spells={spells}
+              spellcasting={spellcasting}
+              onSpellSlotChange={onSpellSlotChange}
+              onAddSpell={onAddSpell}
+              onRemoveSpell={onRemoveSpell}
+              onEditSpellcasting={onEditSpellcasting}
+            />
+          ) : null}
+          {mobilePlayTab === "actions" ? (
+            <ActionsPanel
+              actions={actions}
+              bonusActions={bonusActions}
+              reactions={reactions}
+              combatOptions={combatOptions}
+              wildShapeContent={wildShapeContent}
+            />
+          ) : null}
         </div>
         <div className={mobilePlayTab ? "hidden md:block" : ""}>
-        {activePlayTab === "attacks" ? (
-          <AttacksPanel attacks={attacks} twoWeaponNotice={twoWeaponNotice} />
-        ) : null}
+          {activePlayTab === "attacks" ? (
+            <AttacksPanel attacks={attacks} twoWeaponNotice={twoWeaponNotice} />
+          ) : null}
 
-        {activePlayTab === "spells" ? (
-          <SpellsPanel
-            spells={spells}
-            spellcasting={spellcasting}
-            onSpellSlotChange={onSpellSlotChange}
-            onAddSpell={onAddSpell}
-            onRemoveSpell={onRemoveSpell}
-            onEditSpellcasting={onEditSpellcasting}
-          />
-        ) : null}
+          {activePlayTab === "spells" ? (
+            <SpellsPanel
+              spells={spells}
+              spellcasting={spellcasting}
+              onSpellSlotChange={onSpellSlotChange}
+              onAddSpell={onAddSpell}
+              onRemoveSpell={onRemoveSpell}
+              onEditSpellcasting={onEditSpellcasting}
+            />
+          ) : null}
 
-        {activePlayTab === "actions" ? (
-          <ActionsPanel
-            actions={actions}
-            bonusActions={bonusActions}
-            reactions={reactions}
-            combatOptions={combatOptions}
-          />
-        ) : null}
+          {activePlayTab === "actions" ? (
+            <ActionsPanel
+              actions={actions}
+              bonusActions={bonusActions}
+              wildShapeContent={wildShapeContent}
+              reactions={reactions}
+              combatOptions={combatOptions}
+            />
+          ) : null}
         </div>
       </div>
     </div>
@@ -742,8 +766,17 @@ const SpellsPanel = ({
 
             <div className="flex items-center gap-1.5">
               {onEditSpellcasting ? (
-                <button type="button" onClick={onEditSpellcasting} aria-label="Edit spellcasting" className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white">
-                  <i className="fa-solid fa-pen-to-square text-[9px]" aria-hidden="true" /> Edit
+                <button
+                  type="button"
+                  onClick={onEditSpellcasting}
+                  aria-label="Edit spellcasting"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-[10px] font-semibold text-zinc-300 transition hover:bg-white/[0.08] hover:text-white"
+                >
+                  <i
+                    className="fa-solid fa-pen-to-square text-[9px]"
+                    aria-hidden="true"
+                  />{" "}
+                  Edit
                 </button>
               ) : null}
               {onAddSpell ? (
@@ -1016,6 +1049,7 @@ const ActionsPanel = ({
   actions,
 
   bonusActions,
+  wildShapeContent,
 
   reactions,
 
@@ -1024,6 +1058,7 @@ const ActionsPanel = ({
   actions: OverviewAction[];
 
   bonusActions: OverviewAction[];
+  wildShapeContent?: ReactNode;
 
   reactions: OverviewAction[];
 
@@ -1042,7 +1077,11 @@ const ActionsPanel = ({
       ) : null}
 
       {bonusActions.length > 0 ? (
-        <ActionSection title="Bonus Actions" actions={bonusActions} />
+        <ActionSection
+          title="Bonus Actions"
+          actions={bonusActions}
+          wildShapeContent={wildShapeContent}
+        />
       ) : null}
 
       {reactions.length > 0 ? (
@@ -1065,9 +1104,11 @@ const ActionsPanel = ({
 const ActionSection = ({
   title,
   actions,
+  wildShapeContent,
 }: {
   title: string;
   actions: OverviewAction[];
+  wildShapeContent?: ReactNode;
 }) => (
   <section className="p-3">
     <h3 className="mb-2 text-xs font-semibold uppercase tracking-[0.1em] text-zinc-400">
@@ -1076,6 +1117,13 @@ const ActionSection = ({
 
     <div className="grid gap-1.5">
       {actions.map((action) => {
+        if (
+          wildShapeContent &&
+          (action.id === "wild-shape" ||
+            action.name.trim().toLowerCase() === "wild shape")
+        ) {
+          return <div key={action.id}>{wildShapeContent}</div>;
+        }
         const hasFeatureDetails =
           Boolean(action.description) ||
           Boolean(action.source) ||
