@@ -35,6 +35,8 @@ import CharacterSheetWorkspace from "../features/character-sheet/components/Char
 
 import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
 import WildShapePicker from "../features/character-sheet/components/WildShapePicker";
+import FightingStylePicker from "../features/character-sheet/components/FightingStylePicker";
+import { applyFightingStyleToAttack, isWearingArmorForDefense } from "../features/character-sheet/utils/fightingStyleEffects";
 
 import TraitGroupSection from "../features/character-sheet/components/TraitGroupSection";
 
@@ -273,6 +275,14 @@ const CharacterSheet = () => {
     ),
   );
 
+  const fightingStyleId = (character as typeof character & { fightingStyleId?: string }).fightingStyleId;
+
+  const defenseBonus = fightingStyleId === "defense" &&
+    isWearingArmorForDefense(character.equipment ?? [], (entry) =>
+      resolveItemFromEquipmentEntry(entry, campaignItemsById),
+    ) ? 1 : 0;
+  const displayedArmorClass = derived.armorClass + defenseBonus;
+
   const classDefinition = classesById[character.classId] as any;
 
   const savingThrowProficiencies: AbilityKey[] =
@@ -370,6 +380,13 @@ const CharacterSheet = () => {
       : null,
   }));
 
+  const equippedWeaponCount = weaponAttacks.length;
+  const styledWeaponAttacks = weaponAttacks.map((attack) =>
+    applyFightingStyleToAttack(attack, fightingStyleId, {
+      otherWeaponEquipped: equippedWeaponCount > 1,
+    }),
+  );
+
   const unarmedAttack = getUnarmedStrikeAttack({
     abilityScores: derived.finalAbilityScores,
     proficiencyBonus: derived.proficiencyBonus,
@@ -417,7 +434,7 @@ const CharacterSheet = () => {
 
    */
 
-  const attacks = [unarmedAttack, ...weaponAttacks, ...specialAttacks];
+  const attacks = [unarmedAttack, ...styledWeaponAttacks, ...specialAttacks];
 
   const derivedDefenses = derived.resistances.map(
     (resistance) => `${formatLabel(resistance)} Resistance`,
@@ -494,7 +511,7 @@ const CharacterSheet = () => {
   const characterReactions = collectedFeatureActions.reactions;
 
   const twoWeaponCombatActions = getTwoWeaponCombatActions({
-    attacks: weaponAttacks,
+    attacks: styledWeaponAttacks,
 
     abilityScores: derived.finalAbilityScores,
 
@@ -662,12 +679,22 @@ const CharacterSheet = () => {
       {derived.traitGroups.length > 0 ? (
         <div className="grid gap-2 lg:grid-cols-2 lg:items-start">
           {derived.traitGroups.map((group) => (
-            <TraitGroupSection
-              key={group.key}
-              group={group}
-              isOpen={openTraitGroups[group.key]}
-              onToggle={() => toggleTraitGroup(group.key)}
-            />
+            <div key={group.key} className="min-w-0">
+              <TraitGroupSection
+                group={group}
+                isOpen={openTraitGroups[group.key]}
+                onToggle={() => toggleTraitGroup(group.key)}
+              />
+              {openTraitGroups[group.key] && characterId &&
+                group.traits.some((trait) =>
+                  trait.id === "fighting-style" ||
+                  trait.name?.trim().toLowerCase() === "fighting style",
+                ) ? (
+                  <div className="rounded-b-xl border border-t-0 border-white/10 bg-zinc-900/30 px-3 pb-3">
+                    <FightingStylePicker characterId={characterId} classId={character.classId} />
+                  </div>
+                ) : null}
+            </div>
           ))}
         </div>
       ) : (
@@ -780,7 +807,7 @@ const CharacterSheet = () => {
             currentHp={derived.currentHp}
             maxHp={derived.maxHp}
             onCurrentHpChange={handleSetCurrentHp}
-            armorClass={derived.armorClass}
+            armorClass={displayedArmorClass}
             initiative={initiativeBonus}
             initiativeSubValue={initiativeBreakdown}
             speed={derived.speed}

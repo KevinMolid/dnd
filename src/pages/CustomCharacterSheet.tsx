@@ -17,6 +17,8 @@ import CharacterFeaturesEditorModal from "../components/character/CharacterFeatu
 
 import OverviewDashboard from "../features/character-sheet/components/OverviewDashboard";
 import WildShapePicker from "../features/character-sheet/components/WildShapePicker";
+import FightingStylePicker from "../features/character-sheet/components/FightingStylePicker";
+import { applyFightingStyleToAttack, isWearingArmorForDefense } from "../features/character-sheet/utils/fightingStyleEffects";
 
 import CharacterSheetWorkspace from "../features/character-sheet/components/CharacterSheetWorkspace";
 
@@ -561,6 +563,8 @@ const CustomCharacterSheet = ({
     Record<string, boolean>
   >({});
 
+  const fightingStyleId = (character as CustomCharacter & { fightingStyleId?: string }).fightingStyleId;
+
   const stats = character.customStats ?? {};
 
   const abilityScores: Record<AbilityKey, number> = {
@@ -592,7 +596,11 @@ const CustomCharacterSheet = ({
     extraModifier: stats.armorClassBonus ?? 0,
   });
 
-  const armorClass = armorClassResult.value;
+  const defenseBonus = fightingStyleId === "defense" &&
+    isWearingArmorForDefense(character.equipment ?? [], (entry) =>
+      resolveItemFromEquipmentEntry(entry, campaignItemsById),
+    ) ? 1 : 0;
+  const armorClass = armorClassResult.value + defenseBonus;
 
   const currentHp = stats.currentHp ?? 0;
 
@@ -900,7 +908,12 @@ const CustomCharacterSheet = ({
 
    */
 
-  const customAttacks = [unarmedAttack, ...weaponAttacks];
+  const styledWeaponAttacks = weaponAttacks.map((attack) =>
+    applyFightingStyleToAttack(attack, fightingStyleId, {
+      otherWeaponEquipped: weaponAttacks.length > 1,
+    }),
+  );
+  const customAttacks = [unarmedAttack, ...styledWeaponAttacks];
   const wildShapeFormKeys =
     (character as CustomCharacter & { wildShapeFormKeys?: string[] })
       .wildShapeFormKeys ?? [];
@@ -1169,7 +1182,7 @@ const CustomCharacterSheet = ({
   const twoWeaponCombatActions = useMemo(
     () =>
       getTwoWeaponCombatActions({
-        attacks: weaponAttacks,
+        attacks: styledWeaponAttacks,
 
         abilityScores,
 
@@ -1328,6 +1341,9 @@ const CustomCharacterSheet = ({
                               No description.
                             </div>
                           )}
+                          {(trait.id === "fighting-style" || trait.name?.trim().toLowerCase() === "fighting style") && characterId ? (
+                            <FightingStylePicker characterId={characterId} className={character.className} />
+                          ) : null}
                         </div>
                       </CustomFeatureTooltip>
                     ))}
