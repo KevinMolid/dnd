@@ -7,8 +7,8 @@ import {
 import {
   collection,
   doc,
-  getDoc,
   getDocs,
+  onSnapshot,
   serverTimestamp,
   updateDoc,
   writeBatch,
@@ -185,134 +185,95 @@ export const useCharacterSheetData = (
     Record<string, CampaignItem>
   >({});
 
-  useEffect(() => {
-    const loadCharacter =
-      async () => {
-        if (
-          !characterId
-        ) {
-          setError(
-            "Missing character ID.",
-          );
+  
+useEffect(() => {
+  if (!characterId) {
+    setCharacter(null);
+    setCampaignItemsById({});
+    setError("Missing character ID.");
+    setLoading(false);
+    return;
+  }
 
-          setLoading(
-            false,
-          );
+  setLoading(true);
+  setError("");
 
-          return;
-        }
+  let active = true;
+  let loadedCampaignId: string | null = null;
 
-        try {
-          setLoading(
-            true,
-          );
+  const unsubscribe = onSnapshot(
+    doc(db, "characters", characterId),
+    (snapshot) => {
+      if (!active) return;
 
-          setError("");
+      if (!snapshot.exists()) {
+        setCharacter(null);
+        setCampaignItemsById({});
+        setError("Character not found.");
+        setLoading(false);
+        return;
+      }
 
-          const snap =
-            await getDoc(
-              doc(
-                db,
-                "characters",
-                characterId,
-              ),
-            );
+      const data = snapshot.data() as CharacterDoc;
 
-          if (
-            !snap.exists()
-          ) {
-            setError(
-              "Character not found.",
-            );
+      // Update all character data in real time.
+      setCharacter(data);
+      setError("");
+      setLoading(false);
 
-            setCharacter(
-              null,
-            );
+      // Only reload campaign items when campaignId changes.
+      const nextCampaignId = data.campaignId ?? "";
 
-            setCampaignItemsById(
-              {},
-            );
+      if (loadedCampaignId === nextCampaignId) return;
 
-            setLoading(
-              false,
-            );
+      loadedCampaignId = nextCampaignId;
 
+      if (!nextCampaignId) {
+        setCampaignItemsById({});
+        return;
+      }
+
+      void getDocs(
+        collection(db, "campaigns", nextCampaignId, "items"),
+      )
+        .then((itemsSnapshot) => {
+          if (!active || loadedCampaignId !== nextCampaignId) {
             return;
           }
 
-          const data =
-            snap.data() as CharacterDoc;
+          const nextItems = Object.fromEntries(
+            itemsSnapshot.docs.map((itemSnapshot) => {
+              const item = {
+                id: itemSnapshot.id,
+                ...itemSnapshot.data(),
+              } as CampaignItem;
 
-          setCharacter(
-            data,
-          );
+              return [item.id, item];
+            }),
+          ) as Record<string, CampaignItem>;
 
-          if (
-            data.campaignId
-          ) {
-            const campaignItemsSnap =
-              await getDocs(
-                collection(
-                  db,
-                  "campaigns",
-                  data.campaignId,
-                  "items",
-                ),
-              );
+          setCampaignItemsById(nextItems);
+        })
+        .catch((error) => {
+          if (!active) return;
+          console.error("Failed to load campaign items:", error);
+        });
+    },
+    (error) => {
+      if (!active) return;
 
-            const nextCampaignItemsById =
-              Object.fromEntries(
-                campaignItemsSnap.docs.map(
-                  (
-                    docSnap,
-                  ) => {
-                    const campaignItem =
-                      {
-                        id:
-                          docSnap.id,
+      console.error("Character sync failed:", error);
+      setError(error.message);
+      setLoading(false);
+    },
+  );
 
-                        ...docSnap.data(),
-                      } as CampaignItem;
+  return () => {
+    active = false;
+    unsubscribe();
+  };
+}, [characterId]);
 
-                    return [
-                      campaignItem.id,
-                      campaignItem,
-                    ];
-                  },
-                ),
-              ) as Record<
-                string,
-                CampaignItem
-              >;
-
-            setCampaignItemsById(
-              nextCampaignItemsById,
-            );
-          } else {
-            setCampaignItemsById(
-              {},
-            );
-          }
-        } catch (
-          err: any
-        ) {
-          console.error(
-            err,
-          );
-
-          setError(
-            err?.message ||
-              "Failed to load character.",
-          );
-        } finally {
-          setLoading(
-            false,
-          );
-        }
-      };
-
-    loadCharacter();
-  }, [characterId]);
 
   const updatePrivateAndPublic = async (
     privateUpdates: Record<string, unknown>,

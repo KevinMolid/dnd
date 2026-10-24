@@ -702,6 +702,7 @@ export default function PartyControlWorkspaceModule({
   /*
    * Custom and guided characters persist HP differently.
    */
+
   const setCharacterHp = async (character: PartyCharacter, nextHp: number) => {
     const maxHp = Math.max(
       1,
@@ -710,17 +711,20 @@ export default function PartyControlWorkspaceModule({
 
     const safeHp = Math.max(0, Math.min(maxHp, Math.floor(nextHp)));
 
-    if (character.buildMode === "custom") {
-      queueCharacterUpdate(character.id, {
-        customStats: {
-          ...(character.customStats ?? {}),
+    try {
+      if (character.buildMode === "custom") {
+        await updateCharacter(character.id, {
+          "customStats.currentHp": safeHp,
           currentHp: safeHp,
-        },
-      });
-      return;
+        });
+      } else {
+        await updateCharacter(character.id, {
+          currentHp: safeHp,
+        });
+      }
+    } catch (error) {
+      console.error("[Party Control] HP save failed:", error);
     }
-
-    queueCharacterUpdate(character.id, { currentHp: safeHp });
   };
 
   const setCharacterInspiration = (
