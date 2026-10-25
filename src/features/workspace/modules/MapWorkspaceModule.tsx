@@ -6,7 +6,10 @@ import { collection, onSnapshot } from "firebase/firestore";
 
 import { db } from "../../../firebase";
 
+import { castMapToGameScreen } from "../../gameScreen/gameScreen";
+import { EMPTY_LIVE, publishPlayerMap, subscribePlayerMap, type PlayerMapLive } from "../../gameScreen/mapLive";
 import MapCanvas, {
+  type FogStroke,
   type MapCanvasHandle,
   type MapNpcMini,
 } from "../../../components/maps/MapCanvas";
@@ -207,6 +210,11 @@ export default function MapWorkspaceModule({
 
   const { selectEntity, setActiveLocation } = useWorkspace();
 
+  const [liveMap, setLiveMap] = useState<PlayerMapLive>(EMPTY_LIVE);
+  const [fogTool, setFogTool] = useState<"none" | "reveal" | "hide">("none");
+  const [fogBrushSize, setFogBrushSize] = useState(5);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const [casting, setCasting] = useState(false);
   const [hoveredRoomId, setHoveredRoomId] = useState<number | null>(null);
 
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -315,6 +323,38 @@ export default function MapWorkspaceModule({
 
     return maps[0];
   }, [maps, module.config?.mapId]);
+
+  useEffect(() => {
+    if (!selectedMap) { setLiveMap(EMPTY_LIVE); return; }
+    setLiveMap(EMPTY_LIVE);
+    return subscribePlayerMap(campaignId, selectedMap.id, setLiveMap,
+      error => setLiveError(error.message));
+  }, [campaignId, selectedMap?.id]);
+
+  const writeLive = async (state: PlayerMapLive) => {
+    if (!selectedMap) return;
+    setLiveMap(state);
+    try { await publishPlayerMap(campaignId, selectedMap.id, state); setLiveError(null); }
+    catch (error) { setLiveError(error instanceof Error ? error.message : "Failed to publish map"); }
+  };
+
+  const addFogStrokes = (strokes: FogStroke[]) => {
+    void writeLive({ ...liveMap, fogEnabled: true, fogStrokes: [...liveMap.fogStrokes, ...strokes] });
+  };
+
+  const castCurrentMap = async () => {
+    if (!selectedMap) return;
+    setCasting(true);
+    try {
+      await publishPlayerMap(campaignId, selectedMap.id, {
+        ...liveMap, minis: currentNpcMinis.filter(mini => !mini.hidden),
+      });
+      await castMapToGameScreen(campaignId, selectedMap.id);
+      setLiveError(null);
+    }
+    catch (error) { setLiveError(error instanceof Error ? error.message : "Could not cast map"); }
+    finally { setCasting(false); }
+  };
 
   const hierarchicalMaps = useMemo(() => {
     const mapsByParent = new Map<string | null, typeof maps>();
@@ -831,6 +871,14 @@ export default function MapWorkspaceModule({
       return;
     }
 
+    const nextVisibleMinis = nextPlacements.flatMap((placement): MapNpcMini[] => {
+      const npc = npcsById.get(placement.npcId);
+      if (!npc || placement.hidden || typeof placement.x !== "number" || typeof placement.y !== "number") return [];
+      return [{ npcId: npc.id, name: npc.name, imageUrl: npc.imageUrl,
+        imageCropX: npc.imageCropX, imageCropY: npc.imageCropY,
+        x: placement.x, y: placement.y, size: placement.miniSize }];
+    });
+
     setNpcPlacementError(null);
 
     if (selectedRoom) {
@@ -853,6 +901,7 @@ export default function MapWorkspaceModule({
         await updateCampaignMap(campaignId, selectedMap.id, {
           rooms: nextRooms,
         });
+        await writeLive({ ...liveMap, minis: nextVisibleMinis });
       } catch (error) {
         console.error("Failed to save NPC mini placement:", error);
         setRoomStates(previousRooms);
@@ -873,6 +922,7 @@ export default function MapWorkspaceModule({
       await updateCampaignMap(campaignId, selectedMap.id, {
         npcPlacements: nextPlacements,
       });
+      await writeLive({ ...liveMap, minis: nextVisibleMinis });
     } catch (error) {
       console.error("Failed to save overview NPC mini placement:", error);
       setOverviewNpcPlacements(previousPlacements);
@@ -1381,6 +1431,10 @@ export default function MapWorkspaceModule({
           </>
         ) : null}
 
+        <button type="button" onClick={castCurrentMap} disabled={casting}
+          title="Cast selected map to Game Screen" className="workspace-no-drag flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-cyan-400/30 bg-cyan-400/10 px-2 text-[10px] font-semibold text-cyan-100 hover:bg-cyan-400/20 disabled:opacity-50">
+          <i className="fa-solid fa-display" /> {casting ? "Casting…" : "Cast"}
+        </button>
         {/* Map settings */}
         <button
           type="button"
@@ -1462,6 +1516,30 @@ export default function MapWorkspaceModule({
                   Display
                 </div>
 
+                <div className="mb-3 space-y-2 rounded-lg border border-white/10 p-2.5">
+                  <label className="flex items-center gap-2 text-xs text-zinc-200">
+                    <input type="checkbox" className="accent-emerald-500"
+                      checked={liveMap.fogEnabled}
+                      onChange={event => void writeLive({ ...liveMap, fogEnabled: event.target.checked })} />
+                    Fog of War (starts fully hidden)
+                  </label>
+                  <div className="flex flex-wrap items-center gap-1">
+                    {(["none", "reveal", "hide"] as const).map(tool => (
+                      <button key={tool} type="button" onClick={() => { setFogTool(tool); setSettingsOpen(false); }}
+                        className={`rounded border px-2 py-1.5 text-[10px] ${fogTool === tool ? "border-emerald-400 bg-emerald-500/15 text-emerald-200" : "border-white/10 text-zinc-300"}`}>
+                        {tool === "none" ? "Move minis" : tool === "reveal" ? "Reveal" : "Hide"}
+                      </button>
+                    ))}
+                  </div>
+                  <label className="flex items-center gap-2 text-[10px] text-zinc-400">
+                    Brush radius
+                    <input type="range" min={1} max={15} value={fogBrushSize} onChange={e => setFogBrushSize(Number(e.target.value))} />
+                    {fogBrushSize}%
+                  </label>
+                  <button type="button" onClick={() => void writeLive({ ...liveMap, fogStrokes: [] })}
+                    className="rounded border border-white/10 px-2 py-1 text-[10px] text-zinc-300">Reset fog</button>
+                  {liveError && <div role="alert" className="text-[10px] text-rose-300">{liveError}</div>}
+                </div>
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     ["showAreaNumbers", "Area numbers", showAreaNumbers],
@@ -1854,6 +1932,11 @@ export default function MapWorkspaceModule({
               showEnvironmentLabels={showEnvironmentLabels}
               showAreaBoundaries={showAreaBoundaries}
               npcMinis={currentNpcMinis}
+              fogEnabled={liveMap.fogEnabled}
+              fogStrokes={liveMap.fogStrokes}
+              fogTool={fogTool}
+              fogBrushSize={fogBrushSize}
+              onFogStrokes={addFogStrokes}
               showNpcMinis={showNpcMinis}
               placingNpcId={placingNpcId}
               onPlaceNpcMini={placeNpcMini}
@@ -2077,6 +2160,17 @@ export default function MapWorkspaceModule({
                                       : "fa-location-dot"
                                   } text-[10px]`}
                                 />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => void saveCurrentNpcPlacements(
+                                  currentNpcPlacements.map(item => item.npcId === placement.npcId
+                                    ? { ...item, hidden: !item.hidden } : item))}
+                                disabled={isNpcPlacementSaving}
+                                title={placement.hidden ? "Show mini on Game Screen" : "Hide mini from Game Screen"}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10">
+                                <i className={`fa-solid ${placement.hidden ? "fa-eye-slash" : "fa-eye"} text-[10px]`} />
                               </button>
 
                               {hasMini ? (
@@ -2451,6 +2545,17 @@ export default function MapWorkspaceModule({
                                       : "fa-location-dot"
                                   } text-[10px]`}
                                 />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => void saveCurrentNpcPlacements(
+                                  currentNpcPlacements.map(item => item.npcId === placement.npcId
+                                    ? { ...item, hidden: !item.hidden } : item))}
+                                disabled={isNpcPlacementSaving}
+                                title={placement.hidden ? "Show mini on Game Screen" : "Hide mini from Game Screen"}
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/5 text-zinc-400 hover:bg-white/10">
+                                <i className={`fa-solid ${placement.hidden ? "fa-eye-slash" : "fa-eye"} text-[10px]`} />
                               </button>
 
                               {hasMini ? (

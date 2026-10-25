@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -12,6 +13,8 @@ import {
 } from "react";
 
 import type { CampaignMap, CampaignMapRoom } from "../../features/maps/types";
+
+export type FogStroke = { x: number; y: number; radius: number; mode: "reveal" | "hide" };
 
 export type MapCanvasHandle = {
   fitToViewport: () => void;
@@ -58,6 +61,12 @@ type MapCanvasProps = {
   onMoveNpcMini?: (npcId: string, x: number, y: number) => void;
   onSelectNpcMini?: (npcId: string) => void;
 
+  fogEnabled?: boolean;
+  fogStrokes?: FogStroke[];
+  fogTool?: "none" | "reveal" | "hide";
+  fogBrushSize?: number;
+  onFogStrokes?: (strokes: FogStroke[]) => void;
+  playerView?: boolean;
   className?: string;
 };
 
@@ -149,11 +158,18 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
 
       onSelectNpcMini,
 
+      fogEnabled = false,
+      fogStrokes = [],
+      fogTool = "none",
+      fogBrushSize = 5,
+      onFogStrokes,
+      playerView = false,
       className = "",
     },
 
     ref,
   ) => {
+    const fogMaskId = useId().replace(/:/g, "_");
     const viewportRef = useRef<HTMLDivElement | null>(null);
 
     const imageRef = useRef<HTMLImageElement | null>(null);
@@ -167,6 +183,8 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
       y: number;
     } | null>(null);
 
+    const fogDrawingRef = useRef<FogStroke[]>([]);
+    const [pendingFogStrokes, setPendingFogStrokes] = useState<FogStroke[]>([]);
     const [draggingMiniId, setDraggingMiniId] = useState<string | null>(null);
 
     const [imageSize, setImageSize] = useState<ImageSize | null>(null);
@@ -451,7 +469,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
       event: ReactPointerEvent<HTMLButtonElement>,
       mini: MapNpcMini,
     ) => {
-      if (!onMoveNpcMini) {
+      if (playerView || !onMoveNpcMini) {
         return;
       }
 
@@ -568,7 +586,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
                   viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
                   preserveAspectRatio="none"
                 >
-                  {displayedRooms.map((room) => {
+                  {(playerView ? [] : displayedRooms).map((room) => {
                     if (!room.markers || room.markers.length < 3) {
                       return null;
                     }
@@ -619,7 +637,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
 
                 {/* Selected-area spotlight */}
 
-                {selectedPolygonPoints ? (
+                {!playerView && selectedPolygonPoints ? (
                   <svg
                     className="pointer-events-none absolute inset-0 h-full w-full"
                     viewBox={`0 0 ${imageSize.width} ${imageSize.height}`}
@@ -667,7 +685,7 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
 
                 {/* Area pins */}
 
-                {displayedRooms.map((room) => {
+                {(playerView ? [] : displayedRooms).map((room) => {
                   if (!room.markers || room.markers.length < 3) {
                     return null;
                   }
@@ -754,9 +772,62 @@ const MapCanvas = forwardRef<MapCanvasHandle, MapCanvasProps>(
                   );
                 })}
 
+                {/* Fog overlay. White in the mask is covered; black reveals the map. */}
+                {fogEnabled && (
+                  <svg className={`pointer-events-none absolute inset-0 ${playerView ? "z-30" : "z-10"} h-full w-full`}
+                    viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <defs>
+                      <mask id={fogMaskId} maskContentUnits="userSpaceOnUse">
+                        <rect width="100" height="100" fill="white" />
+                        {[...fogStrokes, ...pendingFogStrokes].map((stroke, index) => (
+                          <circle key={index} cx={stroke.x} cy={stroke.y}
+                            r={stroke.radius} fill={stroke.mode === "reveal" ? "black" : "white"} />
+                        ))}
+                      </mask>
+                    </defs>
+                    <rect width="100" height="100" fill="rgba(0,0,0,0.98)" mask={`url(#${fogMaskId})`} />
+                  </svg>
+                )}
+                {!playerView && fogTool !== "none" && (
+                  <div data-map-interactive className="absolute inset-0 z-40 cursor-crosshair touch-none"
+                    onPointerDown={(event) => {
+                      event.stopPropagation();
+                      event.currentTarget.setPointerCapture(event.pointerId);
+                      const point = getImagePercentFromClientPoint(event.clientX, event.clientY);
+                      if (point) {
+                        fogDrawingRef.current = [{ ...point, radius: fogBrushSize, mode: fogTool }];
+                        setPendingFogStrokes([...fogDrawingRef.current]);
+                      }
+                    }}
+                    onPointerMove={(event) => {
+                      if (fogDrawingRef.current.length === 0) return;
+                      const point = getImagePercentFromClientPoint(event.clientX, event.clientY);
+                      if (!point) return;
+                      const prior = fogDrawingRef.current[fogDrawingRef.current.length - 1];
+                      const dist = Math.hypot(point.x - prior.x, point.y - prior.y);
+                      const steps = Math.min(100, Math.ceil(dist / Math.max(0.5, fogBrushSize / 3)));
+                      for (let i = 1; i <= steps; i++) {
+                        fogDrawingRef.current.push({ x: prior.x + (point.x - prior.x) * i / steps,
+                          y: prior.y + (point.y - prior.y) * i / steps,
+                          radius: fogBrushSize, mode: fogTool });
+                      }
+                      setPendingFogStrokes([...fogDrawingRef.current]);
+                    }}
+                    onPointerUp={(event) => {
+                      if (!fogDrawingRef.current.length) return;
+                      const strokes = fogDrawingRef.current;
+                      fogDrawingRef.current = [];
+                      onFogStrokes?.(strokes);
+                      setPendingFogStrokes([]);
+                      if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+                    }}
+                    onPointerCancel={() => { fogDrawingRef.current = []; setPendingFogStrokes([]); }}
+                  />
+                )}
+
                 {/* NPC minis */}
                 {showNpcMinis
-                  ? npcMinis.map((mini) => {
+                  ? npcMinis.filter((mini) => !playerView || !mini.hidden).map((mini) => {
                       const size = Math.max(28, Math.min(72, mini.size ?? 42));
                       const isDragging = draggingMiniId === mini.npcId;
 

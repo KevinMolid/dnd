@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
+import MapCanvas from "../components/maps/MapCanvas";
+import { EMPTY_LIVE, subscribePlayerMap, type PlayerMapLive } from "../features/gameScreen/mapLive";
 import { useParams } from "react-router-dom";
 import { useCampaignMaps } from "../features/maps/useCampaignMaps";
 import {
@@ -11,6 +13,7 @@ const BLANK: GameScreenState = { type: "blank", mapId: null };
 /** TV/projector-facing view: deliberately no campaign layout, sidebar, or DM notes. */
 export default function GameScreen() {
   const { campaignId } = useParams<{ campaignId: string }>();
+  const [live, setLive] = useState<PlayerMapLive>(EMPTY_LIVE);
   const [screen, setScreen] = useState<GameScreenState>(BLANK);
   const [status, setStatus] = useState<"connecting" | "connected" | "error">("connecting");
   const { maps } = useCampaignMaps(campaignId ?? "");
@@ -31,6 +34,15 @@ export default function GameScreen() {
     );
   }, [campaignId]);
 
+  useEffect(() => {
+    if (!campaignId || screen.type !== "map" || !screen.mapId) { setLive(EMPTY_LIVE); return; }
+    setLive(EMPTY_LIVE);
+    return subscribePlayerMap(campaignId, screen.mapId, setLive, error => {
+      console.error("Live map subscription failed", error);
+      setStatus("error");
+    });
+  }, [campaignId, screen.type, screen.mapId]);
+
   const map = useMemo(
     () => maps.find((candidate) => candidate.id === screen.mapId),
     [maps, screen.mapId],
@@ -41,13 +53,12 @@ export default function GameScreen() {
       {status === "error" ? (
         <p className="p-6 text-center text-sm text-red-300">Unable to connect to Game Screen. Check your permissions and connection.</p>
       ) : screen.type === "map" && map?.imageUrl ? (
-        <img
-          key={`${map.id}:${map.imageUrl}`}
-          src={map.imageUrl}
-          alt={map.title ?? "Game map"}
-          draggable={false}
-          className="h-full w-full select-none object-contain"
-        />
+        <MapCanvas key={map.id} map={map} rooms={[]}
+          npcMinis={live.minis} showNpcMinis
+          fogEnabled={live.fogEnabled} fogStrokes={live.fogStrokes}
+          playerView showAreaNumbers={false} showAreaNames={false}
+          showEnvironmentLabels={false} showAreaBoundaries={false}
+          className="h-full w-full" />
       ) : screen.type === "map" ? (
         <p className="text-sm text-zinc-500">Loading map…</p>
       ) : status === "connecting" ? (
