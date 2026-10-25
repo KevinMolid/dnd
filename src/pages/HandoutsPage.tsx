@@ -3,15 +3,25 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 
 import {
+
   collection,
+
   deleteDoc,
+
   doc,
+
   getDoc,
+
   onSnapshot,
+
   orderBy,
+
   query,
+
   Timestamp,
+
   where,
+
 } from "firebase/firestore";
 
 import { db } from "../firebase";
@@ -23,63 +33,96 @@ import CreateHandoutModal from "../components/CreateHandoutModal";
 import type { CampaignMemberDoc } from "../types/campaign";
 
 import type { CampaignHandoutDoc } from "../types/handouts";
+
 import RichTextContent from "../features/richText/RichTextContent";
+import { castHandoutImageToGameScreen } from "../features/gameScreen/gameScreen";
 
 type HandoutWithId = CampaignHandoutDoc & {
+
   id: string;
+
 };
 
 type MemberWithUid = CampaignMemberDoc & {
+
   uid: string;
+
 };
 
 function formatDate(value: Timestamp | null | undefined) {
+
   if (!value) return "Unknown date";
 
   try {
+
     return value.toDate().toLocaleString();
+
   } catch {
+
     return "Unknown date";
+
   }
+
 }
 
 function canPlayerSeeHandout(handout: CampaignHandoutDoc, uid: string) {
+
   if (handout.visibility === "allPlayers") return true;
 
   if (handout.visibility === "selectedPlayers") {
+
     return (handout.visibleToPlayerUids ?? []).includes(uid);
+
   }
 
   return false;
+
 }
 
 function getHandoutPreview(value: string) {
+
   return value
+
     .replace(/<br\s*\/?>/gi, " ")
+
     .replace(/<[^>]+>/g, " ")
+
     .replace(/&nbsp;|&#160;/gi, " ")
+
     .replace(/&amp;/gi, "&")
+
     .replace(/&lt;/gi, "<")
+
     .replace(/&gt;/gi, ">")
+
     .replace(/&quot;/gi, '"')
+
     .replace(/&#039;|&#39;/gi, "'")
+
     .replace(/\s+/g, " ")
+
     .trim();
+
 }
 
 function getVisibilityLabel(handout: CampaignHandoutDoc) {
+
   if (handout.visibility === "allPlayers") return "Visible to all";
 
   if (handout.visibility === "selectedPlayers") {
+
     const count = handout.visibleToPlayerUids?.length ?? 0;
 
     return `Visible to ${count} ${count === 1 ? "player" : "players"}`;
+
   }
 
   return "Hidden";
+
 }
 
 export default function HandoutsPage() {
+
   const { user } = useAuth();
 
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -93,7 +136,9 @@ export default function HandoutsPage() {
   const [loadingHandouts, setLoadingHandouts] = useState(true);
 
   const [selectedHandoutId, setSelectedHandoutId] = useState<string | null>(
+
     null,
+
   );
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -103,12 +148,17 @@ export default function HandoutsPage() {
   const [deleting, setDeleting] = useState(false);
 
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [castingImage, setCastingImage] = useState(false);
+  const [castError, setCastError] = useState<string | null>(null);
 
   useEffect(() => {
+
     if (!user || !campaignId) {
+
       setMembership(null);
 
       return;
+
     }
 
     const safeCampaignId = campaignId;
@@ -116,8 +166,11 @@ export default function HandoutsPage() {
     let cancelled = false;
 
     const loadMembership = async () => {
+
       try {
+
         const memberRef = doc(
+
           db,
 
           "campaigns",
@@ -127,6 +180,7 @@ export default function HandoutsPage() {
           "members",
 
           user.uid,
+
         );
 
         const memberSnap = await getDoc(memberRef);
@@ -134,29 +188,43 @@ export default function HandoutsPage() {
         if (cancelled) return;
 
         setMembership(
+
           memberSnap.exists() ? (memberSnap.data() as CampaignMemberDoc) : null,
+
         );
+
       } catch (error) {
+
         console.error("Failed to load campaign membership:", error);
 
         if (!cancelled) {
+
           setMembership(null);
+
         }
+
       }
+
     };
 
     void loadMembership();
 
     return () => {
+
       cancelled = true;
+
     };
+
   }, [campaignId, user]);
 
   useEffect(() => {
+
     if (!campaignId || !user) {
+
       setMembers([]);
 
       return;
+
     }
 
     const safeCampaignId = campaignId;
@@ -164,35 +232,47 @@ export default function HandoutsPage() {
     const membersRef = collection(db, "campaigns", safeCampaignId, "members");
 
     const unsub = onSnapshot(
+
       membersRef,
 
       (snapshot) => {
+
         const next = snapshot.docs.map((docSnap) => ({
+
           ...(docSnap.data() as CampaignMemberDoc),
 
           uid: docSnap.id,
+
         }));
 
         setMembers(next);
+
       },
 
       (error) => {
+
         console.error("Failed to load campaign members:", error);
 
         setMembers([]);
+
       },
+
     );
 
     return () => unsub();
+
   }, [campaignId, user]);
 
   useEffect(() => {
+
     if (!user || !campaignId || !membership) {
+
       setHandouts([]);
 
       setLoadingHandouts(false);
 
       return;
+
     }
 
     const safeCampaignId = campaignId;
@@ -202,44 +282,57 @@ export default function HandoutsPage() {
     setLoadingHandouts(true);
 
     if (membership.role === "gm" || membership.role === "co-gm") {
+
       const q = query(handoutsRef, orderBy("createdAt", "desc"));
 
       const unsub = onSnapshot(
+
         q,
 
         (snapshot) => {
+
           const next: HandoutWithId[] = snapshot.docs.map((docSnap) => ({
+
             id: docSnap.id,
 
             ...(docSnap.data() as CampaignHandoutDoc),
+
           }));
 
           setHandouts(next);
 
           setLoadingHandouts(false);
+
         },
 
         (error) => {
+
           console.error("Failed to load handouts:", error);
 
           setHandouts([]);
 
           setLoadingHandouts(false);
+
         },
+
       );
 
       return () => unsub();
+
     }
 
     const visibleToAllQuery = query(
+
       handoutsRef,
 
       where("visibility", "==", "allPlayers"),
 
       orderBy("createdAt", "desc"),
+
     );
 
     const visibleToSelectedQuery = query(
+
       handoutsRef,
 
       where("visibility", "==", "selectedPlayers"),
@@ -247,6 +340,7 @@ export default function HandoutsPage() {
       where("visibleToPlayerUids", "array-contains", user.uid),
 
       orderBy("createdAt", "desc"),
+
     );
 
     let allPlayersDocs: HandoutWithId[] = [];
@@ -256,370 +350,620 @@ export default function HandoutsPage() {
     let finishedCount = 0;
 
     const syncMerged = () => {
+
       const mergedMap = new Map<string, HandoutWithId>();
 
       [...allPlayersDocs, ...selectedPlayerDocs].forEach((handout) => {
+
         mergedMap.set(handout.id, handout);
+
       });
 
       const merged = Array.from(mergedMap.values()).sort((a, b) => {
+
         const aTime = a.createdAt?.toMillis?.() ?? 0;
 
         const bTime = b.createdAt?.toMillis?.() ?? 0;
 
         return bTime - aTime;
+
       });
 
       setHandouts(merged);
 
       setLoadingHandouts(false);
+
     };
 
     const handleInitialLoad = () => {
+
       finishedCount += 1;
 
       if (finishedCount >= 2) {
+
         syncMerged();
+
       }
+
     };
 
     const unsubAll = onSnapshot(
+
       visibleToAllQuery,
 
       (snapshot) => {
+
         allPlayersDocs = snapshot.docs.map((docSnap) => ({
+
           id: docSnap.id,
 
           ...(docSnap.data() as CampaignHandoutDoc),
+
         }));
 
         handleInitialLoad();
 
         if (finishedCount >= 2) {
+
           syncMerged();
+
         }
+
       },
 
       (error) => {
+
         console.error("Failed to load public handouts:", error);
 
         allPlayersDocs = [];
 
         handleInitialLoad();
+
       },
+
     );
 
     const unsubSelected = onSnapshot(
+
       visibleToSelectedQuery,
 
       (snapshot) => {
+
         selectedPlayerDocs = snapshot.docs.map((docSnap) => ({
+
           id: docSnap.id,
 
           ...(docSnap.data() as CampaignHandoutDoc),
+
         }));
 
         handleInitialLoad();
 
         if (finishedCount >= 2) {
+
           syncMerged();
+
         }
+
       },
 
       (error) => {
+
         console.error("Failed to load selected handouts:", error);
 
         selectedPlayerDocs = [];
 
         handleInitialLoad();
+
       },
+
     );
 
     return () => {
+
       unsubAll();
 
       unsubSelected();
+
     };
+
   }, [campaignId, user, membership]);
 
   const isGm = membership?.role === "gm" || membership?.role === "co-gm";
 
   const playerMembers = useMemo(
+
     () =>
+
       members
 
         .filter((member) => member.role === "player")
 
         .map((member) => ({
+
           uid: member.uid,
 
           displayName:
+
             member.displayName?.trim() ||
+
             member.email?.trim() ||
+
             "Unnamed player",
+
         })),
 
     [members],
+
   );
 
   const visibleHandouts = useMemo(() => {
+
     if (!user) return [];
 
     if (isGm) return handouts;
 
     return handouts.filter((handout) => canPlayerSeeHandout(handout, user.uid));
+
   }, [handouts, isGm, user]);
 
   const selectedHandout = useMemo(
+
     () => visibleHandouts.find((item) => item.id === selectedHandoutId) ?? null,
 
     [visibleHandouts, selectedHandoutId],
+
   );
 
   useEffect(() => {
+
     setSelectedHandoutId((current) => {
+
       if (current && visibleHandouts.some((item) => item.id === current)) {
+
         return current;
+
       }
 
       return visibleHandouts[0]?.id ?? null;
+
     });
+
   }, [visibleHandouts]);
 
   useEffect(() => {
+
     setLightboxOpen(false);
+
   }, [selectedHandoutId]);
 
   if (!campaignId) {
+
     return (
+
       <div className="p-6 text-white">
+
         <p>Missing campaign ID.</p>
+
       </div>
+
     );
+
+  }
+
+  async function handleCastHandoutImage() {
+    if (!isGm || !campaignId || !selectedHandout?.imageUrl || castingImage) return;
+    setCastingImage(true);
+    setCastError(null);
+    try {
+      await castHandoutImageToGameScreen(campaignId, selectedHandout.imageUrl);
+    } catch (error) {
+      console.error("Failed to cast handout image:", error);
+      setCastError("Unable to cast image to Game Screen.");
+    } finally {
+      setCastingImage(false);
+    }
   }
 
   async function handleDeleteHandout() {
+
     if (!selectedHandout || deleting || !campaignId) return;
 
     const safeCampaignId = campaignId;
 
     const confirmed = window.confirm(
+
       `Delete "${selectedHandout.title}"? This cannot be undone.`,
+
     );
 
     if (!confirmed) return;
 
     try {
+
       setDeleting(true);
 
       await deleteDoc(
+
         doc(db, "campaigns", safeCampaignId, "handouts", selectedHandout.id),
+
       );
+
     } catch (error) {
+
       console.error("Failed to delete handout:", error);
 
       window.alert("Failed to delete handout.");
+
     } finally {
+
       setDeleting(false);
+
     }
+
   }
 
   return (
+
     <>
+
       <div>
+
         <div className="mb-3 flex items-center justify-between gap-3">
+
           <h2 className="text-base font-semibold text-white">Handouts</h2>
 
           {isGm ? (
+
             <button
+
               type="button"
+
               onClick={() => setCreateOpen(true)}
+
               className="rounded-md border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[10px] font-semibold text-zinc-200 transition hover:bg-white/[0.09] hover:text-white"
+
             >
+
               Create handout
+
             </button>
+
           ) : null}
+
         </div>
 
         <div className="grid gap-3 lg:grid-cols-[300px_minmax(0,1fr)]">
+
           <aside className="rounded-xl border border-white/10 bg-zinc-900/35">
+
             <div className="border-b border-white/10 px-4 py-3">
+
               <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-300">
+
                 Handouts
+
               </h2>
+
             </div>
 
             <div className="overflow-y-auto p-2">
+
               {loadingHandouts ? (
+
                 <div className="px-3 py-4 text-sm text-zinc-400">
+
                   Loading handouts...
+
                 </div>
+
               ) : visibleHandouts.length === 0 ? (
+
                 <div className="px-3 py-4 text-sm text-zinc-400">
+
                   {isGm
+
                     ? "No handouts yet."
+
                     : "No handouts have been revealed to you yet."}
+
                 </div>
+
               ) : (
+
                 visibleHandouts.map((handout) => {
+
                   const selected = handout.id === selectedHandoutId;
 
                   return (
+
                     <button
+
                       key={handout.id}
+
                       type="button"
+
                       onClick={() => setSelectedHandoutId(handout.id)}
+
                       className={`mb-2 w-full rounded-xl border text-left transition ${
+
                         selected
+
                           ? "border-gray-300/30 bg-gray-500/20"
+
                           : "border-transparent hover:border-white/10 hover:bg-white/5"
+
                       }`}
+
                     >
+
                       <div className="flex items-center gap-2.5 px-2.5 py-2">
+
                         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
+
                           {handout.imageUrl ? (
+
                             <img
+
                               src={handout.imageUrl}
+
                               alt={handout.title}
+
                               className="h-full w-full object-cover"
+
                             />
+
                           ) : (
+
                             <div className="h-10 w-10 rounded-lg bg-zinc-800"></div>
+
                           )}
+
                         </div>
 
                         <div className="min-w-0 flex-1">
+
                           <div className="truncate text-sm font-semibold text-white">
+
                             {handout.title}
+
                           </div>
 
                           <div className="mt-1 line-clamp-1 text-xs text-zinc-400">
+
                             {getHandoutPreview(handout.content)}
+
                           </div>
 
                           {isGm ? (
+
                             <div className="mt-1 text-[11px] text-zinc-500">
+
                               {getVisibilityLabel(handout)}
+
                             </div>
+
                           ) : null}
+
                         </div>
+
                       </div>
+
                     </button>
+
                   );
+
                 })
+
               )}
+
             </div>
+
           </aside>
 
           <main className="rounded-xl border border-white/10 bg-zinc-900/35">
+
             {!selectedHandout ? (
+
               <div className="flex min-h-[400px] items-center justify-center p-8 text-center text-zinc-400">
+
                 <div>
+
                   <p className="text-lg font-medium text-zinc-200">
+
                     No handout selected
+
                   </p>
 
                   <p className="mt-2 text-sm">
+
                     {isGm
+
                       ? "Create a handout to get started."
+
                       : "No visible handouts yet."}
+
                   </p>
+
                 </div>
+
               </div>
+
             ) : (
+
               <div className="p-6">
+
                 <div className="mb-4 border-b border-white/10 pb-4">
+
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+
                     <div>
+
                       <h2 className="text-2xl font-bold">
+
                         {selectedHandout.title}
+
                       </h2>
 
                       <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-zinc-400">
+
                         <span>Created by: {selectedHandout.createdByName}</span>
 
                         <span>
+
                           Created: {formatDate(selectedHandout.createdAt)}
+
                         </span>
 
                         <span>
+
                           Updated: {formatDate(selectedHandout.updatedAt)}
+
                         </span>
+
                       </div>
 
                       {isGm ? (
+
                         <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
+
                           {getVisibilityLabel(selectedHandout)}
+
                         </div>
+
                       ) : null}
+
                     </div>
 
                     {isGm ? (
-                      <div className="flex gap-2">
+
+                      <div className="flex flex-wrap gap-2">
+              {selectedHandout.imageUrl ? (
+                <button type="button" onClick={handleCastHandoutImage}
+                  disabled={castingImage}
+                  className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-sm font-medium text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-50">
+                  <i className="fa-solid fa-tower-broadcast mr-2" />
+                  {castingImage ? "Casting..." : "Cast Image"}
+                </button>
+              ) : null}
+
                         <button
+
                           type="button"
+
                           onClick={() => setEditOpen(true)}
+
                           className="rounded-xl border border-white/10 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-white/5"
+
                         >
+
                           Edit
+
                         </button>
 
                         <button
+
                           type="button"
+
                           onClick={handleDeleteHandout}
+
                           disabled={deleting}
+
                           className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-300 hover:bg-red-500/20 disabled:opacity-50"
+
                         >
+
                           {deleting ? "Deleting..." : "Delete"}
+
                         </button>
+
                       </div>
+
                     ) : null}
+
                   </div>
+
                 </div>
 
+                {castError ? <p role="alert" className="mb-3 text-sm text-red-300">{castError}</p> : null}
                 <div className="mb-4 break-words text-sm leading-7 text-zinc-200">
+
                   <RichTextContent value={selectedHandout.content} />
+
                 </div>
 
                 {selectedHandout.imageUrl ? (
+
                   <div className="mb-6">
+
                     <button
+
                       type="button"
+
                       onClick={() => setLightboxOpen(true)}
+
                       className="group block overflow-hidden rounded-2xl border border-white/10 bg-zinc-800"
+
                     >
+
                       <img
+
                         src={selectedHandout.imageUrl}
+
                         alt={selectedHandout.title}
+
                         className="max-h-[340px] w-full object-contain transition group-hover:scale-[1.01]"
+
                       />
 
                       <div className="border-t border-white/10 px-4 py-2 text-left text-xs text-zinc-400">
+
                         Click image to enlarge
+
                       </div>
+
                     </button>
+
                   </div>
+
                 ) : null}
+
               </div>
+
             )}
+
           </main>
+
         </div>
 
         <CreateHandoutModal
+
           campaignId={campaignId}
+
           open={createOpen}
+
           onClose={() => setCreateOpen(false)}
+
           players={playerMembers}
+
         />
 
         <CreateHandoutModal
+
           campaignId={campaignId}
+
           open={editOpen}
+
           onClose={() => setEditOpen(false)}
+
           players={playerMembers}
+
           editingHandout={
+
             selectedHandout
+
               ? {
+
                   id: selectedHandout.id,
 
                   title: selectedHandout.title,
@@ -631,38 +975,69 @@ export default function HandoutsPage() {
                   visibility: selectedHandout.visibility,
 
                   visibleToPlayerUids:
+
                     selectedHandout.visibleToPlayerUids ?? [],
+
                 }
+
               : null
+
           }
+
         />
+
       </div>
 
       {lightboxOpen && selectedHandout?.imageUrl ? (
+
         <div
+
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4"
+
           onClick={() => setLightboxOpen(false)}
+
         >
+
           <div
+
             className="relative max-h-full max-w-6xl"
+
             onClick={(e) => e.stopPropagation()}
+
           >
+
             <button
+
               type="button"
+
               onClick={() => setLightboxOpen(false)}
+
               className="absolute right-3 top-3 z-10 rounded-lg bg-black/60 px-3 py-2 text-sm font-medium text-white hover:bg-black/80"
+
             >
+
               Close
+
             </button>
 
             <img
+
               src={selectedHandout.imageUrl}
+
               alt={selectedHandout.title}
+
               className="max-h-[90vh] max-w-full rounded-2xl object-contain shadow-2xl"
+
             />
+
           </div>
+
         </div>
+
       ) : null}
+
     </>
+
   );
+
 }

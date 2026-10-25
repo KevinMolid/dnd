@@ -2,6 +2,7 @@ import { doc, getFirestore, onSnapshot, serverTimestamp, setDoc, type Unsubscrib
 
 export type GameScreenState =
   | { type: "blank"; mapId: null }
+  | { type: "handout"; mapId: null; imageUrl: string }
   | { type: "map"; mapId: string }
   | {
       type: "npc";
@@ -35,6 +36,8 @@ export function subscribeToGameScreen(
           imageCropX: typeof data.imageCropX === "number" ? data.imageCropX : 50,
           imageCropY: typeof data.imageCropY === "number" ? data.imageCropY : 50,
         });
+      } else if (data?.type === "handout" && typeof data.imageUrl === "string" && data.imageUrl.trim()) {
+        onChange({ type: "handout", mapId: null, imageUrl: data.imageUrl });
       } else {
         onChange({ type: "blank", mapId: null });
       }
@@ -72,6 +75,22 @@ export async function clearGameScreen(campaignId: string): Promise<void> {
   await setDoc(screenRef(campaignId), {
     type: "blank",
     mapId: null,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/** Cast only an image URL. Handout title/content/visibility are not published. */
+export async function castHandoutImageToGameScreen(
+  campaignId: string,
+  imageUrl: string,
+): Promise<void> {
+  if (!campaignId || !imageUrl.trim()) {
+    throw new Error("Campaign and handout image are required");
+  }
+  await setDoc(screenRef(campaignId), {
+    type: "handout",
+    mapId: null,
+    imageUrl: imageUrl.trim(),
     updatedAt: serverTimestamp(),
   });
 }

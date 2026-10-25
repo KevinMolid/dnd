@@ -71,7 +71,19 @@ export default function GameScreen() {
               draggable={false}
             />
           </div>
+          {screen.name ? (
+            <h1 className="shrink-0 text-center text-xl font-semibold tracking-wide text-white sm:text-3xl">
+              {screen.name}
+            </h1>
+          ) : null}
         </div>
+      ) : screen.type === "handout" ? (
+        <img
+          src={screen.imageUrl}
+          alt="Handout"
+          draggable={false}
+          className="block max-h-full max-w-full object-contain"
+        />
       ) : status === "connecting" ? (
         <p className="text-sm text-zinc-500">Connecting…</p>
       ) : null}
