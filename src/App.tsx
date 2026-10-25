@@ -35,6 +35,7 @@ import EditCharacter from "./pages/EditCharacter";
 import DMWorkspacePage from "./pages/DMWorkspacePage";
 import SpellCardPage from "./features/spellCards/SpellCardPage";
 import WildShapeCardPage from "./features/wild-shape/WildShapeCardPage";
+import GameScreen from "./pages/GameScreen";
 
 import CampaignGmOutlet from "./features/campaigns/components/CampaignGmOutlet";
 import SpotifyCallbackPage from "./features/spotify/SpotifyCallbackPage";
@@ -124,6 +125,8 @@ function AppRoutes({ user, openLoginModal, openSignupModal }: AppRoutesProps) {
       <Route path="/characters/:characterId/edit" element={<EditCharacter />} />
       <Route path="/campaigns/new" element={<NewCampaign />} />
       <Route path="/invite/:inviteToken" element={<InvitePage />} />
+
+      <Route path="/campaigns/:campaignId/game-screen" element={<GameScreen />} />
 
       {/* Player-facing campaign shell */}
       <Route path="/campaigns/:campaignId" element={<CampaignLayout />}>

@@ -44,6 +44,9 @@ import RichTextContent from "../features/richText/RichTextContent";
 import { useCampaignMaps } from "../features/maps/useCampaignMaps";
 import useMonsterLibrary from "../hooks/useMonsterLibrary";
 
+import CastMapButton from "../features/gameScreen/CastMapButton";
+import GameScreenControls from "../features/gameScreen/GameScreenControls";
+
 type MapViewerProps = {
 
   campaignId: string;
@@ -1140,6 +1143,9 @@ const MapViewer = ({
             </span>
 
           </div>
+
+          <CastMapButton campaignId={campaignId} mapId={mapData.id} />
+          <GameScreenControls campaignId={campaignId} />
 
           {onEdit ? (
 
