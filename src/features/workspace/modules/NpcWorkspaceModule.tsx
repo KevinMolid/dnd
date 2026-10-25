@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
+import { castNpcToGameScreen } from "../../gameScreen/gameScreen";
 import useNpcLibrary from "../../../hooks/useNpcLibrary";
 import { useWorkspace } from "../WorkspaceContext";
 import type {
@@ -155,6 +156,29 @@ export default function NpcWorkspaceModule({
     );
   }, [module.id]);
   const [portraitOpen, setPortraitOpen] = useState(false);
+  const [castingNpc, setCastingNpc] = useState(false);
+  const [castError, setCastError] = useState<string | null>(null);
+  const [castSuccess, setCastSuccess] = useState(false);
+  const castNpc = async (npc: CampaignNpc) => {
+    if (!npc.imageUrl || castingNpc) return;
+    setCastingNpc(true);
+    setCastError(null);
+    setCastSuccess(false);
+    try {
+      await castNpcToGameScreen(campaignId, {
+        imageUrl: npc.imageUrl,
+        name: npc.name || "Unnamed NPC",
+        imageCropX: npc.imageCropX,
+        imageCropY: npc.imageCropY,
+      });
+      setCastSuccess(true);
+    } catch (error) {
+      console.error("Failed to cast NPC portrait:", error);
+      setCastError(error instanceof Error ? error.message : "Unable to cast NPC portrait.");
+    } finally {
+      setCastingNpc(false);
+    }
+  };
   useEffect(() => {
     if (!portraitOpen) return;
 
@@ -322,6 +346,18 @@ export default function NpcWorkspaceModule({
                 <i className="fa-solid fa-crosshairs" />
               </button>
             </div>
+            {npc?.imageUrl ? (
+              <button
+                type="button"
+                disabled={castingNpc}
+                onClick={() => void castNpc(npc)}
+                title={castingNpc ? "Casting..." : "Cast NPC portrait to Game Screen"}
+                aria-label="Cast NPC portrait to Game Screen"
+                className="flex h-6 w-6 items-center justify-center rounded-md text-zinc-400 hover:bg-emerald-500/10 hover:text-emerald-300 disabled:opacity-40"
+              >
+                <i className={`fa-solid ${castingNpc ? "fa-spinner fa-spin" : "fa-tower-broadcast"} text-xs`} />
+              </button>
+            ) : null}
             {npc ? (
               <button
                 type="button"
@@ -490,7 +526,9 @@ export default function NpcWorkspaceModule({
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       {headerControls(selectedNpc)}
-      {/* NPC content */}
+      {castError ? <div role="alert" className="mx-3 mt-2 text-xs text-rose-300">{castError}</div> : null}
+        {castSuccess && !castError ? <div role="status" className="mx-3 mt-2 text-xs text-emerald-300">Portrait sent to Game Screen.</div> : null}
+        {/* NPC content */}
       <div className="workspace-scrollbar min-h-0 flex-1 overflow-y-auto">
         {/* Identity: float allows personality badges to wrap beneath the portrait */}
         <div className="flow-root border-b border-white/10 px-3 pt-2.5 pb-2">

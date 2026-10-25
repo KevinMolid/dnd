@@ -61,6 +61,22 @@ export default function GameScreen() {
           className="h-full w-full" />
       ) : screen.type === "map" ? (
         <p className="text-sm text-zinc-500">Loading map…</p>
+      ) : screen.type === "npc" ? (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-5 p-5 sm:p-8">
+          <div className="min-h-0 min-w-0 flex-1 w-full flex items-center justify-center">
+            <img
+              src={screen.imageUrl}
+              alt={screen.name || "NPC portrait"}
+              className="block max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+              draggable={false}
+            />
+          </div>
+          {screen.name ? (
+            <h1 className="shrink-0 text-center text-xl font-semibold tracking-wide text-white sm:text-3xl">
+              {screen.name}
+            </h1>
+          ) : null}
+        </div>
       ) : status === "connecting" ? (
         <p className="text-sm text-zinc-500">Connecting…</p>
       ) : null}
