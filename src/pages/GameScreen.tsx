@@ -71,11 +71,6 @@ export default function GameScreen() {
               draggable={false}
             />
           </div>
-          {screen.name ? (
-            <h1 className="shrink-0 text-center text-xl font-semibold tracking-wide text-white sm:text-3xl">
-              {screen.name}
-            </h1>
-          ) : null}
         </div>
       ) : status === "connecting" ? (
         <p className="text-sm text-zinc-500">Connecting…</p>
